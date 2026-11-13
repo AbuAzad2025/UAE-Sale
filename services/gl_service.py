@@ -75,11 +75,6 @@ _THREE_DP = Decimal("0.001")
 _TWO_DP = Decimal("0.01")
 
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
-
-
 def _to_decimal(value: Any) -> Decimal:
     """Coerce *value* to Decimal without ever going through float."""
     if isinstance(value, Decimal):
@@ -212,7 +207,6 @@ def _normalize_lines(
                     raise ValueError(unknown_account_message(raw))
                 raise ValueError(f"GL account '{raw}' not found while posting")
 
-        # FIX 6 — block postings to header accounts
         if getattr(account, "is_header", False):
             raise ValueError(f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}")
         if not getattr(account, "is_active", True):
@@ -226,7 +220,6 @@ def _normalize_lines(
         if debit > Decimal("0") and credit > Decimal("0"):
             raise ValueError("GL line: a line cannot carry both a debit and a credit")
 
-        # F8 — اتجاه الحركة مقابل طبيعة الحساب
         account.check_posting_direction(debit, credit)
 
         amount_base = _quantize_3((debit - credit) * rate)
@@ -264,16 +257,7 @@ def _audit_payload(entry: GLJournalEntry, normalized: list[_NormalizedLine]) -> 
     )
 
 
-# ---------------------------------------------------------------------------
-# service
-# ---------------------------------------------------------------------------
-
-
 class GLService:
-    # ------------------------------------------------------------------
-    # chart of accounts seeding
-    # ------------------------------------------------------------------
-
     @staticmethod
     def ensure_core_accounts() -> None:
         """Create hierarchical core GL accounts (idempotent)."""
@@ -521,7 +505,6 @@ class GLService:
                 1,
             ),
             ("6401", "مصروف الضمان", "Warranty Expense", "expense", "6400", False, 2),
-            # Maintenance module accounts (M2)
             ("1131", "ذمم الصيانة مدينة", "Maintenance AR", "asset", "1130", False, 3),
             (
                 "2111",
@@ -576,10 +559,6 @@ class GLService:
         if created_any:
             db.session.flush()
 
-    # ------------------------------------------------------------------
-    # purge helper (FK-safe)
-    # ------------------------------------------------------------------
-
     @staticmethod
     def purge_by_reference(ref_type: str, ref_id: int) -> int:
         """Delete the DRAFT journal entries for a given business reference.
@@ -616,9 +595,6 @@ class GLService:
             )
 
         ids = [e.id for e in entries]
-        # NOTE: JournalEntryAudit rows are deliberately NOT deleted.
-        # synchronize_session='fetch' يبقي الجلسة متسقة مع قاعدة البيانات
-        # (الكائنات المحذوفة تُزال من cache الهوية).
         GLJournalLine.query.filter(GLJournalLine.entry_id.in_(ids)).delete(
             synchronize_session="fetch"
         )
@@ -626,10 +602,6 @@ class GLService:
             synchronize_session="fetch"
         )
         return count
-
-    # ------------------------------------------------------------------
-    # account resolvers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def get_payment_debit_account(method: str | None) -> str:
@@ -651,12 +623,7 @@ class GLService:
         ctype = getattr(customer, "customer_type", None)
         if ctype == "partner":
             return AccountResolver.resolve(AccountRole.PARTNERS_CURRENT)
-        # FIX 2 — merchant and every other type resolve to AR control.
         return AccountResolver.resolve(AccountRole.AR_CONTROL)
-
-    # ------------------------------------------------------------------
-    # PRIMARY POSTING ENGINE — post_entry (FIX 8)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def post_entry(
@@ -691,8 +658,6 @@ class GLService:
         effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
-            # ---- 8. BALANCE VALIDATION BEFORE ANY DB MUTATION --------
-            # F5: التطبيع والتحقق يحدثان قبل أي كتابة في الجلسة.
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
@@ -706,7 +671,6 @@ class GLService:
                     f"GL entry not balanced: debit={total_debit} credit={total_credit}"
                 )
 
-            # ---- F10: الفترة المالية ---------------------------------
             _assert_period_open(effective_date)
 
             entry_number = _unique_entry_number()
@@ -744,7 +708,6 @@ class GLService:
                 )
             db.session.flush()
 
-            # ---- F3: سجل التدقيق ---------------------------------------
             JournalEntryAudit.record(
                 journal_entry_id=entry.id,
                 action=JournalEntryAudit.ACTION_CREATE,
@@ -759,10 +722,6 @@ class GLService:
         except Exception:
             db.session.rollback()
             raise
-
-    # ------------------------------------------------------------------
-    # create_journal_entry — typed, easiest caller (FIX 3/4/6/7/8)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def create_journal_entry(
@@ -795,8 +754,6 @@ class GLService:
         GLService.ensure_core_accounts()
 
         try:
-            # FIX 7 — use .get() so a missing 'debit' doesn't raise KeyError.
-            # F5 — التطبيع والتحقق قبل أي كتابة.
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
@@ -808,7 +765,6 @@ class GLService:
                     f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}"
                 )
 
-            # F10 — الفترة المالية
             _assert_period_open(effective_date)
 
             entry_number = _unique_entry_number()
@@ -845,7 +801,6 @@ class GLService:
                 )
             db.session.flush()
 
-            # F3 — سجل التدقيق
             JournalEntryAudit.record(
                 journal_entry_id=entry.id,
                 action=JournalEntryAudit.ACTION_CREATE,
@@ -860,10 +815,6 @@ class GLService:
         except Exception:
             db.session.rollback()
             raise
-
-    # ------------------------------------------------------------------
-    # create_manual_entry (FIX 5)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def create_manual_entry(
@@ -887,7 +838,6 @@ class GLService:
         effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
-            # F5 — التطبيع والتحقق قبل أي كتابة؛ الإجماليات من نفس القيم.
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
@@ -899,7 +849,6 @@ class GLService:
                     f"القيد غير متوازن: مدين={total_debit}, دائن={total_credit}"
                 )
 
-            # F10 — الفترة المالية
             _assert_period_open(effective_date)
 
             entry_number = _unique_entry_number()
@@ -943,7 +892,6 @@ class GLService:
                 )
             db.session.flush()
 
-            # F3 — سجل التدقيق
             JournalEntryAudit.record(
                 journal_entry_id=entry.id,
                 action=JournalEntryAudit.ACTION_CREATE,
@@ -958,10 +906,6 @@ class GLService:
         except Exception:
             db.session.rollback()
             raise
-
-    # ------------------------------------------------------------------
-    # reverse_entry (FIX 1)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def reverse_entry(
@@ -994,8 +938,6 @@ class GLService:
         primitive (which uses the locked number generator and writes an
         audit row).
         """
-        # reference_type / reference_id form used by routes/sales.py
-        # when the caller does not have the entry id handy.
         ref_type = kwargs.get("reference_type", reference_type)
         ref_id = kwargs.get("reference_id", reference_id)
         if ref_type is not None and ref_id is not None:
@@ -1008,22 +950,16 @@ class GLService:
             for ent in entries:
                 if getattr(ent, "is_reversed", False):
                     continue
-                # F7 — no silent swallow: a failure must reach the caller.
                 rev = ent.reverse_entry(
                     description=description or f"Reversal of {ent.entry_number}",
                     entry_date=entry_date,
                     created_by=created_by,
                 )
                 reversed_entries.append(rev)
-            # Return a single entry when only one was reversed to keep
-            # the simple caller (routes/sales.py line 392) happy which
-            # discards the return value; return the list so batch
-            # callers can iterate.
             if len(reversed_entries) == 1:
                 return reversed_entries[0]
             return reversed_entries  # type: ignore[return-value]
 
-        # single-entry form
         if entry_or_id is None:
             raise TypeError(
                 "GLService.reverse_entry: first argument or reference_type+reference_id is required"
@@ -1048,12 +984,7 @@ class GLService:
             created_by=created_by,
         )
 
-    # optional: explicit alias used by older code
     reverse_journal_entry = reverse_entry
-
-    # ------------------------------------------------------------------
-    # reporting (FIX 9)
-    # ------------------------------------------------------------------
 
     @staticmethod
     def get_account_statement(
@@ -1121,7 +1052,6 @@ class GLService:
                     "reference": f"{ln.entry.reference_type} #{ln.entry.reference_id}"
                     if ln.entry.reference_type
                     else "",
-                    # FIX 9
                     "debit": _quantize_3(_to_decimal(ln.debit)),
                     "credit": _quantize_3(_to_decimal(ln.credit)),
                     "balance": _quantize_3(running),
@@ -1147,7 +1077,6 @@ class GLService:
 
         def build(node: GLAccount, seen: set[int]) -> dict:
             bal = node.get_aggregate_balance()
-            # FIX 9 — Decimal, not float
             if not isinstance(bal, Decimal):
                 bal = _quantize_3(_to_decimal(bal))
             kids = [

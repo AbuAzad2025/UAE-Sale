@@ -127,7 +127,6 @@ def build_purchase_gl_lines(purchase):
             ]
         )
     if not recoverable:
-        # ضريبة تُحمّل على تكلفة البضاعة: لا حسابات ضريبة إطلاقًا
         gross = (net + tax).quantize(_MONEY_Q, rounding=ROUND_HALF_UP)
         return [
             {
@@ -141,7 +140,6 @@ def build_purchase_gl_lines(purchase):
                 "description": f"ذمم دائنة - مورد: {supplier}",
             },
         ]
-    # القياسي: ضريبة مدخلات قابلة للاسترداد
     lines = [
         {"account": inventory, "debit": net, "description": f"شراء بضاعة {num}"},
         {

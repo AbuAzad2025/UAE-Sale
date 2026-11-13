@@ -1061,7 +1061,6 @@ class TestDashboardDataScoping:
         share a cache entry, which priming as the owning tenant states
         directly.
         """
-        # Seed a confirmed TODAY sale + customer in tenant 9999
         other = Customer(
             name="T9999 Cache Customer",
             name_ar="عميل كاش 9999",
@@ -1102,9 +1101,6 @@ class TestDashboardDataScoping:
         data = client.get("/dashboard").data.decode()
         assert "7,777" not in data
         assert "T9999 Cache Customer" not in data
-
-
-# ── Phase 5: Master Key / Super Admin Scoping ───────────────────────────────
 
 
 class TestMasterKeyScoping:
@@ -1235,7 +1231,6 @@ class TestDiscoveredRoleEndpointMatrix:
         else:
             resp = client.get(url, follow_redirects=False)
         # Permission gates abort 403; owner panel stealth is 404; some
-        # /users-style gates flash+redirect (302). 200 with a write = bypass.
         assert resp.status_code in (403, 404, 302), (
             f"{fixture_name} {method} {url} returned {resp.status_code}, "
             "expected deny (403/404/302)"

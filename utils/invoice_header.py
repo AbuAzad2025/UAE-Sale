@@ -15,8 +15,6 @@ from types import SimpleNamespace
 def with_tenant_header(settings, tenant):
     """Use only neutral presentation settings; never inherit business identity."""
     if tenant is None:
-        # No tenant context explicitly means 'platform-wide context': use the
-        # platform's own settings untouched.
         return settings
     design_fields = (
         "text_color",
@@ -73,10 +71,6 @@ def document_tenant(document):
 
     tenant_id = getattr(document, "tenant_id", None)
     if tenant_id is None:
-        # Platform-wide context (platform owner / tenant-less bootstrap).
-        # The caller prints with the platform settings — this never happens
-        # for a tenant-scoped actor because a tenant scope is required to
-        # reach this code path.
         return None
     tenant = db.session.get(Tenant, tenant_id)
     if tenant is None:

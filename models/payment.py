@@ -11,15 +11,6 @@ class Payment(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint("amount > 0", name="ck_payment_amount_positive"),
         db.CheckConstraint("amount_base > 0", name="ck_payment_amount_base_positive"),
-        # F-05 invariant: direction must be 'incoming' or 'outgoing'.
-        # We do NOT enforce the FK-pairing at the DB level because the
-        # codebase has a long history of using 'outgoing' for both
-        # customer receipts and supplier payments (the original
-        # semantics predate the formal direction-FK contract).  The
-        # Python @validates below catches the obvious cases
-        # (outgoing-with-sale_id, incoming-with-supplier_id) so new
-        # code can be written against the strict model without
-        # breaking the legacy data paths.
         db.CheckConstraint(
             "direction IN ('incoming', 'outgoing')",
             name="ck_payment_direction_valid",
@@ -34,7 +25,6 @@ class Payment(TenantScopedMixin, db.Model):
 
     payment_type = db.Column(db.String(20), nullable=False, index=True)
 
-    # اتجاه المدفوعات
     direction = db.Column(
         db.String(10), default="outgoing", index=True
     )  # incoming, outgoing
@@ -52,12 +42,6 @@ class Payment(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # F3: ارتباط السند بفاتورة شراء.
-    # previously supplier payments were settled "at the supplier level" only,
-    # so Purchase.paid_amount / Purchase.payment_status could never be written
-    # and the AP aging reported every purchase as unpaid forever.
-    # backward compatible: a payment WITHOUT purchase_id still settles the
-    # supplier account as a whole (see models/supplier.py).
     purchase_id = db.Column(
         db.Integer,
         db.ForeignKey("purchases.id", ondelete="SET NULL"),
@@ -65,7 +49,6 @@ class Payment(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # معلومات المورد (لسندات الصرف)
     supplier_id = db.Column(
         db.Integer,
         db.ForeignKey("suppliers.id", ondelete="SET NULL"),
@@ -83,20 +66,14 @@ class Payment(TenantScopedMixin, db.Model):
 
     reference_number = db.Column(db.String(100))
 
-    # معلومات الشيك (قديمة - للتوافق)
     cheque_number = db.Column(db.String(50))
     cheque_date = db.Column(db.Date)
     bank_name = db.Column(db.String(100))
 
-    # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
     cheque_id = db.Column(
         db.Integer, db.ForeignKey("cheques.id", use_alter=True), index=True
     )
 
-    # حالة الدفعة - للشيكات فقط
-    # confirmed: مؤكدة (الشيك صُرف)
-    # pending: معلقة (الشيك لم يُصرف بعد)
-    # rejected: مرفوضة (الشيك رُفض)
     payment_confirmed = db.Column(
         db.Boolean, default=True, index=True
     )  # True للنقد/بطاقة، False للشيكات المعلقة
@@ -125,20 +102,6 @@ class Payment(TenantScopedMixin, db.Model):
         "Cheque", backref="payment_record", foreign_keys=[cheque_id]
     )
 
-    # ------------------------------------------------------------------
-    # F-05 validators
-    # ------------------------------------------------------------------
-    # NOTE: the strict direction-FK pairing (outgoing + sale_id is
-    # forbidden, incoming + supplier_id is forbidden) was originally
-    # enforced here.  However, the existing codebase uses
-    # ``direction='outgoing'`` as a generic "transaction occurred"
-    # flag on BOTH customer receipts (sale_id set) and supplier
-    # payments (supplier_id set), and tightening this would require
-    # touching every test fixture and most payment-creation code
-    # paths.  We therefore keep ONLY the direction value check at
-    # the Python layer and let the application layer (service code,
-    # route handlers) choose the correct direction.  The DB-level
-    # CHECK constraint enforces the same thing.
     @validates("direction")
     def _validate_direction(self, key, value):
         if value not in ("incoming", "outgoing"):
@@ -197,19 +160,15 @@ class Payment(TenantScopedMixin, db.Model):
         if not self.payment_confirmed:
             self.payment_confirmed = True
             self.confirmation_date = datetime.now(timezone.utc)
-            # flush: إعادة الاحتساب تقرأ الحالة من القاعدة (Core)
             db.session.flush()
 
-            # تحديث حالة الفاتورة
             if self.sale:
                 self.sale.recalculate_payment_status()
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد (لا زيادة تدريجية)
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(self.customer_id)
 
-            # F3: سداد فاتورة الشراء المرتبطة
             if self.purchase_id:
                 from models.purchase import Purchase
 
@@ -222,21 +181,15 @@ class Payment(TenantScopedMixin, db.Model):
         if self.payment_confirmed:
             self.payment_confirmed = False
             self.rejection_reason = reason
-            # flush: إعادة الاحتساب تقرأ الحالة من القاعدة (Core) فتُعرض
-            # حالة الرفض قبل حساب المدفوع المؤكد.
             db.session.flush()
 
-            # تحديث حالة الفاتورة (خصم المبلغ من المدفوع)
             if self.sale:
                 self.sale.recalculate_payment_status()
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد — الزيادة التدريجية القديمة
-            # (+ amount_base) كانت تُضاعف الفرق مع إعادة احتساب المستمع.
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(self.customer_id)
 
-            # F3: سداد فاتورة الشراء المرتبطة يُعاد احتسابه
             if self.purchase_id:
                 from models.purchase import Purchase
 
@@ -284,11 +237,6 @@ class Receipt(TenantScopedMixin, db.Model):
     __table_args__ = (
         db.CheckConstraint("amount > 0", name="ck_receipt_amount_positive"),
         db.CheckConstraint("amount_base > 0", name="ck_receipt_amount_base_positive"),
-        # F-01 invariant: a receipt links either to a sale OR to a
-        # purchase, never both, never neither.  The polymorphic
-        # source_type/source_id columns are kept for backward compat
-        # (read-only on the Python side) but new code MUST use the
-        # explicit FKs below.
         db.CheckConstraint(
             "(sale_id IS NOT NULL AND purchase_id IS NULL) "
             "OR "
@@ -305,10 +253,6 @@ class Receipt(TenantScopedMixin, db.Model):
     )
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    # F-01: explicit FKs replace the polymorphic source_type/source_id.
-    # sale_id for incoming customer payments, purchase_id for supplier
-    # refunds / adjustments.  Exactly one is set (or neither for manual
-    # adjustments, which the CHECK constraint above allows).
     sale_id = db.Column(
         db.Integer,
         db.ForeignKey("sales.id", ondelete="SET NULL"),
@@ -322,19 +266,13 @@ class Receipt(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # F-01: legacy polymorphic columns, kept read-only for backward
-    # compatibility.  New code must use sale_id / purchase_id above.
     source_type = db.Column(
         db.String(20), default="sale", index=True
     )  # sale, manual, refund, etc.
     source_id = db.Column(db.Integer, index=True)  # ID of the source (sale_id, etc.)
 
-    # F9: تخزين تخصيصات السند لكل فاتورة (JSON) — بدونه لا يمكن عكس
-    # التخصيصات بدقة عند حذف السند (كان يُعكس المبلغ الكلي على أول فاتورة
-    # فقط) ولا يمكن تطبيق التخصيص المؤجَّل عند تأكيد الشيك (F8).
     allocations_json = db.Column(db.Text, nullable=True)
 
-    # اتجاه المدفوعات
     direction = db.Column(
         db.String(10), default="incoming", index=True
     )  # incoming, outgoing
@@ -352,17 +290,14 @@ class Receipt(TenantScopedMixin, db.Model):
 
     reference_number = db.Column(db.String(100))
 
-    # معلومات الشيك (قديمة - للتوافق)
     cheque_number = db.Column(db.String(50))
     cheque_date = db.Column(db.Date)
     bank_name = db.Column(db.String(100))
 
-    # ربط مع نموذج الشيك (جديد - للمحاسبة الدقيقة)
     cheque_id = db.Column(
         db.Integer, db.ForeignKey("cheques.id", use_alter=True), index=True
     )
 
-    # حالة السند - للشيكات فقط
     payment_confirmed = db.Column(db.Boolean, default=True, index=True)
     confirmation_date = db.Column(db.DateTime)
     rejection_reason = db.Column(db.String(500))
@@ -388,10 +323,6 @@ class Receipt(TenantScopedMixin, db.Model):
     sale = db.relationship("Sale", backref="receipts")
     purchase = db.relationship("Purchase", backref="receipts")
 
-    # ------------------------------------------------------------------
-    # F-01 / F-04 validators: enforce parent FK invariants
-    # ------------------------------------------------------------------
-
     @validates("sale_id", "purchase_id")
     def _validate_single_parent(self, key, value):
         """sale_id and purchase_id are mutually exclusive: at most one
@@ -408,10 +339,6 @@ class Receipt(TenantScopedMixin, db.Model):
 
     def __repr__(self):
         return f"<Receipt {self.receipt_number}>"
-
-    # ------------------------------------------------------------------
-    # F9: تخصيصات السند (JSON) — تُحفظ لكل فاتورة على حدة
-    # ------------------------------------------------------------------
 
     def set_allocations(self, allocations):
         """حفظ تخصيصات السند (قائمة من القواميس) بصيغة JSON."""
@@ -448,7 +375,6 @@ class Receipt(TenantScopedMixin, db.Model):
             if isinstance(data, list) and data:
                 return data
 
-        # بديل بلا ترحيل (migration-free) للسندات القديمة
         if self.source_type == "sale" and self.source_id:
             return [
                 {
@@ -482,10 +408,8 @@ class Receipt(TenantScopedMixin, db.Model):
         if not self.payment_confirmed:
             self.payment_confirmed = True
             self.confirmation_date = datetime.now(timezone.utc)
-            # flush: إعادة الاحتساب تقرأ الحالة من القاعدة (Core)
             db.session.flush()
 
-            # F8: تطبيق التخصيصات المؤجَّلة (شيك تحت التحصيل → مؤكد)
             self.apply_pending_allocations()
 
     def apply_pending_allocations(self):
@@ -515,7 +439,6 @@ class Receipt(TenantScopedMixin, db.Model):
                 allocated_amount=amount,
                 allocated_base=amount_base,
             )
-            # F2: فروق العملة المؤجَّلة تُرحَّل عند التأكيد
             fx_amount = Decimal(str(alloc.get("fx_amount") or 0))
             if fx_amount != 0 and applied_base > 0:
                 PaymentService.post_fx_difference(sale, fx_amount, self)
@@ -547,27 +470,16 @@ class Receipt(TenantScopedMixin, db.Model):
         if self.payment_confirmed:
             self.payment_confirmed = False
             self.rejection_reason = reason
-            # flush: إعادة الاحتساب تقرأ الحالة من القاعدة (Core) فتُعرض
-            # حالة الرفض قبل حساب المدفوع المؤكد.
             db.session.flush()
 
-            # F4: عكس الفاتورة المرتبطة إن وُجدت
             sale = self.primary_sale
             if sale is not None:
                 sale.recalculate_payment_status()
 
-                # F1: رصيد العميل من مصدره الواحد (لا زيادة تدريجية)
                 from models.customer import recompute_customer_balance
 
                 recompute_customer_balance(self.customer_id)
             else:
-                # No invoice link: the money was never applied to one, so
-                # there is no invoice to re-settle. The balance still moves -
-                # a confirmed receipt is an advance, a rejected one is money
-                # that came back - and that movement is owned by the single
-                # derivation (models/customer.py), which has a term for
-                # unlinked receipts. Writing customer.balance here would be
-                # the last incremental writer of that column.
                 from models.customer import recompute_customer_balance
 
                 recompute_customer_balance(self.customer_id)

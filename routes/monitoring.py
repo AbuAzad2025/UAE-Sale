@@ -8,8 +8,6 @@ monitoring_bp = Blueprint("monitoring", __name__, url_prefix="/monitoring")
 
 @monitoring_bp.route("/health")
 def health():
-    # Liveness probe only: do NOT leak disk/memory/cpu/db details to
-    # unauthenticated callers (orchestrators need a bare health signal).
     ok = MonitoringService.check_database().get("healthy", False)
     return jsonify({"status": "healthy" if ok else "unavailable"}), 200 if ok else 503
 

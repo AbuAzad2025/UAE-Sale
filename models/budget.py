@@ -23,7 +23,6 @@ class Budget(TenantScopedMixin, db.Model):
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))
 
-    # الفترة
     fiscal_year = db.Column(db.Integer, nullable=False, index=True)  # 2025, 2026
     period_type = db.Column(
         db.String(20), default="annual"
@@ -31,20 +30,17 @@ class Budget(TenantScopedMixin, db.Model):
     period_start = db.Column(db.Date, nullable=False)
     period_end = db.Column(db.Date, nullable=False)
 
-    # الإجماليات
     total_budgeted = db.Column(db.Numeric(18, 3), default=0)
     total_actual = db.Column(db.Numeric(18, 3), default=0)
     total_variance = db.Column(db.Numeric(18, 3), default=0)
     variance_percentage = db.Column(db.Numeric(5, 2), default=0)
 
-    # الحالة
     status = db.Column(
         db.String(20), default="draft", index=True
     )  # draft, active, closed
 
     notes = db.Column(db.Text)
 
-    # Meta
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(
@@ -57,7 +53,6 @@ class Budget(TenantScopedMixin, db.Model):
     )
     approved_at = db.Column(db.DateTime)
 
-    # Relationships
     lines = db.relationship(
         "BudgetLine", back_populates="budget", cascade="all, delete-orphan"
     )
@@ -88,7 +83,6 @@ class Budget(TenantScopedMixin, db.Model):
         total_variance = Decimal("0")
 
         for line in self.lines:
-            # حساب المبلغ الفعلي
             debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter(
                 GLJournalLine.account_id == line.account_id
             ).join(GLJournalEntry).filter(
@@ -105,13 +99,11 @@ class Budget(TenantScopedMixin, db.Model):
                 )
             ).scalar() or Decimal("0")
 
-            # حساب الفعلي حسب نوع الحساب
             if line.account.type in ["asset", "expense"]:
                 line.actual_amount = debit_sum - credit_sum
             else:  # liability, equity, revenue
                 line.actual_amount = credit_sum - debit_sum
 
-            # حساب الانحراف
             line.variance = line.actual_amount - line.budgeted_amount
 
             if line.budgeted_amount != 0:
@@ -122,7 +114,6 @@ class Budget(TenantScopedMixin, db.Model):
             total_actual += line.actual_amount
             total_variance += line.variance
 
-        # تحديث الإجماليات
         self.total_actual = total_actual
         self.total_variance = total_variance
 
@@ -144,7 +135,6 @@ class Budget(TenantScopedMixin, db.Model):
         if self.status != "active":
             raise ValueError("يجب أن تكون الموازنة نشطة لإغلاقها")
 
-        # تحديث الأرقام الفعلية قبل الإغلاق
         self.update_actuals()
 
         self.status = "closed"
@@ -165,19 +155,15 @@ class BudgetLine(TenantScopedMixin, db.Model):
     budget_id = db.Column(db.Integer, db.ForeignKey("budgets.id"), nullable=False)
     account_id = db.Column(db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False)
 
-    # المبالغ المخططة
     budgeted_amount = db.Column(db.Numeric(18, 3), nullable=False)
 
-    # المبالغ الفعلية (محسوبة)
     actual_amount = db.Column(db.Numeric(18, 3), default=0)
 
-    # الانحراف
     variance = db.Column(db.Numeric(18, 3), default=0)
     variance_percentage = db.Column(db.Numeric(8, 2), default=0)
 
     notes = db.Column(db.Text)
 
-    # Relationships
     budget = db.relationship("Budget", back_populates="lines")
     account = db.relationship("GLAccount")
 

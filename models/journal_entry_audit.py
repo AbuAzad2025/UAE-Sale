@@ -45,7 +45,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
 
     __tablename__ = "journal_entry_audits"
 
-    # ---- actions ----------------------------------------------------------
     ACTION_CREATE = "create"
     ACTION_UPDATE = "update"
     ACTION_DELETE = "delete"
@@ -60,11 +59,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
 
     journal_entry_id = db.Column(
         db.Integer,
-        # Intentionally NO ForeignKey: the audit trail must survive its
-        # entry's deletion (migration 9 states this intent; the delete
-        # unit test pins it). Enforcing the FK either blocks draft deletes
-        # (restrictive) or silently destroys the history it exists to keep
-        # (CASCADE). The id is a historical reference, not a live link.
         nullable=False,
         index=True,
     )
@@ -92,11 +86,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
 
     journal_entry = db.relationship(
         "GLJournalEntry",
-        # No database FK backs this link (see journal_entry_id above), so
-        # the join and the delete behavior must be spelled out explicitly:
-        # passive_deletes stops session.delete(entry) from nulling/touching
-        # dependent audit rows (their NOT NULL historical reference stays
-        # intact); the database enforces nothing.
         primaryjoin="JournalEntryAudit.journal_entry_id == GLJournalEntry.id",
         foreign_keys=[journal_entry_id],
         backref=db.backref("audits", passive_deletes=True),
@@ -106,10 +95,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
 
     def __repr__(self):
         return f"<JournalEntryAudit #{self.id} on entry {self.journal_entry_id} by user {self.performed_by}>"
-
-    # ------------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def resolve_actor_id(explicit=None, fallback_entry=None):
@@ -150,10 +135,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
             except (TypeError, ValueError):
                 pass
 
-        # Last resort: a platform owner. The query is column-only on purpose:
-        # a column-only query is NOT rewritten by the tenant filter, so the
-        # owner can be found even when the caller works inside a tenant
-        # scope. Only an id is read — no business data crosses the boundary.
         try:
             from models.user import User
 
@@ -190,8 +171,6 @@ class JournalEntryAudit(TenantScopedMixin, db.Model):
         """
         actor = cls.resolve_actor_id(performed_by, fallback_entry)
         if actor is None:
-            # Never fake an actor and never abort a posting for a missing
-            # audit actor: log loudly and continue without the row.
             import logging
 
             logging.getLogger(__name__).warning(

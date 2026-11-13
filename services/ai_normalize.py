@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import re
 
-
 _AR_DIACRITICS = re.compile(r"[\u064B-\u0652\u0640\u0653-\u0655]")
-# أرقام عربية/مشرقية إلى لاتينية
 _AR_NUMBERS = {
     "٠": "0",
     "١": "1",
@@ -27,7 +25,6 @@ _AR_NUMBERS = {
 }
 _PUNCT = re.compile(r"[^\w\s]", re.UNICODE)
 
-# مرادفات دومين: مفتاح مُطبَّع → توسعة
 _SYNONYMS = {
     "فاتوره": ["فاتورة", "بيل", "invoice", "bill"],
     "فاتورة": ["بيل", "invoice", "bill"],
@@ -90,7 +87,6 @@ _SYNONYMS = {
     "سعر": ["تكلفة", "price"],
 }
 
-# أرقام مكتوبة حروفاً → رقمية (بصيغ مُطبَّع: بعد إزالة الهمزة/ة/ئ)
 _AR_WORD_NUMBERS = {
     "الف": "1000",
     "الفين": "2000",
@@ -125,12 +121,10 @@ def normalize(text: str) -> str:
     if not text:
         return ""
     s = str(text)
-    # أليف/تاء/تشكيل أولاً حتى يطابق "ألف/مائة/ثلاثة" مع مفاتيحنا غير الموسومة
     s = _AR_DIACRITICS.sub("", s)
     s = s.replace("إ", "ا").replace("أ", "ا").replace("آ", "ا")
     s = s.replace("ة", "ه").replace("ۀ", "ه")
     s = s.replace("ى", "ي").replace("ئ", "ي").replace("ؤ", "و").replace("ء", "")
-    # أرقام حروفاً: ألف/مئة/خمسين... → رقمية
     for _ar_w, _lat in _AR_WORD_NUMBERS.items():
         s = s.replace(_ar_w, _lat)
     for ar, lat in _AR_NUMBERS.items():
@@ -165,7 +159,6 @@ def cosine_sim(a: dict[str, float], b: dict[str, float]) -> float:
     """جيب تمام لمتجهين متناثرين."""
     if not a or not b:
         return 0.0
-    # المحصلة
     dot = sum(v * b[k] for k, v in a.items() if k in b)
     norm_a = sum(v * v for v in a.values()) ** 0.5
     norm_b = sum(v * v for v in b.values()) ** 0.5

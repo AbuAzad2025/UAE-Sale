@@ -10,8 +10,6 @@ from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
-# Strict-match tolerance: deltas up to 0.01 (inclusive) are considered balanced;
-# anything strictly greater is reported as a break (matches legacy drift rule).
 TOLERANCE = Decimal("0.01")
 
 
@@ -98,7 +96,6 @@ def check_customer_balance(customer_id=None):
         query = query.filter_by(id=customer_id)
 
     for customer in query.all():
-        # المصدر الواحد: models/customer.derive_customer_balance
         calculated = derive_customer_balance(customer.id)
 
         stored = Decimal(str(customer.balance or 0))
@@ -166,8 +163,6 @@ def _do_repair(customer_id=None):
     for drift_info in drifts:
         customer = db.session.get(Customer, drift_info["customer_id"])
         if customer:
-            # F10: القيمة المحسوبة تشمل الرصيد الافتتاحي — فالإصلاح لا
-            # يحذف الرصيد الافتتاحي (كان يُمحى سابقاً).
             customer.balance = Decimal(str(drift_info["calculated"]))
             repaired += 1
             logger.info(

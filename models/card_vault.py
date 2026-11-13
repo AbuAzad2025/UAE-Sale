@@ -155,11 +155,6 @@ class CardVault(db.Model):
         from flask_login import current_user
 
         try:
-            # Owner gate (mirrors get_card_number/get_cvv): an authenticated
-            # non-owner session only ever sees a mask. Anonymous/system
-            # context (background jobs, CLI) keeps legacy fail-open read so
-            # automated flows don't break; to_dict() default no longer emits
-            # this field at all (see below).
             if (
                 getattr(current_user, "is_authenticated", False)
                 and not current_user.is_owner
@@ -173,7 +168,6 @@ class CardVault(db.Model):
         from flask_login import current_user
 
         try:
-            # Same owner gate as get_card_number/get_cvv (see note above).
             if (
                 getattr(current_user, "is_authenticated", False)
                 and not current_user.is_owner
@@ -213,8 +207,6 @@ class CardVault(db.Model):
         }
 
         if include_sensitive:
-            # Holder name + expiry are PII: only emitted on explicit opt-in
-            # (each getter still applies its own owner gate).
             data["cardholder_name"] = self.get_cardholder_name()
             data["expiry"] = self.get_expiry()
             from flask_login import current_user

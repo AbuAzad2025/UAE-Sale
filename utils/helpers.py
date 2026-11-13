@@ -34,7 +34,6 @@ def generate_number(
         from utils.distributed_lock import distributed_lock
 
         with distributed_lock(lock_name, timeout=10, blocking_timeout=5):
-            # Inside the lock — safe to read max and increment
             latest = (
                 db.session.query(model)
                 .filter(getattr(model, field_name).like(f"{prefix}-{year}-%"))
@@ -51,7 +50,6 @@ def generate_number(
 
             candidate = f"{prefix}-{year}-{next_number:04d}"
 
-            # Check for collision (belt-and-suspenders)
             existing = (
                 db.session.query(model)
                 .filter(getattr(model, field_name) == candidate)
@@ -61,7 +59,6 @@ def generate_number(
             if not existing:
                 return candidate
 
-            # Collision inside the lock — very unlikely; retry once
             next_number += 1
             candidate = f"{prefix}-{year}-{next_number:04d}"
             existing = (
@@ -81,7 +78,6 @@ def generate_number(
             f"Distributed lock failed for {lock_name}: {e}"
         )
 
-    # Fallback: retry-only approach (no distributed lock)
     for attempt in range(max_retries):
         latest = (
             db.session.query(model)
@@ -110,7 +106,6 @@ def generate_number(
 
         time.sleep(0.01 * (attempt + 1))
 
-    # Final fallback: use UUID suffix
     return f"{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}"
 
 
@@ -186,9 +181,6 @@ def timeago(date):
     try:
         now = datetime.now(timezone.utc)
         if date.tzinfo is None:
-            # Assume naive datetime is UTC or handle accordingly
-            # For simplicity, let's assume it's system local time, but comparing with UTC is tricky.
-            # Let's try to make it aware or just use now() naive if date is naive.
             if date.year < 1970:  # Handle invalid dates
                 return ""
             date = date.replace(tzinfo=timezone.utc)
@@ -253,8 +245,6 @@ def create_audit_log(
     from flask_login import current_user
 
     session = db.session
-    # هل تحمل الجلسة عملاً معلّقاً آخر؟ إن كان نعم فسجّل صف التدقيق ضمن
-    # معاملة المستدعي (commit الخاصة به)، وإلا فالصف مستقل.
     pending_before = bool(session.new) or bool(session.dirty)
 
     try:
@@ -274,13 +264,10 @@ def create_audit_log(
         if commit is True:
             session.commit()
         elif commit is None and not pending_before:
-            # استدعاء مستقل (لا معاملة تجارية مفتوحة): نلتزم حتى لا يضيع
-            # السجل مع نهاية الطلب.
             session.commit()
         return log
     except Exception as e:
         current_app.logger.error(f"Failed to create audit log: {e}")
-        # fail-closed: السجل جزء من العملية، فشلُه يُلغي العملية.
         raise
 
 
@@ -369,13 +356,8 @@ def allowed_file(filename, allowed_extensions=None):
     )
 
 
-#: App-level upload cap (see save_uploaded_file): the effective limit is the
-#: stricter of this and Flask's MAX_CONTENT_LENGTH, so neither bound can be
-#: silently exceeded by the other.
 _APP_LEVEL_MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 
-#: Intermediate extensions that must never appear before the final extension
-#: ('invoice.php.jpg' bypasses naive last-extension checks).
 _DANGEROUS_INTERMEDIATE_EXTS = frozenset(
     {
         ".php",
@@ -412,9 +394,6 @@ _DANGEROUS_INTERMEDIATE_EXTS = frozenset(
     }
 )
 
-#: Byte markers (lowercased) signalling an executable/script polyglot hiding
-#: behind an innocent extension. Checked against the file header alongside
-#: the MZ/ELF magic-number guard.
 _POLYGLOT_MARKERS = (b"<?php", b"<?=", b"<%", b"<script")
 
 
@@ -449,11 +428,6 @@ def save_uploaded_file(file, upload_folder="uploads", allowed_extensions=None):
     if _is_double_extension_attack(file.filename):
         raise ValueError("File type not allowed (double extension)")
 
-    # Effective cap is the stricter of Flask's MAX_CONTENT_LENGTH (request
-    # layer, default 16MB) and the 5MB app-level upload policy, so lowering
-    # either bound is always honored and neither can silently exceed the other.
-    # NOTE: must stay usable without an app context (plain unit tests), hence
-    # the broad fallback to the app-level default.
     try:
         configured_max = int(current_app.config.get("MAX_CONTENT_LENGTH"))
     except Exception:

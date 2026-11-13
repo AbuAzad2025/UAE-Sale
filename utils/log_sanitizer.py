@@ -7,27 +7,19 @@ database credentials, and other secrets.
 
 import re
 
-# Patterns that indicate sensitive data
 SENSITIVE_PATTERNS = [
-    # Passwords in connection strings
     re.compile(r"://([^:]+):([^@]+)@", re.IGNORECASE),
-    # API keys
     re.compile(
         r'(api[_-]?key|apikey)\s*[=:]\s*["\']?([A-Za-z0-9_\-]{20,})', re.IGNORECASE
     ),
-    # Bearer tokens
     re.compile(r"(Bearer\s+[A-Za-z0-9_\-\.]+)", re.IGNORECASE),
-    # Generic secrets
     re.compile(
         r'(secret|password|passwd|pwd)\s*[=:]\s*["\']?([^\s"\']+)', re.IGNORECASE
     ),
-    # Credit card numbers (16 digits)
     re.compile(r"\b(\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4})\b"),
-    # IBAN
     re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b"),
 ]
 
-# Replacement text
 REDACTED = "***REDACTED***"
 
 
@@ -44,12 +36,6 @@ def _connection_replacement(match):
     return f"://{user}:{REDACTED}@"
 
 
-# Pattern index -> replacement strategy. The old single-lambda approach
-# appended '=***REDACTED***' to matches without '=' (bearer tokens,
-# card numbers, IBANs) instead of redacting them, and re-processed the
-# already-masked connection string into garbage.
-#   0 connection string, 1 api key, 2 bearer, 3 generic secret,
-#   4 credit card, 5 IBAN
 _PATTERN_REPLACEMENTS = {
     0: _connection_replacement,
     1: _kv_replacement,

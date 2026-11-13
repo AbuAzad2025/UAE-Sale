@@ -17,20 +17,10 @@ from sqlalchemy import event, inspect
 
 logger = logging.getLogger(__name__)
 
-# Thread-local storage for current tenant ID
 _thread_local = threading.local()
 
-# Global registry of tenant-scoped models (set of table names)
 _tenant_scoped_tables = set()
 
-
-# Sentinel tenant id meaning "the rows that belong to no tenant".
-#
-# An authenticated non-owner whose account has no tenant_id is scoped to this
-# rather than to None. None means "no filtering at all" - the owner's global
-# view - so it must never be used as a fallback for an ordinary account. With
-# this sentinel such a user sees only tenant-less rows, which is what their
-# own account's data is, and still cannot reach another tenant's data.
 TENANT_LESS_SCOPE = -1
 
 
@@ -97,14 +87,8 @@ def register_tenant_scoped(model_class):
     _tenant_scoped_tables.add(model_class.__tablename__)
 
 
-# Tables that carry a tenant_id column but are NOT covered by an explicit
-# register_tenant_scoped() call in their own module. Leaving one out means
-# every row of that table is readable by every tenant, so this list is the
-# difference between isolation and a leak.
 _BUILTIN_SCOPED_TABLES = frozenset(
     {
-        # users was previously unregistered: User has a tenant_id column but no
-        # module-level registration, so user records were never isolated.
         "users",
     }
 )
@@ -215,13 +199,8 @@ def _before_flush_tenant_guard(session, flush_context, instances):
     """
     tenant_id = get_current_tenant_id()
     owner_actor = _is_actor_owner()
-    # TENANT_LESS_SCOPE is a read scope, not a real tenant. A row must never
-    # be stamped with it - the column would hold a value that matches no
-    # tenant - so stamping falls back to the row's own (NULL) tenant.
     stamp_tenant = None if tenant_id == TENANT_LESS_SCOPE else tenant_id
     if owner_actor:
-        # Owner can do anything; still auto-stamp NULL rows so the column
-        # is never accidentally left empty for the platform record.
         for obj in session.new:
             tablename = getattr(type(obj), "__tablename__", None)
             if tablename not in _tenant_scoped_tables:
@@ -242,7 +221,6 @@ def _before_flush_tenant_guard(session, flush_context, instances):
         except Exception:
             continue
         if current_val in (None, "") and stamp_tenant is not None:
-            # Auto-scope new rows to the current tenant.
             try:
                 obj.tenant_id = stamp_tenant
             except Exception:
@@ -252,7 +230,6 @@ def _before_flush_tenant_guard(session, flush_context, instances):
             and stamp_tenant is not None
             and current_val != stamp_tenant
         ):
-            # Cross-tenant insert from a non-owner actor.
             raise RuntimeError(
                 f"Cross-tenant insert blocked: {type(obj).__name__}.tenant_id="
                 f"{current_val} but current tenant is {stamp_tenant}"
@@ -322,21 +299,15 @@ def install_tenant_filter_events():  # noqa: C901
         """
         tenant_id = get_current_tenant_id()
         if tenant_id is None:
-            # No tenant set - no filtering (default behaviour unchanged).
             _warn_unfiltered_access_in_strict_mode(query)
             return query
 
-        # Attach loader criteria FIRST: they apply to the entity wherever it
-        # appears in the statement, including inside a paginate() subquery and
-        # on a query that already has LIMIT/OFFSET applied - where adding a
-        # WHERE predicate is forbidden and the filter would be lost.
         _apply_loader_criteria(query.session, tenant_id)
         query = _apply_query_loader_criteria(query, tenant_id)
 
         if getattr(query, "_tenant_filter_applied", False):
             return query
 
-        # Collect EVERY tenant-scoped entity in the query.
         try:
             col_descs = query.column_descriptions
             if not col_descs:
@@ -358,15 +329,6 @@ def install_tenant_filter_events():  # noqa: C901
         if not scoped_entities:
             return query
 
-        # Apply the predicate to each scoped entity. A query that already has
-        # LIMIT/OFFSET cannot take another WHERE predicate - SQLAlchemy
-        # raises InvalidRequestError - and the loader criteria added above
-        # already constrain those queries, so skip rather than fail.
-        # The WHERE criteria were written directly by
-        # _apply_query_loader_criteria, which also handles the LIMIT/OFFSET
-        # case. Adding a predicate here as well would duplicate the
-        # restriction and, on a limited query, raise - so nothing more is
-        # added.
         query._tenant_filter_applied = True
         return query
 
@@ -444,10 +406,6 @@ def _apply_query_loader_criteria(query, tenant_id):
     if tenant_id is None:
         return query
 
-    # Only the entities that are actually part of this query. Constraining
-    # every scoped model would add predicates on tables that are not in the
-    # FROM clause, which turns the statement into a cross product that
-    # matches nothing.
     present = []
     try:
         for desc in query.column_descriptions:
@@ -464,9 +422,6 @@ def _apply_query_loader_criteria(query, tenant_id):
         criterion = _tenant_predicate(entity, tenant_id)
         try:
             existing = tuple(query._where_criteria)
-            # Drop a restriction this module added earlier for the same
-            # entity, then append the current one. A criterion is identified
-            # by the column it constrains, so the replacement is exact.
             kept = [c for c in existing if not _constrains_tenant_column(c, entity)]
             query._where_criteria = tuple(kept) + (criterion,)
         except Exception:  # noqa: BLE001 - never break a query
@@ -527,9 +482,6 @@ def install_tenant_loader_criteria():
     Owner/super_admin requests run with tenant None, in which case no criteria
     are applied at all, so cross-tenant administration keeps working.
     """
-    # The criteria are applied per query in the before_compile hook. This
-    # function exists so the application startup can call it explicitly and
-    # so the ownership of the mechanism is explicit rather than incidental.
     install_tenant_loader_criteria._attached = True
     return True
 
@@ -540,17 +492,11 @@ def _scoped_model_classes():
 
     out = []
     try:
-        # registry.mappers is already a live set of Mapper objects in
-        # SQLAlchemy 2.x. Neither db.Model nor registry is inspectable, so
-        # sa_inspect() here raises NoInspectionAvailable - which is why this
-        # must use the attribute directly.
         for m in db.Model.registry.mappers:
             table = getattr(m, "local_table", None)
             if table is not None and table.name in _tenant_scoped_tables:
                 out.append(m.class_)
     except Exception as exc:  # noqa: BLE001
-        # Loud: an empty list means isolation is silently absent, so record it
-        # rather than returning an empty list as if nothing were wrong.
         logger.error(
             "Tenant loader criteria could not resolve scoped models: %s: %s",
             type(exc).__name__,

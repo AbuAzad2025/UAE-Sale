@@ -132,9 +132,6 @@ def _convert_customer_to_type(customer):
 
 
 def _convert_product_to_type(product):
-    # SECURITY: cost_price is financial data — mask it for roles without
-    # cost visibility (seller/inventory pass the manage_products field
-    # check but must never read cost via GraphQL).
     show_cost = (
         bool(getattr(current_user, "is_authenticated", False))
         and current_user.can_see_costs()
@@ -175,7 +172,6 @@ class CreateSale(graphene.Mutation):
         db.session.add(sale)
         db.session.flush()
 
-        # Convert to SaleType
         sale_type = SaleType(
             id=sale.id,
             sale_number=sale.sale_number,

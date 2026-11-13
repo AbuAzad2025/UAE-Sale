@@ -54,9 +54,7 @@ logger = logging.getLogger(__name__)
 D = Decimal
 ZERO = Decimal("0")
 
-# الحالات التي يُسمح فيها بأن تُصدر فاتورة أو تُصرف قطع.
 BILLABLE_STATUSES = ("in_progress", "ready")
-# الحالات التي يُسمح فيها بال르기/إلغاء الأمر.
 EDITABLE_STATUSES = (
     "received",
     "diagnosis",
@@ -102,9 +100,6 @@ def _decimal(value, label, *, maximum=None, allow_zero=True):
     return number
 
 
-# ---------------------------------------------------------------------------
-# Settings helpers
-# ---------------------------------------------------------------------------
 def _get_settings(tenant_id):
     s = MaintenanceSetting.query.filter_by(tenant_id=tenant_id).first()
     if not s:
@@ -114,9 +109,6 @@ def _get_settings(tenant_id):
     return s
 
 
-# ---------------------------------------------------------------------------
-# 1. Create Maintenance Order
-# ---------------------------------------------------------------------------
 @tx
 def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
     """إنشاء أمر صيانة جديد."""
@@ -154,14 +146,11 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
     ):
         raise ValidationError("طريقة الدفع غير صالحة")
     deposit = _decimal(kwargs.get("deposit", 0), "مبلغ الدفعة المقدمة")
-    # العملة وسعر الصرف للأمر (تُورث من تينانت إذا لم تُحدد)
     currency = _intake_text(kwargs.get("currency"), "العملة", 3) or "AED"
     exchange_rate = _decimal(
         kwargs.get("exchange_rate", 1), "سعر الصرف", maximum=Decimal("1000000")
     )
     if deposit != 0:
-        # The deposit is recorded but a receipt must still be posted to
-        # complete the cash movement; see create_receipt / post_deposit.
         pass
 
     for field, label, limit in (
@@ -176,7 +165,6 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
     ):
         kwargs[field] = _intake_text(kwargs.get(field), label, limit)
 
-    # --- warranty lookup: only the customer's own registered device -------
     device_serial = kwargs.get("device_serial")
     warranty_status = "unknown"
     color_tag = "#f59e0b"  # yellow
@@ -200,7 +188,6 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
         if identifiers
         else []
     )
-    # Duplicate identifiers are ambiguous: do not silently grant a warranty.
     reg = matches[0] if len(matches) == 1 else None
 
     if reg:
@@ -217,8 +204,6 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
             warranty_status = "expired"
             color_tag = "#ef4444"  # red
 
-    # The shared number helper releases its lock before the order commits,
-    # allowing concurrent requests to choose the same globally unique number.
     order_no = f"MN-{date.today().year}-{uuid4().hex.upper()}"
 
     order = MaintenanceOrder(
@@ -276,9 +261,6 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
     return order
 
 
-# ---------------------------------------------------------------------------
-# 2. Status transitions
-# ---------------------------------------------------------------------------
 ALLOWED_TRANSITIONS = {
     "received": ["diagnosis", "cancelled"],
     "diagnosis": ["waiting_approval", "in_progress", "on_hold"],
@@ -327,7 +309,6 @@ def _close_order(order, changed_by):
         raise ValidationError("لا يمكن إغلاق الأمر قبل أن يكون جاهزاً للتسليم")
 
     if accounting.is_warranty_order(order):
-        # Warranty work is not charged: move its parts cost to warranty expense.
         if order.invoice:
             raise ValidationError("أمر الضمان لا يجب أن يكون له فاتورة للعميل")
         accounting.post_warranty_reclassification(order, created_by=changed_by)
@@ -356,7 +337,6 @@ def _assert_within_credit_limit(order):
     if limit <= 0:
         return
     outstanding = _maintenance_receivable(customer.id, order.tenant_id)
-    # جميع المبالغ بعملة الأساس للمقارنة الصحيحة
     customer_balance_base = D(
         str(getattr(customer, "balance_base", None) or customer.balance or 0)
     )
@@ -445,9 +425,6 @@ def _log_status(order, from_status, to_status, changed_by, note):
     db.session.add(log)
 
 
-# ---------------------------------------------------------------------------
-# 3. Line items (parts / services)
-# ---------------------------------------------------------------------------
 @tx
 def add_order_item(
     order_id,
@@ -507,8 +484,6 @@ def add_order_item(
         if not warehouse:
             raise ValidationError("المستودع غير موجود أو لا يتبع هذا التينانت")
 
-    # Actual cost: the moving average, and a product without any cost basis is
-    # refused (a part sold without cost would make the profit fictional).
     unit_cost = CostingService.cost_for_sale(product, quantity)
 
     available, message = StockService.check_availability(
@@ -553,7 +528,6 @@ def add_order_item(
         line.movement_id = movement.id
         db.session.flush()
 
-    # Cost leaves the inventory ledger at the actual cost of the part.
     accounting.post_parts_issue(
         order, line, unit_cost=unit_cost, quantity=quantity, created_by=actor_id
     )
@@ -634,9 +608,6 @@ def add_order_service(
     return line
 
 
-# ---------------------------------------------------------------------------
-# 4. Discount at order level
-# ---------------------------------------------------------------------------
 @tx
 def apply_order_discount(
     order_id,
@@ -677,7 +648,6 @@ def apply_order_discount(
         order.discount_total_percent = ZERO
         order.discount_total_value = value
     else:
-        # Neither given: the discount is cleared.
         order.discount_total_percent = ZERO
         order.discount_total_value = ZERO
 
@@ -685,9 +655,6 @@ def apply_order_discount(
     return order
 
 
-# ---------------------------------------------------------------------------
-# 5. Warranty actions
-# ---------------------------------------------------------------------------
 @tx
 def warranty_action(
     tenant_id,
@@ -774,9 +741,6 @@ def _warranty_audit(
     db.session.add(audit)
 
 
-# ---------------------------------------------------------------------------
-# 6. Receipts (cashier only)
-# ---------------------------------------------------------------------------
 @tx
 def create_receipt(
     order_id,
@@ -804,14 +768,12 @@ def create_receipt(
         raise ValidationError("أمر الضمان لا يُقبض عليه من العميل")
 
     amount = _decimal(amount, "المبلغ", allow_zero=False)
-    # تحديد العملة وسعر الصرف (تيرث من الأمر إذا لم تُحدد)
     receipt_currency = currency or order.currency
     receipt_exchange_rate = (
         exchange_rate if exchange_rate is not None else order.exchange_rate
     )
     amount_base = (amount * D(str(receipt_exchange_rate or 1))).quantize(D("0.001"))
 
-    # مقارنة المبلغ المحول بعملة الأساس مع الرصيد المستحق بعملة الأساس
     balance_base = D(str(order.balance_due_base or 0))
     if not is_deposit:
         if balance_base <= 0:
@@ -856,9 +818,6 @@ def _next_receipt_number():
     return generate_number("PT-MN", MaintenanceReceipt, "receipt_no")
 
 
-# ---------------------------------------------------------------------------
-# 7. Maintenance invoice
-# ---------------------------------------------------------------------------
 @tx
 def create_maintenance_invoice(order_id, created_by, currency=None, exchange_rate=None):
     """إنشاء فاتورة صيانة مستقلة وترحيل إيرادها وضريبتها."""
@@ -881,7 +840,6 @@ def create_maintenance_invoice(order_id, created_by, currency=None, exchange_rat
     if net + vat <= 0:
         raise ValidationError("لا يمكن إصدار فاتورة بقيمة صفر")
 
-    # تحديد العملة وسعر الصرف للفاتورة (تيرث من الأمر إذا لم تُحدد)
     invoice_currency = currency or order.currency
     invoice_exchange_rate = (
         exchange_rate if exchange_rate is not None else order.exchange_rate
@@ -932,9 +890,6 @@ def create_maintenance_invoice(order_id, created_by, currency=None, exchange_rat
     return invoice
 
 
-# ---------------------------------------------------------------------------
-# 7b. Credit Note (reverse invoice, allow returns after billing)
-# ---------------------------------------------------------------------------
 @tx
 def create_maintenance_credit_note(
     order_id, created_by, reason=None, currency=None, exchange_rate=None
@@ -955,7 +910,6 @@ def create_maintenance_credit_note(
     if existing:
         raise ValidationError("إشعار دائن موجود بالفعل لهذا الأمر")
 
-    # تحديد العملة وسعر الصرف (تيرث من الفاتورة إذا لم تُحدد)
     cn_currency = currency or order.invoice.currency
     cn_exchange_rate = (
         exchange_rate if exchange_rate is not None else order.invoice.exchange_rate
@@ -987,9 +941,6 @@ def create_maintenance_credit_note(
     return cn
 
 
-# ---------------------------------------------------------------------------
-# 8. Returns
-# ---------------------------------------------------------------------------
 @tx
 def create_maintenance_return(
     order_id, returned_by, reason, lines=None, currency=None, exchange_rate=None
@@ -1014,7 +965,6 @@ def create_maintenance_return(
                 "لا يمكن إنشاء مرتجع بعد إصدار الفاتورة — يلزم إشعار دائن"
             )
 
-    # تحديد العملة وسعر الصرف للمرتجع (تيرث من الأمر إذا لم تُحدد)
     ret_currency = currency or order.currency
     ret_exchange_rate = (
         exchange_rate if exchange_rate is not None else order.exchange_rate
@@ -1105,9 +1055,6 @@ def create_maintenance_return(
     return ret
 
 
-# ---------------------------------------------------------------------------
-# 9. Query helpers
-# ---------------------------------------------------------------------------
 def get_orders(
     tenant_id,
     status=None,
@@ -1166,9 +1113,6 @@ def get_orders(
     )
 
 
-# ---------------------------------------------------------------------------
-# 10. Warranty auto-check
-# ---------------------------------------------------------------------------
 def auto_check_warranty_from_sales(
     tenant_id, serial_number=None, imei=None, plate=None, customer_id=None
 ):
@@ -1220,9 +1164,6 @@ def auto_check_warranty_from_sales(
     return warranty_info
 
 
-# ---------------------------------------------------------------------------
-# 11. Stock availability
-# ---------------------------------------------------------------------------
 def check_stock_availability(tenant_id, product_id, warehouse_id, quantity):
     """التحقق من توفر المخزون قبل الصرف."""
     if tenant_id != current_maintenance_tenant():
@@ -1252,9 +1193,6 @@ def check_stock_availability(tenant_id, product_id, warehouse_id, quantity):
     return result
 
 
-# ---------------------------------------------------------------------------
-# 12. Maintenance cost analysis
-# ---------------------------------------------------------------------------
 def get_maintenance_cost_analysis(tenant_id, date_from=None, date_to=None):
     """تحليل تكلفة الصيانة وهوامش الربح (تقديري للأجور، فعلي للقطع)."""
     if tenant_id != current_maintenance_tenant():
@@ -1298,7 +1236,6 @@ def get_maintenance_cost_analysis(tenant_id, date_from=None, date_to=None):
         )
         labor_cost = sum((D(str(sv.cost_price or 0)) for sv in order.services), ZERO)
         total_cost = parts_cost + labor_cost
-        # الإيراد الصافي بعملة الأساس (إجمالي - ضريبة)
         revenue = D(
             str(getattr(order, "total_amount_base", None) or order.total_amount or 0)
         ) - D(str(getattr(order, "tax_amount_base", None) or order.tax_amount or 0))
@@ -1348,9 +1285,6 @@ def get_maintenance_cost_analysis(tenant_id, date_from=None, date_to=None):
     return analysis
 
 
-# ---------------------------------------------------------------------------
-# 13. Notifications
-# ---------------------------------------------------------------------------
 @tx
 def send_customer_notification(
     order_id, channel="whatsapp", custom_message=None, actor_id=None
@@ -1424,9 +1358,6 @@ def send_customer_notification(
     return result
 
 
-# ---------------------------------------------------------------------------
-# 14. Supplier purchase of parts — maintenance payables
-# ---------------------------------------------------------------------------
 @tx
 def create_maintenance_purchase(
     tenant_id,
@@ -1567,7 +1498,6 @@ def pay_maintenance_supplier(
 
     outstanding = _maintenance_payable(supplier.id, tenant_id)
     amount = _decimal(amount, "المبلغ", allow_zero=False)
-    # تحديد العملة وسعر الصرف للدفعة (تيرث من العملة الأساسية للنظام إذا لم تُحدد)
     pay_currency = currency or "AED"
     pay_exchange_rate = exchange_rate if exchange_rate is not None else D("1")
     amount_base = (amount * pay_exchange_rate).quantize(D("0.001"))
@@ -1624,9 +1554,6 @@ def _maintenance_payable(supplier_id, tenant_id) -> Decimal:
     return (received - paid).quantize(D("0.001"))
 
 
-# ---------------------------------------------------------------------------
-# 15. Overdue orders
-# ---------------------------------------------------------------------------
 def get_overdue_orders(tenant_id):
     """الحصول على أوامر الصيانة المتأخرة (أكثر من 7 أيام بدون إغلاق)."""
     if tenant_id != current_maintenance_tenant():
@@ -1649,9 +1576,6 @@ def get_overdue_orders(tenant_id):
     return q.order_by(MaintenanceOrder.received_at.asc()).all()
 
 
-# ---------------------------------------------------------------------------
-# 16. Quality control and completion time
-# ---------------------------------------------------------------------------
 @tx
 def quality_check(order_id, passed, checked_by, notes=None):
     """فحص جودة الأمر بعد الإكمال."""
@@ -1680,9 +1604,6 @@ def set_completion_time(order_id, hours, changed_by):
     return order
 
 
-# ---------------------------------------------------------------------------
-# 17. Quality audit trail
-# ---------------------------------------------------------------------------
 def get_audit_trail(tenant_id, order_id=None, date_from=None, date_to=None):
     """الحصول على مسار التدقيق الكامل لأوامر الصيانة."""
     if tenant_id != current_maintenance_tenant():

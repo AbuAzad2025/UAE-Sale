@@ -28,7 +28,6 @@ def test_handlers_dispatch_importable():
     # unauthenticated: denial (not crash), not clarification crash
     r = dispatch(p, user=None)
     assert "executed" in r
-    # digit/menu messages bypass new path (legacy owns them)
     assert dispatch_for_action("1", user=None) is None
     assert dispatch_for_action("عودة", user=None) is None
     assert dispatch_for_action("نعم", user=None) is None

@@ -11,8 +11,6 @@ from utils.decorators import get_owned_or_raise
 from utils.helpers import generate_number
 from utils.errors import ValidationError
 
-# Fallback account codes (must mirror GLService.ensure_core_accounts defaults).
-# Used only when Agent1's services.account_resolution resolver is unavailable.
 FALLBACK_ACCOUNTS = {
     "AR_CONTROL": "1130",
     "PARTNER_CURRENT": "3350",
@@ -23,13 +21,6 @@ FALLBACK_ACCOUNTS = {
     "TAX_PAYABLE": "2130",
     "VAT_INPUT": "1141",
     "VAT_OUTPUT": "2131",
-    # 5000 is a HEADER in the canonical tree (gl_service.py:156, is_header,
-    # depth 0); 5100 is the posting leaf under it. Booking cost of sales on
-    # the header left every subtotal and every trial-balance roll-up reading
-    # zero, because a header never receives postings. AccountResolver already
-    # resolves COGS to 5100, so this literal was only reachable when that
-    # import failed - and it silently produced a wrong ledger rather than an
-    # error.
     "COGS": "5100",
     "INVENTORY": "1140",
 }
@@ -106,7 +97,6 @@ class SaleService:
     @staticmethod
     def _resolve_tax_rate(tax_rate, customer=None):
         """حفظ التوافق: يعيد (rate, inclusive) عبر TaxEngine."""
-        # الرابط السابق يبقي tax_rate Decimal فقط؛ الجديد _resolve_tax(...)
         _rate, _incl = SaleService._resolve_tax(tax_rate, customer=customer)
         return _rate
 
@@ -157,7 +147,6 @@ class SaleService:
         All financial calculations use Decimal for accuracy
         Uses database transaction with automatic rollback on error
         """
-        # Input validations
         if not customer or not customer.is_active:
             raise ValidationError(
                 "⚠️ العميل غير صالح أو غير نشط.\n💡 اختر عميل نشط من القائمة أو قم بتفعيله."
@@ -171,7 +160,6 @@ class SaleService:
                 '⚠️ يجب إضافة منتج واحد على الأقل للفاتورة.\n💡 اضغط زر "➕ إضافة صف" واختر منتجاً.'
             )
 
-        # --- Fiscal Period Check ---
         from services.erp_modules_service import FiscalPeriodService
 
         if not FiscalPeriodService.is_period_open(date.today()):
@@ -180,14 +168,12 @@ class SaleService:
                 "💡 لا يمكن إنشاء فواتير في فترة مالية مقفلة."
             )
 
-        # Dynamic base currency resolution
         if not currency:
             try:
                 currency = CurrencyService.get_base_currency()
             except Exception:
                 currency = "ILS"
 
-        # Validate discount and tax
         discount_decimal = (
             Decimal(str(discount_amount)) if discount_amount else Decimal("0")
         )
@@ -215,8 +201,6 @@ class SaleService:
 
         from models import Warehouse
 
-        # 🔒 Concurrency: lock the customer row (balance/total_purchases are
-        # derived from sales; concurrent sales must serialize on the customer).
         from utils.decorators import get_owned_or_raise
         from models import Customer
 
@@ -224,15 +208,12 @@ class SaleService:
             get_owned_or_raise(Customer, customer.id, for_update=True) or customer
         )
         if not warehouse_id:
-            # البحث عن المستودع الرئيسي أولاً
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
             if not warehouse:
-                # أول مستودع نشط
                 warehouse = Warehouse.query.filter_by(is_active=True).first()
             if warehouse:
                 warehouse_id = warehouse.id
         else:
-            # التحقق من صحة المستودع المحدد
             warehouse = get_owned_or_raise(
                 Warehouse, warehouse_id, missing_message="المستودع غير موجود"
             )
@@ -254,11 +235,9 @@ class SaleService:
                 user_rate=user_exchange_rate,
             )
 
-            # Validate exchange rate
             if exchange_rate <= Decimal("0"):
                 raise ValidationError("سعر الصرف غير صالح")
 
-            # --- Credit Limit Check ---
             credit_limit = (
                 Decimal(str(customer.credit_limit))
                 if customer.credit_limit
@@ -270,7 +249,6 @@ class SaleService:
                     if customer.get_balance()
                     else Decimal("0")
                 )
-                # We can't know total_amount yet, so estimate from lines
                 estimated_total = sum(
                     (
                         Decimal(str(ld.get("quantity", 0)))
@@ -314,29 +292,13 @@ class SaleService:
                 product = line_data["product"]
                 quantity = Decimal(str(line_data["quantity"]))
 
-                # Validate quantity
                 if quantity <= Decimal("0"):
                     raise ValidationError(
                         f'⚠️ المنتج "{product.name}": الكمية يجب أن تكون أكبر من صفر.\n💡 أدخل كمية صحيحة مثل: 1, 2, 5, 10'
                     )
 
-                # F1: لا فاتورة بلا تكلفة — منتج بلا cost_price لا ينتج
-                # قيد تكلفة (COGS) ولا تسوية للمخزون، فرحّل فاتورة إيراد
-                # بلا مقابل كان يجعل المخزون بلا قيمة والربح وهمياً.
-                # يُرفض البيع برسالة تسمّي المنتج (ValidationError).
-                #
-                # تكلفة البيع = **المتوسط المتحرك** (CostingService):
-                # الكلفة وقت البيع لا سعر آخر شراء. والبيع بلا أساس
-                # تكلفة يُرفض مغلقاً (fail-closed) من داخل
-                # CostingService.cost_for_sale عبر حارس التكلفة الموروث.
                 cost_basis = CostingService.cost_for_sale(product, quantity)
 
-                # Check stock availability — must be WAREHOUSE-AWARE: the
-                # seller may not ship stock that physically sits in another
-                # warehouse.  The per-warehouse figure is only
-                # authoritative when the movements account for the whole
-                # card balance (see _warehouse_stock_is_authoritative);
-                # otherwise the card's global balance is the only truth.
                 available, msg = StockService.check_availability(
                     product.id, quantity, warehouse_id=warehouse_id
                 )
@@ -351,13 +313,11 @@ class SaleService:
                 if not available:
                     raise ValidationError(f"{product.name}: {msg}")
 
-                # Get unit price
                 if line_data.get("unit_price"):
                     unit_price = Decimal(str(line_data["unit_price"]))
                 else:
                     unit_price = product.get_price_for_customer(customer.customer_type)
 
-                # Validate unit price
                 if unit_price <= Decimal("0"):
                     raise ValidationError(
                         f'⚠️ المنتج "{product.name}": السعر يجب أن يكون أكبر من صفر.\n💡 أدخل سعر صحيح بالدرهم.'
@@ -365,14 +325,11 @@ class SaleService:
 
                 discount_percent = Decimal(str(line_data.get("discount_percent", 0)))
 
-                # Validate line discount
                 if discount_percent < Decimal("0") or discount_percent > Decimal("100"):
                     raise ValidationError(
                         f"{product.name}: نسبة الخصم يجب أن تكون بين 0 و 100"
                     )
 
-                # Snapshot the line tax treatment: explicit per-line value,
-                # otherwise the product's saved default.
                 _line_treatment = (
                     (
                         line_data.get("tax_treatment")
@@ -393,9 +350,6 @@ class SaleService:
                     quantity=quantity,
                     unit_price=unit_price,
                     discount_percent=discount_percent,
-                    # F1: لقطة التكلفة (cost basis) — التكلفة تُثبَّت على
-                    # سطر البيع وقت البيع (المتوسط المتحرك آنذاك)،
-                    # وتُشتق منها قيد COGS.
                     cost_price=cost_basis,
                     tax_treatment=_line_treatment,
                 )
@@ -408,7 +362,6 @@ class SaleService:
             sale.subtotal = subtotal
             sale.calculate_totals()
 
-            # Handle payment if provided
             if payment_data:
                 paid_amount = Decimal(str(payment_data.get("amount", 0)))
                 try:
@@ -418,7 +371,6 @@ class SaleService:
                 payment_currency = payment_data.get("currency") or _base_pay
                 payment_exchange_rate = payment_data.get("exchange_rate", 1.0)
 
-                # Convert payment to AED
                 payment_exchange_decimal = (
                     Decimal(str(payment_exchange_rate))
                     if payment_exchange_rate
@@ -428,19 +380,12 @@ class SaleService:
                     Decimal("0.001"), rounding=ROUND_HALF_UP
                 )
 
-                # Validate payment amount (in AED)
                 if paid_amount_base < Decimal("0"):
                     raise ValidationError("مبلغ الدفع لا يمكن أن يكون سالب")
 
-                # Store payment in AED
                 sale.paid_amount = paid_amount  # في عملة الفاتورة
                 sale.paid_amount_base = paid_amount_base  # محول للدرهم
 
-                # Handle overpayment (credit to customer)
-                # FIX(F1/F2): الدفعة الزائدة تبقى على الفاتورة
-                # (paid_amount_base > amount_base) فيظهر رصيد العميل السالب
-                # (رصيد دائن له) في customer.balance — وهو ناتج اشتقاق
-                # واحد — بدل زيادة يدوية تكسر التوازن.
                 if paid_amount_base > sale.amount_base:
                     overpayment = paid_amount_base - sale.amount_base
                     payment_note = (
@@ -448,17 +393,12 @@ class SaleService:
                     )
                     sale.notes = (sale.notes or "") + payment_note
 
-                # Add payment currency info to notes if not AED
                 if payment_currency != CurrencyService.get_base_currency():
                     payment_note = f"\n[دفعة] {paid_amount} {payment_currency} = {paid_amount_base} AED (سعر: {payment_exchange_rate})"
                     sale.notes = (sale.notes or "") + payment_note
 
             sale.calculate_totals()
 
-            # FIX(negative-balance crash): calculate_totals() keeps the
-            # overpayment on the invoice, so balance_due is clamped at 0
-            # (never negative — ck_sale_balance_non_negative) and the excess
-            # shows up as a customer credit in the derived balance.
             if sale.balance_due is not None and Decimal(
                 str(sale.balance_due)
             ) < Decimal("0"):
@@ -467,7 +407,6 @@ class SaleService:
 
             db.session.flush()
 
-            # تمرير warehouse_id لحركات المخزون
             StockService.process_sale_lines(sale, warehouse_id)
 
             if payment_data and payment_data.get("amount", 0) > 0:
@@ -491,20 +430,12 @@ class SaleService:
             customer.total_purchases += sale.amount_base
             customer.update_classification()
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد (لا زيادة تدريجية)
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
 
-            # Post to General Ledger with proper decimal precision
             GLService.ensure_core_accounts()
 
-            # Calculate COGS with proper decimal precision
-            # FIX(base-currency mixing): the cost snapshot is stored in base
-            # currency (the moving average — see CostingService), so it must
-            # NOT be multiplied by the sale's exchange rate again.
-            # F1: كل سطر يحمل الآن تكلفة موثّقة > 0 (cost_for_sale)،
-            # فمجموع التكلفة على أي فاتورة ذات أسطر أكبر من صفر.
             cogs_total_base = sum(
                 (
                     Decimal(str(line.cost_price)) * Decimal(str(line.quantity))
@@ -516,10 +447,6 @@ class SaleService:
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
-            # Determine AR Account based on Customer Type (resolved dynamically)
-            # F37: merchant receivables are true receivables — align with the
-            # GLService resolver (FIX 2: merchant -> AR control 1130), not the
-            # liability 2115. Partner mapping stays on PARTNERS_CURRENT.
             ar_account = resolve_account("AR_CONTROL")
             if customer.customer_type == "partner":
                 ar_account = resolve_account("PARTNER_CURRENT")
@@ -528,10 +455,6 @@ class SaleService:
                     ar_account = GLService.get_customer_credit_account(customer)
                 except Exception:
                     ar_account = resolve_account("AR_CONTROL")
-
-            # Prepare GL lines with proper decimal precision
-            # AR and Revenue should be in Transaction Currency (Foreign)
-            # GLService.post_entry will handle conversion to base currency
 
             _partner_id = (
                 customer.id
@@ -582,7 +505,6 @@ class SaleService:
                     }
                 )
 
-            # Post Sales Revenue Entry (in Transaction Currency)
             GLService.post_entry(
                 lines,
                 description=f"Sale {sale.sale_number}",
@@ -592,9 +514,6 @@ class SaleService:
                 exchange_rate=sale.exchange_rate,
             )
 
-            # COGS Entry (Always in Base Currency — cost is base-denominated)
-            # F1: الفاتورة ذات الأسطر لها دائماً تكلفة > 0 (require_cost_basis)،
-            # فالقيد 아래 لا يُسقط ولا يُبدَّل. الشرط باقٍ كشبكة أمان.
             if cogs_total_base > Decimal("0"):
                 cogs_lines = [
                     {
@@ -618,8 +537,6 @@ class SaleService:
                     exchange_rate=1.0,
                 )
 
-            # توزيع أرباح شركاء المنتج فورًا — داخل نفس المعاملة؛ الفشل يُجهض
-            # الفاتورة كاملة (لا يُسمح بفاتورة بلا قيد حصص الشركاء).
             from services.partner_profit import post_partner_shares_for_sale
 
             post_partner_shares_for_sale(sale)
@@ -654,24 +571,20 @@ class SaleService:
         """
         from datetime import datetime
 
-        # Dynamic base currency fallback for payment currency
         if not currency:
             try:
                 currency = CurrencyService.get_base_currency()
             except Exception:
                 currency = "ILS"
 
-        # Validate payment amount
         amount_decimal = Decimal(str(amount))
         if amount_decimal <= Decimal("0"):
             raise ValidationError("مبلغ الدفع يجب أن يكون أكبر من صفر")
 
-        # Validate payment method
         valid_methods = ["cash", "card", "bank_transfer", "cheque", "e_wallet"]
         if payment_method not in valid_methods:
             raise ValidationError(f"طريقة الدفع غير صالحة: {payment_method}")
 
-        # Validate cheque details if payment method is cheque
         if payment_method == "cheque":
             if not cheque_number:
                 raise ValidationError(
@@ -686,7 +599,6 @@ class SaleService:
                     "⚠️ اسم البنك مطلوب للشيك.\n💡 أدخل اسم البنك المسحوب عليه الشيك."
                 )
 
-            # Convert cheque_date to date object if it's a string
             if isinstance(cheque_date, str):
                 try:
                     cheque_date = datetime.strptime(cheque_date, "%Y-%m-%d").date()
@@ -695,7 +607,6 @@ class SaleService:
 
         payment_number = generate_number("PAY", Payment, "payment_number")
 
-        # Calculate AED amount with proper rounding using PROVIDED exchange rate
         exchange_rate_decimal = Decimal(str(exchange_rate))
         amount_base = (amount_decimal * exchange_rate_decimal).quantize(
             Decimal("0.001"), rounding=ROUND_HALF_UP
@@ -717,15 +628,12 @@ class SaleService:
             bank_name=bank_name,
             notes=notes,
             user_id=sale.seller_id,
-            # F8: شيك تحت التحصيل ليس مؤكَّداً — لا يُسوّي الفاتورة قبل
-            # صرفه (models/sale.py:136-141).
             payment_confirmed=(payment_method != "cheque"),
         )
 
         db.session.add(payment)
         db.session.flush()
 
-        # إنشاء سجل الشيك إذا كانت طريقة الدفع شيك
         if payment_method == "cheque" and cheque_number:
             from models import Cheque
 
@@ -747,19 +655,13 @@ class SaleService:
             db.session.add(cheque)
             db.session.flush()
 
-            # ربط الشيك بالدفعة
             payment.cheque_id = cheque.id
 
-        # GL Integration for Payment
         try:
             GLService.ensure_core_accounts()
 
-            # Debit: Cash/Bank (Asset)
-            # Credit: Account Receivable (Asset - Reducing it)
-
             debit_account = GLService.get_payment_debit_account(payment_method)
 
-            # Determine Credit Account (AR)
             credit_account = GLService.get_customer_credit_account(sale.customer)
             _partner_id = (
                 sale.customer.id
@@ -791,16 +693,9 @@ class SaleService:
                 exchange_rate=exchange_rate_decimal,
             )
         except Exception as e:
-            # LEAK-GUARD (fail-closed): a payment row + customer-balance
-            # update must never commit without its GL trace.  Roll the
-            # whole thing back and let the caller surface the error, so a
-            # cash movement can never exist off-ledger.
             db.session.rollback()
             raise
 
-        # F1: رصيد العميل يُشتق من مصدره الواحد. تسوية الفاتورة (المدفوع
-        # والرصيد والحالة) تُحسب عبر مستمع السند (after_insert) أو عبر
-        # Sale.recalculate_payment_status.
         from models import Customer as _Cust
         from models.customer import recompute_customer_balance
 
@@ -843,11 +738,6 @@ class SaleService:
         if sale.status == "cancelled":
             raise ValidationError("الفاتورة ملغاة بالفعل")
 
-        # LEAK-GUARD: cancelling a paid/partially-paid invoice orphans the
-        # cash postings — Payment/Receipt entries are never reversed here —
-        # leaving negative AR, a phantom customer credit and the cash in the
-        # drawer while the goods return to stock.  Refund through the return
-        # flow first, then cancel the (now unpaid) invoice.
         from models import Receipt
 
         paid_base = Decimal(str(sale.paid_amount_base or 0))
@@ -868,12 +758,8 @@ class SaleService:
 
         customer = sale.customer
         if customer:
-            # flush: الاشتقاق يقرأ الحالة من القاعدة (Core) — يجب أن يُثبت
-            # الإلغاء قبل الحساب وإلا بقيت الفاتورة الملغاة محسوبة.
             db.session.flush()
 
-            # F1: لا زيادة يدوية — الرصيد يُشتق (الفاتورة الملغاة تُستبعد
-            # من الاشتقاق فينقص الرصيد تلقائياً).
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
@@ -881,11 +767,6 @@ class SaleService:
 
         StockService.reverse_sale(sale)
 
-        # Reverse GL Entries for Sale (Revenue & COGS) — posted entries are
-        # immutable, so cancellation posts REVERSING entries instead of edits.
-        # FIX: GLService.reverse_entry never existed; the old call raised
-        # AttributeError that was swallowed here, so cancellations silently
-        # posted no reversal at all.
         SaleService.reverse_sale_gl_entries(sale, reason="Cancelled")
 
         db.session.flush()

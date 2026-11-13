@@ -64,7 +64,6 @@ SPECIAL_ROUTES = {
     ("/monitoring/health", "monitoring.health"): "system",  # bare liveness probe
 }
 
-# علامات تمرير العزل في مصدر الدالة (واحدة كافية لكل `tenant`-class route)
 TENANT_MARKERS = (
     "get_owned_or_404",
     "visible_to",

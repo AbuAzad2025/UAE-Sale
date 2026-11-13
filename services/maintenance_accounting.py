@@ -41,7 +41,6 @@ ZERO = Decimal("0")
 
 WARRANTY_STATUS_ACTIVE = "under_warranty"
 
-# Where the money lands when it is collected.
 PAYMENT_ACCOUNT_ROLES = {
     "cash": AccountRole.CASH,
     "card": AccountRole.BANK,
@@ -126,9 +125,6 @@ def order_net_revenue_base(order) -> Decimal:
     return (total_base - tax_base).quantize(D("0.001"))
 
 
-# ---------------------------------------------------------------------------
-# Line builders (pure: no database access, so they can be unit tested)
-# ---------------------------------------------------------------------------
 def build_cost_issue_lines(amount, accounts) -> list:
     """Parts issued to an order: debit maintenance cost, credit inventory."""
     amount = D(str(amount or 0)).quantize(D("0.001"))
@@ -280,9 +276,6 @@ def build_supplier_payment_lines(amount, debit_account, accounts) -> list:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Posting
-# ---------------------------------------------------------------------------
 def _assert_not_posted(reference_type, reference_id, message):
     """Refuse a second posting for the same document reference."""
     live = (
@@ -348,7 +341,6 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
         "سبق ترحيل فاتورة هذا الأمر — لا يمكن الترحيل مرتين",
     )
     accounts = maintenance_accounts(order.tenant_id)
-    # المبالغ بعملة الأساس إلزامية على الفاتورة (تم إنشاؤها عبر create_maintenance_invoice)
     total_base = D(str(getattr(invoice, "total_amount_base", None))).quantize(
         D("0.001")
     )
@@ -372,9 +364,6 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     invoice.gl_posted = True
     db.session.flush()
 
-    # Accrue labor cost at billing time: debit maintenance expense,
-    # credit salaries payable. The payroll run later settles salaries payable
-    # to cash.
     post_maintenance_labor_cost(order, created_by=created_by, entry_date=entry_date)
     return entry
 
@@ -387,7 +376,6 @@ def post_maintenance_receipt(receipt, *, created_by=None, entry_date=None):
     order = receipt.order
     accounts = maintenance_accounts(order.tenant_id)
     debit_account = payment_debit_account(receipt.payment_method, order.tenant_id)
-    # المبلغ المحول لعملة الأساس إلزامي — لا احتياطي بالمبلغ المحلي
     amount_base = getattr(receipt, "amount_base", None)
     if amount_base is None:
         raise ValidationError(
@@ -464,7 +452,6 @@ def post_warranty_reclassification(order, *, created_by=None, entry_date=None):
 def post_return_cost(order, return_obj, amount, *, created_by=None, entry_date=None):
     """Return parts to stock and reverse their cost."""
     accounts = maintenance_accounts(order.tenant_id)
-    # المبلغ المحول لعملة الأساس من تكلفة القطع المرتجعة
     amount = D(str(amount or 0)).quantize(D("0.001"))
     if amount <= 0:
         return None
@@ -543,9 +530,7 @@ def post_maintenance_credit_note(
         REFERENCE_CREDIT_NOTE, credit_note.id, "سبق ترحيل إشعار الدائن لهذا الأمر"
     )
     accounts = maintenance_accounts(order.tenant_id)
-    # المبالغ بعملة الأساس إلزامية على إشعار الدائن (المبلغ الإجمالي)
     total_base = D(str(getattr(credit_note, "amount_base", None))).quantize(D("0.001"))
-    # الضريبة المقلوبة تأتي من الفاتورة الأصلية (بعملة الأساس)
     tax_base = D(str(getattr(order.invoice, "tax_amount_base", None) or 0)).quantize(
         D("0.001")
     )

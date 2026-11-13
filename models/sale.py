@@ -98,7 +98,6 @@ def compute_sale_paid_base(sale_id, connection=None):
                     continue
                 total += Decimal(str(alloc.get("amount_base") or 0))
         else:
-            # سجل قديم بلا تخصيصات محفوظة: السند كاملاً كان يسدد الفاتورة
             total += Decimal(str(row.amount_base or 0))
 
     return total
@@ -131,7 +130,6 @@ def recompute_sale_settlement(sale_id, connection=None):
         Decimal("0.001"), rounding=ROUND_HALF_UP
     )
     amount_base = Decimal(str(row.amount_base or 0))
-    # الرصيد المتبقي = قيمة الفاتورة − المدفوع المؤكد − المرتجعات المعتمدة
     balance_due = (amount_base - paid_base - returns_base).quantize(
         Decimal("0.001"), rounding=ROUND_HALF_UP
     )
@@ -171,14 +169,10 @@ def recompute_sale_settlement(sale_id, connection=None):
         )
     )
 
-    # مزامنة ذاكرة هوية الجلسة (expire_on_commit=False)
     try:
         from sqlalchemy.orm.attributes import set_committed_value
         from sqlalchemy.orm.util import identity_key
 
-        # db is imported at module level. Re-importing it HERE would make it
-        # a local name for the whole function, and the connection lookup
-        # above (db.session.connection()) would raise UnboundLocalError.
         session = db.session()
         instance = session.identity_map.get(identity_key(Sale, sale_id))
         if instance is not None:
@@ -239,9 +233,6 @@ class Sale(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # تاريخ استحقاق الذمم المدينة — يُشتق من شروط دفع العميل أو يُحدَّد
-    # صراحةً (services/due_date_service.py). بلا تاريخ استحقاق تُعامل
-    # الفاتورة كأنها مستحقّة في تاريخها.
     due_date = db.Column(db.Date, nullable=True, index=True)
 
     subtotal = db.Column(db.Numeric(15, 3), default=0)
@@ -264,7 +255,6 @@ class Sale(TenantScopedMixin, db.Model):
     payment_status = db.Column(db.String(20), default="unpaid", index=True)
     status = db.Column(db.String(20), default="confirmed", index=True)
 
-    # Active status for consistency with other models
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
 
     notes = db.Column(db.Text)
@@ -322,12 +312,10 @@ class Sale(TenantScopedMixin, db.Model):
         Calculate all financial totals with proper decimal precision
         Ensures accurate financial calculations with rounding
         """
-        # Calculate subtotal from all lines - ensure Decimal type
         self.subtotal = sum(
             (Decimal(str(line.line_total)) for line in self.lines), Decimal("0")
         )
 
-        # Ensure all amounts are Decimal
         discount = (
             Decimal(str(self.discount_amount)) if self.discount_amount else Decimal("0")
         )
@@ -359,7 +347,6 @@ class Sale(TenantScopedMixin, db.Model):
             Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal("1")
         )
 
-        # Calculate amount in base currency (dynamic per tenant)
         try:
             from services.currency_service import CurrencyService
 
@@ -373,9 +360,6 @@ class Sale(TenantScopedMixin, db.Model):
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
-        # F2: paid_amount_base هو المرجع (يعملة الأساس) لأنه ناتج التخصيصات
-        # بسعر السند الفعلي — لا يجوز إعادة اشتقاقه من paid_amount × سعر
-        # الفاتورة (كان ذلك يمحو فرق العملة ويسبّب كسوراً من 0.001).
         paid_base = (
             Decimal(str(self.paid_amount_base))
             if self.paid_amount_base is not None
@@ -388,11 +372,6 @@ class Sale(TenantScopedMixin, db.Model):
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
-        # Calculate balance consistently (always in base).
-        # الفاتورة المدفوعة بالكامل قد يكون مدفوعها أكبر من قيمتها (دفعة
-        # زائدة) → الرصيد صفر (لا سالب: قيد ck_sale_balance_non_negative)
-        # والفرق يظهر كرصيد دائن للعميل في customer.balance.
-        # المرتجعات المعتمدة تُخصم (تُلغي قيمة الفاتورة).
         returns_base = Decimal("0")
         if self.id:
             returns_base = compute_sale_returns_base(self.id)
@@ -407,7 +386,6 @@ class Sale(TenantScopedMixin, db.Model):
         if self.balance_due < Decimal("0"):
             self.balance_due = Decimal("0")
 
-        # Update payment status
         if self.balance_due <= Decimal("0"):
             self.payment_status = "paid"
         elif paid_base > Decimal("0"):
@@ -432,7 +410,6 @@ class Sale(TenantScopedMixin, db.Model):
             self.id, connection=connection
         )
 
-        # Update paid amounts (confirmed only)
         self.paid_amount_base = total_confirmed_paid_aed
         try:
             ex = (
@@ -453,8 +430,6 @@ class Sale(TenantScopedMixin, db.Model):
         except Exception:
             self.paid_amount = self.paid_amount or Decimal("0")
 
-        # Calculate balance consistently (never negative — قيد قاعدة البيانات)
-        # المرتجعات المعتمدة تُخصم (تُلغي قيمة الفاتورة).
         total_aed = Decimal(str(self.amount_base))
         returns_base = compute_sale_returns_base(self.id, connection=connection)
         self.balance_due = (
@@ -463,15 +438,12 @@ class Sale(TenantScopedMixin, db.Model):
         if self.balance_due < Decimal("0"):
             self.balance_due = Decimal("0")
 
-        # Update payment status
-        # ملاحظة: الشيكات المعلقة لا تُغير حالة الدفع إلى "مدفوع"
         if self.balance_due <= Decimal("0.01"):
             self.payment_status = "paid"
             self.balance_due = Decimal("0")
         elif total_confirmed_paid_aed > Decimal("0"):
             self.payment_status = "partial"
         else:
-            # حتى لو كان هناك شيكات معلقة، الحالة تبقى "غير مدفوع"
             self.payment_status = "unpaid"
 
     @property
@@ -480,7 +452,6 @@ class Sale(TenantScopedMixin, db.Model):
         try:
             total = Decimal("0")
             for p in self.payments:
-                # التحقق من وجود payment_confirmed
                 is_confirmed = getattr(p, "payment_confirmed", True)
                 if not is_confirmed and p.payment_method == "cheque":
                     total += Decimal(str(p.amount_base))
@@ -555,7 +526,6 @@ class SaleLine(TenantScopedMixin, db.Model):
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
-    # لقطة ضريبية للسطر — standard (VAT بالنسبة) أو zero (0%) أو exempt (معفى)
     tax_treatment = db.Column(db.String(10), default="standard", nullable=False)
 
     cost_price = db.Column(db.Numeric(15, 3), default=0)

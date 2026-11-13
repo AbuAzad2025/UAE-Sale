@@ -18,21 +18,16 @@ class IntegrationSettings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Service Identifier - معرف الخدمة (whatsapp, email, redis, currency_api)
     service_name = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    # Enable/Disable - تفعيل/تعطيل
     enabled = db.Column(db.Boolean, default=False)
 
-    # Configuration Data - البيانات الخاصة بكل خدمة (JSON)
     config_data = db.Column(db.Text)  # JSON for flexibility
 
-    # Status Info
     last_tested_at = db.Column(db.DateTime)  # آخر اختبار
     last_test_status = db.Column(db.String(20))  # success, failed
     last_test_message = db.Column(db.Text)  # رسالة الاختبار
 
-    # Meta
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -41,7 +36,6 @@ class IntegrationSettings(db.Model):
     )
     updated_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-    # Relationships
     user = db.relationship("User", foreign_keys=[updated_by])
 
     def __repr__(self):
@@ -56,7 +50,6 @@ class IntegrationSettings(db.Model):
             service_name=service_name
         ).first()
         if not integration:
-            # إنشاء سجل جديد بإعدادات افتراضية
             integration = IntegrationSettings(
                 service_name=service_name,
                 enabled=False,

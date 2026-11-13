@@ -6,7 +6,6 @@ class LoginHistory(db.Model):
     __tablename__ = "login_history"
 
     id = db.Column(db.Integer, primary_key=True)
-    # Allow null for user_id to track failed login attempts for non-existent users
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     username = db.Column(db.String(50), nullable=False)
     ip_address = db.Column(db.String(50))

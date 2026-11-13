@@ -73,18 +73,15 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     amount_base = db.Column(db.Numeric(18, 3), nullable=False)
 
-    # معلومات الضرائب
     taxable_amount = db.Column(db.Numeric(18, 3), default=0)
     tax_amount = db.Column(db.Numeric(18, 3), default=0)
     tax_rate = db.Column(db.Numeric(5, 4), default=0)
     tax_exempt = db.Column(db.Boolean, default=False)
 
-    # معلومات الجمارك
     customs_amount = db.Column(db.Numeric(18, 3), default=0)
     customs_rate = db.Column(db.Numeric(5, 4), default=0)
     customs_exempt = db.Column(db.Boolean, default=False)
 
-    # معلومات الدفع
     payment_method = db.Column(
         db.String(50)
     )  # cash, bank_transfer, cheque, credit_card
@@ -94,7 +91,6 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
     paid_amount = db.Column(db.Numeric(18, 3), default=0)
     due_date = db.Column(db.Date)
 
-    # معلومات الموافقة
     requires_approval = db.Column(db.Boolean, default=False)
     approval_status = db.Column(
         db.String(50), default="pending"
@@ -103,12 +99,10 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
     approved_at = db.Column(db.DateTime)
     approval_notes = db.Column(db.Text)
 
-    # معلومات المرفقات
     attachment_count = db.Column(db.Integer, default=0)
     has_receipt = db.Column(db.Boolean, default=False)
     receipt_number = db.Column(db.String(100))
 
-    # معلومات النظام
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     gl_journal_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
     is_reversed = db.Column(db.Boolean, default=False)
@@ -125,7 +119,6 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # العلاقات
     category = db.relationship("ExpenseCategory")
     supplier = db.relationship("Supplier")
     created_user = db.relationship("User", foreign_keys=[created_by])
@@ -191,7 +184,6 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
         self.reversed_by = reversed_by_user.id
         self.reversal_reason = reason
 
-        # إنشاء قيد عكسي
         from services.gl_service import GLService
 
         lines = [
@@ -250,7 +242,6 @@ class TaxCalculationRule(TenantScopedMixin, db.Model):
         if not self.is_active:
             return False
 
-        # تطبيق القاعدة حسب النوع
         if self.rule_type == "expense":
             return self._check_expense_condition(expense)
 

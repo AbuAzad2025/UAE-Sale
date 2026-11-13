@@ -23,7 +23,6 @@ def install_feature_gate(blueprint, feature_name):
 
             tenant_id = get_current_tenant_id()
             if tenant_id is None:
-                # Blueprints requiring a tenant must enforce that separately.
                 return
             from models import Tenant
 

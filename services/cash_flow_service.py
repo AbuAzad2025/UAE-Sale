@@ -27,22 +27,6 @@ from sqlalchemy import func, and_
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine, Payment, Receipt, Expense
 
-
-# ---------------------------------------------------------------------------
-# F4 — الأدوار المحاسبية (AccountRole) التي تستعملها قائمة التدفقات النقدية
-# ---------------------------------------------------------------------------
-# كل سطر يوثّق: الكود القديم ← دوره المحاسبي في DEFAULT_ROLE_MAP.
-#   '1110' ← CASH           الصندوق
-#   '1120' ← BANK           البنك - حساب جاري
-#   '6100' ← SALARY_EXPENSE رواتب وأجور
-#   '3100' ← CAPITAL        رأس المال
-#   '3300' ← OWNER_DRAWS    جاري المالك
-#   '2210' ← LOANS          قروض
-#   '1210'..'1250' ← LAND / BUILDINGS / VEHICLES / EQUIPMENT / FURNITURE
-#                      (الأصول الثابتة — كانت تُلتقط بالبادئة '12%')
-#
-# كل هذه الأدوار موجودة في AccountRole (services/account_resolution.py)،
-# فلا يوجد كود بلا دور مقابل.
 CASH_FLOW_ROLE_MAP = {
     "CASH": "CASH",
     "BANK": "BANK",
@@ -52,12 +36,8 @@ CASH_FLOW_ROLE_MAP = {
     "LOANS": "LOANS",
 }
 
-# الأدوار التي تمثّل الأصول الثابتة (كانت تُلتقط بالبادئة '12%').
 FIXED_ASSET_ROLES = ("LAND", "BUILDINGS", "VEHICLES", "EQUIPMENT", "FURNITURE")
 
-# دقّة النقود المعروضة في القائمة: الموازنة بين رصيد الدفتر والرصيد
-# المحسوب تُحكم على الفرق بعد تقريبه إلى منزلتين — فارق أصغر من نصف
-# قرش فرق عرضٍ لا فرق حقيقي.
 MONEY_PRECISION = Decimal("0.01")
 
 
@@ -109,10 +89,6 @@ def resolve_cash_flow_accounts(tenant_id=None):
 
 
 class CashFlowService:
-    # F4: حسابات النقدية (الصندوق + البنك) لا تُثبَّت هنا — تُحلّ عبر
-    # AccountResolver في كل استدعاء (see cash_account_codes()).
-
-    # تسميات أقسام قائمة التدفقات (تستخدمها الشاشة والتصدير معاً)
     SECTION_LABELS = {
         "operating": "تشغيلي",
         "investing": "استثماري",
@@ -172,7 +148,6 @@ class CashFlowService:
             return "investing"
         if account_type in ("liability", "equity"):
             return "financing"
-        # أنواع غير معروفة تُعامل كتشغيلي حتى لا تختفي حركتها
         return "operating"
 
     @staticmethod
@@ -292,9 +267,6 @@ class CashFlowService:
 
         base_debit, base_credit, signed_base = CashFlowService._gl_base_expressions()
 
-        # القيود المرحّلة فقط. القيد المعكوس (is_reversed=True) وقيده العاكس
-        # (is_reversed=False) يُدرجان معاً فيلغي أثرهما الصافي — استبعاد
-        # الأصلي وحده كان يُظهر القيد العاكس بلا أصله.
         query = (
             db.session.query(
                 GLJournalLine.account_id.label("account_id"),
@@ -331,8 +303,6 @@ class CashFlowService:
         cash_account_id_set = set(cash_account_ids)
 
         for row in rows:
-            # حسابات النقدية هي موضوع القائمة لا بنود فيها: حركة النقدية
-            # هي "صافي التغير" نفسه، فلا تُحتسب مرتين.
             if row.account_id in cash_account_id_set:
                 continue
 
@@ -367,16 +337,13 @@ class CashFlowService:
         net_change = operating_total + investing_total + financing_total
 
         cash_account_ids = list(cash_account_ids)
-        # رصيد النقدية قبل بداية الفترة (أو قبل أول حركة إن لم تُحدَّد فترة)
         opening_cutoff = period_start_dt or datetime(1900, 1, 1)
         cash_beginning = CashFlowService._gl_cash_balance(
             cash_account_ids, opening_cutoff, is_beginning=True
         )
-        # رصيد النقدية في نهاية الفترة — حقيقة من دفتر الأستاذ.
         cash_ending = CashFlowService._gl_cash_balance(
             cash_account_ids, period_end_dt, is_beginning=False
         )
-        # الرقم المحسوب (البداية + صافي التغير) — للمطابقة فقط.
         cash_ending_computed = cash_beginning + net_change
         tie_out = CashFlowService._tie_out(cash_ending, cash_ending_computed)
 
@@ -519,7 +486,6 @@ class CashFlowService:
             dict: قائمة التدفقات النقدية الكاملة + cash_ending_computed +
             tie_out (نفس مفاتيح المطابقة في generate_gl_cash_flow)
         """
-        # تحويل التواريخ (نص فارغ = بلا حدّ)
         period_start = _parse_date(period_start)
         period_end = _parse_date(period_end)
         if period_start is None:
@@ -527,8 +493,6 @@ class CashFlowService:
         if period_end is None:
             period_end = datetime.now().date()
 
-        # تطبيع الفترة لتغطية كامل يوم النهاية — مقارنة DateTime بتاريخ
-        # مجرد تُسقط كل حركات ما بعد منتصف ليل اليوم الأخير.
         from datetime import time as _time
 
         period_end_dt = datetime.combine(period_end, _time.max)
@@ -536,22 +500,18 @@ class CashFlowService:
 
         base_debit, base_credit, _ = CashFlowService._gl_base_expressions()
 
-        # 1. الأنشطة التشغيلية (Operating Activities)
         operating = CashFlowService._get_operating_activities(
             period_start_dt, period_end_dt
         )
 
-        # 2. الأنشطة الاستثمارية (Investing Activities)
         investing = CashFlowService._get_investing_activities(
             period_start_dt, period_end_dt
         )
 
-        # 3. الأنشطة التمويلية (Financing Activities)
         financing = CashFlowService._get_financing_activities(
             period_start_dt, period_end_dt
         )
 
-        # 4. حساب النقدية — رصيد الدفتر هو الحقيقة (نفس مصدر النسخة الجديدة)
         gl_report = CashFlowService.generate_gl_cash_flow(period_start, period_end)
 
         cash_beginning = gl_report["cash_beginning"]
@@ -583,7 +543,6 @@ class CashFlowService:
     def _get_operating_activities(period_start, period_end):
         """حساب التدفقات النقدية من الأنشطة التشغيلية"""
 
-        # المقبوضات من العملاء
         receipts = (
             db.session.query(func.sum(Receipt.amount_base))
             .filter(
@@ -597,7 +556,6 @@ class CashFlowService:
         )
         receipts = CashFlowService._dec(receipts)
 
-        # المدفوعات للموردين
         supplier_payments = (
             db.session.query(func.sum(Payment.amount_base))
             .filter(
@@ -612,7 +570,6 @@ class CashFlowService:
         )
         supplier_payments = CashFlowService._dec(supplier_payments)
 
-        # المدفوعات للمصروفات
         expense_payments = (
             db.session.query(func.sum(Expense.amount_base))
             .filter(
@@ -626,7 +583,6 @@ class CashFlowService:
         )
         expense_payments = CashFlowService._dec(expense_payments)
 
-        # الرواتب (من حساب الرواتب — F4: SALARY_EXPENSE عبر AccountResolver)
         salary_account = GLAccount.query.filter_by(
             code=CashFlowService.account_code("SALARY_EXPENSE")
         ).first()
@@ -696,9 +652,6 @@ class CashFlowService:
     def _get_investing_activities(period_start, period_end):
         """حساب التدفقات النقدية من الأنشطة الاستثمارية"""
 
-        # شراء أصول ثابتة — F4: الأصول الثابتة عبر أدوارها المحاسبية
-        # (LAND/BUILDINGS/VEHICLES/EQUIPMENT/FURNITURE) بدل البادئة '12%'
-        # التي تُسقط أي أصل أُعيد ترميزه خارج النطاق 12xx.
         fixed_assets_codes = resolve_cash_flow_accounts()["FIXED_ASSETS"]
         fixed_assets_account = GLAccount.query.filter(
             GLAccount.code.in_(fixed_assets_codes)
@@ -718,7 +671,6 @@ class CashFlowService:
             ).scalar() or Decimal("0")
             purchase_of_assets += CashFlowService._dec(purchases)
 
-        # بيع أصول ثابتة (credits في نفس الحسابات)
         sale_of_assets = Decimal("0")
         for account in fixed_assets_account:
             sales = db.session.query(
@@ -757,7 +709,6 @@ class CashFlowService:
     def _get_financing_activities(period_start, period_end):
         """حساب التدفقات النقدية من الأنشطة التمويلية"""
 
-        # رأس المال — F4: CAPITAL عبر AccountResolver
         capital_account = GLAccount.query.filter_by(
             code=CashFlowService.account_code("CAPITAL")
         ).first()
@@ -779,7 +730,6 @@ class CashFlowService:
             )
             capital_contributions = CashFlowService._dec(capital_contributions)
 
-        # سحوبات المالك — F4: OWNER_DRAWS عبر AccountResolver
         owner_draw_account = GLAccount.query.filter_by(
             code=CashFlowService.account_code("OWNER_DRAWS")
         ).first()
@@ -801,7 +751,6 @@ class CashFlowService:
             )
             owner_withdrawals = CashFlowService._dec(owner_withdrawals)
 
-        # القروض — F4: LOANS عبر AccountResolver
         loans_account = GLAccount.query.filter_by(
             code=CashFlowService.account_code("LOANS")
         ).first()

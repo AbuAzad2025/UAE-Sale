@@ -72,10 +72,6 @@ PRODUCT_UNITS = [
     ("set", {"ar": "مجموعة", "en": "Set"}),
 ]
 
-# ── Tenant profile constants (system constants, like CURRENCIES) ─────────
-# Single source of truth for tenant dropdowns (tenant_form + company_info).
-# Codes are stable identifiers stored in the DB; labels are display-only.
-
 TENANT_BUSINESS_TYPES = [
     ("garage", {"ar": "كراج", "en": "Garage"}),
     ("workshop", {"ar": "ورشة", "en": "Workshop"}),
@@ -128,11 +124,6 @@ TENANT_COUNTRIES = [
     ("Oman", {"ar": "عُمان", "en": "Oman"}),
     ("other", {"ar": "أخرى", "en": "Other"}),
 ]
-
-# ── General display constants (single source of truth) ──────────────────
-# Display/choice lists previously hardcoded across templates.  Codes marked
-# locked_* in LOOKUP_GROUPS drive application logic and must never be
-# renamed/removed by the owner UI (labels may be edited).
 
 WARRANTY_UNITS = [
     ("days", {"ar": "يوم", "en": "Days"}),
@@ -501,13 +492,6 @@ YES_NO_FLAGS = [
     ("0", {"ar": "لا", "en": "No"}),
 ]
 
-
-# ── Lookup group registry ────────────────────────────────────────────────
-# Each group points at a constant above and declares owner-UI capabilities:
-#   locked_codes : codes drive application logic — never rename/remove/disable
-#   allow_add    : owner may append new codes
-#   allow_disable: owner may hide codes from dropdowns
-# Labels (ar/en) are always editable — display only, never logic.
 LOOKUP_GROUPS = {
     "product_units": {
         "title_ar": "وحدات المنتج",

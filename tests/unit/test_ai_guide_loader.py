@@ -52,7 +52,6 @@ def test_search_respects_owner():
     loader._cache.clear()
     hits_public = loader.search("المبيعات", is_owner=False, top_k=3)
     hits_owner = loader.search("Tenants", is_owner=False, top_k=3)
-    # Public search should return something (may be empty if no token match, but must not expose owner)
     for h in hits_public:
         assert (
             h["title"] not in [s.title for s in loader.owner_sections()]

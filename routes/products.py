@@ -27,7 +27,6 @@ from services.costing_service import CostingService
 
 products_bp = Blueprint("products", __name__, url_prefix="/products")
 
-#: أساس تقييم المخزون المعروض — متوسط التكلفة المتحرك لا سعر آخر شراء.
 VALUATION_BASIS = "المتوسط المتحرك لتكلفة الوحدة (average_cost)"
 
 
@@ -175,11 +174,8 @@ def create():  # noqa: C901
 
     form = ProductForm()
 
-    # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
-    # Live lookup lists (single source of truth); class-level WTForms
-    # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
 
@@ -218,7 +214,6 @@ def create():  # noqa: C901
                 if not sku:
                     sku = generate_sku()
 
-                # تحويل الأسعار إلى float مع التعامل مع القيم الفارغة
                 from utils.financial import parse_decimal as _pd
 
                 def safe_float(value, default=0.0):
@@ -233,7 +228,6 @@ def create():  # noqa: C901
                 current_stock = safe_float(request.form.get("current_stock"))
                 initial_stock = current_stock
 
-                # التحقق من المستودع
                 if not warehouse_id:
                     flash("⚠️ يجب اختيار المستودع", "warning")
                     warehouses = Warehouse.query.filter_by(is_active=True).all()
@@ -296,10 +290,6 @@ def create():  # noqa: C901
 
                 unit_value = request.form.get("unit") or None
 
-                # SECURITY: التكلفة تُكتب فقط لمن يملك صلاحية عرض التكاليف،
-                # تماماً كما في مسار التعديل. بدون هذه البوابة يستطيع دور
-                # بلا صلاحية تكلفة إنشاء منتج بتكلفة عشوائية، وتلك التكلفة
-                # هي محرّك قيد تكلفة البضاعة.
                 submitted_cost = safe_float(request.form.get("cost_price"))
                 if current_user.can_see_costs():
                     cost_price = submitted_cost
@@ -365,7 +355,6 @@ def create():  # noqa: C901
                             )
                         )
 
-                # إضافة حركة مخزون إذا كانت الكمية أكبر من صفر
                 if initial_stock > 0:
                     StockService.create_movement(
                         product_id=product.id,
@@ -377,8 +366,6 @@ def create():  # noqa: C901
                         warehouse_id=warehouse_id,
                     )
 
-                # The audit row carries the meaningful payload and is written
-                # INSIDE the transaction of the change it describes.
                 create_audit_log(
                     "create",
                     "products",
@@ -406,8 +393,6 @@ def create():  # noqa: C901
                     "success",
                 )
                 if not cost_price:
-                    # F2: منتج بلا تكلفة لا يمكن بيعه — بيعه ينتج قيد
-                    # إيراد بلا قيد تكلفةCorresponding ولا تسوية للمخزون.
                     flash(
                         "⚠️ المنتج بدون تكلفة مسجّلة — لا يمكن بيعه قبل ضبط التكلفة، وإلا سيُسجَّل الإيراد بلا قيد تكلفة البضاعة.",
                         "warning",
@@ -423,13 +408,11 @@ def create():  # noqa: C901
                     "danger",
                 )
         else:
-            # Form validation failed
             current_app.logger.warning(f"Form validation failed. Errors: {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
                     flash(f"⚠️ خطأ في حقل {field}: {error}", "danger")
 
-    # GET request - إرسال البيانات للقالب
     categories = ProductCategory.query.filter_by(is_active=True).all()
     warehouses = (
         Warehouse.query.filter_by(is_active=True)
@@ -456,7 +439,6 @@ def view(id):
 
     movements = product.stock_movements.order_by(db.desc("created_at")).limit(20).all()
 
-    # القيمة الدفترية = الكمية × المتوسط المتحرك (لا سعر آخر شراء).
     return render_template(
         "products/view.html",
         product=product,
@@ -477,11 +459,8 @@ def edit(id):  # noqa: C901
 
     form = ProductForm(obj=product)
 
-    # تعيين choices للتصنيفات
     categories = ProductCategory.query.filter_by(is_active=True).all()
     form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
-    # Live lookup lists (single source of truth); class-level WTForms
-    # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
 
@@ -612,10 +591,6 @@ def edit(id):  # noqa: C901
                 submitted_cost = safe_float(request.form.get("cost_price"))
                 product.cost_price = submitted_cost
                 cost_edited = True
-                # المتوسط المتحرك لا يتبع الحقل المكتوب يدوياً إلا لمنتج
-                # بلا مخزون وبلا تاريخ مشتريات (انظر
-                # _average_may_follow_manual_cost) — فالتقييم يبقى
-                # مشتقاً من الحركات، وهذا ما يجعله يلتقي بالأستاذ.
                 if submitted_cost is not None and _average_may_follow_manual_cost(
                     product, old_stock
                 ):
@@ -624,8 +599,6 @@ def edit(id):  # noqa: C901
                     )
                     average_followed_cost = True
             elif request.form.get("cost_price"):
-                # SECURITY: دور بلا صلاحية عرض التكاليف لا يحدد التكلفة —
-                # والتكلفة هي محرّك قيد تكلفة البضاعة وتسوية المخزون.
                 current_app.logger.warning(
                     "Role without cost visibility attempted to change "
                     "cost_price of product %s — ignored",
@@ -646,11 +619,6 @@ def edit(id):  # noqa: C901
             if new_stock is not None and abs(new_stock - old_stock) > 1e-6:
                 if not warehouse_id:
                     warehouse_id = None
-                # The stock change goes through StockService so the movement
-                # row AND the GL entry are written in the same transaction.
-                # Editing the product form used to move current_stock with
-                # no journal entry at all: inventory value drifted away from
-                # cost with nothing to explain it.
                 StockService.adjust_stock(
                     product.id,
                     Decimal(str(new_stock)) - Decimal(str(old_stock)),
@@ -668,9 +636,6 @@ def edit(id):  # noqa: C901
                     if image_path:
                         product.image_url = image_path
 
-            # The audit row carries the MEANINGFUL payload (what changed,
-            # not just "update") and is written inside the same
-            # transaction as the change itself.
             create_audit_log(
                 "update",
                 "products",
@@ -695,8 +660,6 @@ def edit(id):  # noqa: C901
 
             flash("✅ تم تحديث بيانات المنتج بنجاح!", "success")
             if cost_edited and not average_followed_cost:
-                # ملاحظة صريحة: التعديل اليدوي لم يحرّك المتوسط — لأن
-                # المتوسط يُشتق من الحركات (مخزون قائم أو تاريخ مشتريات).
                 flash(
                     "⚠️ تم تحديث سعر التكلفة المرجعي فقط — متوسط التكلفة "
                     "المتحرك لم يتغيّر، لأنه يُشتق من حركات المخزون "
@@ -733,14 +696,12 @@ def delete(id):
     product = get_owned_or_404(Product, id)
 
     try:
-        # التحقق من وجود عمليات مرتبطة
         from models import SaleLine, PurchaseLine
 
         sales_count = SaleLine.query.filter_by(product_id=id).count()
         purchases_count = PurchaseLine.query.filter_by(product_id=id).count()
 
         if sales_count > 0 or purchases_count > 0:
-            # soft delete
             product.is_active = False
             create_audit_log(
                 "deactivate",
@@ -763,7 +724,6 @@ def delete(id):
                 "warning",
             )
         else:
-            # hard delete
             audit_payload = {
                 "action": "delete_product",
                 "sku": product.sku,
@@ -798,7 +758,6 @@ def api_search():
     _ = request.args.get("page", 1, type=int)
     per_page = 20
 
-    # السماح بالبحث حتى بدون query (لعرض كل المنتجات)
     if query and len(query) >= 1:
         products = (
             Product.query.filter(
@@ -814,7 +773,6 @@ def api_search():
             .all()
         )
     else:
-        # عرض كل المنتجات (مرتبين أبجدياً)
         products = (
             Product.query.filter_by(is_active=True)
             .order_by(Product.name)
@@ -833,7 +791,6 @@ def api_search():
             "stock": float(p.current_stock),
             "unit": p.unit,
             "is_low_stock": p.is_low_stock(),
-            # SECURITY: بيانات التكلفة لمن يملك صلاحية عرض التكاليف فقط.
             "average_cost": (
                 float(p.average_cost) if current_user.can_see_costs() else None
             ),
@@ -866,7 +823,6 @@ def categories():
 @permission_required("manage_products")
 def create_category():
     try:
-        # دعم JSON و Form Data
         data = request.get_json() if request.is_json else request.form
 
         name = (data.get("name") or "").strip()
@@ -880,7 +836,6 @@ def create_category():
             flash(message, "warning")
             return redirect(url_for("products.categories"))
 
-        # منع التكرار (نفس الاسم بغض النظر عن حالة الأحرف)
         existing = ProductCategory.query.filter(
             db.func.lower(ProductCategory.name) == name.lower()
         ).first()
@@ -945,10 +900,6 @@ def adjust_stock(id):
 
         old_stock = Decimal(str(product.current_stock or 0))
 
-        # Sign convention: the movement MUST carry the sign of the
-        # adjustment, otherwise SUM(stock_movements.quantity) drifts away
-        # from product.current_stock (a subtraction used to be booked as a
-        # positive quantity, i.e. the stock was counted twice).
         if adjustment_type == "add":
             delta = Decimal(str(quantity))
             new_stock = old_stock + delta
@@ -965,10 +916,6 @@ def adjust_stock(id):
         else:
             return jsonify({"success": False, "message": "نوع التعديل غير صحيح"})
 
-        # One transaction: the movement row, the stock delta AND the GL
-        # entry (Dr 1140 / Cr 5150 or the reverse). StockService fails
-        # CLOSED: if the journal entry cannot be posted the whole change
-        # is rolled back, so stock can never move off-ledger.
         movement = StockService.adjust_stock(
             product.id,
             delta,
@@ -978,9 +925,6 @@ def adjust_stock(id):
             reference_type="Manual Adjustment",
         )
 
-        # The audit row is written INSIDE the same transaction (no
-        # independent commit): either the stock change and its audit trail
-        # both land, or neither does.
         create_audit_log(
             "update",
             "products",
@@ -1012,14 +956,11 @@ def adjust_stock(id):
         )
 
     except ValueError as e:
-        # StockService refuses an adjustment that would drive stock below
-        # zero — the message is safe (hand-authored, no schema leak).
         db.session.rollback()
         return jsonify({"success": False, "message": str(e)})
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error adjusting stock: {e}")
-        # The detail stays in the log; str(e) can expose schema and paths.
         return jsonify(
             {"success": False, "message": "حدث خطأ أثناء تعديل المخزون"}
         ), 500

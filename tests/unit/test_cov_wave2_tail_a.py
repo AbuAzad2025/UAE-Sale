@@ -32,7 +32,6 @@ class TestAuthTail:
     def test_login_wrong_password_stays(self, client, owner_user):
         resp = _login(client, "testowner", "WrongPass999!")
         assert resp.status_code in (200, 302)
-        # must NOT land on dashboard with a bad password
         assert resp.status_code != 302 or "dashboard" not in (
             resp.headers.get("Location", "")
         )

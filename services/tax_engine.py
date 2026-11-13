@@ -26,8 +26,6 @@ DEFAULT_QUANTUM = Decimal("0.001")
 HUNDRED = Decimal("100")
 ONE = Decimal("1")
 
-# Fallback literal CoA codes (become obsolete once Agent 1's resolver ships;
-# they mirror today's gl_service.ensure_core_accounts() chart).
 _ROLE_FALLBACKS = {
     "output_vat": "VAT_OUTPUT",
     "sales_returns": "SALES_RETURNS",
@@ -72,9 +70,6 @@ def _validated(amount, rate, quantum):
 class TaxEngine:
     """Single source of truth for indirect-tax arithmetic."""
 
-    # ------------------------------------------------------------------ #
-    # Pure computations
-    # ------------------------------------------------------------------ #
     @staticmethod
     def compute_line_tax(
         amount,
@@ -166,7 +161,6 @@ class TaxEngine:
             / (100 + Fraction(str(rate_d)))
         )
         numerator, denominator = exact.numerator, exact.denominator
-        # Integer half-up division for a non-negative fraction.
         tax_units = (2 * numerator + denominator) // (2 * denominator)
         net_units = gross_units - tax_units
 
@@ -177,9 +171,6 @@ class TaxEngine:
             "gross": Decimal(gross_units) * unit,
         }
 
-    # ------------------------------------------------------------------ #
-    # Thin persistence / routing helpers
-    # ------------------------------------------------------------------ #
     @staticmethod
     def liability_routing(tenant_id=None):
         """Resolve GL accounts for tax-related postings.
@@ -208,9 +199,6 @@ class TaxEngine:
         except Exception:
             return fallback_code
 
-    # ------------------------------------------------------------------ #
-    # Internals
-    # ------------------------------------------------------------------ #
     @staticmethod
     def _normalise_line(spec, index):
         if isinstance(spec, dict):
@@ -227,11 +215,6 @@ class TaxEngine:
         raise ValueError(f"Invoice line {index}: unsupported specification {spec!r}")
 
 
-# ---------------------------------------------------------------------------
-# Tenant/country layer (UAE-VAT tenant system).
-# Core arithmetic above is the single source of truth; these helpers add
-# country presets + inclusive flag + tenant resolution on top only.
-# ---------------------------------------------------------------------------
 COUNTRY_VAT = {
     "AE": Decimal("5.00"),
     "SA": Decimal("15.00"),
@@ -261,8 +244,6 @@ COUNTRY_LABEL_AR = {
 def country_rate(country_code, on_date=None):
     if not country_code:
         return None
-    # أولوية للقاعدة المخزَّنة في قاعدة البيانات (قابل للتعديل من المالك)
-    # ثم الاحتياطي الثابت فقط إذا غاب الجدول — وهو دائمًا ممكن التزويد
     try:
         from datetime import date as _date
         from models.tax_ruleset import TaxRuleset, _windowed_pick
@@ -296,7 +277,6 @@ def resolve(tenant, explicit_rate=None, explicit_inclusive=None):
         else getattr(tenant, "default_tax_rate", None)
     )
     if rate is None:
-        # احترم قاعدة الدولة المخزَّنة أولاً؛ ثم الاحتياطي الثابت
         try:
             from models.tax_ruleset import ruleset_for_tenant
 

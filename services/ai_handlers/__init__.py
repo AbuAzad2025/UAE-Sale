@@ -75,7 +75,6 @@ def dispatch_for_action(message: str, user, confirmed=False):
         "ok",
     ):
         return None
-    # رفض سريع: «بدون بيانات» (قائمة) تُترك للمستوى القديم
     if ":" not in text and not any(ch.isdigit() for ch in text):
         return None
     try:
@@ -84,7 +83,6 @@ def dispatch_for_action(message: str, user, confirmed=False):
         _p = _plan(text, user)
         if _p is None or not getattr(_p, "tool", None):
             return None
-        # confirmed للتأكيد عبر رسالة «نعم» الصريحة فقط
         _conf = bool(confirmed) or ("نعم" in text and (_p.needs_confirm or False))
         _res = dispatch(_p, user, confirmed=_conf)
         if _res and (_res.get("executed") or _res.get("needs_clarification")):

@@ -74,7 +74,6 @@ def create():  # noqa: C901
 
             purchase_number = generate_number("P", Purchase, "purchase_number")
 
-            # الحصول على معلومات المورد
             supplier_id = request.form.get("supplier_id", type=int)
             supplier = None
             supplier_name = request.form.get("supplier_name", "")
@@ -84,7 +83,6 @@ def create():  # noqa: C901
                 flash("⚠️ يجب اختيار المستودع الذي ستُضاف إليه البضاعة.", "danger")
                 return redirect(url_for("purchases.create"))
 
-            # إذا تم اختيار مورد من القائمة
             if supplier_id:
                 supplier = get_owned_or_404(Supplier, supplier_id)
                 if supplier:
@@ -92,7 +90,6 @@ def create():  # noqa: C901
                     supplier_phone = supplier.phone or ""
                     supplier_email = supplier.email or ""
 
-            # التحقق من وجود اسم المورد
             if not supplier_name:
                 flash(
                     "⚠️ يجب إدخال اسم المورد.\n💡 اكتب اسم المورد أو اختر من القائمة.",
@@ -136,9 +133,6 @@ def create():  # noqa: C901
                 currency, _base_purch, user_rate=user_exchange_rate
             )
 
-            # checkbox gone from checked state sends nothing — distinguish
-            # 'form without the flag at all' (legacy payloads / test suites
-            # that never render the page) from 'user unchecked it':
             _vals = request.form.getlist("vat_recoverable")
             vat_recoverable = (
                 ("on" in _vals or "1" in _vals or "true" in _vals) if _vals else True
@@ -173,8 +167,6 @@ def create():  # noqa: C901
             db.session.add(purchase)
             db.session.flush()
 
-            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
-            # الفاتورة + شروط دفع المورد (services/due_date_service.py).
             purchase.due_date = due_date_service.due_date_for_purchase(
                 purchase.purchase_date,
                 supplier=supplier,
@@ -188,7 +180,6 @@ def create():  # noqa: C901
                 return redirect(url_for("purchases.create"))
             current_app.logger.info(f"Processing {line_count} lines")
 
-            # طباعة جميع البيانات المرسلة
             for key, value in request.form.items():
                 if key.startswith("lines["):
                     current_app.logger.info(f"Line data: {key} = {value}")
@@ -245,10 +236,6 @@ def create():  # noqa: C901
                 )
                 return redirect(url_for("purchases.create"))
 
-            # F13: الحساب يتم في النموذج (Purchase.calculate_totals) — كان
-            # المسار يحسب يدوياً (بلا quantize، وتجاهل خصم المستند، وبلا
-            # فرع عملة الأساس) فكانت الإجماليات تختلف عن الفاتورة المحسوبة
-            # في النموذج.
             purchase.calculate_totals()
 
             current_app.logger.info(
@@ -259,21 +246,8 @@ def create():  # noqa: C901
 
             StockService.process_purchase_lines(purchase, warehouse_id_val)
 
-            # القيود المحاسبية
             GLService.ensure_core_accounts()
 
-            # F13 (balancing): the document discount is part of the totals -
-            # Purchase.calculate_totals() taxes and totals the NET amount
-            # (subtotal - discount) - but the entry used to debit inventory
-            # with the GROSS subtotal, so debit and credit differed by
-            # exactly the discount and the entry was refused as unbalanced.
-            # A purchase discount reduces the cost of the goods, so the
-            # inventory is debited with the amount actually paid for them.
-            # الضريبة لا تدخل في تكلفة المخزون سواء كانت إضافية أو داخلة بالسعر.
-            # القيد: مبني عبر `services/purchase_gl.py` — يعالج ضريبة إضافية/شاملة،
-            # ضريبة غير قابلة للاسترداد (تُحمّل على تكلفة البضاعة) وعكس الضريبة
-            # (Reverse Charge للخدمات من موردين أجانب: تُسجّل ضريبة مدخلات ومخرجات
-            # متوازنة بالطرفين، والمورد يُسجَّل بالمبلغ الصافي فقط).
             from services.purchase_gl import build_purchase_gl_lines
 
             lines = build_purchase_gl_lines(purchase)
@@ -287,7 +261,6 @@ def create():  # noqa: C901
                 exchange_rate=purchase.exchange_rate,
             )
 
-            # تحديث إحصائيات المورد
             if supplier:
                 try:
                     supplier.update_statistics()
@@ -356,7 +329,6 @@ def print_purchase(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    # Template selection (purchases use simple template for now, can add more later)
     template = request.args.get("template", "simple")
     _ALLOWED_TEMPLATES = ("simple",)
     if template not in _ALLOWED_TEMPLATES:
@@ -390,7 +362,6 @@ def edit(id):
     """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
     purchase = get_owned_or_404(Purchase, id)
 
-    # منع التعديل للفواتير المدفوعة
     if purchase.get_paid_amount() > 0:
         flash(
             "⚠️ لا يمكن تعديل فاتورة شراء تم الدفع عليها.\n💡 للحفاظ على السجلات المحاسبية.",
@@ -400,11 +371,8 @@ def edit(id):
 
     if request.method == "POST":
         try:
-            # تعديل الملاحظات فقط
             purchase.notes = request.form.get("notes", "")
 
-            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
-            # الفاتورة + شروط دفع المورد (services/due_date_service.py).
             if "due_date" in request.form:
                 purchase.due_date = due_date_service.due_date_for_purchase(
                     purchase.purchase_date,
@@ -436,26 +404,17 @@ def delete(id):
 
     purchase = get_owned_or_404(Purchase, id)
 
-    # التحقق من الارتباطات
     has_links = False
 
-    # 1. التحقق من المدفوعات (Payments - outgoing linked to this purchase)
-    # ملاحظة: المدفوعات للموردين قد لا تكون مرتبطة مباشرة بحقل purchase_id في جدول payments القديم،
-    # ولكن إذا كان هناك حقل purchase_id أو عبر supplier_id وتاريخ متزامن،
-    # لكن سنفترض وجود علاقة أو استخدام get_paid_amount() كمؤشر
     if purchase.get_paid_amount() > 0:
         has_links = True
 
-    # 2. التحقق من الشيكات (Cheques)
     linked_cheques = Cheque.query.filter_by(purchase_id=purchase.id).count()
     if linked_cheques > 0:
         has_links = True
 
     try:
         if has_links:
-            # أرشفة (Soft Delete)
-            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا تُؤرشف
-            # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             if purchase.status != "cancelled":
                 try:
                     reverse_or_purge_gl_entries(
@@ -490,9 +449,6 @@ def delete(id):
                 "warning",
             )
         else:
-            # حذف نهائي (Hard Delete)
-            # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
-            #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
                     "Purchase",
@@ -511,10 +467,8 @@ def delete(id):
                 )
                 return redirect(url_for("purchases.view", id=id))
 
-            # 2. حذف البنود (PurchaseLines)
             PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
 
-            # 3. حذف الفاتورة
             db.session.delete(purchase)
             create_audit_log("delete", "purchases", id)
             db.session.commit()
@@ -538,11 +492,6 @@ def delete(id):
         current_app.logger.error(f"Purchase delete error: {e}")
         flash(f"❌ حدث خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("purchases.view", id=id))
-
-
-# =====================================
-# API Endpoints - Backend Calculations
-# =====================================
 
 
 @purchases_bp.route("/api/calculate-totals", methods=["POST"])
@@ -579,7 +528,6 @@ def api_calculate_purchase_totals():
         if treatment != "standard":
             tax_rate = Decimal("0")
 
-        # حساب المجموع الفرعي
         subtotal = Decimal("0")
         line_specs = []
         for line in lines:
@@ -606,7 +554,6 @@ def api_calculate_purchase_totals():
             except (ValueError, TypeError, KeyError):
                 continue
 
-        # حساب الضريبة والإجمالي — نفس محرك الفاتورة تماماً
         from services.sale_tax_calculation import sale_tax_totals_mixed
 
         tax_amount, total, _ns, _nz, _ne = sale_tax_totals_mixed(

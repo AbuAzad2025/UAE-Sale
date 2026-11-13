@@ -12,8 +12,6 @@ from utils.helpers import generate_number
 class HRService:
     """Core HR business logic"""
 
-    # ---- Department ----
-
     @staticmethod
     def create_department(
         name, name_ar, code, parent_id=None, manager_id=None, budget=0
@@ -42,8 +40,6 @@ class HRService:
         db.session.flush()
         return dept
 
-    # ---- Employee ----
-
     @staticmethod
     def create_employee(
         user_id,
@@ -56,7 +52,6 @@ class HRService:
         **kwargs,
     ):
         """Create an employee profile linked to a user"""
-        # Validate uniqueness
         existing = Employee.query.filter_by(user_id=user_id).first()
         if existing:
             raise ValueError("هذا المستخدم لديه ملف موظف بالفعل")
@@ -65,7 +60,6 @@ class HRService:
         if existing_num:
             raise ValueError(f'رقم الموظف "{employee_number}" موجود مسبقاً')
 
-        # Validate department
         if department_id:
             dept = db.session.get(Department, department_id)
             if not dept:
@@ -104,7 +98,6 @@ class HRService:
             personal_leave_days=kwargs.get("personal_leave_days", 5),
             notes=kwargs.get("notes"),
         )
-        # Set initial balances = entitlements
         emp.annual_leave_balance = emp.annual_leave_days
         emp.sick_leave_balance = emp.sick_leave_days
         emp.personal_leave_balance = emp.personal_leave_days
@@ -154,7 +147,6 @@ class HRService:
         for field in allowed:
             if field in kwargs and kwargs[field] is not None:
                 value = kwargs[field]
-                # Convert decimal fields
                 if field in (
                     "base_salary",
                     "housing_allowance",
@@ -168,8 +160,6 @@ class HRService:
         db.session.flush()
         return emp
 
-    # ---- Leave ----
-
     @staticmethod
     def request_leave(
         employee_id, leave_type_id, start_date, end_date, reason="", user_id=None
@@ -181,12 +171,10 @@ class HRService:
 
         lt = db.get_or_404(LeaveType, leave_type_id)
 
-        # Calculate working days (exclude weekends: Fri/Sat for UAE)
         days = HRService._count_working_days(start_date, end_date)
         if days <= 0:
             raise ValueError("يجب أن تكون فترة الإجازةيوم عمل واحد على الأقل")
 
-        # Check balance
         balance = HRService._get_leave_balance(emp, lt)
         if balance < days:
             raise ValueError(
@@ -194,7 +182,6 @@ class HRService:
                 f"المطلوب: {days} يوم"
             )
 
-        # Prevent overlapping requests
         overlap = LeaveRequest.query.filter(
             LeaveRequest.employee_id == employee_id,
             LeaveRequest.status.in_(["pending", "approved"]),
@@ -253,13 +240,10 @@ class HRService:
         count = 0
         current = start
         while current <= end:
-            # Friday=4, Saturday=5 in Python
             if current.weekday() not in (4, 5):
                 count += 1
             current = date.fromordinal(current.toordinal() + 1)
         return count
-
-    # ---- Payroll ----
 
     @staticmethod
     def generate_payslip(
@@ -281,7 +265,6 @@ class HRService:
         if emp.employment_status != "active":
             raise ValueError("لا يمكن إنشاء كشف راتب لموظف غير نشط")
 
-        # Check for duplicate
         existing = Payslip.query.filter(
             Payslip.employee_id == employee_id,
             Payslip.pay_period_start == pay_period_start,
@@ -293,7 +276,6 @@ class HRService:
                 f"يوجد كشف راتب بالفعل لهذه الفترة: {existing.payslip_number}"
             )
 
-        # Calculate per-day salary
         base = emp.base_salary or Decimal("0")
         days_in_month = HRService._working_days_in_period(
             pay_period_start, pay_period_end
@@ -306,16 +288,13 @@ class HRService:
             else Decimal("0")
         )
 
-        # Leave deduction: if unpaid leave
         leave_days_unpaid = Decimal(str(adjustments.get("leave_days_unpaid", 0)))
         leave_deduction = (per_day * leave_days_unpaid).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
 
-        # Overtime
         overtime_hours = Decimal(str(adjustments.get("overtime_hours", 0)))
         overtime_rate = Decimal(str(adjustments.get("overtime_rate", 1.5)))
-        # UAE: overtime = (base / 30 / 8) * rate * hours
         hourly_rate = (base / Decimal("30") / Decimal("8")).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
@@ -323,7 +302,6 @@ class HRService:
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
 
-        # Actual worked days
         actual_worked = days_in_month - int(leave_days_unpaid)
         absent_days = max(
             0, working_days - actual_worked - int(adjustments.get("leave_days_paid", 0))
@@ -419,8 +397,6 @@ class HRService:
             current = date.fromordinal(current.toordinal() + 1)
         return count if count > 0 else 1  # Avoid division by zero
 
-    # ---- Initialize Leave Types ----
-
     @staticmethod
     def ensure_default_leave_types():
         """Create default leave types if they don't exist"""
@@ -444,8 +420,6 @@ class HRService:
                 db.session.add(lt)
         db.session.flush()
 
-    # ---- Dashboard Stats ----
-
     @staticmethod
     def get_hr_stats():
         """HR dashboard statistics"""
@@ -453,7 +427,6 @@ class HRService:
         departments = Department.query.filter_by(is_active=True).count()
         pending_leaves = LeaveRequest.query.filter_by(status="pending").count()
 
-        # Upcoming visa expirations (next 90 days)
         from datetime import timedelta
 
         today = date.today()
@@ -465,7 +438,6 @@ class HRService:
             Employee.visa_expiry >= today,
         ).count()
 
-        # Total monthly payroll cost
         from sqlalchemy import func
 
         total_payroll = db.session.query(

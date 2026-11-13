@@ -28,12 +28,10 @@ class AnalyticsService:
         end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=30 * months)
 
-        # جلب جميع المعاملات المكتملة
         donations = Donation.query.filter(
             Donation.status == "completed", Donation.created_at >= start_date
         ).all()
 
-        # تجميع البيانات حسب الفترة
         _ = {}
         labels = []
         purchases_data = []
@@ -44,7 +42,6 @@ class AnalyticsService:
             month_end = month_start + timedelta(days=30)
             month_label = month_start.strftime("%b %Y")
 
-            # حساب المشتريات
             month_purchases = 0
             for d in donations:
                 if d.transaction_type == "purchase" and d.created_at:
@@ -63,7 +60,6 @@ class AnalyticsService:
                     except Exception:
                         pass
 
-            # حساب التبرعات
             month_donations = 0
             for d in donations:
                 if d.transaction_type == "donation" and d.created_at:
@@ -145,10 +141,8 @@ class AnalyticsService:
     @staticmethod
     def get_customer_behavior():
         """تحليل سلوك العملاء"""
-        # جلب جميع المشتريات
         purchases = PackagePurchase.query.all()
 
-        # تحليل توزيع العملاء
         customers = {}
         for purchase in purchases:
             email = purchase.customer_email
@@ -160,7 +154,6 @@ class AnalyticsService:
             if purchase.package:
                 customers[email]["packages"].append(purchase.package.name_ar)
 
-        # تصنيف العملاء
         new_customers = sum(1 for c in customers.values() if c["purchases"] == 1)
         returning_customers = sum(1 for c in customers.values() if c["purchases"] > 1)
         vip_customers = sum(1 for c in customers.values() if c["total_spent"] > 1000)
@@ -188,18 +181,14 @@ class AnalyticsService:
         توقع الإيرادات المستقبلية
         (تحليل بسيط بناءً على المتوسط)
         """
-        # جلب بيانات آخر 6 أشهر
         revenue_data = AnalyticsService.get_revenue_by_period(months=6)
 
-        # حساب المتوسط الشهري
         total_revenue = revenue_data["total_revenue"]
         avg_monthly = total_revenue / 6
 
-        # توقع الأشهر القادمة
         predictions = []
         for i in range(1, months + 1):
             month = datetime.now(timezone.utc) + timedelta(days=30 * i)
-            # إضافة نمو 5% افتراضياً
             predicted = avg_monthly * (1.05**i)
             predictions.append(
                 {

@@ -21,14 +21,11 @@ class Department(TenantScopedMixin, db.Model):
     name_ar = db.Column(db.String(100))
     code = db.Column(db.String(20), unique=True, nullable=False)
 
-    # Hierarchy
     parent_id = db.Column(db.Integer, db.ForeignKey("departments.id"))
     level = db.Column(db.Integer, default=0)
 
-    # Manager
     manager_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-    # Budget
     budget_amount = db.Column(db.Numeric(18, 3), default=0)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
@@ -43,7 +40,6 @@ class Department(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     parent = db.relationship("Department", remote_side=[id], backref="children")
     manager = db.relationship("User", foreign_keys=[manager_id])
     employees = db.relationship("Employee", back_populates="department", lazy="dynamic")
@@ -88,12 +84,10 @@ class Employee(TenantScopedMixin, db.Model):
     )
     employee_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    # Department & Position
     department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), index=True)
     position = db.Column(db.String(100))  # Job title
     position_ar = db.Column(db.String(100))
 
-    # Employment Details
     hire_date = db.Column(db.Date, nullable=False)
     contract_type = db.Column(
         db.String(30), default="full_time"
@@ -104,7 +98,6 @@ class Employee(TenantScopedMixin, db.Model):
     termination_date = db.Column(db.Date)
     termination_reason = db.Column(db.Text)
 
-    # Salary & Compensation
     base_salary = db.Column(db.Numeric(15, 3), nullable=False, default=0)
     salary_currency = db.Column(db.String(3), default="AED")
     payment_frequency = db.Column(
@@ -114,14 +107,12 @@ class Employee(TenantScopedMixin, db.Model):
     bank_account_number = db.Column(db.String(50))
     iban = db.Column(db.String(50))
 
-    # Allowances (monthly)
     housing_allowance = db.Column(db.Numeric(15, 3), default=0)
     transport_allowance = db.Column(db.Numeric(15, 3), default=0)
     phone_allowance = db.Column(db.Numeric(15, 3), default=0)
     other_allowances = db.Column(db.Numeric(15, 3), default=0)
     allowance_notes = db.Column(db.Text)
 
-    # Personal Info
     national_id = db.Column(db.String(50))
     passport_number = db.Column(db.String(50))
     visa_number = db.Column(db.String(50))
@@ -133,17 +124,14 @@ class Employee(TenantScopedMixin, db.Model):
     emergency_contact_name = db.Column(db.String(100))
     emergency_contact_phone = db.Column(db.String(30))
 
-    # Leave Balance (annual)
     annual_leave_days = db.Column(db.Integer, default=30)
     sick_leave_days = db.Column(db.Integer, default=15)
     personal_leave_days = db.Column(db.Integer, default=5)
 
-    # Current balances (updated when leave is approved)
     annual_leave_balance = db.Column(db.Integer, default=30)
     sick_leave_balance = db.Column(db.Integer, default=15)
     personal_leave_balance = db.Column(db.Integer, default=5)
 
-    # Meta
     notes = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(
@@ -155,7 +143,6 @@ class Employee(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     user = db.relationship(
         "User", backref=db.backref("employee_profile", uselist=False)
     )
@@ -285,12 +272,10 @@ class LeaveRequest(TenantScopedMixin, db.Model):
         db.String(20), default="pending", index=True
     )  # pending, approved, rejected, cancelled
 
-    # Approval
     approved_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     approved_at = db.Column(db.DateTime)
     rejection_reason = db.Column(db.Text)
 
-    # Backfill coverage
     notes = db.Column(db.Text)
 
     created_at = db.Column(
@@ -302,7 +287,6 @@ class LeaveRequest(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     employee = db.relationship("Employee", back_populates="leave_requests")
     leave_type = db.relationship("LeaveType", back_populates="leave_requests")
     approved_by = db.relationship("User", foreign_keys=[approved_by_id])
@@ -336,7 +320,6 @@ class LeaveRequest(TenantScopedMixin, db.Model):
         self.status = "approved"
         self.approved_by_id = user_id
         self.approved_at = datetime.now(timezone.utc)
-        # Deduct from balance
         self._adjust_balance(-self.days)
 
     def reject(self, user_id, reason=""):
@@ -349,7 +332,6 @@ class LeaveRequest(TenantScopedMixin, db.Model):
 
     def cancel(self):
         if self.status == "approved":
-            # Restore balance
             self._adjust_balance(self.days)
         self.status = "cancelled"
 
@@ -396,12 +378,10 @@ class Payslip(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("employees.id"), nullable=False, index=True
     )
 
-    # Period
     pay_period_start = db.Column(db.Date, nullable=False)
     pay_period_end = db.Column(db.Date, nullable=False)
     pay_date = db.Column(db.Date, nullable=False)
 
-    # Earnings
     base_salary = db.Column(db.Numeric(15, 3), default=0)
     housing_allowance = db.Column(db.Numeric(15, 3), default=0)
     transport_allowance = db.Column(db.Numeric(15, 3), default=0)
@@ -412,27 +392,22 @@ class Payslip(TenantScopedMixin, db.Model):
     bonus = db.Column(db.Numeric(15, 3), default=0)
     total_earnings = db.Column(db.Numeric(15, 3), default=0)
 
-    # Deductions
     leave_deduction = db.Column(db.Numeric(15, 3), default=0)
     advance_deduction = db.Column(db.Numeric(15, 3), default=0)
     other_deductions = db.Column(db.Numeric(15, 3), default=0)
     total_deductions = db.Column(db.Numeric(15, 3), default=0)
 
-    # Net
     net_salary = db.Column(db.Numeric(15, 3), default=0)
 
-    # Days
     working_days = db.Column(db.Integer, default=0)
     actual_worked_days = db.Column(db.Integer, default=0)
     leave_days = db.Column(db.Integer, default=0)
     absent_days = db.Column(db.Integer, default=0)
 
-    # Status
     status = db.Column(
         db.String(20), default="draft", index=True
     )  # draft, approved, paid, cancelled
 
-    # GL Integration
     gl_journal_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
 
     notes = db.Column(db.Text)
@@ -448,7 +423,6 @@ class Payslip(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     employee = db.relationship("Employee", back_populates="payslips")
     lines = db.relationship(
         "PayslipLine", back_populates="payslip", cascade="all, delete-orphan"

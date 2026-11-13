@@ -12,8 +12,6 @@ from utils.decorators import permission_required, get_owned_or_404
 
 approvals_bp = Blueprint("approvals", __name__, url_prefix="/approvals")
 
-# ── List pending requests ───────────────────────────────────────────────
-
 
 @approvals_bp.route("/")
 @login_required
@@ -38,15 +36,10 @@ def index():
     )
 
 
-# ── View a specific request ─────────────────────────────────────────────
-
-
 @approvals_bp.route("/<int:request_id>")
 @login_required
 @permission_required("manage_approvals")
 def view(request_id):
-    # SECURITY: get_owned_or_404 enforces cross-tenant isolation in
-    # addition to the manage_approvals permission.
     req = get_owned_or_404(ApprovalRequest, request_id, code=404)
     workflow = req.workflow
     levels = (
@@ -59,15 +52,10 @@ def view(request_id):
     )
 
 
-# ── Approve ─────────────────────────────────────────────────────────────
-
-
 @approvals_bp.route("/<int:request_id>/approve", methods=["POST"])
 @login_required
 @permission_required("manage_approvals")
 def approve(request_id):
-    # SECURITY: verify the request belongs to the caller's tenant (or is
-    # owner-visible) BEFORE mutating financial state.
     get_owned_or_404(ApprovalRequest, request_id, code=404)
     notes = request.form.get("notes", "")
     success, message = ApprovalService.approve(request_id, current_user.id, notes=notes)
@@ -75,14 +63,10 @@ def approve(request_id):
     return redirect(url_for("approvals.view", request_id=request_id))
 
 
-# ── Reject ──────────────────────────────────────────────────────────────
-
-
 @approvals_bp.route("/<int:request_id>/reject", methods=["POST"])
 @login_required
 @permission_required("manage_approvals")
 def reject(request_id):
-    # SECURITY: cross-tenant ownership check before mutating state.
     get_owned_or_404(ApprovalRequest, request_id, code=404)
     notes = request.form.get("notes", "")
     success, message = ApprovalService.reject(request_id, current_user.id, notes=notes)
@@ -90,17 +74,11 @@ def reject(request_id):
     return redirect(url_for("approvals.view", request_id=request_id))
 
 
-# ── Cancel ──────────────────────────────────────────────────────────────
-
-
 @approvals_bp.route("/<int:request_id>/cancel", methods=["POST"])
 @login_required
 @permission_required("manage_approvals")
 def cancel(request_id):
-    # SECURITY: cross-tenant ownership check before mutating state.
     req = get_owned_or_404(ApprovalRequest, request_id, code=404)
-    # Users may cancel their own requests; admins may cancel any in their
-    # tenant; only owner may cancel cross-tenant.
     if req.requester_id != current_user.id and not (
         getattr(current_user, "is_owner", False) or current_user.is_super_admin()
     ):
@@ -108,9 +86,6 @@ def cancel(request_id):
     success, message = ApprovalService.cancel(request_id, current_user.id)
     flash(message, "success" if success else "danger")
     return redirect(url_for("approvals.index"))
-
-
-# ── Manage Workflows (admin/owner only) ────────────────────────────────
 
 
 @approvals_bp.route("/workflows")

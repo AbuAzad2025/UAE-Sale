@@ -15,8 +15,6 @@ from models import (
 )
 from services.stock_service import StockService
 
-# Dashboard cache TTL in seconds (60s = short enough to stay fresh,
-# long enough to eliminate repeated heavy queries within a page reload burst)
 DASHBOARD_CACHE_TTL = 60
 
 main_bp = Blueprint("main", __name__)
@@ -45,17 +43,12 @@ def index():
 @main_bp.route("/dashboard")
 @login_required
 def dashboard():  # noqa: C901
-    # Dashboard route with error handling
     try:
         today = datetime.now(timezone.utc).date()
         month_start = today.replace(day=1)
 
         stats = {}
 
-        # ── Per-role data visibility ────────────────────────────────────
-        # Each aggregate below is computed ONLY for roles allowed to see it
-        # (defense in depth: the template gates sections too, but sensitive
-        # numbers never even enter `stats` for unauthorized roles).
         can_sales = current_user.has_permission("manage_sales")
         can_reports = current_user.has_permission("view_reports")
         can_customers = current_user.has_permission("manage_customers")
@@ -69,14 +62,8 @@ def dashboard():  # noqa: C901
         show_customers_card = can_customers or can_reports
         show_receivables_card = can_payments or can_reports or can_ledger
         show_products_card = can_products or can_view_products or can_warehouse
-        # Recent-sales rows carry customer PII (names + phones): sales staff only.
         show_recent_table = can_sales
 
-        # ── Cached aggregate queries ──────────────────────────────────
-        # Cache per-day key so stats refresh at midnight automatically.
-        # SECURITY: the key MUST include the effective tenant — aggregates are
-        # tenant-filtered at query time, so a tenant-agnostic key would serve
-        # one tenant's numbers to another (cache bleed). None = owner/global.
         tenant_key = get_current_tenant_id()
         cache_key_prefix = f"dashboard:{tenant_key}:{today}"
 
@@ -231,7 +218,6 @@ def dashboard():  # noqa: C901
 
             stats["total_receivables"] = float(_cached("receivables", _receivables))
 
-        # GL balances (cost-sensitive, cached per user role)
         if current_user.can_see_costs():
 
             def _gl_balances():
@@ -255,8 +241,6 @@ def dashboard():  # noqa: C901
             gl_balances = _cached("gl_balances", _gl_balances)
             stats.update(gl_balances)
 
-        # Recent sales (small query, cached for consistency).
-        # Gated on manage_sales: rows expose customer PII (names + phones).
         if show_recent_table:
 
             def _recent_sales():
@@ -299,8 +283,6 @@ def dashboard():  # noqa: C901
             stats["my_today_sales_count"] = my_today[0] or 0
             stats["my_today_sales_amount"] = float(my_today[1] or 0)
 
-        # Pass raw ORM objects for template rendering (un-cached per-request).
-        # Same PII gate as above.
         if show_recent_table:
             stats["recent_sales"] = (
                 Sale.query.options(joinedload(Sale.customer), joinedload(Sale.seller))

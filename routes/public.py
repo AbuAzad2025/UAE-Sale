@@ -22,7 +22,6 @@ def landing():
     authenticated users it redirects to the role-appropriate dashboard
     (owner/super_admin -> /owner/dashboard, others -> /dashboard)."""
     if current_user.is_authenticated:
-        # Owner / super_admin / developer get the platform owner console
         _slug = getattr(getattr(current_user, "role", None), "slug", None)
         if (
             getattr(current_user, "is_owner", False)
@@ -69,7 +68,6 @@ def user_guide():
     """دليل المستخدم"""
     from flask import session
 
-    # اختيار القالب حسب اللغة
     lang = session.get("language", "ar")
 
     if lang == "en":
@@ -144,19 +142,15 @@ def sitemap():
     """
     from models import Product
 
-    # الحصول على URL الأساسي
     base_url = request.url_root.rstrip("/")
 
-    # الصفحات الثابتة العامة (أولوية عالية)
     static_pages = [
-        # الصفحات الرئيسية - أعلى أولوية
         {
             "loc": f"{base_url}/",
             "priority": "1.0",
             "changefreq": "daily",
             "keywords": "نظام إدارة مستودعات، برنامج محاسبة الإمارات",
         },
-        # صفحات تسويقية مهمة
         {
             "loc": f"{base_url}/pricing",
             "priority": "0.95",
@@ -211,7 +205,6 @@ def sitemap():
             "changefreq": "monthly",
             "keywords": "دليل المستخدم، شرح البرنامج",
         },
-        # صفحات عامة أخرى
         {
             "loc": f"{base_url}/auth/login",
             "priority": "0.80",
@@ -220,7 +213,6 @@ def sitemap():
         },
     ]
 
-    # المنتجات النشطة (آخر 100)
     try:
         products = (
             Product.query.filter_by(is_active=True)
@@ -243,7 +235,6 @@ def sitemap():
     except Exception:
         pass
 
-    # بناء XML
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
 
@@ -270,7 +261,6 @@ def robots():
     base_url = request.url_root.rstrip("/")
 
     robots_content = """# شركة أزاد للأنظمة الذكية
-# Azad Smart Systems - Robots.txt
 
 User-agent: *
 Allow: /
@@ -281,22 +271,18 @@ Allow: /contact
 Allow: /demo
 Allow: /static/
 
-# منع الصفحات الإدارية والحساسة
 Disallow: /owner/
 Disallow: /dashboard
 Disallow: /auth/
 Disallow: /api/
 Disallow: /admin/
 
-# منع المجلدات الداخلية
 Disallow: /instance/
 Disallow: /logs/
 Disallow: /migrations/
 
-# خريطة الموقع
 Sitemap: {base_url}/sitemap.xml
 
-# معدل الزحف (Crawl-delay)
 Crawl-delay: 1
 """
 

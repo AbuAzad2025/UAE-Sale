@@ -12,8 +12,6 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-# ── Redis connection (lazy, fail-open) ──────────────────────────────────
-
 _redis_client = None
 _redis_checked = False
 
@@ -41,9 +39,6 @@ def _get_redis():
         )
 
     return _redis_client
-
-
-# ── In-process fallback lock ───────────────────────────────────────────
 
 
 _fallback_locks = {}
@@ -80,9 +75,6 @@ def _emit_lock_metric(name, outcome):
         )
     except Exception:
         pass
-
-
-# ── Public API ──────────────────────────────────────────────────────────
 
 
 @contextmanager
@@ -144,7 +136,6 @@ def distributed_lock(name, timeout=10, blocking_timeout=5):
                 except Exception:
                     pass
     else:
-        # Fallback: in-process threading lock
         lock = _get_fallback_lock(name)
         acquired = lock.acquire(timeout=blocking_timeout)
         _emit_lock_metric(name, "acquired" if acquired else "timeout")

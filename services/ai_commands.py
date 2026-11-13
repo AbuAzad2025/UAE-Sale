@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from extensions import db
 
-# Phase 2b: permission_code لكل إجراء — نفس رموز ai_tools و _ai_action_denied
 PERMISSION_MAP = {
     "create_customer": "manage_customers",
     "create_product": "manage_products",
@@ -45,8 +44,6 @@ def _require_tenant_id():
     from flask_login import current_user
 
     if not getattr(current_user, "is_authenticated", False):
-        # Outside a login request (unit tests, system context): fall back
-        # to the thread-local tenant if set, else platform (None).
         from models.tenant_scope import get_current_tenant_id
 
         ctx = get_current_tenant_id()
@@ -56,8 +53,6 @@ def _require_tenant_id():
             return None
         return ctx
     if getattr(current_user, "is_owner", False):
-        # سياق دعم: يختم على الشركة المُخترَقة (session) حتى تكون الكتابات
-        # في صفوف تلك الشركة (مع بقاء التدقيق باسم المالك).
         try:
             from flask import session as _s
 
@@ -87,10 +82,6 @@ def _ai_audit(table_name, record_id, changes=None, action="create"):
         payload.setdefault("via", "ai_assistant")
         create_audit_log(action, table_name, record_id, changes=payload, commit=True)
     except Exception:
-        # Outside a request/app context (unit tests calling the service
-        # directly) there is no user/IP to log and create_audit_log fails.
-        # Do not break the business write for this; in production (chat)
-        # we are always inside a request, so the audit row is written.
         try:
             from flask import has_app_context, has_request_context
 
@@ -354,9 +345,6 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
     db.session.add(item)
     db.session.flush()
 
-    # Stock movement (updates current_stock + average_cost) instead of a
-    # bare `product.current_stock += quantity` that bypassed StockMovement
-    # and the moving-average recalculation.
     from services.stock_service import StockService
 
     StockService.create_movement(

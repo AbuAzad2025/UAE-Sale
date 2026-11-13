@@ -38,8 +38,6 @@ class TaxRuleset(db.Model):
     )
     corp_tax_enabled_default = db.Column(db.Boolean, nullable=False, default=False)
 
-    # تبعات الامتثال الإلكتروني التي تتطلب تكاملًا مع سلطة حكومية: يبقى 'manual' حتى
-    # تُعتمد التكامل الحقيقي. لا تُزعم هذه أبدًا كـ 'approved' من الكود.
     einvoice_required = db.Column(db.Boolean, nullable=False, default=False)
     einvoice_status = db.Column(db.String(20), nullable=False, default="manual")
     authority_name = db.Column(db.String(160))
@@ -47,9 +45,6 @@ class TaxRuleset(db.Model):
     authority_notes = db.Column(db.Text)
     compliance_notes = db.Column(db.Text)
 
-    # سريان بتوقيت — مثلاً ضريبة السعودية 5% حتى 2020/2020-07-01 ثم 15% بعدها.
-    # NULL للبداية/النهاية = بلا حدود (القاعدة دائمة). عند وجود أكثر من صف مسنود،
-    # يُختار الأحدث effective_from ≤ تاريخ اليوم ثم الأكبر id.
     effective_from = db.Column(db.Date, nullable=True)
     effective_until = db.Column(db.Date, nullable=True)
 
@@ -76,8 +71,6 @@ class TaxRuleset(db.Model):
 
 
 DEFAULT_RULESETS = [
-    # country_code, country_name, vat_rate, vat_label, corp_rate, corp_threshold, einvoice_required, einvoice_status, authority_name
-    # النسب/العتبات الرسمية موضوعة فقط للرجوع؛ يجب مراجعة كل دولة مع محاسبها.
     (
         "AE",
         "الإمارات العربية المتحدة",

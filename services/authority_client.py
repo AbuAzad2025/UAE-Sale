@@ -62,10 +62,6 @@ class ManualAuthorityClient(AuthorityClient):
         }
 
 
-# جدول أصناف العملاء. كل قيمة = صنف. لإضافة مزود لاحقًا:
-#   1) نفّذ AuthorityClient ضده (توقيع/إرسال/استعلام/موافقة)
-#   2) أضف: 'zatca': ZatcaAuthorityClient
-#   3) عندها فقط يظهر الوضع في واجهة الاعتمادات /owner/compliance-credentials
 _AUTHORITY_CLIENTS = {
     "manual": ManualAuthorityClient,
 }

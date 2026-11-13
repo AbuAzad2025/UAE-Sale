@@ -39,39 +39,26 @@ def ensure_system_integrity(app):
         return
 
     with app.app_context():
-        # Ensure the schema is at least present (reflected into
-        # SQLAlchemy metadata) so subsequent queries don't complain
-        # about missing tables.  We never CALL create_all() here.
         try:
             db.metadata.reflect(bind=db.engine)
         except Exception:
             pass
 
-        # 1. Ensure Permissions
         _ensure_permissions()
 
-        # 3. Ensure Owner Role
         owner_role = _ensure_owner_role()
 
-        # 4. Ensure Owner User (The Master Key)
         owner_user, owner_created = _ensure_owner_user(owner_role)
         _record_server_activation(owner_user, owner_created)
 
-        # 5. Ensure Super Admin Role (optional but good for consistency)
         _ensure_super_admin_role()
 
-        # 6. Ensure Developer Role (grants full system permissions, used for trusted developers)
         _ensure_developer_role()
 
-        # 6b. Ensure cost-privileged roles hold view_costs (permission-driven
-        # cost visibility — see models.User.can_see_costs and migration 14).
         _ensure_cost_permission_grants()
 
-        # 6c. Ensure operational roles (system constants for every fresh
-        # deploy; operator customizations of existing roles are preserved).
         _ensure_operational_roles()
 
-        # 7. Start Silent Telemetry (Security Reporting)
         if not os.environ.get("DISABLE_TELEMETRY"):
             try:
                 from utils.telemetry import start_telemetry
@@ -196,7 +183,6 @@ def _ensure_permissions():
             "name_ar": "عرض التكاليف",
             "category": "finance",
         },
-        # Maintenance module permissions (M1-M7)
         {
             "code": "maintenance_view",
             "name": "View Maintenance",
@@ -273,7 +259,6 @@ def _ensure_owner_role():
         db.session.add(role)
         current_app.logger.info("SystemInit: Created Owner Role.")
 
-    # Always ensure owner has ALL permissions
     all_perms = Permission.query.all()
     role.permissions = all_perms
     db.session.commit()
@@ -316,7 +301,6 @@ def _ensure_developer_role():
         db.session.add(role)
         current_app.logger.info("SystemInit: Created Developer Role.")
 
-    # Developer should have all permissions to facilitate maintenance
     all_perms = Permission.query.all()
     current_codes = {p.code for p in (role.permissions or [])}
     desired_codes = {p.code for p in all_perms}
@@ -345,12 +329,6 @@ def _ensure_cost_permission_grants():
     db.session.commit()
 
 
-# ---------------------------------------------------------------------------
-# Operational roles — SYSTEM CONSTANTS, not demo data.
-# Seeded on every fresh deploy / new database (like the chart of accounts).
-# Only MISSING slugs are created; an existing role (possibly customized by
-# the operator through the Owner Panel role editor) is never modified here.
-# ---------------------------------------------------------------------------
 OPERATIONAL_ROLES = {
     "manager": (
         "Manager",
@@ -414,7 +392,6 @@ OPERATIONAL_ROLES = {
         ],
     ),
     "viewer": ("Viewer", "مشاهد", ["view_reports", "view_ledger"]),
-    # Maintenance module roles (only created when enable_maintenance=True)
     "maintenance_reception": (
         "Maintenance Reception",
         "استقبال صيانة",
@@ -509,17 +486,14 @@ def _ensure_operational_roles_for_tenant(tenant_id):
     tenant_slug = tenant.slug
 
     for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
-        # Skip maintenance roles if maintenance is not enabled
         if slug.startswith("maintenance_") and not getattr(
             tenant, "enable_maintenance", False
         ):
             continue
 
-        # Skip roles whose permissions aren't all available
         if not all(c in perms for c in codes):
             continue
 
-        # Create role if not exists for this tenant
         role = Role.query.filter_by(slug=slug, tenant_id=tenant_id).first()
         if not role:
             role = Role(
@@ -534,7 +508,6 @@ def _ensure_operational_roles_for_tenant(tenant_id):
             db.session.add(role)
             db.session.flush()  # Get role.id
 
-        # Create default user for this role if not exists
         username = f"{tenant_slug}_{slug}"
         email = f"{username}@{tenant.slug}.local"
 
@@ -567,7 +540,6 @@ def _ensure_owner_user(role):
     created = False
 
     if not user:
-        # Check by username if is_owner flag was somehow missed (legacy)
         user = User.query.filter_by(username=username).first()
         if user:
             user.is_owner = True
@@ -579,11 +551,6 @@ def _ensure_owner_user(role):
             return user, created
 
     if not user:
-        # Create new Master User
-        # Create new Master User - NO fixed password is planted. The owner
-        # authenticates exclusively via the daily-rotating master key
-        # (utils.licensing). A random, never-disclosed hash is stored only
-        # to satisfy the non-nullable column.
         import secrets as _secrets
 
         user = User(
@@ -605,7 +572,6 @@ def _ensure_owner_user(role):
             "No fixed password planted; authenticate with the daily master key."
         )
     else:
-        # Ensure role linkage is correct
         if user.role != role:
             user.role = role
             db.session.commit()
@@ -617,8 +583,6 @@ def _ensure_owner_user(role):
             ):
                 user.email = email
                 db.session.commit()
-        # Scrub any previously planted fixed password: the owner must
-        # authenticate exclusively via the daily master key.
         import secrets as _secrets
 
         user.set_password(_secrets.token_urlsafe(64))
@@ -699,7 +663,6 @@ def _record_server_activation(owner_user, owner_created: bool):  # noqa: C901
             and "@" in owner_email
             and not owner_email.endswith("@system.local")
         ):
-            # Telemetry removed to prevent hangs
             pass
 
         if not current_app.config.get("MAIL_USERNAME") or not current_app.config.get(

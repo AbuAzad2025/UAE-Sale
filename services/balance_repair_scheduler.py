@@ -56,7 +56,6 @@ class BalanceRepairScheduler:
         logger.info("🔧 Starting scheduled balance repair...")
         start_time = datetime.now(timezone.utc)
 
-        # Detect drifts
         drifts = check_customer_balance()
 
         repaired_count = 0
@@ -90,7 +89,6 @@ class BalanceRepairScheduler:
             else:
                 report_only.append(drift)
 
-        # Update last_run timestamp
         settings = BalanceRepairScheduler.get_schedule_settings()
         settings["last_run"] = start_time.isoformat()
         settings["drifts_found"] = len(drifts)

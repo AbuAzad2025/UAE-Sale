@@ -8,11 +8,6 @@ from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
 
-# ===========================================================================
-# تسلسل أرقام القيود — تسلسل عالمي (ليس لكل مستأجر)
-# ===========================================================================
-
-
 def next_global_entry_number() -> str:
     """Return the next ``JE-YYYY-NNNN`` number from a GLOBAL sequence.
 
@@ -32,7 +27,6 @@ def next_global_entry_number() -> str:
 
     current_tenant = get_current_tenant_id()
     if current_tenant is not None:
-        # مؤقتاً فقط: التسلسل عام وليس خاصاً بالمستأجر
         set_current_tenant_id(None)
     try:
         return generate_number("JE", GLJournalEntry, field_name="entry_number")
@@ -44,18 +38,11 @@ def next_global_entry_number() -> str:
 class GLAccount(db.Model):
     __tablename__ = "gl_accounts"
 
-    # طبيعة الحساب: الأصول والمصروفات مدينة (طبيعية مدينة)،
-    # الخصوم وحقوق الملكية والإيرادات دائنة (طبيعية دائنة).
     DEBIT_NATURE_TYPES = frozenset({"asset", "expense"})
     CREDIT_NATURE_TYPES = frozenset({"liability", "equity", "revenue"})
 
-    # F8: أنواع الحساب المسموحة فقط — أي قيمة أخرى (خطأ مطبعي مثل 'banana')
-    # كانت تُخزَّن بصمت وتُعامل كحساب دائن الطبيعة (إشارة خاطئة).
     VALID_TYPES = frozenset({"asset", "liability", "equity", "revenue", "expense"})
 
-    # F8: أكواد دليل الحسابات الأساسي (المُبذَر بواسطة ensure_core_accounts).
-    # تُستخدم للتحقق من الاتجاه ولحماية الحسابات المُبذَرة من التعديل،
-    # حتى قبل وصول عمود is_system إلى قاعدة البيانات (م-see تقرير الترحيل).
     CORE_CODES = frozenset(
         {
             "1000",
@@ -122,8 +109,6 @@ class GLAccount(db.Model):
         }
     )
 
-    # F8: الاستثناءات الموثّقة لحركة مدين على حساب طبيعيته دائنة.
-    # كل استثناء له سبب محاسبي حقيقي في كود المشروع الحالي.
     DEBIT_ALLOWED_ON_CREDIT_NORMAL = {
         "2110": "سداد الموردين: مدين على الذمم الدائنة عند التسديد",
         "2115": "سداد ذمم التجار",
@@ -140,8 +125,6 @@ class GLAccount(db.Model):
         "4210": "مردودات الصيانة وعكس إيرادها",
     }
 
-    # F8: الاستثناءات الموثّقة لحركة دائن على حساب طبيعيته مدينة.
-    # الأصول تنقص بالدائن (صرف/بيع/تحصيل) والمصروفات تُعكس بالدائن.
     CREDIT_ALLOWED_ON_DEBIT_NORMAL = {
         "1110": "سحب نقدي من الصندوق",
         "1120": "صرف من البنك",
@@ -188,8 +171,6 @@ class GLAccount(db.Model):
     is_header = db.Column(db.Boolean, default=False)  # حساب رئيسي (لا يقبل قيود مباشرة)
     level = db.Column(db.Integer, default=0)  # مستوى الحساب في الشجرة
     description = db.Column(db.Text)  # وصف الحساب
-    # F8: حساب مُبذَر من دليل الحسابات الأساسي — لا يُعدَّل كوده/نوعه ولا يُحذف.
-    # (requires a migration — see report)
     is_system = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
@@ -204,10 +185,6 @@ class GLAccount(db.Model):
 
     def __repr__(self):
         return f"<GLAccount {self.code} {self.name}>"
-
-    # ------------------------------------------------------------------
-    # F8 — التحقق من صحة نوع الحساب
-    # ------------------------------------------------------------------
 
     @validates("type")
     def _validate_type(self, key, value):
@@ -231,10 +208,6 @@ class GLAccount(db.Model):
     def is_locked(self):
         """حساب مُقفل: لا يُعدَّل كوده/نوعه ولا يُحذف."""
         return self.is_core_account
-
-    # ------------------------------------------------------------------
-    # F8 — التحقق من اتجاه الحركة
-    # ------------------------------------------------------------------
 
     def check_posting_direction(self, debit, credit):
         """يرفض الحركة في الاتجاه المعاكس لطبيعة الحساب.
@@ -449,7 +422,6 @@ class GLAccount(db.Model):
 class GLJournalEntry(TenantScopedMixin, db.Model):
     __tablename__ = "gl_journal_entries"
 
-    # F9: حالة القيد — مسودة (غير مرحّل) أو مرحّل.
     STATE_DRAFT = False
     STATE_POSTED = True
 
@@ -476,8 +448,6 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
     total_debit = db.Column(db.Numeric(18, 3), default=0)
     total_credit = db.Column(db.Numeric(18, 3), default=0)
-    # F9: حالة صريحة — كل مسار الإنشاء في طبقة الخدمات يمرّرها صراحةً.
-    # القيم الافتراضية تبقى True لRows التي تُنشأ مباشرة عبر ORM.
     is_posted = db.Column(db.Boolean, default=True)  # هل تم ترحيل القيد
     is_reversed = db.Column(db.Boolean, default=False)  # هل تم عكس القيد
     reversed_entry_id = db.Column(
@@ -542,8 +512,6 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         entry_date = entry_date or datetime.now(timezone.utc)
         entry_number = next_global_entry_number()
 
-        # قراءة سطور القيد الأصلي أولاً: الإجماليات تُشتق من السطور التي
-        # ستُكتب (وليس من إجماليات الرأس، فقد لا يكون القيد متسقاً داخلياً).
         source_lines = [
             (
                 line.account,
@@ -585,14 +553,12 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             total_debit=total_debit,
             total_credit=total_credit,
             is_posted=GLJournalEntry.STATE_POSTED,
-            # F2 — الربط في الاتجاهين: القيد العكسي يشير إلى الأصل.
             reversed_entry_id=self.id,
             created_by=created_by if created_by is not None else self.created_by,
             tenant_id=self.tenant_id,
         )
         db.session.add(reversed_entry)
 
-        # عكس السطور
         for (
             account,
             account_id,
@@ -614,16 +580,13 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
                 )
             )
 
-        # INSERT واحد (رأس + سطور) — لا تعديل على قيد مرحّل بعد إنشائه.
         db.session.flush()
 
-        # تحديث القيد الأصلي — الربط في الاتجاهين.
         self.is_reversed = True
         self.reversed_entry_id = reversed_entry.id
 
         db.session.flush()
 
-        # سجل التدقيق (F2) — القيد العكسي لا بد أن يكون معتمَداً.
         try:
             from models.journal_entry_audit import JournalEntryAudit
 
@@ -667,10 +630,8 @@ class GLJournalLine(TenantScopedMixin, db.Model):
     credit = db.Column(db.Numeric(18, 3), default=0)
     amount_base = db.Column(db.Numeric(18, 3), default=0)
 
-    # مركز التكلفة (اختياري)
     cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"))
 
-    # معرّف الشريك (عميل) — تُسند لهذا الطرف حصة في القيد (مثلاً توزيع أرباح)
     party_id = db.Column(
         db.Integer,
         db.ForeignKey("customers.id", ondelete="SET NULL"),
@@ -687,13 +648,6 @@ class GLJournalLine(TenantScopedMixin, db.Model):
         return f"<GLLine acc={self.account_id} d={self.debit} c={self.credit}>"
 
 
-# ===========================================================================
-# F5 — حماية القيد المرحّل من التعديل المباشر عبر ORM
-# ===========================================================================
-
-# الحقول المالية/الثابتة التي لا يجوز تعديلها بعد ترحيل القيد.
-# is_posted و is_reversed و reversed_entry_id و notes و updated_at ليست
-# منها: انتقال المسودة↔المرحّل ورابط العكس meta-data وليس محتوى مالي.
 IMMUTABLE_POSTED_FIELDS = (
     "entry_number",
     "entry_date",
@@ -742,7 +696,6 @@ def _guard_posted_journal_entry(mapper, connection, target):
         posted_before = bool(getattr(target, "is_posted", False))
 
     if not posted_before:
-        # القيد مسودة: التعديل مسموح (مسار المسودة → الموافقة).
         return
 
     raise ValueError(
@@ -767,8 +720,6 @@ def _guard_system_account_update(mapper, connection, target):
     if not changed:
         return
 
-    # القيود تُحسب على القيمة قبل التعديل: تغيير الكود يجب ألّا يفلت
-    # من الحماية بأن يصبح الكود الجديد غير مُبذَر.
     old_code = target.code
     try:
         history = state.attrs["code"].history

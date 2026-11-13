@@ -11,9 +11,7 @@ Usage::
 
     with atomic_transaction():
         result = SomeService.do_work(...)
-        # commit happens on clean exit; rollback on exception
 
-    # or as a decorator:
     @atomic_transaction
     def my_route():
         ...

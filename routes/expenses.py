@@ -35,7 +35,6 @@ def index():
 
     query = Expense.query.filter_by(status="confirmed")
 
-    # إخفاء المصروفات المؤرشفة
     from models import ArchivedRecord
     from sqlalchemy import select
 
@@ -85,8 +84,6 @@ def create():  # noqa: C901
 
             amount = Decimal(str(request.form.get("amount")))
 
-            # رفض المبلغ غير الموجب: بدون هذا التحقق كان المبلغ صفراً أو سالباً
-            # يُخزَّن ويُرحَّل، فتنقلب سطور القيد المحاسبي على حساب المصروف.
             if amount <= 0:
                 flash("❌ المبلغ يجب أن يكون أكبر من صفر.", "danger")
                 return redirect(url_for("expenses.index"))
@@ -119,9 +116,7 @@ def create():  # noqa: C901
                 except ValueError:
                     pass
 
-            # المدفوع فعليًا: صافي للـ RC، إجمالي لغيره
             _payment_amount = _net if reverse_charge else _total
-            # تقريب بعملة المعاملة ثم بسعر الصرف
             _payment_amount = _payment_amount.quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             )
@@ -157,7 +152,6 @@ def create():  # noqa: C901
             db.session.add(expense)
             db.session.flush()
 
-            # Handle Cheque Creation
             cheque = None
             if expense.payment_method == "cheque":
                 cheque_date_str = request.form.get("cheque_date")
@@ -189,10 +183,7 @@ def create():  # noqa: C901
                 db.session.add(cheque)
                 db.session.flush()
 
-            # معاملات كاملة مع مصروف + قيد + شيك: أي فشل يُرجع الكل
             GLService.ensure_core_accounts()
-            # الضريبة: إضافية/شاملة، غير قابلة للاسترداد (تُحمّل التكلفة)،
-            # وعكس الضريبة (RC: الدافع يسجّل ضريبة ذاتية متوازنة، والمورد بالصافي)
             from services.expense_gl import build_expense_gl_lines
 
             lines = build_expense_gl_lines(expense)
@@ -206,7 +197,6 @@ def create():  # noqa: C901
                 exchange_rate=expense.exchange_rate,
             )
 
-            # If Cheque, issue it (GL: Debit 2110, Credit 2120)
             if cheque:
                 cheque.issue_cheque()
 
@@ -265,7 +255,6 @@ def print_expense(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    # Template selection (expenses use simple template for now, can add more later)
     template = request.args.get("template", "simple")
     _ALLOWED_TEMPLATES = ("simple",)
     if template not in _ALLOWED_TEMPLATES:
@@ -351,7 +340,6 @@ def _repost_expense_gl(expense):
 
     try:
         GLService.ensure_core_accounts()
-        # نفس منطق القيد في create — بما في ذلك الضريبة
         from services.expense_gl import build_expense_gl_lines
 
         line_set = build_expense_gl_lines(expense)
@@ -387,7 +375,6 @@ def edit(id):  # noqa: C901
 
     if request.method == "POST":
         try:
-            # Snapshot GL-relevant values before mutation (C5 trigger set)
             old_amount = Decimal(str(expense.amount or 0))
             old_category_id = expense.category_id
             old_payment_method = expense.payment_method
@@ -398,7 +385,6 @@ def edit(id):  # noqa: C901
             old_rc = bool(getattr(expense, "reverse_charge", False))
             old_inclusive = bool(getattr(expense, "tax_inclusive", False))
 
-            # تحديث البيانات
             new_category_raw = request.form.get("category_id")
             expense.category_id = int(new_category_raw) if new_category_raw else None
             expense.description = request.form.get("description")
@@ -412,13 +398,10 @@ def edit(id):  # noqa: C901
             expense.supplier_name = request.form.get("supplier_name")
             expense.notes = request.form.get("notes")
 
-            # F12: assign the method from the form when present, otherwise the
-            # snapshot comparison below can never fire the GL repost.
             new_payment_method = request.form.get("payment_method")
             if new_payment_method:
                 expense.payment_method = new_payment_method
 
-            # الضريبة (إن وُجدت في النموذج)
             new_treatment = (
                 (
                     request.form.get("tax_treatment")
@@ -459,7 +442,6 @@ def edit(id):  # noqa: C901
             )
             expense.tax_amount = _t
 
-            # حساب المبلغ بعملة الأساس
             exchange_rate = CurrencyService.get_exchange_rate(
                 expense.currency, _base_curr_edit
             )
@@ -495,9 +477,6 @@ def edit(id):  # noqa: C901
                     audit_changes["gl_reversed"] = gl_reversed_entry_number
             create_audit_log("update", "expenses", id, changes=audit_changes or None)
 
-            # F52: never report a silent success when a GL-relevant edit
-            # could not be reposted — the repost helper already flashed the
-            # specific warning, this surfaces the error outcome.
             if gl_relevant_change and gl_reversed_entry_number is None:
                 flash(
                     "❌ تم حفظ التعديل لكن تعذر إعادة ترحيل القيد المحاسبي؛ راجع دفتر اليومية يدوياً.",
@@ -534,19 +513,14 @@ def delete(id):
 
     expense = db.get_or_404(Expense, id)
 
-    # التحقق من الارتباطات
     has_links = False
 
-    # 1. التحقق من الشيكات
     cheque = Cheque.query.filter_by(expense_id=expense.id).first()
     if cheque and cheque.status in ["cleared", "deposited", "bounced", "cancelled"]:
         has_links = True
 
     try:
         if has_links:
-            # أرشفة (Soft Delete)
-            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا يُؤرشف
-            # المصروف (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             try:
                 reverse_or_purge_gl_entries(
                     "Expense",
@@ -589,9 +563,6 @@ def delete(id):
             )
 
         else:
-            # حذف نهائي (Hard Delete)
-            # 1. القيود المحاسبية للمصروف: المرحَّلة تُعكس (لا تُحذف
-            #    أبداً) والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
                     "Expense",
@@ -610,7 +581,6 @@ def delete(id):
                 )
                 return redirect(url_for("expenses.view", id=id))
 
-            # 2. حذف الشيك إن وُجد وحذف قيوده (المرحَّلة تُعكس)
             if cheque:
                 cheque.gl_journal_entry_id = None
                 cheque.gl_clearing_entry_id = None
@@ -633,7 +603,6 @@ def delete(id):
 
                 db.session.delete(cheque)
 
-            # 3. حذف المصروف
             db.session.delete(expense)
             create_audit_log("delete", "expenses", id)
             db.session.commit()
@@ -675,7 +644,6 @@ def categories():
 @permission_required("manage_expenses")
 def create_category():
     try:
-        # دعم JSON و Form Data
         if request.is_json:
             data = request.get_json()
         else:
@@ -696,7 +664,6 @@ def create_category():
         db.session.add(category)
         db.session.commit()
 
-        # إرجاع JSON إذا كان الطلب JSON
         if request.is_json:
             return jsonify(
                 {

@@ -49,8 +49,6 @@ class ErrorLog(db.Model):
     severity = db.Column(db.String(20), nullable=False, default="error", index=True)
     source = db.Column(db.String(50))
 
-    # Who was affected. username is denormalized so the record stays
-    # readable even after the user row is deleted.
     user_id = db.Column(
         db.Integer,
         db.ForeignKey("users.id", ondelete="SET NULL"),
@@ -60,21 +58,17 @@ class ErrorLog(db.Model):
     username = db.Column(db.String(150))
     user_role = db.Column(db.String(50))
 
-    # Where it happened.
     method = db.Column(db.String(10))
     path = db.Column(db.String(500))
     endpoint = db.Column(db.String(150))
 
-    # What happened (always sanitized before persist).
     message = db.Column(db.Text, nullable=False)
     traceback_text = db.Column(db.Text)
 
-    # Correlation / forensics.
     request_id = db.Column(db.String(50), index=True)
     ip_address = db.Column(db.String(50))
     user_agent = db.Column(db.String(500))
 
-    # Triage.
     resolved = db.Column(db.Boolean, default=False, nullable=False, index=True)
     resolved_at = db.Column(db.DateTime)
     resolved_by_id = db.Column(

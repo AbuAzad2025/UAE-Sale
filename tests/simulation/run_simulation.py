@@ -1027,7 +1027,6 @@ def cat6_rbac_idor():
         t1_id, t2_id = t1.id, t2.id
         c1_id, c2_id = c1.id, c2.id
 
-    # 20,000 cross-tenant read attempts (use filtered query, not .get() which bypasses tenant filter)
     for i in range(20000):
         try:
             with app.app_context():

@@ -1,6 +1,3 @@
-# models/__init__.py
-# All database models
-
 from .user import User, Role, Permission
 from .customer import Customer
 from .supplier import Supplier
@@ -102,13 +99,6 @@ from .validators import (
     tenant_consistency_validator,
 )
 
-# Re-export validators so callers can do ``from models import
-# single_parent_validator`` etc. without reaching into models.validators.
-# Re-export validators so callers can do ``from models import
-# single_parent_validator`` etc. without reaching into models.validators.
-# (The final __all__ is declared at the end of this file.)
-
-# Register all tenant-scoped models for automatic filtering
 for _model_cls in [
     Sale,
     SaleLine,

@@ -26,11 +26,9 @@ class BankReconciliation(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False
     )
 
-    # الفترة
     period_start = db.Column(db.Date, nullable=False)
     period_end = db.Column(db.Date, nullable=False, index=True)
 
-    # الأرصدة
     opening_balance_per_books = db.Column(
         db.Numeric(18, 3), default=0
     )  # رصيد الدفاتر الافتتاحي
@@ -41,7 +39,6 @@ class BankReconciliation(TenantScopedMixin, db.Model):
         db.Numeric(18, 3), default=0
     )  # رصيد البنك الختامي
 
-    # الفروقات
     outstanding_deposits = db.Column(db.Numeric(18, 3), default=0)  # إيداعات معلقة
     outstanding_withdrawals = db.Column(db.Numeric(18, 3), default=0)  # سحوبات معلقة
     bank_charges = db.Column(db.Numeric(18, 3), default=0)  # مصاريف بنكية
@@ -49,17 +46,14 @@ class BankReconciliation(TenantScopedMixin, db.Model):
     errors_in_books = db.Column(db.Numeric(18, 3), default=0)  # أخطاء في الدفاتر
     errors_in_bank = db.Column(db.Numeric(18, 3), default=0)  # أخطاء في البنك
 
-    # الحالة
     status = db.Column(
         db.String(20), default="draft", index=True
     )  # draft, completed, approved
     is_balanced = db.Column(db.Boolean, default=False)
     difference = db.Column(db.Numeric(18, 3), default=0)
 
-    # الملاحظات
     notes = db.Column(db.Text)
 
-    # Meta
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(
@@ -72,7 +66,6 @@ class BankReconciliation(TenantScopedMixin, db.Model):
     )
     approved_at = db.Column(db.DateTime)
 
-    # Relationships
     bank_account = db.relationship("GLAccount", foreign_keys=[bank_account_id])
     creator = db.relationship("User", foreign_keys=[created_by])
     approver = db.relationship("User", foreign_keys=[approved_by])
@@ -93,7 +86,6 @@ class BankReconciliation(TenantScopedMixin, db.Model):
 
     def calculate_reconciliation(self):
         """حساب المطابقة"""
-        # الرصيد المعدل حسب الدفاتر
         adjusted_books = (
             self.closing_balance_per_books
             - self.bank_charges
@@ -101,7 +93,6 @@ class BankReconciliation(TenantScopedMixin, db.Model):
             - self.errors_in_books
         )
 
-        # الرصيد المعدل حسب البنك
         adjusted_bank = (
             self.closing_balance_per_bank
             + self.outstanding_deposits
@@ -109,7 +100,6 @@ class BankReconciliation(TenantScopedMixin, db.Model):
             - self.errors_in_bank
         )
 
-        # الفرق
         self.difference = adjusted_books - adjusted_bank
         self.is_balanced = abs(self.difference) < Decimal("0.01")
 
@@ -145,27 +135,22 @@ class BankReconciliationItem(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("bank_reconciliations.id"), nullable=False
     )
 
-    # نوع العنصر
     item_type = db.Column(
         db.String(30), nullable=False
     )  # outstanding_deposit, outstanding_withdrawal, bank_charge, etc.
 
-    # التفاصيل
     transaction_date = db.Column(db.Date, nullable=False)
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Numeric(18, 3), nullable=False)
 
-    # الربط
     journal_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
     cheque_id = db.Column(db.Integer, db.ForeignKey("cheques.id"))
 
-    # الحالة
     is_cleared = db.Column(db.Boolean, default=False)
     cleared_date = db.Column(db.Date)
 
     notes = db.Column(db.Text)
 
-    # Relationships
     reconciliation = db.relationship("BankReconciliation", back_populates="items")
     journal_entry = db.relationship("GLJournalEntry")
     cheque = db.relationship("Cheque")

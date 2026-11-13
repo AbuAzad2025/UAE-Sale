@@ -56,14 +56,10 @@ from services.due_date_service import (
     overdue_days,
 )
 
-# تقريب المبالغ (3 منازل عشرية) — نفس دقة أعمدة Money في قاعدة البيانات
 MONEY_Q = Decimal("0.001")
 
-
-# حدود شرائح **العمر** — مطابقة لـ routes/ledger.py::AGING_BUCKETS
 AGING_BUCKETS = ("0-30", "31-60", "61-90", "91-120", "over_120")
 
-# حدود شرائح **التأخير** — المصدر الوحيد في services/due_date_service.py
 __all__ = [
     "AGING_BUCKETS",
     "OVERDUE_BUCKETS",
@@ -151,7 +147,6 @@ class AgingAnalysisService:
         totals["total"] = Decimal("0")
         overdue_totals = {bucket: Decimal("0") for bucket in OVERDUE_BUCKETS}
 
-        # جميع العملاء النشطين
         customers = (
             Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
         )
@@ -169,8 +164,6 @@ class AgingAnalysisService:
                 "invoices": [],
             }
 
-            # المبيعات غير المدفوعة بالكامل — نفس فلتر routes/ledger.py:
-            # مؤكّدة + نشطة + غير مؤرشفة + تاريخها ≤ تاريخ التقرير.
             unpaid_sales = (
                 Sale.query.filter(
                     Sale.customer_id == customer.id,
@@ -184,18 +177,14 @@ class AgingAnalysisService:
             )
 
             for sale in unpaid_sales:
-                # حساب الرصيد المتبقي — بعملة الأساس (amount_base -
-                # paid_amount_base) لأن كل أرقام الذمم الأخرى بالأساس.
                 balance = (sale.amount_base or Decimal("0")) - (
                     sale.paid_amount_base or Decimal("0")
                 )
 
                 if balance > 0:
-                    # حساب عمر الفاتورة (شرائح العمر — مرجع دفتر الأستاذ)
                     days_old = (as_of_date - sale.sale_date.date()).days
                     age_category = _aging_bucket(days_old)
 
-                    # حساب التأخير عن تاريخ الاستحقاق (الشرائح الحقيقية)
                     due = effective_due_date(sale.due_date, sale.sale_date)
                     days_late = overdue_days(due, as_of=as_of_date)
                     overdue_category = bucket_for_overdue(days_late)
@@ -204,7 +193,6 @@ class AgingAnalysisService:
                     aging["total"] += balance
                     aging["overdue"][overdue_category] += balance
 
-                    # إضافة تفاصيل الفاتورة
                     aging["invoices"].append(
                         {
                             "id": sale.id,
@@ -224,9 +212,7 @@ class AgingAnalysisService:
                         }
                     )
 
-            # إضافة العميل إذا كان لديه رصيد
             if aging["total"] > 0:
-                # تحويل Decimals لـ floats
                 aging_float = {
                     "customer": customer,
                     "0-30": float(aging["0-30"]),
@@ -247,14 +233,12 @@ class AgingAnalysisService:
                 }
                 results.append(aging_float)
 
-                # إضافة للإجماليات
                 for bucket in AGING_BUCKETS:
                     totals[bucket] += aging[bucket]
                 totals["total"] += aging["total"]
                 for bucket in OVERDUE_BUCKETS:
                     overdue_totals[bucket] += aging["overdue"][bucket]
 
-        # تحويل الإجماليات لـ floats
         totals_float = {k: float(v) for k, v in totals.items()}
 
         total_outstanding = sum(
@@ -293,7 +277,6 @@ class AgingAnalysisService:
         totals["total"] = Decimal("0")
         overdue_totals = {bucket: Decimal("0") for bucket in OVERDUE_BUCKETS}
 
-        # جميع الموردين النشطين
         suppliers = (
             Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
         )
@@ -311,8 +294,6 @@ class AgingAnalysisService:
                 "invoices": [],
             }
 
-            # المشتريات غير المدفوعة بالكامل — نفس فلتر routes/ledger.py:
-            # مؤكّدة + غير مؤرشفة + تاريخها ≤ تاريخ التقرير + مورد نشط.
             unpaid_purchases = (
                 Purchase.query.filter(
                     Purchase.supplier_id == supplier.id,
@@ -324,7 +305,6 @@ class AgingAnalysisService:
                 .all()
             )
 
-            # إجمالي المشتريات والمدفوعات للمورد
             total_purchases = sum(
                 (p.amount_base or Decimal("0") for p in unpaid_purchases), Decimal("0")
             )
@@ -353,7 +333,6 @@ class AgingAnalysisService:
                 "invoices": [],
             }
 
-            # توزيع المدفوعات على المشتريات تناسبياً
             payment_ratio = Decimal("0")
             if total_purchases > 0:
                 payment_ratio = min(Decimal("1"), total_paid / total_purchases)
@@ -365,11 +344,9 @@ class AgingAnalysisService:
                 )
 
                 if balance > 0:
-                    # حساب عمر الفاتورة (شرائح العمر — مرجع دفتر الأستاذ)
                     days_old = (as_of_date - purchase.purchase_date.date()).days
                     age_category = _aging_bucket(days_old)
 
-                    # حساب التأخير عن تاريخ الاستحقاق (الشرائح الحقيقية)
                     due = effective_due_date(purchase.due_date, purchase.purchase_date)
                     days_late = overdue_days(due, as_of=as_of_date)
                     overdue_category = bucket_for_overdue(days_late)
@@ -378,7 +355,6 @@ class AgingAnalysisService:
                     aging["total"] += balance
                     aging["overdue"][overdue_category] += balance
 
-                    # إضافة تفاصيل الفاتورة
                     aging["invoices"].append(
                         {
                             "purchase_number": purchase.purchase_number,
@@ -396,7 +372,6 @@ class AgingAnalysisService:
                         }
                     )
 
-            # إضافة المورد إذا كان لديه رصيد
             aging["total"] = supplier_balance
             if aging["total"] > 0:
                 aging_float = {
@@ -419,7 +394,6 @@ class AgingAnalysisService:
                 }
                 results.append(aging_float)
 
-                # إضافة للإجماليات
                 for bucket in AGING_BUCKETS:
                     totals[bucket] += aging[bucket]
                 totals["total"] += aging["total"]

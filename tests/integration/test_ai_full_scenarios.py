@@ -108,7 +108,6 @@ class TestSecurityAudit:
 
             req.ai_operation = "create_product"
             result = _require_csrf_for_sensitive_ops()
-            # No valid token supplied -> 403 tuple or None if fallback allows
             assert result is None or result[1] == 403
 
     def test_detect_ai_operation_mapping(self):

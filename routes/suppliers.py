@@ -112,7 +112,6 @@ def index():
 
     query = Supplier.query.filter_by(is_active=True)
 
-    # البحث
     if search:
         search_filter = f"%{search}%"
         query = query.filter(
@@ -124,7 +123,6 @@ def index():
             )
         )
 
-    # الفلترة حسب النوع
     if supplier_type:
         query = query.filter_by(supplier_type=supplier_type)
 
@@ -132,7 +130,6 @@ def index():
         page=page, per_page=per_page, error_out=False
     )
 
-    # إحصائيات
     stats = {
         "total": Supplier.query.filter_by(is_active=True).count(),
         "verified": Supplier.query.filter_by(is_active=True, is_verified=True).count(),
@@ -174,13 +171,8 @@ def create():
                     flash("⚠️ قيمة التقييم غير صحيحة.", "warning")
                     return render_template("suppliers/create.html")
 
-            # F4: الرصيد الافتتاحي (رصيد مستحق للمورد قبل استخدام النظام).
-            # كان يُخزَّن في total_purchases_aed — وهي إحصائية مشتريات
-            # تُمسح عند أول فاتورة شراء، فيضيع الرصيد. الآن يُخزَّن في
-            # أعمدة opening_balance_* التي يقرأها اشتقاق الرصيد.
             opening = _parse_opening_balance(request.form)
 
-            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
 
             _ok, _msg = trn_verdict(
@@ -258,7 +250,6 @@ def view(id):
     """عرض تفاصيل المورد"""
     supplier = get_owned_or_404(Supplier, id)
 
-    # آخر المشتريات
     recent_purchases = (
         supplier.purchases.filter_by(status="confirmed")
         .order_by(desc(Purchase.purchase_date))
@@ -266,7 +257,6 @@ def view(id):
         .all()
     )
 
-    # إحصائيات
     stats = {
         "total_purchases": supplier.purchases.filter_by(status="confirmed").count(),
         "total_amount": float(supplier.total_purchases_aed or 0),
@@ -294,7 +284,6 @@ def edit(id):
 
     if request.method == "POST":
         try:
-            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
 
             _ok, _msg = trn_verdict(
@@ -331,7 +320,6 @@ def edit(id):
             supplier.tags = request.form.get("tags")
             supplier.is_verified = request.form.get("is_verified") == "on"
 
-            # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
             opening = _parse_opening_balance(request.form)
             if opening:
                 supplier.opening_balance = opening["amount"]
@@ -369,7 +357,6 @@ def delete(id):
     supplier = get_owned_or_404(Supplier, id)
 
     try:
-        # Check for related records preventing deletion
         purchases_count = Purchase.query.filter_by(supplier_id=id).count()
         payments_count = Payment.query.filter_by(supplier_id=id).count()
 
@@ -389,7 +376,6 @@ def delete(id):
 
     except Exception as e:
         db.session.rollback()
-        # Fallback to soft delete if hard delete fails
         try:
             supplier.is_active = False
             db.session.commit()
@@ -442,7 +428,6 @@ def api_search():
         _ = request.args.get("page", 1, type=int)
         per_page = 20
 
-        # السماح بالبحث حتى بدون query (لعرض كل الموردين)
         if query and len(query) >= 1:
             suppliers = (
                 Supplier.query.filter(
@@ -458,7 +443,6 @@ def api_search():
                 .all()
             )
         else:
-            # عرض كل الموردين (مرتبين أبجدياً)
             suppliers = (
                 Supplier.query.filter_by(is_active=True)
                 .order_by(Supplier.name)

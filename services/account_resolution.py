@@ -19,7 +19,6 @@ from enum import Enum
 class AccountRole(str, Enum):
     """Semantic roles for GL accounts (decoupled from literal codes)."""
 
-    # Assets
     CASH = "CASH"
     BANK = "BANK"
     BANK_SAVINGS = "BANK_SAVINGS"
@@ -32,7 +31,6 @@ class AccountRole(str, Enum):
     EQUIPMENT = "EQUIPMENT"
     FURNITURE = "FURNITURE"
 
-    # Liabilities
     AP_CONTROL = "AP_CONTROL"
     PAYABLE = "PAYABLE"  # generic trade payables control (same family as AP_CONTROL)
     MERCHANTS_PAYABLE = "MERCHANTS_PAYABLE"
@@ -45,14 +43,12 @@ class AccountRole(str, Enum):
     SALARIES_PAYABLE = "SALARIES_PAYABLE"
     LOANS = "LOANS"
 
-    # Equity
     CAPITAL = "CAPITAL"
     RETAINED_EARNINGS = "RETAINED_EARNINGS"
     OWNER_DRAWS = "OWNER_DRAWS"
     PARTNERS_CURRENT = "PARTNERS_CURRENT"
     CURRENT_YEAR_PROFIT = "CURRENT_YEAR_PROFIT"
 
-    # Revenue
     SALES_REVENUE = "SALES_REVENUE"
     SALES_RETURNS = (
         "SALES_RETURNS"  # contra-revenue; posted as debit on sales revenue today
@@ -62,7 +58,6 @@ class AccountRole(str, Enum):
     FX_GAIN = "FX_GAIN"
     OTHER_REVENUE = "OTHER_REVENUE"
 
-    # Expense
     COGS = "COGS"
     INVENTORY_ADJUSTMENTS = "INVENTORY_ADJUSTMENTS"
     DISCOUNTS_GIVEN = "DISCOUNTS_GIVEN"
@@ -81,7 +76,6 @@ class AccountRole(str, Enum):
     MISC_EXPENSE = "MISC_EXPENSE"
     BAD_DEBT_EXPENSE = "BAD_DEBT_EXPENSE"
 
-    # Maintenance module
     MAINTENANCE_AR = "MAINTENANCE_AR"
     MAINTENANCE_AP = "MAINTENANCE_AP"
     MAINTENANCE_REVENUE = "MAINTENANCE_REVENUE"
@@ -89,7 +83,6 @@ class AccountRole(str, Enum):
     WARRANTY_EXPENSE = "WARRANTY_EXPENSE"
 
 
-# Fallback defaults == today's literal codes (zero behavior change).
 DEFAULT_ROLE_MAP = {
     AccountRole.CASH.value: "1110",
     AccountRole.BANK.value: "1120",
@@ -217,10 +210,6 @@ class AccountResolver:
         code = AccountResolver.resolve(role, tenant_id=tenant_id)
         GLService.ensure_core_accounts()
         return GLAccount.query.filter_by(code=str(code)).first()
-
-    # ------------------------------------------------------------------
-    # F11 — the single place where a GL account code is resolved
-    # ------------------------------------------------------------------
 
     @staticmethod
     def resolve_codes(*roles, tenant_id=None):

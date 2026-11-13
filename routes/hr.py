@@ -30,8 +30,6 @@ from utils.helpers import create_audit_log
 
 hr_bp = Blueprint("hr", __name__, url_prefix="/hr")
 
-# ==================== DASHBOARD ====================
-
 
 @hr_bp.route("/")
 @login_required
@@ -52,9 +50,6 @@ def dashboard():
         pending_leaves=pending_leaves,
         departments=departments,
     )
-
-
-# ==================== DEPARTMENTS ====================
 
 
 @hr_bp.route("/departments")
@@ -139,9 +134,6 @@ def edit_department(id):
         parent_departments=parent_depts,
         managers=managers,
     )
-
-
-# ==================== EMPLOYEES ====================
 
 
 @hr_bp.route("/employees")
@@ -267,7 +259,6 @@ def create_employee():
             current_app.logger.exception("handler failed")
             flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
-    # Users not yet employees
     existing_emp_user_ids = [e.user_id for e in Employee.query.all()]
     available_users = (
         User.query.filter(
@@ -387,9 +378,6 @@ def edit_employee(id):
     return render_template(
         "hr/edit_employee.html", employee=emp, departments=departments
     )
-
-
-# ==================== LEAVE MANAGEMENT ====================
 
 
 @hr_bp.route("/leave")
@@ -543,9 +531,6 @@ def leave_types():
     return render_template("hr/leave_types.html", leave_types=types)
 
 
-# ==================== PAYROLL ====================
-
-
 @hr_bp.route("/payroll")
 @login_required
 @permission_required("manage_hr")
@@ -665,8 +650,6 @@ def approve_payslip(id):
 def mark_payslip_paid(id):
     from decimal import Decimal
 
-    # الذرّية الكاملة: تسجيل الدفع + قيد الأستاذ في معاملة واحدة.
-    # أي فشل — لا يُسجَّل الدفع "مكتملاً" بلا قيد (التسجيل الحرج).
     try:
         payslip = get_owned_or_404(Payslip, id)
         payslip.mark_paid()
@@ -733,9 +716,6 @@ def mark_payslip_paid(id):
             "danger",
         )
     return redirect(url_for("hr.view_payslip", id=id))
-
-
-# ==================== API ====================
 
 
 @hr_bp.route("/api/employee/<int:id>/leave-balance")

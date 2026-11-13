@@ -69,8 +69,6 @@ class WebhookService:
             logger.warning("NOWPayments IPN secret not configured")
             return False
 
-        # Fail closed on None/non-str signatures: compare_digest would raise
-        # TypeError, so reject early instead of propagating.
         if not isinstance(signature, str) or not signature:
             logger.warning("NOWPayments signature missing or not a string")
             return False
@@ -78,7 +76,6 @@ class WebhookService:
         try:
             if isinstance(payload, str):
                 payload = payload.encode("utf-8")
-            # حساب التوقيع المتوقع
             expected_signature = hmac.new(
                 ipn_secret.encode("utf-8"), payload, hashlib.sha512
             ).hexdigest()
@@ -154,7 +151,6 @@ class WebhookService:
                 f"📨 NOWPayments webhook received: {payment_id} - {payment_status}"
             )
 
-            # تحديد نوع العملية (شراء أو تبرع)
             if order_id.startswith("PURCHASE_"):
                 return WebhookService._process_purchase_webhook(data)
             elif order_id.startswith("DONATION_"):
@@ -173,20 +169,17 @@ class WebhookService:
         payment_status = data.get("payment_status")
         payment_id = data.get("payment_id")
 
-        # البحث عن الشراء
         purchase = PackagePurchase.query.filter_by(transaction_id=payment_id).first()
 
         if not purchase:
             logger.warning(f"Purchase not found for payment_id: {payment_id}")
             return {"success": False, "error": "Purchase not found"}
 
-        # تحديث الحالة
         if payment_status == "finished":
             purchase.payment_status = "completed"
             purchase.activation_status = "activated"
             purchase.activation_date = datetime.now(timezone.utc)
 
-            # إرسال إشعار
             NotificationService.notify_purchase_activated(
                 purchase.package.name_ar if purchase.package else "N/A",
                 purchase.customer_name,
@@ -208,19 +201,16 @@ class WebhookService:
         payment_status = data.get("payment_status")
         payment_id = data.get("payment_id")
 
-        # البحث عن التبرع
         donation = Donation.query.filter_by(transaction_hash=payment_id).first()
 
         if not donation:
             logger.warning(f"Donation not found for payment_id: {payment_id}")
             return {"success": False, "error": "Donation not found"}
 
-        # تحديث الحالة
         if payment_status == "finished":
             donation.status = "completed"
             donation.completed_at = datetime.now(timezone.utc)
 
-            # إرسال إشعار
             NotificationService.notify_payment_received(
                 float(donation.amount_usd),
                 donation.donor_name or "مجهول",
@@ -254,8 +244,6 @@ class WebhookService:
             logger.warning("Stripe webhook secret not configured")
             return False
 
-        # استخدام مكتبة Stripe للتحقق
-        # (يتطلب تثبيت stripe: pip install stripe)
         try:
             import stripe
 
@@ -297,13 +285,11 @@ class WebhookService:
     @staticmethod
     def _process_stripe_payment_success(payment_intent):
         """معالجة دفعة ناجحة من Stripe"""
-        # استخراج البيانات
         amount = payment_intent.get("amount") / 100  # من cents إلى dollars
         customer_email = payment_intent.get("receipt_email")
 
         logger.info(f"✅ Stripe payment succeeded: ${amount} from {customer_email}")
 
-        # إرسال إشعار
         NotificationService.notify_payment_received(
             amount, customer_email or "Unknown", "Stripe"
         )
@@ -322,7 +308,6 @@ class WebhookService:
             f"❌ Stripe payment failed for {customer_email}: {error_message}"
         )
 
-        # إرسال تنبيه
         NotificationService.notify_security_alert(
             "فشل دفعة Stripe", f"فشلت دفعة من {customer_email}: {error_message}"
         )

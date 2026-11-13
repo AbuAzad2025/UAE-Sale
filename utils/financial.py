@@ -28,7 +28,6 @@ def parse_decimal(raw, field_name="value", quantize="0.001", allow_none=False):
     elif isinstance(raw, (int,)):
         value = Decimal(raw)
     elif isinstance(raw, float):
-        # Convert via str to avoid binary float artifacts
         value = Decimal(str(raw))
     else:
         try:

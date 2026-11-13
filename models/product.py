@@ -59,13 +59,6 @@ class ProductPartner(db.Model):
 class Product(TenantScopedMixin, db.Model):
     __tablename__ = "products"
 
-    # SCHEMA NOTE (F8): the CHECK constraints below are declared by the
-    # model, but db.create_all() is not what production runs — the
-    # constraints only exist in the database if a migration creates them.
-    # Until that migration lands, PostgreSQL accepts a negative
-    # current_stock: only the service layer (StockService.create_movement)
-    # and the route layer refuse it, while the model listener
-    # (models/events.py) silently clamps the value to 0.
     __table_args__ = (
         db.Index("idx_product_active_stock", "is_active", "current_stock"),
         db.Index("idx_product_category_active", "category_id", "is_active"),
@@ -107,20 +100,13 @@ class Product(TenantScopedMixin, db.Model):
     )  # Percentage share for merchant owner
     partner_price = db.Column(db.Numeric(15, 3))
 
-    # VAT treatment: standard = نسبة التينانت، zero = خاضعة 0% (تصدير)، exempt = خارج النطاق
     tax_treatment = db.Column(db.String(10), default="standard")
 
-    # SCHEMA NOTE (b2_inventory_costing): the running moving weighted average
-    # cost per unit, in base currency.  The stock is valued at
-    # ``current_stock * average_cost`` and the cost of goods sold is
-    # snapshotted at the moment of the sale.  ``cost_price`` stays the
-    # reference (last purchase) cost — it is NOT the valuation basis.
     average_cost = db.Column(db.Numeric(15, 3), default=0, nullable=False)
 
     current_stock = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     min_stock_alert = db.Column(db.Numeric(15, 3), default=0)
 
-    # Alias for consistency (stock_quantity = current_stock)
     @property
     def stock_quantity(self):
         """Alias for current_stock for consistency"""
@@ -131,7 +117,6 @@ class Product(TenantScopedMixin, db.Model):
         """Setter for stock_quantity"""
         self.current_stock = value
 
-    # Another alias for quantity_in_stock
     @property
     def quantity_in_stock(self):
         """Alias for current_stock"""
@@ -196,10 +181,8 @@ class Product(TenantScopedMixin, db.Model):
 
     def get_price_for_customer(self, customer_type="regular"):
         if customer_type == "partner" and self.partner_price:
-            # Treat partner_price as percentage discount
             return self.regular_price * (1 - (self.partner_price / 100))
         elif customer_type == "merchant" and self.merchant_price:
-            # Treat merchant_price as percentage discount
             return self.regular_price * (1 - (self.merchant_price / 100))
         return self.regular_price
 

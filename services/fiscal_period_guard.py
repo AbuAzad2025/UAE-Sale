@@ -59,9 +59,6 @@ def period_for_date(document_date=None):
         FiscalPeriod.start_date <= target,
         FiscalPeriod.end_date >= target,
     )
-    # FiscalPeriod gained a tenant_id column in the P0 migration. Until it
-    # exists (or when no tenant is in scope, e.g. the platform owner), the
-    # period is global.
     if tenant_id is not None and hasattr(FiscalPeriod, "tenant_id"):
         scoped = query.filter(
             (FiscalPeriod.tenant_id == tenant_id) | (FiscalPeriod.tenant_id.is_(None))
@@ -73,15 +70,6 @@ def period_for_date(document_date=None):
         return None
 
     def _sort_key(p):
-        # Precedence, most significant first:
-        #   1. a TENANT-specific period beats a global one - closing a year
-        #      for one tenant must not be overridden by the global period
-        #      every other tenant uses;
-        #   2. a CLOSED period beats an open one - fail closed. If two
-        #      periods cover the same date and one is closed, the date is
-        #      closed; otherwise closing a period would have no effect
-        #      whenever an overlapping open period also exists;
-        #   3. the most recent start_date wins.
         is_global = getattr(p, "tenant_id", None) is None
         return (
             is_global,

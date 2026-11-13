@@ -25,7 +25,6 @@ from utils.decorators import (
 )
 from utils.errors import ValidationError
 
-
 _UNCHANGED = object()
 
 
@@ -85,10 +84,6 @@ def _resolve_role(role_id, actor):
     role = Role.query.get(role_id)
     if role is None or not getattr(role, "is_active", True):
         raise ValidationError("الدور المختار غير صالح.")
-    # NOTE: deliberately NOT calling _enforce_target_role_not_higher here:
-    # it reads the global Flask-Login proxy (None outside a request) and
-    # aborts 403 instead of raising ValueError.  The explicit actor-based
-    # comparison below enforces the identical rule with service semantics.
     actor_level = _actor_level(actor)
     if _role_level_of(role) > actor_level:
         raise ValidationError("لا يمكنك منح دور أعلى من دورك.")
@@ -124,9 +119,6 @@ def _check_tenant_quota(tenant_id):
 class UserService:
     """Single choke point for every user write in the system."""
 
-    # ------------------------------------------------------------------
-    # provision
-    # ------------------------------------------------------------------
     @staticmethod
     def provision_user(
         *,
@@ -159,7 +151,6 @@ class UserService:
                 tenant_id = int(tenant_id)
             except (TypeError, ValueError):
                 raise ValidationError("المستأجر المحدد غير صالح.")
-        # platform roles بلا تينانت؛ بقيتهم يحتاجون شركة نشطة (يمنع حيازة الهياكل)
         if not is_owner and getattr(role, "slug", None) not in (
             "super_admin",
             "developer",
@@ -201,9 +192,6 @@ class UserService:
         db.session.flush()
         return user
 
-    # ------------------------------------------------------------------
-    # update
-    # ------------------------------------------------------------------
     @staticmethod
     def update_user(
         user,
@@ -261,9 +249,6 @@ class UserService:
         db.session.flush()
         return user
 
-    # ------------------------------------------------------------------
-    # activate / delete
-    # ------------------------------------------------------------------
     @staticmethod
     def set_active(user, active, actor):
         """Enable/disable a user. Owners are immune here."""
@@ -294,9 +279,6 @@ class UserService:
         db.session.flush()
         return "deleted"
 
-    # ------------------------------------------------------------------
-    # self-service password
-    # ------------------------------------------------------------------
     @staticmethod
     def change_own_password(user, current_password, new_password, confirm_password):
         """Self-service change: verifies current, forbids reuse. Commits."""
@@ -312,9 +294,6 @@ class UserService:
         db.session.flush()
         return user
 
-    # ------------------------------------------------------------------
-    # lookups
-    # ------------------------------------------------------------------
     @staticmethod
     def get_for_actor(user_id, actor):
         """Tenant-safe single-user lookup (owners bypass tenant scope)."""

@@ -81,7 +81,7 @@ def _role_level(role_or_slug):
     if role_or_slug is None:
         return 0
     if isinstance(role_or_slug, str):
-        # Build a minimal role-like object
+
         class _R:
             pass
 
@@ -107,8 +107,6 @@ def dashboard():
     today = datetime.now().date()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
-    # SECURITY/BUGFIX: sale_date is stored timezone-aware; a naive cutoff
-    # crashed the owner dashboard (500) whenever an unpaid confirmed sale existed.
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
     stats["total_users"] = User.query.filter_by(is_active=True, is_owner=False).count()
@@ -195,7 +193,6 @@ def dashboard():
         if balance > 0:
             total_receivables += balance
             sale_date = sale.sale_date
-            # Normalize timezone: if sale_date is naive, assume UTC (matching cutoff_date)
             if sale_date.tzinfo is None:
                 sale_date = sale_date.replace(tzinfo=timezone.utc)
             if sale_date < cutoff_date:
@@ -228,7 +225,6 @@ def dashboard():
 
     stats["top_customers"] = top_customers
 
-    # Top selling products
     try:
         top_products = (
             db.session.query(
@@ -316,20 +312,16 @@ def audit_logs():
 
     query = AuditLog.query
 
-    # فلترة حسب العملية
     if action:
         query = query.filter_by(action=action)
 
-    # فلترة حسب المستخدم
     if user_id:
         query = query.filter_by(user_id=user_id)
 
-    # الترتيب والتقسيم
     pagination = query.order_by(AuditLog.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
-    # إحصائيات سريعة
     stats = {
         "total": AuditLog.query.count(),
         "today": AuditLog.query.filter(
@@ -340,7 +332,6 @@ def audit_logs():
         "deletes": AuditLog.query.filter_by(action="delete").count(),
     }
 
-    # قائمة المستخدمين للفلتر
     users = User.query.filter_by(is_active=True).all()
 
     return render_template(
@@ -373,12 +364,8 @@ def archived():
     )
 
 
-# Slug of the platform-owner role: its permission set is bypass-based and
-# must never be edited from the role editor.
 _OWNER_ROLE_SLUG = "owner"
 
-# Roles whose users legitimately see cost data through can_see_costs();
-# view_costs may only be granted to these (server-side policy).
 _COST_BEARING_ROLE_SLUGS = {"super_admin", "manager", "developer"}
 
 
@@ -387,7 +374,6 @@ _COST_BEARING_ROLE_SLUGS = {"super_admin", "manager", "developer"}
 @owner_required
 def roles_permissions():
     """صفحة الأدوار والصلاحيات — محرر تفاعلي لصلاحيات الأدوار."""
-    # Never expose the Owner role's bypass list as editable data.
     roles = (
         Role.query.filter(Role.slug != _OWNER_ROLE_SLUG).order_by(Role.name.asc()).all()
     )
@@ -422,7 +408,6 @@ def update_role_permissions(role_id):
         flash("❌ لا يمكن تعديل صلاحيات دور المالك (Owner).", "danger")
         return redirect(url_for("owner.roles_permissions"))
 
-    # view_costs drives can_see_costs() — only cost-bearing roles may carry it.
     submitted = set(request.form.getlist("permissions"))
     valid_codes = {p.code for p in Permission.query.all()}
 
@@ -571,7 +556,6 @@ def database_tools():
 @owner_required
 def integrations():
     """عرض إعدادات التكاملات من قاعدة البيانات"""
-    # جلب إعدادات كل خدمة من قاعدة البيانات
     whatsapp = IntegrationSettings.get_service_config("whatsapp")
     email = IntegrationSettings.get_service_config("email")
     redis = IntegrationSettings.get_service_config("redis")
@@ -613,15 +597,12 @@ def integrations():
 def update_integration(service):
     """تحديث إعدادات التكامل - حفظ حقيقي في قاعدة البيانات"""
     try:
-        # الحصول على أو إنشاء سجل الخدمة
         integration = IntegrationSettings.get_service_config(service)
 
-        # تحديث enabled
         integration.enabled = (
             request.form.get("enabled") == "true" or request.form.get("enabled") == "1"
         )
 
-        # بناء config_data حسب نوع الخدمة
         config_data = {}
 
         if service == "whatsapp":
@@ -659,7 +640,6 @@ def update_integration(service):
                 "update_frequency": request.form.get("update_frequency", "daily"),
             }
 
-        # حفظ الإعدادات
         integration.set_config(config_data)
         integration.updated_by = current_user.id
         integration.updated_at = datetime.now(timezone.utc)
@@ -808,43 +788,32 @@ def restore_backup(filename):
     """استعادة نسخة احتياطية - للمالك فقط!"""
     from services.backup_service import BackupService
 
-    # SECURITY: Validate filename to prevent path traversal
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
         flash("❌ اسم ملف غير صحيح!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # أمان إضافي - التأكد من أن المستخدم هو المالك
     if not current_user.is_owner:
         flash("❌ غير مصرح - الاستعادة للمالك فقط!", "danger")
         return redirect(url_for("main.dashboard"))
 
-    # طلب تأكيد بكلمة المرور
     password = request.form.get("confirm_password")
 
     if not password:
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من كلمة المرور
     from werkzeug.security import check_password_hash
 
     if not check_password_hash(current_user.password_hash, password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من سلامة النسخة
     if not BackupService.verify_backup(filename):
         flash("❌ النسخة الاحتياطية تالفة أو غير صالحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # F10 (SECURITY): the restore pipes the dump into the LIVE database, so
-    # it REWRITES audit_logs with the backup's contents — the audit trail of
-    # everything that happened since that backup is destroyed by the restore
-    # itself.  The proof of the act therefore has to live OUTSIDE the
-    # database: it is written to a file under instance/ BEFORE the restore
-    # runs (and into audit_logs afterwards, for the rows the restore kept).
     restore_audit = {
         "action": "restore_backup",
         "backup_filename": filename,
@@ -857,13 +826,11 @@ def restore_backup(filename):
         current_app.logger.exception("handler failed")
         audit_file = None
 
-    # الاستعادة
     success = BackupService.restore_backup(filename)
 
     if success:
         flash("✅ تمت الاستعادة بنجاح! سيتم إعادة تحميل النظام...", "success")
 
-        # تسجيل في Audit Log (قاعدة البيانات) — بعد الاستعادة
         try:
             create_audit_log(
                 "restore_backup",
@@ -875,10 +842,8 @@ def restore_backup(filename):
         except Exception:
             current_app.logger.exception("handler failed")
 
-        # إعادة تشغيل التطبيق (optional)
         return redirect(url_for("owner.list_backups"))
     else:
-        # الفشل أيضاً عملية قابلة للتدقيق
         try:
             create_audit_log(
                 "restore_backup_failed",
@@ -900,7 +865,6 @@ def custom_restore_backup(filename):
     """استعادة مخصصة - جداول محددة فقط"""
     from services.backup_service import BackupService
 
-    # SECURITY: Validate filename to prevent path traversal
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
@@ -911,39 +875,31 @@ def custom_restore_backup(filename):
         flash("❌ الاستعادة المخصصة تتطلب نسخة بصيغة .dump", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من الصلاحيات
     if not current_user.is_owner:
         flash("❌ غير مصرح - الاستعادة للمالك فقط!", "danger")
         return redirect(url_for("main.dashboard"))
 
-    # كلمة المرور
     password = request.form.get("confirm_password")
     if not password:
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من كلمة المرور
     from werkzeug.security import check_password_hash
 
     if not check_password_hash(current_user.password_hash, password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # الحصول على الجداول المحددة
     selected_tables = request.form.getlist("tables[]")
 
     if not selected_tables:
         flash("❌ يرجى اختيار جدول واحد على الأقل!", "warning")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من سلامة النسخة
     if not BackupService.verify_backup(filename):
         flash("❌ النسخة الاحتياطية تالفة أو غير صالحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # F10: الاستعادة المخصصة تكتب جداول محددة فقط، لكنها مع ذلك عملية
-    # تُعيد كتابة بيانات جداول مُدقّقة — يُسجَّل أثرها في ملف دائم
-    # داخل instance/ قبل التنفيذ.
     restore_audit = {
         "action": "custom_restore_backup",
         "backup_filename": filename,
@@ -957,7 +913,6 @@ def custom_restore_backup(filename):
         current_app.logger.exception("handler failed")
         audit_file = None
 
-    # الاستعادة المخصصة
     success = BackupService.restore_custom_tables(filename, selected_tables)
 
     if success:
@@ -1001,19 +956,16 @@ def delete_backup():
         flash("❌ اسم الملف مطلوب!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # SECURITY: Validate filename to prevent path traversal
     try:
         validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
         flash("❌ اسم ملف غير صحيح!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من الصلاحيات
     if not current_user.is_owner:
         flash("❌ غير مصرح - الحذف للمالك فقط!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # التحقق من أن النسخة موجودة
     backups = BackupService.list_backups()
     backup_exists = any(b["filename"] == filename for b in backups)
 
@@ -1021,9 +973,6 @@ def delete_backup():
         flash("❌ النسخة الاحتياطية غير موجودة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
-    # F10: حذف نقطة الاستعادة نفسه عملية قابلة للتدقيق — تُكتب في ملف
-    # دائم داخل instance/ قبل الحذف (لأن الحذف قد يمحو سجل التدقيق في
-    # القاعدة مع نسخة لاحقة).
     delete_audit = {
         "action": "delete_backup",
         "backup_filename": filename,
@@ -1036,7 +985,6 @@ def delete_backup():
         current_app.logger.exception("handler failed")
         audit_file = None
 
-    # حذف النسخة
     success = BackupService.delete_backup(filename)
 
     if success:
@@ -1066,7 +1014,6 @@ def download_backup(filename):
     from flask import send_file
     import os
 
-    # SECURITY: Validate path to prevent path traversal
     try:
         backup_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
     except ValueError:
@@ -1119,12 +1066,6 @@ def truncate_table():
         flash("❌ يجب كتابة YES_DELETE_ALL للتأكيد", "danger")
         return redirect(url_for("owner.database_tools"))
 
-    # SECURITY: the protected list used to hold only the identity tables, so
-    # the financial and audit tables (audit_logs, gl_journal_entries,
-    # sales, payments, purchases, receipts …) were all deletable — the tool
-    # could erase the whole ledger AND the proof that it existed.
-    # utils/db_safety.PROTECTED_TABLES is the single denylist every
-    # destructive path must honour.
     protected_tables = [
         "users",
         "roles",
@@ -1136,7 +1077,6 @@ def truncate_table():
         flash("❌ لا يمكن مسح الجداول المحمية", "danger")
         return redirect(url_for("owner.database_tools"))
 
-    # SECURITY: Validate table name against actual database schema
     try:
         validate_table_name(table_name)
     except ValueError as e:
@@ -1144,9 +1084,6 @@ def truncate_table():
         return redirect(url_for("owner.database_tools"))
 
     try:
-        # The audit row is written and COMMITTED BEFORE the destructive
-        # statement: a failure of the DELETE can then never lose the
-        # record of the attempt.
         create_audit_log(
             "truncate_table",
             "database",
@@ -1175,7 +1112,6 @@ def browse_table(table_name):
     page = request.args.get("page", 1, type=int)
     per_page = 50
 
-    # SECURITY: Validate table name against actual database schema
     try:
         validate_table_name(table_name)
     except ValueError as e:
@@ -1217,7 +1153,6 @@ def browse_table(table_name):
 @owner_required
 def edit_table_data(table_name):
     """تعديل بيانات الجدول"""
-    # SECURITY: Validate table name against actual database schema
     try:
         validate_table_name(table_name)
     except ValueError as e:
@@ -1225,7 +1160,6 @@ def edit_table_data(table_name):
         return redirect(url_for("owner.database_tools"))
 
     try:
-        # جلب بيانات الجدول
         result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))  # nosec B608 - table_name validated by validate_table_name() allowlist
         rows = result.fetchall()
         columns = result.keys()
@@ -1274,7 +1208,6 @@ def export_database():
             export_data = {}
             inspector = inspect(db.engine)
 
-            # SECURITY: Use validated table names from inspector (not user input)
             allowed_tables = get_allowed_table_names_safe()
             for tbl_name in inspector.get_table_names(schema="public"):
                 if tbl_name not in allowed_tables:
@@ -1290,7 +1223,6 @@ def export_database():
 
             flash(f"✅ تم التصدير: {filename}", "success")
 
-        # F14/F15: an export of the whole database is an auditable act.
         create_audit_log(
             "export",
             "database",
@@ -1372,7 +1304,6 @@ def scheduled_backups():
     from services.backup_service import BackupService
 
     if request.method == "POST":
-        # حفظ إعدادات الجدولة
         settings = {
             "enabled": request.form.get("enabled") == "on",
             "frequency": request.form.get("frequency", "daily"),
@@ -1384,10 +1315,8 @@ def scheduled_backups():
         flash("✅ تم حفظ إعدادات النسخ الاحتياطي", "success")
         return redirect(url_for("owner.scheduled_backups"))
 
-    # قراءة الإعدادات الحالية
     settings = BackupService.get_schedule_settings()
 
-    # قائمة النسخ التلقائية
     backups = BackupService.list_backups(auto_only=True)
     stats = BackupService.get_backup_stats()
 
@@ -1405,7 +1334,6 @@ def company_info():
 
     if request.method == "POST":
         try:
-            # Basic Info
             tenant.name_ar = request.form.get("name_ar", "").strip()
             tenant.name_en = request.form.get("name_en", "").strip()
             tenant.name = tenant.name_en or tenant.name_ar
@@ -1413,7 +1341,6 @@ def company_info():
             tenant.business_type = request.form.get("business_type", "garage")
             tenant.industry = request.form.get("industry", "automotive")
 
-            # Contact Info
             tenant.address_ar = request.form.get("address_ar", "").strip()
             tenant.address_en = request.form.get("address_en", "").strip()
             tenant.city = request.form.get("city", "").strip()
@@ -1424,14 +1351,12 @@ def company_info():
             tenant.email = request.form.get("email", "").strip()
             tenant.website = request.form.get("website", "").strip()
 
-            # Legal Info
             tenant.tax_number = request.form.get("tax_number", "").strip()
             tenant.commercial_register = request.form.get(
                 "commercial_register", ""
             ).strip()
             tenant.license_number = request.form.get("license_number", "").strip()
 
-            # Branding
             tenant.brand_color_primary = request.form.get(
                 "brand_color_primary", "#007A3D"
             )
@@ -1463,7 +1388,6 @@ def system_config():
 
     if request.method == "POST":
         try:
-            # Modules
             settings.enable_sales = request.form.get("enable_sales") == "on"
             settings.enable_purchases = request.form.get("enable_purchases") == "on"
             settings.enable_inventory = request.form.get("enable_inventory") == "on"
@@ -1475,7 +1399,6 @@ def system_config():
                 request.form.get("enable_ai_assistant") == "on"
             )
 
-            # Features
             settings.enable_barcode_scanner = (
                 request.form.get("enable_barcode_scanner") == "on"
             )
@@ -1488,7 +1411,6 @@ def system_config():
             settings.enable_discounts = request.form.get("enable_discounts") == "on"
             settings.enable_returns = request.form.get("enable_returns") == "on"
 
-            # General
             settings.default_currency = request.form.get("default_currency", "ILS")
             settings.default_language = request.form.get("default_language", "ar")
             settings.timezone = request.form.get("timezone", "Asia/Dubai")
@@ -1509,19 +1431,6 @@ def system_config():
     return render_template("owner/system_config.html", settings=settings)
 
 
-# ── Tenant management (multi-tenant administration) ──────────────────────
-# Owner-only CRUD + suspend/activate + per-tenant stats.  Isolation-safe by
-# construction:
-#   * the owner bypasses the automatic tenant filter (thread-local tenant
-#     is None for owners — see app.before_request), and every aggregate
-#     below filters EXPLICITLY by tenant_id, so rows can never leak across
-#     tenants through this panel;
-#   * no hard delete is offered: tenant rows are FK targets for every
-#     business table, and suspension preserves referential + audit
-#     integrity;
-#   * deactivating/suspending the last active tenant is refused, because
-#     Tenant.get_current() auto-creates a "Default Garage" when none is
-#     active — refusing keeps that bootstrap path from firing by surprise.
 _VALID_TENANT_PLANS = ("basic", "pro", "enterprise")
 
 
@@ -1752,7 +1661,6 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
     email = (form.get("email") or "").strip()
     if email and ("@" not in email or "." not in email):
         errors.append("البريد الإلكتروني غير صالح.")
-    # تحذير إرشادي فقط — صيغة TRN للدولة المختارة (لا يمنع الحفظ)
     from utils.trn import trn_verdict
 
     _trn = (form.get("tax_number") or "").strip()
@@ -1882,7 +1790,6 @@ def tenant_new():
                 commit=False,
             )
             db.session.commit()
-            # Create operational roles for this tenant
             _ensure_operational_roles_for_tenant(tenant.id)
             db.session.commit()
             flash(f'تم إنشاء المستأجر "{tenant.name_ar}" بنجاح', "success")
@@ -2119,11 +2026,6 @@ def tenant_activate(id):
     return redirect(url_for("owner.tenant_detail", id=tenant.id))
 
 
-# ── System constants management ─────────────────────────────────────────
-# Owner UI over LookupService.  Locked groups (codes drive logic) expose
-# labels for editing only; add/disable are refused server-side.
-
-
 @owner_bp.route("/constants")
 @login_required
 @owner_required
@@ -2252,11 +2154,9 @@ def invoice_settings():
 
     if request.method == "POST":
         try:
-            # Company Info
             settings.company_name_ar = request.form.get("company_name_ar", "").strip()
             settings.company_name_en = request.form.get("company_name_en", "").strip()
 
-            # Contact Info
             settings.address_ar = request.form.get("address_ar", "").strip()
             settings.address_en = request.form.get("address_en", "").strip()
             settings.phone_1 = request.form.get("phone_1", "").strip()
@@ -2264,14 +2164,12 @@ def invoice_settings():
             settings.email = request.form.get("email", "").strip()
             settings.website = request.form.get("website", "").strip()
 
-            # Business Info
             settings.tax_number = request.form.get("tax_number", "").strip()
             settings.commercial_register = request.form.get(
                 "commercial_register", ""
             ).strip()
             settings.license_number = request.form.get("license_number", "").strip()
 
-            # Bank Info
             settings.bank_name = request.form.get("bank_name", "").strip()
             settings.bank_account_number = request.form.get(
                 "bank_account_number", ""
@@ -2279,22 +2177,18 @@ def invoice_settings():
             settings.iban = request.form.get("iban", "").strip()
             settings.swift_code = request.form.get("swift_code", "").strip()
 
-            # Design
             settings.header_color = request.form.get("header_color", "#667eea").strip()
             settings.accent_color = request.form.get("accent_color", "#764ba2").strip()
             settings.text_color = request.form.get("text_color", "#333333").strip()
 
-            # Layout
             settings.show_logo = request.form.get("show_logo") == "on"
             settings.logo_position = request.form.get("logo_position", "left")
             settings.logo_size = request.form.get("logo_size", "medium")
 
-            # Footer
             settings.footer_text_ar = request.form.get("footer_text_ar", "").strip()
             settings.footer_text_en = request.form.get("footer_text_en", "").strip()
             settings.show_terms = request.form.get("show_terms") == "on"
 
-            # Terms
             settings.terms_conditions_ar = request.form.get(
                 "terms_conditions_ar", ""
             ).strip()
@@ -2304,7 +2198,6 @@ def invoice_settings():
             settings.payment_terms_ar = request.form.get("payment_terms_ar", "").strip()
             settings.payment_terms_en = request.form.get("payment_terms_en", "").strip()
 
-            # Notes
             settings.default_invoice_note_ar = request.form.get(
                 "default_invoice_note_ar", ""
             ).strip()
@@ -2318,38 +2211,31 @@ def invoice_settings():
                 "default_receipt_note_en", ""
             ).strip()
 
-            # QR & Watermark
             settings.enable_qr_code = request.form.get("enable_qr_code") == "on"
             settings.qr_position = request.form.get("qr_position", "bottom-right")
             settings.enable_watermark = request.form.get("enable_watermark") == "on"
             settings.watermark_text = request.form.get("watermark_text", "").strip()
 
-            # Print
             settings.paper_size = request.form.get("paper_size", "A4")
             settings.orientation = request.form.get("orientation", "portrait")
             settings.default_language = request.form.get("default_language", "ar")
 
-            # Additional
             settings.show_barcode = request.form.get("show_barcode") == "on"
             settings.show_page_numbers = request.form.get("show_page_numbers") == "on"
             settings.show_due_date = request.form.get("show_due_date") == "on"
 
-            # Social Media
             settings.facebook_url = request.form.get("facebook_url", "").strip()
             settings.instagram_url = request.form.get("instagram_url", "").strip()
             settings.whatsapp_number = request.form.get("whatsapp_number", "").strip()
 
-            # Template
             settings.active_template = request.form.get("active_template", "modern")
 
-            # Handle logo upload
             if "company_logo" in request.files:
                 logo_file = request.files["company_logo"]
                 if logo_file and logo_file.filename:
                     import os
                     from werkzeug.utils import secure_filename
 
-                    # Security: allowed image extensions and max size (5MB)
                     allowed_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
                     ext = os.path.splitext(logo_file.filename)[1].lower()
                     if ext not in allowed_ext:
@@ -2380,7 +2266,6 @@ def invoice_settings():
 
                             settings.logo_path = f"uploads/logos/{filename}"
 
-            # Handle watermark image upload
             if "watermark_image" in request.files:
                 watermark_file = request.files["watermark_image"]
                 if watermark_file and watermark_file.filename:
@@ -2421,7 +2306,6 @@ def preview_invoice(template):
     """معاينة قالب الفاتورة"""
     settings = InvoiceSettings.get_active()
 
-    # Sample data for preview
     class SampleCustomer:
         name = "عميل تجريبي"
         phone = "0501234567"
@@ -2497,7 +2381,6 @@ def preview_receipt(template):
     """معاينة قالب سند القبض"""
     settings = InvoiceSettings.get_active()
 
-    # Sample data for preview
     class SampleCustomer:
         name = "عميل تجريبي"
         phone = "0501234567"
@@ -2855,7 +2738,6 @@ def performance_metrics():
     slow_queries = []
 
     if os.path.exists(performance_file):
-        # errors='replace': see error_logs() above.
         with open(performance_file, "r", encoding="utf-8", errors="replace") as f:
             for line in f.readlines()[-200:]:
                 if "SLOW" in line:
@@ -3080,10 +2962,6 @@ def payment_gateways():
         import secrets
 
         vault = PaymentVault()
-        # vault_password_hash is NOT NULL: seed an unusable random secret so
-        # the row is valid. The vault stays locked (is_locked defaults True)
-        # until the owner sets a real password via the vault setup flow,
-        # which overwrites this hash.
         vault.set_vault_password(secrets.token_urlsafe(48))
         db.session.add(vault)
         db.session.commit()
@@ -3292,10 +3170,6 @@ def data_cleanup():
             flash(f"❌ نوع التنظيف غير معروف: {cleanup_type}", "danger")
             return redirect(url_for("owner.data_cleanup"))
 
-        # F14/F15: حذف سجلات التدقيق القديمة عملية تُوثَّق — وإلا اختفى
-        # الأثر دون دليل. السجل الجديد يُكتب بعد الحذف (فلا يُحذف هو
-        # الآخر) ويُثبَّت في ملف دائم داخل instance/ لمجرد في حالة حذف
-        # سجل التدقيق نفسه.
         cleanup_record = {
             "action": "data_cleanup",
             "cleanup_type": cleanup_type,
@@ -3389,8 +3263,6 @@ def export_excel(table_name):
             df.to_excel(writer, index=False, sheet_name=table_name)
         output.seek(0)
 
-        # F14/F15: an export is an auditable act (models/audit.py defines the
-        # 'export' action for exactly this).
         create_audit_log(
             "export",
             table_name,
@@ -3565,8 +3437,6 @@ def tax_rulesets():
                 row.is_active = request.form.get("is_active") == "on"
                 row.effective_from = _parse_date(request.form.get("effective_from"))
                 row.effective_until = _parse_date(request.form.get("effective_until"))
-                # tenant_id مُثبت من قاعدة البيانات، لا من النموذج:
-                # تحديث سطر موجود يحتفظ بنطاقه الأصلي؛ إنشاء سطر جديد يأخذ النطاق من النموذج فقط.
                 if action == "update" and row.id is not None:
                     existing = TaxRuleset.query.filter_by(id=row.id).first()
                     row.tenant_id = existing.tenant_id if existing else None
@@ -3617,7 +3487,6 @@ def tax_rulesets():
                 flash("⛔ لا يمكن إزالتها (ليست نسخة شركة)", "danger")
             return redirect(url_for("owner.tax_rulesets"))
 
-    # جميع القواعد مرتبة: الخاصة بالشركات أولاً ثم الأسطر العامة
     rulesets = TaxRuleset.query.order_by(
         TaxRuleset.tenant_id.is_not(None).desc(),
         TaxRuleset.country_code,
@@ -3699,7 +3568,6 @@ def compliance_credentials():
             )
             return _redirect_tenant(tenant_id)
 
-        # save / rotate — دمج مع ما هو مخزَّن (الحقول السرية الفارغة تبقى كما هي)
         values = {}
         for field in meta["fields"]:
             fname, is_secret = field[0], bool(field[2])
@@ -4014,7 +3882,6 @@ def incidents():
         .all()
     )
 
-    # صحة اليوم — بطاقة سريعة
     errors_24h = 0
     try:
         errors_24h = ErrorLog.query.filter(
@@ -4043,11 +3910,6 @@ def owner_guide():
     return render_template("owner/guide.html")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# توزيع أرباح الشركاء — مستويا المنتج (فوري) والشركة (دوري)
-# يُدار لكل تينانت عبر "مبدّل الشركة" في لوحة المالك؛ بلا تينانت مختار تُعرض
-# نظرة تجميعية للقراءة فقط.
-# ─────────────────────────────────────────────────────────────────────────────
 @owner_bp.route("/partners", methods=["GET", "POST"])
 @login_required
 @owner_required
@@ -4087,7 +3949,6 @@ def partners():
     period_from = _parse_day(request.values.get("from"), default_from)
     period_to = _parse_day(request.values.get("to"), today)
 
-    # ── فرض مبدّل الشركة لأي عملية تعديل ─────────────────────────────────────
     if request.method == "POST":
         if imp is None:
             flash(
@@ -4123,8 +3984,6 @@ def partners():
                 else:
                     customer.partner_scope = "none"
                     customer.partner_share = None
-                    # يبقى شريكًا إن كانت له روابط منتج نشطة (دور المنتج لا
-                    # يتأثر بحقل scope) — يُعاد إلى regular فقط بلا أي دور.
                     if customer.customer_type == "partner":
                         has_links = (
                             ProductPartner.query.filter_by(
@@ -4199,7 +4058,6 @@ def partners():
         qs = f"?from={period_from.isoformat()}&to={period_to.isoformat()}"
         return redirect(url_for("owner.partners") + qs)
 
-    # ── عرض ───────────────────────────────────────────────────────────────────
     ctx = {
         "impersonated": imp,
         "period_from": period_from,
@@ -4226,7 +4084,6 @@ def partners():
             .order_by(Customer.partner_scope.asc(), Customer.name.asc())
             .all()
         )
-        # عدّاد روابط المنتج لكل شريك + استحقاقه المتراكم في الفترة
         link_counts = {}
         accrual = {}
         ids = [p.id for p in company_partners]
@@ -4240,10 +4097,8 @@ def partners():
                 .all()
             ):
                 link_counts[pid] = cnt
-            # استعلام واحد لحصص المنتجات (N+1 fix)
             accrual = pp._product_shares_bulk(ids, period_from, period_to)
 
-        # رصيد جاري كل شريك من الأستاذ (3350) مع طرفه
         partner_ids = [p.id for p in company_partners]
         balances = {}
         if partner_ids:
@@ -4263,7 +4118,6 @@ def partners():
             for party_id, bal in q.all():
                 balances[party_id] = Decimal(str(bal or 0))
 
-        # شركاء المنتجات (روابط النسب لكل منتج)
         product_rows = (
             db.session.query(
                 Product.name.label("product_name"),
@@ -4295,7 +4149,6 @@ def partners():
             }
         )
     else:
-        # ملخص تجميعي للمنصة — قراءة فقط لكل شركة
         per_tenant = []
         from models.tenant_scope import run_in_tenant_context
 

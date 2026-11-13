@@ -27,7 +27,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
-# تقريب المبالغ (3 منازل عشرية) — نفس أعمدة Money في قاعدة البيانات
 MONEY_Q = Decimal("0.001")
 
 
@@ -65,7 +64,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     if connection is None:
         connection = db.session.connection()
 
-    # ---- 1) الرصيد الافتتاحي (F10) -------------------------------------
     cust_row = connection.execute(
         select(
             Customer.__table__.c.opening_balance,
@@ -79,7 +77,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             cust_row.opening_balance_rate, "1"
         )
 
-    # ---- 2) الفواتير (confirmed + active) ------------------------------
     from models.sale import Sale
 
     sale_rows = connection.execute(
@@ -92,7 +89,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in sale_rows:
         total += _dec(row.amount_base) - _dec(row.paid_amount_base)
 
-    # ---- 3) المرتجعات المعتمدة (دائن للعميل) ---------------------------
     from models.product_return import ProductReturn
 
     return_rows = connection.execute(
@@ -107,9 +103,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in return_rows:
         total -= _dec(row.refund_amount) * _dec(row.exchange_rate, "1")
 
-    # ---- 4) استردادات/سحوبات العميل غير المرتبطة بفاتورة ---------------
-    # (سند صرف direction='outgoing' بدون sale_id: يردّ للعميل مبلغًا نقديًا
-    #  فينقص الذمم المدينة — F11)
     from models.payment import Payment
 
     refund_rows = connection.execute(
@@ -123,10 +116,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in refund_rows:
         total -= _dec(row.amount_base)
 
-    # ---- 5) تعديلات الشيكات Legacy (شيكات وارد بلا سند/فاتورة) ---------
-    # الشيك المرتد يزيد الرصيد، والملغى/المؤرشف ينقصه (سلوك models/cheque.py
-    # التاريخي). الشيكات المرتبطة بسند/فاتورة يتأثر أثرها بحالة الفاتورة
-    # نفسها فلا تُحتسب هنا (وإلا احتُسبت مرتين).
     from models.cheque import Cheque
 
     cheque_rows = connection.execute(
@@ -155,11 +144,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
         ):
             total -= amount
 
-    # ---- 6) سندات قبض غير مرتبطة بفاتورة (Legacy) -------------------------
-    # سند قبض بلا فاتورة: لم يُخصم من فاتورة، فإذا كان مؤكَّداً فقد دفع
-    # العميل مقدماً (ينقص رصيده) وإذا رُفض فعادت إليه (يزيد رصيده).
-    # بدون هذا البند كان models/payment.py يكتب customer.balance يدوياً،
-    # وهو آخر كاتب تزايدي للرصيد.
     from models.payment import Receipt
 
     receipt_rows = connection.execute(
@@ -176,15 +160,10 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in receipt_rows:
         amount = _dec(row.amount_base)
         if row.rejection_reason:
-            # مرفوض: لم يُخصم فيقبل، فعادت القيمة للعميل.
             total += amount
         elif row.payment_confirmed:
-            # مؤكد بلا فاتورة: دفع مقدماً.
             total -= amount
 
-    # ---- 7) المشاطرات المنفذة (Bad Debt Write-Offs) -------------------------
-    # قيد المشاطرة (Dr Bad Debt / Cr AR Control) ينقص رصيد العميل في العملة
-    # الأساسية — يساوي المبلغ المنفّذ (posted) فقط، لا المسودات.
     from models.write_off import WriteOff
 
     woff_rows = connection.execute(
@@ -219,7 +198,6 @@ def _sync_session_balance(customer_id, value):
         if instance is not None:
             set_committed_value(instance, "balance", value)
     except Exception:
-        # لا نُفشل العملية بسبب مزامنة الذاكرة فقط
         pass
 
 
@@ -270,11 +248,9 @@ class Customer(TenantScopedMixin, db.Model):
         db.String(20), nullable=False, default="regular", index=True
     )
 
-    # نوع شراكة العميل: 'none' (ليس شريك) | 'product' (حصة على منتج ما) | 'company' (حصة من أرباح الشركة)
     partner_scope = db.Column(
         db.String(16), nullable=False, default="none", server_default="none"
     )
-    # نسبة حصة شريك الشركة (مثلاً 30.000 = 30%) — NULL لغير شركاء الشركة
     partner_share = db.Column(db.Numeric(6, 3), nullable=True)
 
     customer_classification = db.Column(db.String(20), default="regular", index=True)
@@ -286,18 +262,13 @@ class Customer(TenantScopedMixin, db.Model):
 
     preferred_currency = db.Column(db.String(3), default="ILS")
 
-    # شروط الدفع المتفق عليها (بالأيام) — تُستخدم لاشتقاق تاريخ استحقاق
-    # الفاتورة (services/due_date_service.py). 0 = استحقاق فوري.
     payment_terms_days = db.Column(db.Integer, default=0, nullable=False)
 
     credit_limit = db.Column(db.Numeric(15, 3), default=0)
     total_purchases = db.Column(db.Numeric(15, 3), default=0)
 
-    # Customer balance (receivables)
     balance = db.Column(db.Numeric(15, 3), default=0, nullable=False)
 
-    # الرصيد الافتتاحي (F10) — يُدخل عند ترحيل عميل له رصيد سابق.
-    # opening_balance_rc = opening_balance × opening_balance_rate (عملة الأساس)
     opening_balance = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     opening_balance_currency = db.Column(db.String(3), default="ILS", nullable=False)
     opening_balance_rate = db.Column(db.Numeric(15, 6), default=1, nullable=False)

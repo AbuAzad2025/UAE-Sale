@@ -30,15 +30,10 @@ class FlowDef:
     example_label: str
     permission: str
     last_action: str
-    # Phase 3: هل يتطلب التدفق المدمر تأكيداً صريحاً قبل التنفيذ؟
-    # balance فقط (تعديل رصيد). باقي التدفقات إنشاء/عرض فقط.
     confirm_required: bool = False
-    # Phase 3: tenant_id إلزامي لكل تدفق كتابي (المساعد يرفض بلا tenant)
     tenant_required: bool = True
 
 
-# مفتاح last_action يجب أن يطابق القيم الحالية في _process_user_action
-# لضمان توافق خلفي بالكامل مع السياق المحفوظ
 FLOWS: tuple[FlowDef, ...] = (
     FlowDef(
         key="balance",
@@ -230,10 +225,6 @@ FLOWS: tuple[FlowDef, ...] = (
     ),
 )
 
-# ترتيب المطابقة يهم: 'فاتورة' يحتوي 'فاتورة' لا مشكلة، لكن 'مخزون'
-# يجب أن يأتي قبل 'مستودع'؟ لا، لأن 'مستودع' و'مخزون' منفصلان.
-# 'رصيد' يحتوي 'رصيد' — يجب أن يكون قبل 'عميل' لئلا يبتلعه 'عميل'.
-# الترتيب الحالي مراعى لهذا.
 FLOWS_BY_KEY: dict[str, FlowDef] = {f.key: f for f in FLOWS}
 
 
@@ -271,7 +262,6 @@ def render_menu(flow: FlowDef) -> str:
     emoji_map = {"1": "1️⃣", "2": "2️⃣", "3": "3️⃣", "4": "4️⃣"}
     for num, label in flow.options:
         lines.append(f"{emoji_map.get(num, num)} **{label}**")
-    # Hint مطابق للصيغة الحالية: (1 أو 2) / (1، 2، أو 3) / (1، 2، 3، أو 4)
     n = len(flow.options)
     if n == 2:
         hint_range = "1 أو 2"

@@ -33,7 +33,6 @@ Inventory Costing — متوسط التكلفة المتحرك للمخزون (M
 
 from decimal import Decimal, ROUND_HALF_UP
 
-#: دقة المبالغ — دقة أعمدة ``Numeric(15, 3)`` في المستودع كله.
 MONEY_QUANTUM = Decimal("0.001")
 
 
@@ -56,10 +55,6 @@ def _q3(value):
 
 class CostingService:
     """تكلفة المخزون المتحركة — المصدر الوحيد للتكلفة في النظام."""
-
-    # =================================================================
-    # المتوسط المتحرك
-    # =================================================================
 
     @staticmethod
     def moving_average(old_qty, old_avg, in_qty, in_unit_cost) -> Decimal:
@@ -101,10 +96,6 @@ class CostingService:
 
         total_value = (old_qty * old_avg) + (in_qty * in_unit_cost)
         return _q3(total_value / total_qty)
-
-    # =================================================================
-    # الحركات الداخلية
-    # =================================================================
 
     @staticmethod
     def apply_inbound(product, qty, unit_cost_base) -> Decimal:
@@ -159,10 +150,6 @@ class CostingService:
         reference = _dec(getattr(product, "cost_price", 0))
         return _q3(reference) if reference > 0 else Decimal("0.000")
 
-    # =================================================================
-    # البيع
-    # =================================================================
-
     @staticmethod
     def cost_for_sale(product, qty=1) -> Decimal:
         """تكلفة الوحدة وقت البيع — لقطة الكلفة المعبّأة على سطر البيع.
@@ -191,14 +178,7 @@ class CostingService:
         if average > 0:
             return _q3(average)
 
-        # لا متوسط مُثبَت (منتج بلا حركات داخلية ولا بذر أولي): يُستعمل
-        # الحارس الموروث — يرفض العملية إن لم يكن هناك أي تكلفة، وإلا
-        # يعيد آخر سعر شراء كمرجع.
         return _q3(StockService.require_cost_basis(product, qty))
-
-    # =================================================================
-    # التقييم
-    # =================================================================
 
     @staticmethod
     def stock_value(product) -> Decimal:
@@ -255,8 +235,6 @@ class CostingService:
 
         net_line_amount = line_total - allocated_discount
 
-        # الضريبة غير القابلة للاسترداد تُحمَّل على تكلفة البضاعة:
-        # تُوزَّع بالتناسب مع صافي أسطر 'standard' (غير القياسي لا يحمل ضريبة أصلاً).
         if not getattr(purchase, "vat_recoverable", True):
             tax_amount = _dec(getattr(purchase, "tax_amount", 0))
             invoice_treatment = (

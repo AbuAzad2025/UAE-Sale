@@ -540,7 +540,6 @@ class TestConfigSurface:
             SESSION_COOKIE_SECURE = True
             BASE_URL = "https://x.example"
 
-        # SECRET_KEY is set in this env, so the next gate (CARD key) fires.
         monkeypatch.delenv("CARD_ENCRYPTION_KEY", raising=False)
         with pytest.raises(RuntimeError, match="CARD_ENCRYPTION_KEY"):
             cfg.assert_production_sanity(Fake())

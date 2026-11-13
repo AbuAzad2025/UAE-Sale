@@ -24,12 +24,10 @@ class FixedAsset(TenantScopedMixin, db.Model):
     name_en = db.Column(db.String(200))
     description = db.Column(db.Text)
 
-    # التصنيف
     category = db.Column(
         db.String(50), index=True
     )  # land, building, vehicle, equipment, furniture
 
-    # الحسابات المحاسبية
     asset_account_id = db.Column(
         db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False
     )  # حساب الأصل
@@ -40,35 +38,26 @@ class FixedAsset(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("gl_accounts.id")
     )  # مصروف الاستهلاك
 
-    # التكلفة
     purchase_date = db.Column(db.Date, nullable=False, index=True)
     purchase_price = db.Column(db.Numeric(18, 3), nullable=False)
     salvage_value = db.Column(
         db.Numeric(18, 3), default=0
     )  # القيمة الإنقاذية (في نهاية العمر)
 
-    # الاستهلاك
     depreciation_method = db.Column(
         db.String(30), default="straight_line"
     )  # straight_line, declining_balance
     useful_life_years = db.Column(db.Integer, nullable=False)  # العمر الإنتاجي بالسنوات
     useful_life_months = db.Column(db.Integer)  # أو بالأشهر
 
-    # القيم المحسوبة
     accumulated_depreciation = db.Column(db.Numeric(18, 3), default=0)  # مجمع الاستهلاك
     book_value = db.Column(db.Numeric(18, 3))  # القيمة الدفترية
     last_depreciation_date = db.Column(db.Date)  # آخر تاريخ استهلاك
 
-    # الموقع
     location = db.Column(db.String(200))
     cost_center_id = db.Column(db.Integer, db.ForeignKey("cost_centers.id"))
 
-    # الحالة
     status = db.Column(db.String(20), default="active", index=True)
-    # active: نشط
-    # fully_depreciated: مستهلك بالكامل
-    # disposed: تم التخلص منه
-    # sold: تم بيعه
 
     disposal_date = db.Column(db.Date)
     disposal_price = db.Column(db.Numeric(18, 3))
@@ -76,7 +65,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
 
     notes = db.Column(db.Text)
 
-    # Meta
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
@@ -87,7 +75,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     asset_account = db.relationship("GLAccount", foreign_keys=[asset_account_id])
     depreciation_account = db.relationship(
         "GLAccount", foreign_keys=[depreciation_account_id]
@@ -142,7 +129,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
             return Decimal("0")  # الأراضي لا تستهلك
 
         if self.depreciation_method == "straight_line":
-            # القسط الثابت
             months = self.useful_life_years * 12
             monthly = (self.depreciable_amount / months).quantize(
                 Decimal("0.01"), ROUND_HALF_UP
@@ -150,11 +136,9 @@ class FixedAsset(TenantScopedMixin, db.Model):
             return monthly
 
         elif self.depreciation_method == "declining_balance":
-            # القسط المتناقص المضاعف (Double Declining Balance)
             rate = Decimal("2") / Decimal(str(self.useful_life_years))
             current_book_value = self.remaining_book_value
 
-            # لا نستهلك أقل من القيمة الإنقاذية
             if current_book_value <= self.salvage_value:
                 return Decimal("0")
 
@@ -163,7 +147,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
                 Decimal("0.01"), ROUND_HALF_UP
             )
 
-            # التأكد من عدم تجاوز القيمة الإنقاذية
             if current_book_value - monthly < self.salvage_value:
                 monthly = current_book_value - self.salvage_value
 
@@ -181,7 +164,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
         if not period_date:
             period_date = date.today()
 
-        # التحقق من عدم الاستهلاك المكرر
         existing = DepreciationSchedule.query.filter_by(
             asset_id=self.id, period_date=period_date
         ).first()
@@ -189,13 +171,11 @@ class FixedAsset(TenantScopedMixin, db.Model):
         if existing:
             raise ValueError("تم ترحيل الاستهلاك لهذا الشهر مسبقاً")
 
-        # حساب الاستهلاك
         depreciation_amount = self.calculate_monthly_depreciation()
 
         if depreciation_amount == 0:
             return None
 
-        # إنشاء قيد محاسبي
         from services.gl_service import GLService
 
         lines = [
@@ -221,12 +201,10 @@ class FixedAsset(TenantScopedMixin, db.Model):
         )
         db.session.flush()
 
-        # تحديث الأصل
         self.accumulated_depreciation += depreciation_amount
         self.book_value = self.remaining_book_value
         self.last_depreciation_date = period_date
 
-        # إنشاء سجل في جدول الاستهلاك
         schedule = DepreciationSchedule(
             asset_id=self.id,
             period_date=period_date,
@@ -238,7 +216,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
         db.session.add(schedule)
         db.session.flush()
 
-        # التحقق من الاستهلاك الكامل
         if self.book_value <= self.salvage_value:
             self.status = "fully_depreciated"
 
@@ -256,18 +233,15 @@ class FixedAsset(TenantScopedMixin, db.Model):
         self.disposal_date = disposal_date
         self.disposal_price = Decimal(str(disposal_price))
 
-        # حساب ربح/خسارة البيع
         self.disposal_gain_loss = self.disposal_price - self.book_value
 
         if notes:
             self.notes = (self.notes or "") + f"\n{notes}"
 
-        # إنشاء قيد محاسبي للتخلص
         from services.gl_service import GLService
 
         lines = []
 
-        # إزالة الأصل من الدفاتر
         lines.append(
             {
                 "account": str(self.depreciation_account.code),
@@ -278,7 +252,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
         )
 
         if self.disposal_price > 0:
-            # بيع
             lines.append(
                 {
                     "account": "1120",  # البنك (أو الصندوق)
@@ -288,9 +261,7 @@ class FixedAsset(TenantScopedMixin, db.Model):
                 }
             )
 
-        # ربح أو خسارة
         if self.disposal_gain_loss > 0:
-            # ربح بيع
             lines.append(
                 {
                     "account": "4500",  # إيرادات أخرى
@@ -300,7 +271,6 @@ class FixedAsset(TenantScopedMixin, db.Model):
                 }
             )
         elif self.disposal_gain_loss < 0:
-            # خسارة بيع
             lines.append(
                 {
                     "account": "6990",  # مصروفات متنوعة
@@ -350,7 +320,6 @@ class DepreciationSchedule(TenantScopedMixin, db.Model):
     accumulated_depreciation = db.Column(db.Numeric(18, 3), nullable=False)
     book_value = db.Column(db.Numeric(18, 3), nullable=False)
 
-    # الربط بالقيد المحاسبي (بدون FK صارم — يسمح بإنشاء السجل حتى لو تأخر القيد أو حُذف لاحقاً)
     journal_entry_id = db.Column(db.Integer)
 
     notes = db.Column(db.Text)
@@ -359,7 +328,6 @@ class DepreciationSchedule(TenantScopedMixin, db.Model):
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
-    # Relationships
     asset = db.relationship("FixedAsset", back_populates="depreciation_schedules")
     journal_entry = db.relationship(
         "GLJournalEntry",

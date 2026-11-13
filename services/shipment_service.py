@@ -17,7 +17,6 @@ from utils.helpers import generate_number  # existing helper pattern
 
 def _generate_shipment_number():
     """Generate unique shipment number like SH-2026-XXXX."""
-    # Reuse existing pattern: Sale uses generate_number; fallback to timestamp
     try:
         return generate_number("SH", Shipment, "shipment_number")
     except Exception:
@@ -96,7 +95,6 @@ class ShipmentService:
             raise ValueError("الإرسالية غير موجودة")
         if shipment.status != "draft":
             raise ValueError(f"لا يمكن الإرسال من حالة {shipment.status}")
-        # Optional: stock check could be added here (conservative: allow draft without deduct)
         shipment.status = "in_transit"
         shipment.shipped_at = datetime.now(timezone.utc)
         db.session.flush()

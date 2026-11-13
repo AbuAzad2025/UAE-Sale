@@ -25,8 +25,6 @@ def _quantize_3(value: Decimal) -> Decimal:
     return _coerce_decimal(value).quantize(_MONEY_Q3, rounding=ROUND_HALF_UP)
 
 
-# Dynamic CoA resolution (contract C3/Agent 1) with literal fallbacks equal to
-# today's codes when the resolver is unavailable or the role is unmapped.
 try:
     from services.account_resolution import AccountResolver, AccountRole
 except Exception:  # pragma: no cover - resolver ships in parallel
@@ -53,10 +51,6 @@ class ChequeAccountingIntegration:
     الحالة 'deposited' (تحت البنك) — لا حالات مُختلقة مثل 'received'/'issued'.
     """
 
-    # Semantic ROLES for the accounts the cheque flow posts to. The codes
-    # themselves are resolved through AccountResolver, so a tenant that
-    # remapped an account gets a statement that follows the mapping instead of
-    # hardcoded literals.
     CHEQUE_ROLES = {
         "incoming_under_collection": "UNDER_COLLECTION",
         "outgoing_deferred": "DEFERRED_CHEQUES_PAYABLE",
@@ -69,7 +63,6 @@ class ChequeAccountingIntegration:
         "exchange_loss": "FX_LOSS",
     }
 
-    # The seeded default codes, used when the resolver cannot answer.
     CHEQUE_DEFAULT_CODES = {
         "incoming_under_collection": "1150",
         "outgoing_deferred": "2120",
@@ -148,10 +141,8 @@ class ChequeAccountingIntegration:
 
         try:
             amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
-            # إنشاء القيد المحاسبي
             lines = []
 
-            # المدين: شيكات تحت التحصيل
             lines.append(
                 {
                     "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -163,7 +154,6 @@ class ChequeAccountingIntegration:
                 }
             )
 
-            # الدائن: الذمم المدينة
             lines.append(
                 {
                     "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -175,7 +165,6 @@ class ChequeAccountingIntegration:
                 }
             )
 
-            # إنشاء القيد
             entry = GLService.create_manual_entry(
                 description=f"استلام شيك وارد رقم {cheque.cheque_bank_number}",
                 lines=lines,
@@ -185,7 +174,6 @@ class ChequeAccountingIntegration:
                 created_by=received_by,
             )
 
-            # تحديث حالة الشيك — C3: حالة نموذج صالحة (تحت البنك)
             cheque.status = "deposited"
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
@@ -211,10 +199,8 @@ class ChequeAccountingIntegration:
 
         try:
             amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
-            # إنشاء القيد المحاسبي
             lines = []
 
-            # المدين: الذمم الدائنة
             lines.append(
                 {
                     "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -226,7 +212,6 @@ class ChequeAccountingIntegration:
                 }
             )
 
-            # الدائن: شيكات مؤجلة الدفع
             lines.append(
                 {
                     "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -238,7 +223,6 @@ class ChequeAccountingIntegration:
                 }
             )
 
-            # إنشاء القيد
             entry = GLService.create_manual_entry(
                 description=f"إصدار شيك صادر رقم {cheque.cheque_bank_number}",
                 lines=lines,
@@ -248,7 +232,6 @@ class ChequeAccountingIntegration:
                 created_by=issued_by,
             )
 
-            # تحديث حالة الشيك — C3: حالة نموذج صالحة (تحت البنك)
             cheque.status = "deposited"
             cheque.gl_journal_entry_id = entry.id
             cheque.updated_at = datetime.now(timezone.utc)
@@ -270,11 +253,6 @@ class ChequeAccountingIntegration:
             raise ValueError("الشيك ليس في حالة يمكن صرفه")
 
         try:
-            # F5: coerce + quantize every leg to 3dp BEFORE posting so the
-            # entry balances exactly even when callers pass str/float or
-            # >3dp values. The bank leg is derived from the quantized
-            # components (amount - charges + fx), so debit == credit holds
-            # exactly at 3dp and GLService never sees a 0.001 rounding break.
             amount_base = _quantize_3(
                 ChequeAccountingIntegration._ensure_amount_base(cheque)
             )
@@ -286,9 +264,6 @@ class ChequeAccountingIntegration:
             lines = []
 
             if cheque.cheque_type == "incoming":
-                # شيك وارد - صرف
-
-                # المدين: حساب البنك
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -302,7 +277,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # الدائن: شيكات تحت التحصيل
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -314,7 +288,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # رسوم البنك (إذا وجدت)
                 if bank_charges > 0:
                     lines.append(
                         {
@@ -325,7 +298,6 @@ class ChequeAccountingIntegration:
                         }
                     )
 
-                # أرباح/خسائر الصرف (إذا وجدت)
                 if exchange_gain_loss != 0:
                     if exchange_gain_loss > 0:
                         lines.append(
@@ -347,9 +319,6 @@ class ChequeAccountingIntegration:
                         )
 
             elif cheque.cheque_type == "outgoing":
-                # شيك صادر - صرف
-
-                # المدين: شيكات مؤجلة الدفع
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -361,7 +330,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # الدائن: حساب البنك
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -375,7 +343,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # رسوم البنك (إذا وجدت)
                 if bank_charges > 0:
                     lines.append(
                         {
@@ -386,7 +353,6 @@ class ChequeAccountingIntegration:
                         }
                     )
 
-                # أرباح/خسائر الصرف (إذا وجدت)
                 if exchange_gain_loss != 0:
                     if exchange_gain_loss > 0:
                         lines.append(
@@ -407,7 +373,6 @@ class ChequeAccountingIntegration:
                             }
                         )
 
-            # إنشاء القيد
             entry = GLService.create_manual_entry(
                 description=f"صرف شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}",
                 lines=lines,
@@ -417,7 +382,6 @@ class ChequeAccountingIntegration:
                 created_by=cleared_by,
             )
 
-            # تحديث حالة الشيك
             cheque.status = "cleared"
             cheque.cleared_date = datetime.now().date()
             cheque.gl_clearing_entry_id = entry.id
@@ -444,9 +408,6 @@ class ChequeAccountingIntegration:
             lines = []
 
             if cheque.cheque_type == "incoming":
-                # شيك وارد - ارتداد
-
-                # المدين: الذمم المدينة (استرداد)
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -458,7 +419,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # الدائن: شيكات تحت التحصيل
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -471,9 +431,6 @@ class ChequeAccountingIntegration:
                 )
 
             elif cheque.cheque_type == "outgoing":
-                # شيك صادر - ارتداد
-
-                # المدين: شيكات مؤجلة الدفع
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -485,7 +442,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-                # الدائن: الذمم الدائنة (استرداد)
                 lines.append(
                     {
                         "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
@@ -497,7 +453,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-            # إنشاء القيد
             entry = GLService.create_manual_entry(
                 description=f"ارتداد شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}",
                 lines=lines,
@@ -508,8 +463,6 @@ class ChequeAccountingIntegration:
                 notes=f"سبب الارتداد: {bounce_reason or 'غير محدد'}",
             )
 
-            # تحديث حالة الشيك — تُثبَّت في القاعدة قبل إعادة احتساب
-            # الأرصدة (الاشتقاق يقرأ الحالة من القاعدة).
             cheque.status = "bounced"
             cheque.bounced_date = datetime.now().date()
             cheque.bounce_reason = bounce_reason
@@ -518,9 +471,6 @@ class ChequeAccountingIntegration:
 
             db.session.flush()
 
-            # F4: ارتداد الشيك يجب أن يعكس الفاتورة المرتبطة (سند القبض
-            # أو سند الصرف المرتبط بالشيك) — وإلا بقيت الفاتورة "مدفوعة"
-            # والمال لم يصل.
             from models.payment import Payment, Receipt
 
             linked_receipt = Receipt.query.filter_by(cheque_id=cheque.id).first()
@@ -531,8 +481,6 @@ class ChequeAccountingIntegration:
             if linked_payment is not None:
                 linked_payment.reject_payment(bounce_reason or "ارتداد شيك")
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد — الزيادة اليدوية القديمة
-            # (+ amount_base) كانت تُطبَّق فوق قيمة مشتقة فتُضاعف الفرق.
             if cheque.cheque_type == "incoming" and cheque.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -572,7 +520,6 @@ class ChequeAccountingIntegration:
             "account_impact": [],
         }
 
-        # جمع القيود المحاسبية المرتبطة
         if cheque.gl_journal_entry_id:
             entry = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
             if entry:
@@ -611,7 +558,6 @@ class ChequeAccountingIntegration:
                     }
                 )
 
-        # حساب التأثير على الحسابات
         accounts_affected = set()
         for entry_info in summary["journal_entries"]:
             entry = GLJournalEntry.query.filter_by(

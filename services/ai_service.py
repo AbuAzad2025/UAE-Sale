@@ -27,7 +27,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# AI Knowledge module imports (lazy — may fail gracefully at runtime)
 try:
     from ai_knowledge.analytics_predictions import (
         SalesAnalytics,
@@ -82,7 +81,6 @@ try:
 except ImportError:
     get_external_learning = None
 
-# قواعد المعرفة المتخصصة
 from ai_knowledge import (  # noqa: E402
     parts_knowledge,
     tax_customs_knowledge,
@@ -136,12 +134,10 @@ class AIService:
     - market_insights: رؤى السوق
     """
 
-    # AI Configuration
     NAME = "أزاد"
     COMPANY = "شركة أزاد للأنظمة الذكية"
     DEVELOPER = "م. أحمد غنام"
 
-    # تهيئة المكونات الذكية
     _learning_system = None
     _context_engine = None
     _personality = None
@@ -293,7 +289,6 @@ class AIService:
             cls._transformers_brain = get_transformers_brain()
         return cls._transformers_brain
 
-    # قائمة الكلمات المفتاحية للمعلومات السرية
     SENSITIVE_KEYWORDS = [
         "كلمة مرور",
         "كلمات مرور",
@@ -361,7 +356,6 @@ class AIService:
         """
         logger.error(f"AIService.{operation} failed: {exc}", exc_info=True)
         if fallback is not None:
-            # للاستخدام الداخلي فقط — يحذر ويعيد القيمة الاحتياطية
             logger.warning(f"AIService.{operation} returned fallback due to error")
             return fallback
         raise AIServiceError(
@@ -373,7 +367,6 @@ class AIService:
     @staticmethod
     def get_api_key():
         """الحصول على مفتاح API - يدعم Groq, OpenAI, Gemini"""
-        # Reload env to catch manual updates
         from dotenv import load_dotenv
 
         load_dotenv(override=True)
@@ -392,7 +385,6 @@ class AIService:
     @staticmethod
     def get_provider():
         """معرفة المزود النشط"""
-        # Reload env to catch manual updates
         from dotenv import load_dotenv
 
         load_dotenv(override=True)
@@ -415,10 +407,8 @@ class AIService:
 
         message_lower = message.lower()
 
-        # إزالة "ال" التعريف للمقارنة الذكية
         message_normalized = re.sub(r"\bال(\w+)", r"\1", message_lower)
 
-        # الكلمات الجذرية للمعلومات السرية (بدون ال التعريف)
         _ = [
             "كلمة",
             "كلمات",
@@ -446,7 +436,6 @@ class AIService:
             "account",
         ]
 
-        # تحليل ذكي: هل الرسالة تحتوي على مجموعة من الكلمات السرية؟
         password_keywords = [
             "كلمة",
             "كلمات",
@@ -460,12 +449,10 @@ class AIService:
         user_keywords = ["مستخدم", "مستخدمين", "user", "users", "معلومات", "بيانات"]
         security_keywords = ["صلاحيات", "صلاحية", "permission", "access", "role"]
 
-        # فحص ذكي
         is_about_password = any(kw in message_normalized for kw in password_keywords)
         is_about_users = any(kw in message_normalized for kw in user_keywords)
         is_about_security = any(kw in message_normalized for kw in security_keywords)
 
-        # إذا كانت الرسالة عن كلمات المرور أو المستخدمين أو الصلاحيات
         is_sensitive = (
             is_about_password
             or (is_about_users and len(message_normalized.split()) <= 5)
@@ -473,7 +460,6 @@ class AIService:
         )
 
         if is_sensitive:
-            # إذا كان المستخدم هو المالك، السماح بالوصول
             if (
                 current_user
                 and hasattr(current_user, "is_owner")
@@ -481,7 +467,6 @@ class AIService:
             ):
                 return True, True, None
 
-            # إذا لم يكن المالك، رفض الوصول
             return (
                 True,
                 False,
@@ -495,7 +480,6 @@ class AIService:
                 },
             )
 
-        # ليست معلومات سرية، السماح للجميع
         return False, False, None
 
     @staticmethod
@@ -532,7 +516,6 @@ class AIService:
                 },
             }
         else:
-            # جلب جميع المستخدمين
             users = User.query.all()
             return {
                 "success": True,
@@ -625,11 +608,9 @@ class AIService:
         from models import Customer
         from flask_login import current_user
 
-        # مفتاح مركب: (tenant_id, customer_id) — يضمن العزل التام
         actor_tenant = getattr(current_user, "tenant_id", None)
         cache_key = (actor_tenant, customer_id)
 
-        # خزانة بسيطة آمنة للخيوط (thread-safe) بدل lru_cache
         if not hasattr(AIService, "_customer_analysis_cache"):
             AIService._customer_analysis_cache = {}
             AIService._cache_maxsize = 100
@@ -644,9 +625,7 @@ class AIService:
 
         result = AIService._perform_analysis(customer)
 
-        # سياسة LRU بسيطة: نحذف أقدم إدخال عند تجاوز الحجم
         if len(cache) >= AIService._cache_maxsize:
-            # نحذف أول مفتاح (أقدم إدخال)
             oldest = next(iter(cache))
             del cache[oldest]
 
@@ -716,7 +695,6 @@ class AIService:
                     try:
                         delay = (first_payment_dt - sale_created_at).days
                     except TypeError:
-                        # Fallback: ignore invalid datetime arithmetic
                         continue
                     pay_delays.append(delay)
 
@@ -810,7 +788,6 @@ class AIService:
                 "message": "لا توجد بيانات كافية",
             }
 
-        # Calculate daily averages
         daily_sales = {}
         for sale in sales:
             day = sale.sale_date.date()
@@ -828,7 +805,6 @@ class AIService:
                 "message": "بيانات غير كافية (يحتاج 7 أيام)",
             }
 
-        # Simple linear regression
         n = len(values)
         x = list(range(n))
         y = values
@@ -841,12 +817,10 @@ class AIService:
         )
         intercept = y_mean - slope * x_mean
 
-        # Predict next days
         predictions = [
             max(0, slope * (n + i) + intercept) for i in range(1, days_ahead + 1)
         ]
 
-        # Calculate R² for confidence
         y_pred = [slope * i + intercept for i in x]
         ss_res = sum((y[i] - y_pred[i]) ** 2 for i in range(n))
         ss_tot = sum((y[i] - y_mean) ** 2 for i in range(n))
@@ -949,7 +923,6 @@ class AIService:
         if len(sales) < 10:
             return {"success": False, "message": "بيانات غير كافية"}
 
-        # تحليل زمني
         weekday_sales = {i: {"count": 0, "total": Decimal("0")} for i in range(7)}
         hour_sales = {i: {"count": 0, "total": Decimal("0")} for i in range(24)}
 
@@ -1019,19 +992,15 @@ class AIService:
         """🤖 أزاد يرد على سؤالك - تعاون متكامل بين المحلي وGroq"""
         from ai_knowledge.intelligent_assistant import intelligent_assistant
 
-        # ========== المرحلة 1: التحليل المحلي الشامل ==========
         user_id = (
             context.get("current_user").id
             if context and context.get("current_user")
             else None
         )
 
-        # الرد المحلي الذكي (يشمل: فهم النية + بيانات حقيقية + تحليل)
         local_result = intelligent_assistant.process(message, user_id, context)
         local_response = local_result.get("response", "")
 
-        # Phase 1: GuideLoader — شرح دقيق من الدليل (بدون تسريب)
-        # إذا كان السؤال يطلب شرحاً ولم يعطِ المحلي رداً مفيداً، ارجع للـ Guide
         _guide_fallback = ""
         try:
             from ai_knowledge.guide_loader import get_guide_loader
@@ -1046,9 +1015,6 @@ class AIService:
             )
             if _guide_ctx:
                 _guide_fallback = _guide_ctx
-                # إذا لم يكن هناك رد محلي، استخدم الدليل كسياق للـ LLM وللملخص المحلي
-                # (بدون تسريب). نستبدل فقط عندما يكون الرد المحلي **فارغاً**
-                # فعلاً — الرد القصير المقصود (مثل stubs الاختبار) يُترك كما هو.
                 if not local_response or not local_response.strip():
                     local_response = (
                         _guide_ctx[:1200]
@@ -1058,7 +1024,6 @@ class AIService:
         except Exception:
             pass
         force_local = context.get("force_local", False) if context else False
-        # v2: RAG هجين ببوّابة النية بدل _gather الشامل دائماً
         if force_local:
             _db_context = ""
         else:
@@ -1069,7 +1034,6 @@ class AIService:
                     message or "",
                     (context or {}).get("current_user") if context else None,
                 )
-                # إبقاء الجاري القديم كاحتياط فقط إذا فشل RAG الجديد (قراءات المبيعات/المخزون)
                 _db_context = _rag_ctx or AIService._gather_relevant_knowledge(
                     message, local_result
                 )
@@ -1077,7 +1041,6 @@ class AIService:
                 _db_context = AIService._gather_relevant_knowledge(
                     message, local_result
                 )
-        # v2.1: حقن خطة منظمة (نية + أداة + حقول ناقصة) حتى يرى Groq النية الدقيقة
         _plan_hint = ""
         try:
             from services.ai_planner import plan as _plan_fn
@@ -1104,9 +1067,6 @@ class AIService:
             else ""
         )
 
-        # Phase 2b: مسار تنفيذ مباشر بدون Groq — الخطة الكاملة تُنفذ فوراً،
-        # المدمّرة تتطلب تأكيداً، الناقصة تطلب توضيحاً، والقراءة تُنفذ هنا.
-        # هذا لا أكسر المسار القديم لأنه احتياطي آمن عبر try/except.
         try:
             from services.ai_planner import plan as _plan_fn2
             from services.ai_handlers import dispatch as _exec_plan
@@ -1121,12 +1081,10 @@ class AIService:
                     "sales_summary",
                     "search_customers",
                 )
-                # الناقصة أو المدمّرة غير المؤكدة → جواب حتمي سريع (بلا LLM)
                 if _p2.missing_fields or (_p2.needs_confirm and not _confirmed):
                     _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
                     if _res and _res.get("needs_clarification"):
                         return _res["response"]
-                # الكاملة (قراءة أو كتابة غير مدمّرة) → تنفيذ مباشر
                 elif _p2.tool in _read_tools or (_p2.needs_confirm is False):
                     _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
                     if _res and _res.get("executed"):
@@ -1134,16 +1092,13 @@ class AIService:
         except Exception:
             pass
 
-        # ========== المرحلة 2: التعاون مع Groq ==========
         api_key = AIService.get_api_key()
-        # السماح بالرسائل للوصول لـ Groq إذا كان مفعلاً (الاعتماد على الزر فقط)
         use_groq = api_key and not force_local
 
         if use_groq:
             try:
                 import requests
 
-                # تحديد المزود والنموذج
                 provider = AIService.get_provider()
 
                 if provider == "groq":
@@ -1156,7 +1111,6 @@ class AIService:
                     url = "https://api.openai.com/v1/chat/completions"
                     model = "gpt-4"
 
-                # GROQ cost optimization: check cache before remote call
                 try:
                     from services import ai_cache as _ai_cache_mod
 
@@ -1171,7 +1125,6 @@ class AIService:
                     if _cached:
                         return _cached
 
-                # Groq مع صلاحيات كاملة
                 try:
                     from services.ai_tools import describe_tools as _describe_tools
 
@@ -1257,12 +1210,10 @@ class AIService:
                     result = response.json()
                     groq_response = result["choices"][0]["message"]["content"]
 
-                    # فحص إذا Groq يطلب تنفيذ action
                     action_result = AIService._execute_ai_action(groq_response, user_id)
                     if action_result:
                         groq_response = action_result
 
-                    # Groq يدرب المحلي
                     try:
                         AIService._train_local_from_groq(
                             message, str(local_response), str(groq_response), user_id
@@ -1273,7 +1224,6 @@ class AIService:
                     provider = AIService.get_provider()
                     final_answer = f"{groq_response}\n\n<sub>🤖 المصدر: {provider.upper()} API + التحليل المحلي</sub>"
 
-                    # Store in cache for future identical prompts (cost saving)
                     try:
                         if _cache_on and _ai_cache_mod is not None:
                             _ai_cache_mod.set_value(
@@ -1388,7 +1338,6 @@ class AIService:
 
             data_parts = []
 
-            # 📊 إحصائيات شاملة للنظام (دائماً)
             users_count = User.query.count()
             customers_count = Customer.query.filter_by(is_active=True).count()
             suppliers_count = Supplier.query.filter_by(is_active=True).count()
@@ -1451,7 +1400,6 @@ class AIService:
 💵 الأرباح (30 يوم):
 - الربح الصافي: {float(net_profit):.2f} درهم""")
 
-            # بيانات الشركة
             config = current_app.config
             data_parts.append(f"""📞 **بيانات الشركة:**
 - الاسم: {config.get("COMPANY_NAME_AR")}
@@ -1459,7 +1407,6 @@ class AIService:
 - WhatsApp: {config.get("COMPANY_WHATSAPP")}
 - العنوان: {config.get("COMPANY_ADDRESS_AR")}""")
 
-            # معلومات المستخدم الحالي
             current_user = local_result.get("context", {}).get("current_user")
             if current_user:
                 role_name = "غير محدد"
@@ -1491,7 +1438,6 @@ class AIService:
 
             insights = []
 
-            # رؤية 1: المخزون المنخفض
             low_stock_count = Product.query.filter(
                 Product.is_active.is_(True),
                 Product.current_stock <= Product.min_stock_alert,
@@ -1508,7 +1454,6 @@ class AIService:
                     }
                 )
 
-            # رؤية 2: العملاء المتأخرين
             high_balance_customers = Customer.query.filter(
                 Customer.is_active.is_(True)
             ).all()
@@ -1528,7 +1473,6 @@ class AIService:
                     }
                 )
 
-            # رؤية 3: أداء المبيعات
             today = datetime.now().date()
             today_sales = Sale.query.filter(
                 db.func.date(Sale.sale_date) == today
@@ -1594,7 +1538,6 @@ class AIService:
 
             products_to_order = []
 
-            # المنتجات التي تحتاج طلب
             low_stock = Product.query.filter(
                 Product.is_active.is_(True),
                 Product.current_stock <= Product.min_stock_alert,
@@ -1647,10 +1590,6 @@ class AIService:
 
         return AzadResponses.smart_response(message, context)
 
-    # ========================================================================
-    # دوال استخدام جميع وحدات AI - Integration Methods
-    # ========================================================================
-
     @staticmethod
     def get_contextual_response(message, user=None, conversation_history=None):
         """
@@ -1658,19 +1597,15 @@ class AIService:
         متكامل مع: ContextEngine + AzadPersonality + DialectManager
         """
         try:
-            # فهم السياق
             context_engine = AIService.get_context_engine()
             context = context_engine.build_context(message, user, conversation_history)
 
-            # تحديد اللهجة المناسبة
             dialect_manager = AIService.get_dialect_manager()
             detected_dialect = dialect_manager.detect_dialect(message)
 
-            # تطبيق الشخصية
             personality = AIService.get_personality()
             response = personality.generate_response(message, context, detected_dialect)
 
-            # التعلم من التفاعل
             learning_system = AIService.get_learning_system()
             learning_system.learn_from_interaction(
                 question=message,
@@ -1696,12 +1631,10 @@ class AIService:
         متكامل مع: SalesAnalytics + DataAnalyzer
         """
         try:
-            # استخدام محلل المبيعات
             sales_analytics = SalesAnalytics()
             historical_data = sales_analytics.get_historical_trends(days=90)
             predictions = sales_analytics.predict_next_period(days_ahead)
 
-            # تحليل إضافي
             data_analyzer = DataAnalyzer()
             deep_insights = data_analyzer.analyze_sales_patterns(historical_data)
 
@@ -1723,13 +1656,10 @@ class AIService:
         try:
             inventory_analytics = InventoryAnalytics()
 
-            # تحليل المخزون
             analysis = inventory_analytics.analyze_stock_levels()
 
-            # توصيات الطلب
             reorder_recommendations = inventory_analytics.calculate_reorder_points()
 
-            # كشف البضائع الراكدة
             slow_moving = inventory_analytics.detect_slow_moving_items()
 
             return {
@@ -1750,13 +1680,10 @@ class AIService:
         try:
             profit_analytics = ProfitAnalytics()
 
-            # تحليل الهوامش
             margins = profit_analytics.analyze_profit_margins()
 
-            # تحليل الربحية حسب المنتج
             by_product = profit_analytics.profitability_by_product()
 
-            # تحليل الربحية حسب العميل
             by_customer = profit_analytics.profitability_by_customer()
 
             return {
@@ -1775,17 +1702,14 @@ class AIService:
         متكامل مع: tax_system + customs + tax_customs_knowledge
         """
         try:
-            # معلومات الضرائب
             if "vat" in query.lower() or "ضريبة" in query:
                 tax_info = tax_system.get_vat_info()
                 return tax_info
 
-            # معلومات الجمارك
             if "customs" in query.lower() or "جمارك" in query:
                 customs_info = customs.get_customs_procedures()
                 return customs_info
 
-            # معلومات شاملة
             return tax_customs_knowledge.get_comprehensive_guide()
 
         except Exception:
@@ -1837,10 +1761,8 @@ class AIService:
         متكامل مع: system_guide + user_guide
         """
         try:
-            # دليل النظام
             system_info = system_guide.get_guide_for_topic(topic)
 
-            # دليل المستخدم
             user_info = user_guide.get_user_guide(topic)
 
             return {"system_guide": system_info, "user_guide": user_info}
@@ -1986,10 +1908,6 @@ class AIService:
         except Exception:
             return {"compliant": True, "warnings": []}
 
-    # ========================================================================
-    # دوال الشبكات العصبية المتقدمة - Neural Networks
-    # ========================================================================
-
     @staticmethod
     def predict_price_with_neural(product_id, customer_id, quantity=1):
         """
@@ -2124,9 +2042,6 @@ class AIService:
 
             rows = []
             for customer in customers:
-                # Per-customer isolation: analyze_customer_behavior raises on
-                # cross-tenant access, and one unreadable row must not cost
-                # the caller the whole watchlist.
                 try:
                     analysis = AIService.analyze_customer_behavior(customer.id)
                 except Exception as e:
@@ -2162,8 +2077,6 @@ class AIService:
                 "customers_analyzed": len(rows),
                 "at_risk_count": len(at_risk),
                 "basis": "90-day sales, payments and balance per customer",
-                # Every customer scored, so a tenant whose book is healthy
-                # still gets a meaningful response instead of an empty list.
                 "customers": rows[:20],
                 "at_risk_customers": at_risk[:20],
             }
@@ -2293,10 +2206,6 @@ class AIService:
         except Exception as e:
             logger.error(f"Failed to get neural status: {e}")
             return {"trained_models": 0, "total_models": 0}
-
-    # ========================================================================
-    # Advanced Capabilities - القدرات المتقدمة
-    # ========================================================================
 
     @staticmethod
     def think_deeply(problem: str, context: dict = None):
@@ -2528,10 +2437,6 @@ class AIService:
             },
         }
 
-    # ========================================================================
-    # العقل الموحد الخارق - Master Brain Integration
-    # ========================================================================
-
     @staticmethod
     def ask_genius(question: str, context: dict = None, user_id: int = None):
         """
@@ -2582,7 +2487,6 @@ class AIService:
 
         مثال:
             result = AIService.quick_calculate('vat', amount=1000)
-            # النتيجة: {'result': 50.0, 'success': True}
         """
         try:
             brain = AIService.get_master_brain()
@@ -2613,7 +2517,6 @@ class AIService:
 
         مثال:
             result = AIService.validate_entry(5000, 5000)
-            # النتيجة: {'is_balanced': True, 'status': '✅ متوازن'}
         """
         try:
             brain = AIService.get_master_brain()
@@ -2621,10 +2524,6 @@ class AIService:
 
         except Exception as e:
             return {"error": str(e), "is_balanced": False}
-
-    # ========================================================================
-    # Transformers - معمارية المحولات المتقدمة
-    # ========================================================================
 
     @staticmethod
     def understand_with_transformers(text: str):
@@ -2691,10 +2590,6 @@ class AIService:
         except Exception:
             return {}
 
-    # ========================================================================
-    # كمبيوترات السيارات - Automotive ECU Expert
-    # ========================================================================
-
     @staticmethod
     def diagnose_obd_code(code: str):
         """
@@ -2745,10 +2640,6 @@ class AIService:
 
         except Exception:
             return {}
-
-    # ========================================================================
-    # التعلم الخارجي - External Learning
-    # ========================================================================
 
     @staticmethod
     def get_learning_sources():

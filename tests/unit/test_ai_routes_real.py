@@ -9,7 +9,6 @@ from routes.ai import ai_bp, _validate_csrf_token
 class TestAICSRFHelper:
     def test_skip_for_get(self, app):
         with app.test_client() as c, app.app_context():
-            # _validate_csrf_token accesses request.method; use request context
             with app.test_request_context(method="GET"):
                 assert _validate_csrf_token() is True
 

@@ -57,7 +57,6 @@ def index():
 
     query = Sale.query
 
-    # إخفاء المبيعات المؤرشفة
     from models import ArchivedRecord
     from sqlalchemy import select
 
@@ -147,7 +146,6 @@ def create():  # noqa: C901
                                 }
                             )
                 except (ValueError, TypeError):
-                    # Skip invalid lines
                     continue
 
             if not lines_data:
@@ -168,7 +166,6 @@ def create():  # noqa: C901
             currency = currency_value if currency_value else _base_currency
             user_exchange_rate = request.form.get("exchange_rate", type=float)
 
-            # Track manual exchange rate changes for audit
             exchange_rate_manual = request.form.get("exchange_rate_manual") == "true"
             exchange_rate_server = request.form.get("exchange_rate_server", type=float)
             exchange_rate_diff = request.form.get(
@@ -189,7 +186,6 @@ def create():  # noqa: C901
             )
             notes = request.form.get("notes")
 
-            # Add exchange rate audit to notes if manually changed
             if exchange_rate_manual and exchange_rate_server and user_exchange_rate:
                 if user_exchange_rate < exchange_rate_server:
                     audit_note = f"\n[تنبيه] سعر صرف يدوي: {user_exchange_rate:.6f} (سعر السيرفر: {exchange_rate_server:.6f}, فرق: {exchange_rate_diff:.2f}%)"
@@ -211,7 +207,6 @@ def create():  # noqa: C901
                     "bank_name": request.form.get("bank_name"),
                 }
 
-            # قراءة warehouse_id من النموذج
             warehouse_id = request.form.get("warehouse_id", type=int)
 
             with atomic_transaction():
@@ -231,8 +226,6 @@ def create():  # noqa: C901
                     payment_data=payment_data,
                 )
 
-                # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
-                # الفاتورة + شروط دفع العميل (services/due_date_service.py).
                 sale.due_date = due_date_service.due_date_for_sale(
                     sale.sale_date,
                     customer=customer,
@@ -245,7 +238,6 @@ def create():  # noqa: C901
             return redirect(url_for("sales.view", id=sale.id))
 
         except ValueError as e:
-            # رسالة الخطأ من SaleService (مثل: insufficient stock)
             current_app.logger.exception("handler failed")
             flash(
                 f"⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.",
@@ -257,7 +249,6 @@ def create():  # noqa: C901
             current_app.logger.error(f"Sale creation error: {e}")
             flash(ErrorMessages.database_error(), "danger")
 
-    # تحميل المستودعات للقالب
     from models import Warehouse
 
     warehouses = (
@@ -269,7 +260,6 @@ def create():  # noqa: C901
         .all()
     )
 
-    # No need to load customers or exchange rates - loaded via AJAX for speed
     return render_template("sales/create.html", warehouses=warehouses)
 
 
@@ -300,12 +290,9 @@ def print_invoice(id):
         flash(ErrorMessages.permission_denied("طباعة هذه الفاتورة"), "danger")
         return redirect(url_for("sales.index"))
 
-    # Get invoice settings
     from config import Config
 
     settings = InvoiceSettings.get_active()
-    # قالب واحد — بيانات كل تينانت: الهوية (اسم/رقم ضريبي/عنوان/شعار/ألوان)
-    # تُسقط فوق القالب العام من الشركة المالكة للفاتورة، لا من قيمة أزاد.
     from utils.invoice_header import document_tenant, with_tenant_header
 
     try:
@@ -313,7 +300,6 @@ def print_invoice(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    # Template selection via URL param (?template=modern) or settings
     import re
 
     _ALLOWED_TEMPLATES = ("modern", "classic", "gulf", "minimal", "simple")
@@ -378,12 +364,10 @@ def edit(id):
     """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
     sale = get_owned_or_404(Sale, id)
 
-    # IDOR protection: sellers can only edit their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
         flash("ليس لديك صلاحية لتعديل هذه الفاتورة", "danger")
         return redirect(url_for("sales.index"))
 
-    # منع التعديل للفواتير المدفوعة أو الملغاة
     if sale.payment_status == "paid":
         flash(
             "⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.",
@@ -407,13 +391,10 @@ def edit(id):
             old_discount = _Dec(str(sale.discount_amount or 0))
             old_total = _Dec(str(sale.total_amount or 0))
             old_tax = _Dec(str(sale.tax_amount or 0))
-            # السماح فقط بتعديل الملاحظات والخصم
             sale.notes = request.form.get("notes", "")
             discount_amount = request.form.get("discount_amount", type=float, default=0)
             sale.discount_amount = discount_amount
 
-            # تاريخ الاستحقاق: تاريخ صريح من النموذج، وإلا يُشتق من تاريخ
-            # الفاتورة + شروط دفع العميل (services/due_date_service.py).
             if "due_date" in request.form:
                 sale.due_date = due_date_service.due_date_for_sale(
                     sale.sale_date,
@@ -421,13 +402,8 @@ def edit(id):
                     explicit=request.form.get("due_date"),
                 )
 
-            # إعادة حساب الإجماليات
             sale.calculate_totals()
 
-            # LEAK-GUARD: the sale was already posted at creation, so a
-            # discount change moves revenue/AR.  Post a balancing adjusting
-            # entry in the SAME atomic transaction (rolls back with the edit
-            # on any failure) instead of leaving GL stale.
             d_disc = _Dec(str(sale.discount_amount or 0)) - old_discount
             d_tax = _Dec(str(sale.tax_amount or 0)) - old_tax
             d_total = _Dec(str(sale.total_amount or 0)) - old_total
@@ -465,10 +441,6 @@ def edit(id):
                             "description": f"تسوية ضريبة {sale.sale_number}",
                         }
                     )
-                # Inclusive prices already include VAT in the original
-                # revenue. A tax change therefore changes revenue by the
-                # opposite amount as well; otherwise the adjustment does
-                # not match the change in the customer's gross balance.
                 if sale.tax_inclusive and d_tax > 0:
                     _adj.append(
                         {
@@ -485,9 +457,6 @@ def edit(id):
                             "description": f"تسوية إيراد شامل الضريبة {sale.sale_number}",
                         }
                     )
-                # AR side plugs the entry so it balances EXACTLY by
-                # construction (absorbs ≤0.005 rounding dust); sanity-bound
-                # against the invoice delta.
                 _signed = sum(
                     (_Dec(str(ln.get("debit", 0))) - _Dec(str(ln.get("credit", 0))))
                     for ln in _adj
@@ -612,7 +581,6 @@ def archived():
         ArchivedRecord.table_name == "sales"
     )
 
-    # Bulk-load related sales to avoid N+1
     archived_ids = [a.record_id for a in archived_sales_query.all()]
     sales_bulk = {
         s.id: s
@@ -622,7 +590,6 @@ def archived():
     archived_items = []
     for archived in archived_sales_query.all():
         data = archived.data
-        # SECURITY: resolve underlying sale with tenant check; skip cross-tenant archives
         sale = sales_bulk.get(archived.record_id)
         if sale is not None and not getattr(current_user, "is_owner", False):
             actor_tenant = getattr(current_user, "tenant_id", None)
@@ -663,29 +630,22 @@ def delete(id):
 
     sale = get_owned_or_404(Sale, id)
 
-    # IDOR protection: sellers can only delete their own invoices
     if current_user.is_seller() and sale.seller_id != current_user.id:
         flash("ليس لديك صلاحية لحذف هذه الفاتورة", "danger")
         return redirect(url_for("sales.index"))
 
-    # التحقق من الارتباطات
     has_links = False
 
-    # 1. التحقق من المدفوعات (Payments)
     linked_payments = Payment.query.filter_by(sale_id=sale.id).count()
     if linked_payments > 0:
         has_links = True
 
-    # 2. التحقق من الشيكات (Cheques)
     linked_cheques = Cheque.query.filter_by(sale_id=sale.id).count()
     if linked_cheques > 0:
         has_links = True
 
     try:
         if has_links:
-            # أرشفة (Soft Delete)
-            # F2: عكس القيد المحاسبي إجباري — فشله يُعلن ولا تُؤرشف
-            # الفاتورة (الصمت كان يخفي أن دفتر الأستاذ لم يُعكس).
             if sale.status != "cancelled":
                 try:
                     reverse_or_purge_gl_entries(
@@ -705,8 +665,6 @@ def delete(id):
                     )
                     return redirect(url_for("sales.view", id=id))
 
-                # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء) — وإلا
-                # بقيت البضاعة مخصومة والفاتورة اختفت.
                 _restore_sale_stock(sale)
 
             archive_service = ArchiveService()
@@ -717,9 +675,6 @@ def delete(id):
                 commit=False,
             )
 
-            # يمكن أرشفة المدفوعات والشيكات المرتبطة أيضاً إذا لزم الأمر، ولكن سنكتفي بأرشفة الفاتورة حالياً
-            # أو يمكن تركها كما هي ولكن الفاتورة ستختفي من القائمة النشطة
-
             create_audit_log("archive", "sales", id)
             db.session.commit()
             flash(
@@ -727,9 +682,6 @@ def delete(id):
                 "warning",
             )
         else:
-            # حذف نهائي (Hard Delete)
-            # 1. القيود المحاسبية: المرحَّلة تُعكس (لا تُحذف أبداً — القيد
-            #    المحاسبي أثر دائم) والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
                     "Sale",
@@ -748,21 +700,11 @@ def delete(id):
                 )
                 return redirect(url_for("sales.view", id=id))
 
-            # 2. F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
             if sale.status != "cancelled":
                 _restore_sale_stock(sale)
 
-            # 3. حذف البنود (SaleLines) - يتم تلقائياً عادةً عبر cascade ولكن للأمان
             SaleLine.query.filter_by(sale_id=sale.id).delete()
 
-            # 3b. حذف حركات المخزون الخاصة بالفاتورة.
-            #
-            # Without this, a hard-deleted sale leaves its movements behind,
-            # and a LATER sale that reuses the same id (rowids are reused
-            # after a delete) inherits the old ones. The reversal marker
-            # 'Sale-Reversed' is keyed by the sale id, so the new sale would
-            # be mistaken for one that had already been reversed - and
-            # archiving it would NOT put the goods back into stock.
             from models import StockMovement
 
             StockMovement.query.filter(
@@ -772,7 +714,6 @@ def delete(id):
                 StockMovement.reference_id == sale.id,
             ).delete(synchronize_session=False)
 
-            # 4. حذف الفاتورة
             db.session.delete(sale)
             create_audit_log("delete", "sales", id)
             db.session.commit()
@@ -805,8 +746,6 @@ def archive(id):
     sale = get_owned_or_404(Sale, id)
 
     try:
-        # عكس القيد المحاسبي قبل الأرشفة (إذا لم تكن ملغاة)
-        # F2: الفشل يُعلن ولا تُؤرشف الفاتورة.
         if sale.status != "cancelled":
             try:
                 reverse_or_purge_gl_entries(
@@ -826,7 +765,6 @@ def archive(id):
                 )
                 return redirect(url_for("sales.view", id=id))
 
-            # F6: إعادة البضاعة إلى المخزون (نفس مسار الإلغاء)
             _restore_sale_stock(sale)
 
         archive_service = ArchiveService()
@@ -851,17 +789,12 @@ def restore(id):
     """استعادة فاتورة من الأرشيف"""
     from models import ArchivedRecord
 
-    # SECURITY: verify the underlying sale belongs to the actor's tenant
     get_owned_or_404(Sale, id, code=404)
 
     archived = ArchivedRecord.query.filter_by(
         table_name="sales", record_id=id
     ).first_or_404()
 
-    # F6 (symmetry): archiving a sale puts its goods back into stock, so
-    # restoring it must take them out again. Without this, an
-    # archive-then-restore cycle left the stock inflated by the sold
-    # quantity - the invoice came back but the goods never left.
     from models import StockMovement
 
     already_reversed = StockMovement.query.filter_by(
@@ -874,10 +807,6 @@ def restore(id):
         db.session.delete(archived)
         db.session.commit()
         if needs_stock_back:
-            # Take the goods out again, mirroring the archive. The movement
-            # carries its own reference so it does not collide with the
-            # original sale's movement, and so a second restore does not
-            # deduct twice.
             from services.stock_service import StockService
 
             StockService.deduct_stock_for_restored_sale(id)
@@ -886,11 +815,6 @@ def restore(id):
         db.session.rollback()
 
     return redirect(url_for("sales.archived"))
-
-
-# =====================================
-# API Endpoints - Backend Calculations
-# =====================================
 
 
 @sales_bp.route("/api/calculate-totals", methods=["POST"])
@@ -921,7 +845,6 @@ def api_calculate_sale_totals():
         if treatment != "standard":
             tax_rate = Decimal("0")
 
-        # حساب المجموع الفرعي
         subtotal = Decimal("0")
         line_specs = []
         for line in lines:
@@ -959,7 +882,6 @@ def api_calculate_sale_totals():
             invoice_treatment=treatment,
         )
 
-        # Count only lines with valid quantity > 0; skip lines where qty parsing fails
         line_count = 0
         for ln in lines:
             try:

@@ -78,7 +78,6 @@ class GamificationService:
     def get_leaderboard(limit: int = 10) -> List[Dict]:
         from models import User
 
-        # Exclude owner from leaderboard
         users = (
             User.query.filter_by(is_active=True, is_owner=False)
             .order_by(User.points.desc() if hasattr(User, "points") else User.id)

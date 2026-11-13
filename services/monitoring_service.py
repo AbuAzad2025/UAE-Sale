@@ -46,8 +46,6 @@ class MonitoringService:
     @staticmethod
     def get_disk_usage() -> Dict:
         try:
-            # Cross-platform root (C:\ on Windows, / on POSIX) shared with
-            # health_service so the probe works on Windows hosts.
             from services.health_service import _disk_root
 
             disk = psutil.disk_usage(_disk_root())
@@ -106,7 +104,6 @@ class MonitoringService:
     @staticmethod
     def log_performance_metric(metric_name: str, value: float, tags: Dict = None):
         try:
-            # استخدام مسار مطلق للمجلد logs
             basedir = os.path.abspath(
                 os.path.join(os.path.dirname(__file__), os.pardir)
             )

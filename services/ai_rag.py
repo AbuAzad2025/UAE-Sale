@@ -23,7 +23,6 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
             parts.append(b)
             used += len(b) + 8
 
-    # 1) الدليل (مصدر واحد للحقيقة، مع نطاق is_owner)
     try:
         from ai_knowledge.guide_loader import get_guide_loader
 
@@ -33,7 +32,6 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
     except Exception:
         pass
 
-    # 2) ذاكرة المستخدم (episodic + facts) — معزولة بالمستخدم (أقصى 3، مختصرة)
     try:
         if user and getattr(user, "id", None):
             from ai_knowledge.memory_system import get_memory_system
@@ -49,11 +47,6 @@ def retrieve(message: str, user, max_chars: int = 6000) -> str:
     except Exception:
         pass
 
-    # 2ب) سجل المحادثة الحالي (آخر 3 أدوار من الـ context) — يمنع تكرار الأسئلة
-    # context هنا ليس متاحاً كوسيط، لكن ai_service يمرر user فقط؛ السجل الحقيقي
-    # يعيش في routes/ai ConversationContextStore. لذا نعتمد على الذاكرة أعلاه.
-
-    # 3) بيانات النظام — بوّابية النية (فقط الجداول الضرورية)
     _add(_db_context(message or "", user), max_chars)
 
     return ("\n\n".join(parts)).strip()
@@ -86,8 +79,6 @@ def _db_context(message: str, user) -> str:
         from sqlalchemy import func
         from extensions import db
 
-        # عزل تينانت إجباري ودفاعي: حتى لو ضاع thread-local في خلفية،
-        # مرشح ملازم يضمن عدم تسريب عدّات تينانت آخر.
         _tid = None
         try:
             from models.tenant_scope import get_current_tenant_id
@@ -123,8 +114,6 @@ def _db_context(message: str, user) -> str:
                 .scalar()
                 or 0
             )
-            # ملاحظة: إجمالي المبيعات المُصهَرة بترشيح تينانت طبقة ORM عند توفر سياق الطلب؛
-            # مع _tid الدفاعي، تتساوى النتيجة في مسار الطلب.
             lines.append(f"- مبيعات 30 يوم: {n} فاتورة ({total} درهم)")
         if is_inventory:
             low = (

@@ -67,14 +67,10 @@ def derive_supplier_totals(supplier_id, connection=None):
     for row in purchase_rows:
         amount = row.amount_base
         if amount is None:
-            # احتياط: بعض الفواتير القديمة بلا amount_base
             amount = row.total_amount
         total_purchases += _dec(amount)
         total_paid += _dec(row.paid_amount)
 
-    # سندات الصرف على مستوى المورد (بلا ارتباط بفاتورة) + استردادات المورد.
-    # السندات المرتبطة بفاتورة (purchase_id) محسوبة أعلاه عبر Purchase.paid_amount
-    # فلا تُحتسب مرتين.
     payment_rows = connection.execute(
         select(Payment.__table__.c.amount_base, Payment.__table__.c.direction).where(
             Payment.__table__.c.supplier_id == supplier_id,
@@ -84,10 +80,8 @@ def derive_supplier_totals(supplier_id, connection=None):
     ).fetchall()
     for row in payment_rows:
         if row.direction == "outgoing":
-            # مسدّد على مستوى المورد فقط (المسدد على مستوى الفاتورة محسوب أعلاه)
             total_paid += _dec(row.amount_base)
         elif row.direction == "incoming":
-            # استرداد من المورد: يزيد ما ندينه له
             total_paid -= _dec(row.amount_base)
 
     return (
@@ -146,60 +140,47 @@ class Supplier(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
     )
 
-    # معلومات أساسية
     name = db.Column(db.String(200), nullable=False, index=True)
     name_ar = db.Column(db.String(200))  # الاسم بالعربية
     name_en = db.Column(db.String(200))  # الاسم بالإنجليزية
     company_name = db.Column(db.String(200))
 
-    # معلومات الاتصال
     phone = db.Column(db.String(30))
     phone2 = db.Column(db.String(30))
     email = db.Column(db.String(255))
     website = db.Column(db.String(200))
 
-    # العنوان
     address = db.Column(db.Text)
     city = db.Column(db.String(100))
     country = db.Column(db.String(100), default="UAE")
 
-    # معلومات ضريبية وقانونية
     tax_number = db.Column(db.String(50))
     commercial_registration = db.Column(db.String(50))
 
-    # تصنيف المورد
     supplier_type = db.Column(
         db.String(50), default="parts"
     )  # parts, equipment, services, materials
     rating = db.Column(db.Integer, default=3)  # 1-5 stars
 
-    # الحد الائتماني والعملة
     credit_limit = db.Column(db.Numeric(15, 3), default=0)
     payment_terms_days = db.Column(db.Integer, default=30)  # شروط الدفع بالأيام
     preferred_currency = db.Column(db.String(3), default="ILS")
 
-    # إحصائيات
     total_purchases_aed = db.Column(db.Numeric(15, 3), default=0)
     total_paid_aed = db.Column(db.Numeric(15, 3), default=0)
     last_purchase_date = db.Column(db.DateTime)
 
-    # الرصيد الافتتاحي (F10) — رصيد مستحق للمورد قبل بدء استخدام النظام.
-    # لم يعد يُخفى داخل total_purchases_aed (إحصائية مشتريات) الذي كان
-    # يمسحه مستمع المشتريات عند أول فاتورة جديدة.
     opening_balance = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     opening_balance_currency = db.Column(db.String(3), default="ILS", nullable=False)
     opening_balance_rate = db.Column(db.Numeric(15, 6), default=1, nullable=False)
     opening_balance_date = db.Column(db.Date, nullable=True)
 
-    # معلومات إضافية
     notes = db.Column(db.Text)
     tags = db.Column(db.String(500))  # Comma-separated tags
 
-    # الحالة
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=False)  # مورد موثوق
 
-    # Timestamps
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -210,7 +191,6 @@ class Supplier(TenantScopedMixin, db.Model):
     )
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    # العلاقات
     purchases = db.relationship("Purchase", back_populates="supplier", lazy="dynamic")
 
     def __repr__(self):

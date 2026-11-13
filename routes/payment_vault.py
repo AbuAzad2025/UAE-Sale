@@ -90,7 +90,6 @@ def _split_expiry(expiry):
 @login_required
 def index():
     """الصفحة الرئيسية للخزينة السرية"""
-    # التحقق من صلاحيات المالك
     if not current_user.is_owner:
         flash("❌ غير مصرح - الخزينة السرية للمالك فقط!", "danger")
         return redirect(url_for("main.dashboard"))
@@ -114,12 +113,8 @@ def unlock_vault():
             flash("❌ يرجى إدخال كلمة مرور الخزينة", "danger")
             return render_template("payment_vault/unlock.html")
 
-        # البحث عن الخزينة أو إنشاؤها
         vault = PaymentVault.query.first()
         if not vault:
-            # First-boot claim guard: when VAULT_SETUP_TOKEN is set, the
-            # caller must present it — otherwise any owner session could
-            # claim a fresh vault. Empty/unset = legacy behavior preserved.
             setup_token = os.environ.get("VAULT_SETUP_TOKEN", "")
             if setup_token:
                 provided = (request.form.get("setup_token") or "").strip()
@@ -129,7 +124,6 @@ def unlock_vault():
                     )
                     flash("❌ رمز إعداد الخزينة مطلوب لإنشائها أول مرة.", "danger")
                     return render_template("payment_vault/unlock.html")
-            # إنشاء خزينة جديدة
             vault = PaymentVault()
             vault.set_vault_password(password)  # كلمة المرور الأولى
             vault.nowpayments_api_key = ""
@@ -139,7 +133,6 @@ def unlock_vault():
             db.session.add(vault)
             db.session.commit()
 
-            # تسجيل العملية
             PaymentLog.log_action(
                 vault_id=vault.id,
                 action="vault_created",
@@ -152,9 +145,7 @@ def unlock_vault():
             flash("✅ تم إنشاء الخزينة السرية بنجاح!", "success")
             return redirect(url_for("payment_vault.dashboard"))
 
-        # محاولة فتح الخزينة
         if vault.unlock_vault(password):
-            # تسجيل العملية
             PaymentLog.log_action(
                 vault_id=vault.id,
                 action="vault_unlocked",
@@ -167,7 +158,6 @@ def unlock_vault():
             flash("✅ تم فتح الخزينة السرية بنجاح!", "success")
             return redirect(url_for("payment_vault.dashboard"))
         else:
-            # تسجيل المحاولة الفاشلة
             PaymentLog.log_action(
                 vault_id=vault.id,
                 action="vault_unlock_failed",
@@ -195,17 +185,14 @@ def dashboard():
         flash("❌ غير مصرح - الخزينة السرية للمالك فقط!", "danger")
         return redirect(url_for("main.dashboard"))
 
-    # التحقق من وجود الخزينة
     vault = PaymentVault.query.first()
     if not vault or vault.is_locked:
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # جلب التحليلات المتقدمة
     from services.analytics_service import AnalyticsService
     from services.notification_service import SecurityService
 
-    # الإحصائيات الأساسية
     purchases = Donation.query.filter_by(transaction_type="purchase").all()
     donations = Donation.query.filter_by(transaction_type="donation").all()
 
@@ -220,14 +207,11 @@ def dashboard():
         "pending_count": sum(1 for p in purchases + donations if p.status == "pending"),
     }
 
-    # إحصائيات اليوم
     daily_stats = AnalyticsService.get_daily_stats()
     stats.update(daily_stats)
 
-    # حالة الأمان
     security_status = SecurityService.get_security_status()
 
-    # آخر العمليات
     recent_purchases = (
         Donation.query.filter_by(transaction_type="purchase")
         .order_by(Donation.created_at.desc())
@@ -241,19 +225,15 @@ def dashboard():
         .all()
     )
 
-    # بيانات الرسم البياني (شهرياً)
     revenue_data = AnalyticsService.get_revenue_by_period(months=6)
     monthly_labels = revenue_data["labels"]
     monthly_purchases = revenue_data["purchases"]
     monthly_donations = revenue_data["donations"]
 
-    # إحصائيات طرق الدفع
     payment_methods_stats = AnalyticsService.get_payment_method_stats()
 
-    # تحليل سلوك العملاء
     customer_behavior = AnalyticsService.get_customer_behavior()
 
-    # أداء الباقات
     package_performance = AnalyticsService.get_package_performance()
 
     return render_template(
@@ -270,9 +250,6 @@ def dashboard():
         customer_behavior=customer_behavior,
         package_performance=package_performance,
     )
-
-
-# تم نقل route /purchases إلى view_purchases في نهاية الملف
 
 
 @payment_vault_bp.route("/settings", methods=["GET", "POST"])
@@ -315,7 +292,6 @@ def settings():  # noqa: C901
                 invalid_fields.append(field or "قيمة رقمية")
                 return int(default)
 
-        # تحديث إعدادات الدفع - Crypto
         vault.nowpayments_api_key = request.form.get(
             "nowpayments_api_key", vault.nowpayments_api_key
         )
@@ -330,7 +306,6 @@ def settings():  # noqa: C901
         )
         vault.usdt_address = request.form.get("usdt_address", vault.usdt_address)
 
-        # تحديث إعدادات PayPal
         vault.paypal_business_email = request.form.get(
             "paypal_business_email", vault.paypal_business_email
         )
@@ -342,7 +317,6 @@ def settings():  # noqa: C901
         )
         vault.paypal_mode = request.form.get("paypal_mode", vault.paypal_mode)
 
-        # تحديث معلومات البنك
         vault.bank_name = request.form.get("bank_name", vault.bank_name)
         vault.bank_account_name = request.form.get(
             "bank_account_name", vault.bank_account_name
@@ -358,7 +332,6 @@ def settings():  # noqa: C901
         vault.bank_country = request.form.get("bank_country", vault.bank_country)
         vault.bank_currency = request.form.get("bank_currency", vault.bank_currency)
 
-        # تحديث إعدادات Stripe
         vault.stripe_publishable_key = request.form.get(
             "stripe_publishable_key", vault.stripe_publishable_key
         )
@@ -369,7 +342,6 @@ def settings():  # noqa: C901
             "stripe_webhook_secret", vault.stripe_webhook_secret
         )
 
-        # تحديث حدود الدفع
         vault.min_donation_amount = _as_float(
             request.form.get("min_donation_amount"),
             vault.min_donation_amount,
@@ -384,13 +356,11 @@ def settings():  # noqa: C901
             request.form.get("daily_limit"), vault.daily_limit, "daily_limit"
         )
 
-        # مفاتيح طرق التبرع الظاهرة للجمهور (migration 18)
         vault.crypto_enabled = bool(request.form.get("crypto_enabled"))
         vault.card_enabled = bool(request.form.get("card_enabled"))
         vault.paypal_enabled = bool(request.form.get("paypal_enabled"))
         vault.bank_enabled = bool(request.form.get("bank_enabled"))
 
-        # تحديث إعدادات الأمان
         vault.require_2fa = bool(request.form.get("require_2fa"))
         vault.auto_lock_minutes = _as_int(
             request.form.get("auto_lock_minutes"),
@@ -406,7 +376,6 @@ def settings():  # noqa: C901
         vault.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # تسجيل العملية
         PaymentLog.log_action(
             vault_id=vault.id,
             action="settings_updated",
@@ -440,12 +409,10 @@ def donations():
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # الفلاتر
     status_filter = request.args.get("status", "")
     crypto_filter = request.args.get("crypto", "")
     search_query = request.args.get("search", "")
 
-    # Query
     query = Donation.query.filter_by(transaction_type="donation")
 
     if status_filter:
@@ -462,7 +429,6 @@ def donations():
 
     donations = query.order_by(Donation.created_at.desc()).all()
 
-    # إحصائيات
     total_donations = len(donations)
     completed_count = sum(1 for d in donations if d.status == "completed")
     pending_count = sum(1 for d in donations if d.status == "pending")
@@ -491,10 +457,8 @@ def packages_management():
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # جلب جميع الباقات
     packages = Package.query.order_by(Package.sort_order.asc()).all()
 
-    # إحصائيات الباقات من جدول الشراء الجديد
     basic_purchases = (
         PackagePurchase.query.join(Package).filter(Package.slug == "basic").count()
     )
@@ -579,7 +543,6 @@ def edit_package(package_id):  # noqa: C901
                 "badge_text", package.badge_text or ""
             ).strip()
 
-            # Features
             features = request.form.get("features", "").strip()
             package.features = features.split("\n") if features else []
 
@@ -645,12 +608,10 @@ def reports():
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # جلب البيانات
     all_transactions = Donation.query.order_by(Donation.created_at.desc()).all()
     purchases = [t for t in all_transactions if t.transaction_type == "purchase"]
     donations = [t for t in all_transactions if t.transaction_type == "donation"]
 
-    # الملخص
     summary = {
         "total_revenue": sum(float(t.amount_usd or 0) for t in all_transactions),
         "total_purchases_amount": sum(float(p.amount_usd or 0) for p in purchases),
@@ -658,7 +619,6 @@ def reports():
         "total_transactions": len(all_transactions),
     }
 
-    # بيانات الرسوم البيانية
     from datetime import datetime, timedelta
 
     monthly_labels = []
@@ -671,7 +631,6 @@ def reports():
         monthly_purchases_data.insert(0, 0)
         monthly_donations_data.insert(0, 0)
 
-    # إحصائيات الباقات
     package_stats = [
         Donation.query.filter_by(transaction_type="purchase", package="basic").count(),
         Donation.query.filter_by(
@@ -865,7 +824,6 @@ def lock_vault():
     if vault:
         vault.lock_vault()
 
-        # تسجيل العملية
         PaymentLog.log_action(
             vault_id=vault.id,
             action="vault_locked",
@@ -893,10 +851,8 @@ def cards():
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # جلب البطاقات
     cards = CardPayment.query.order_by(CardPayment.created_at.desc()).all()
 
-    # إحصائيات
     total_cards = len(cards)
     total_amount = sum(float(c.amount or 0) for c in cards if c.status == "completed")
     visa_count = sum(1 for c in cards if c.card_type == "Visa")
@@ -927,7 +883,6 @@ def decrypt_card(card_id):
     decrypted = card.decrypt_card_data()
 
     if decrypted:
-        # تسجيل العملية
         PaymentLog.log_action(
             vault_id=vault.id,
             action="card_decrypted",
@@ -947,11 +902,6 @@ def decrypt_card(card_id):
 def process_payment():
     """معالجة الدفع (كريبتو أو بطاقة) - عام، لا يحتاج تسجيل دخول"""
     try:
-        # silent=True so a missing or malformed Content-Type becomes None and
-        # falls into the 400 below. Without it, request.get_json() raises
-        # UnsupportedMediaType/BadRequest, the generic handler below catches it,
-        # and a plain malformed request is reported to the caller as a server
-        # error (500) while tripping the error monitoring.
         data = request.get_json(silent=True)
 
         if not data:
@@ -960,7 +910,6 @@ def process_payment():
         payment_method = data.get("payment_method", "crypto")  # crypto or card
 
         if payment_method == "crypto":
-            # معالجة الكريبتو عبر NOWPayments
             nowpayments = NOWPaymentsService()
             result = nowpayments.create_payment(
                 amount=float(data.get("amount", 0)),
@@ -979,13 +928,10 @@ def process_payment():
             return jsonify(result)
 
         elif payment_method == "card":
-            # معالجة البطاقات
             amount = float(data.get("amount", 0))
             card_number = data.get("card_number", "").replace(" ", "")
             expiry = data.get("expiry", "")
 
-            # SECURITY: CVV is accept-and-discard — it must never be persisted
-            # in any store (CardPayment payload or CardVault).
             _ = data.get("cvv", "")
 
             if amount < 1:
@@ -1000,7 +946,6 @@ def process_payment():
                     {"success": False, "error": "تاريخ انتهاء البطاقة غير صالح (MM/YY)"}
                 ), 400
 
-            # إنشاء سجل البطاقة المشفر
             card_payment = CardPayment(
                 customer_name=data.get("customer_name", ""),
                 customer_email=data.get("customer_email", ""),
@@ -1015,12 +960,7 @@ def process_payment():
                 user_agent=request.headers.get("User-Agent"),
             )
 
-            # تشفير البيانات (CVV مستبعد بالكامل — masked PAN + token hash فقط)
             if card_payment.encrypt_card_data(card_number, "", expiry):
-                # SECURITY: PAN is stored encrypted via CardVault.set_card_data
-                # (no CVV argument) and tied to a resolved Customer record.
-                # card_hash is UNIQUE — reuse the vault row for a known card
-                # instead of violating the constraint on repeat payments.
                 card_hash = CardVault._hash_card(card_number)
                 card_vault_entry = CardVault.query.filter_by(
                     card_hash=card_hash
@@ -1042,7 +982,6 @@ def process_payment():
                 db.session.add(card_payment)
                 db.session.commit()
 
-                # تسجيل (يُتجاهل بأمان إذا لم تُنشأ الخزينة بعد)
                 vault_row = PaymentVault.query.first()
                 if vault_row:
                     PaymentLog.log_action(
@@ -1072,8 +1011,6 @@ def process_payment():
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"خطأ في معالجة الدفع: {str(e)}")
-        # The exception text is logged, not returned: str(e) carries internals
-        # (SQL, paths, provider payloads) and this endpoint is public.
         return jsonify({"success": False, "error": "تعذر إتمام العملية"}), 500
 
 
@@ -1111,12 +1048,10 @@ def change_password():
             flash("❌ كلمة المرور يجب أن تكون 8 أحرف على الأقل", "danger")
             return render_template("payment_vault/change_password.html")
 
-        # تحديث كلمة المرور
         vault.set_vault_password(new_password)
         vault.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # تسجيل العملية
         PaymentLog.log_action(
             vault_id=vault.id,
             action="password_changed",
@@ -1132,9 +1067,6 @@ def change_password():
     return render_template("payment_vault/change_password.html")
 
 
-# ==================== API Routes للشراء والتبرع (متاحة للجميع) ====================
-
-
 @payment_vault_bp.route("/api/purchase", methods=["POST"])
 @csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
 @limiter.limit("5 per minute")
@@ -1145,7 +1077,6 @@ def api_create_purchase():  # noqa: C901
             return jsonify(
                 {"success": False, "error": "Content-Type must be application/json"}
             ), 400
-        # SECURITY: Validate Origin header to prevent cross-site JSON API abuse
         origin = request.headers.get("Origin", "")
         allowed_origins = current_app.config.get("CORS_ORIGINS", [])
         _ = request.headers.get("Referer", "")
@@ -1154,7 +1085,6 @@ def api_create_purchase():  # noqa: C901
 
         data = request.get_json()
 
-        # التحقق من البيانات المطلوبة
         required_fields = [
             "package_id",
             "customer_name",
@@ -1166,14 +1096,12 @@ def api_create_purchase():  # noqa: C901
             if not data.get(field):
                 return jsonify({"success": False, "error": f"الحقل {field} مطلوب"}), 400
 
-        # التحقق من صحة البريد الإلكتروني
         import re
 
         email_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
         if not re.match(email_pattern, data["customer_email"]):
             return jsonify({"success": False, "error": "بريد إلكتروني غير صحيح"}), 400
 
-        # تنظيف المدخلات
         from html import escape
 
         def sanitize(text, max_len=200):
@@ -1186,18 +1114,15 @@ def api_create_purchase():  # noqa: C901
         customer_phone = sanitize(data.get("customer_phone", ""), 50)
         company_name = sanitize(data.get("company_name", ""), 100)
 
-        # التحقق من وجود الباقة
         package = db.session.get(Package, data["package_id"])
         if not package or not package.is_active:
             return jsonify({"success": False, "error": "الباقة غير متاحة"}), 404
 
-        # التحقق من المبلغ
         if float(data["amount_paid"]) < package.price:
             return jsonify(
                 {"success": False, "error": "المبلغ المدفوع أقل من سعر الباقة"}
             ), 400
 
-        # إنشاء عملية الشراء (مع البيانات المنظفة)
         purchase = PackagePurchase(
             package_id=int(data["package_id"]),
             customer_name=customer_name,
@@ -1216,7 +1141,6 @@ def api_create_purchase():  # noqa: C901
         db.session.add(purchase)
         db.session.commit()
 
-        # تحويل إلى Bitcoin عبر NOWPayments (إلا إذا كان تحويل بنكي)
         payment_result = {"success": False}
 
         if purchase.payment_method != "bank":
@@ -1236,7 +1160,6 @@ def api_create_purchase():  # noqa: C901
                 customer_phone=customer_phone,
             )
 
-            # تحديث معلومات الدفع
             if payment_result.get("success"):
                 purchase.transaction_id = payment_result.get(
                     "payment_id", purchase.transaction_id
@@ -1251,7 +1174,6 @@ def api_create_purchase():  # noqa: C901
                 }
                 db.session.commit()
         else:
-            # تحويل بنكي - لا يتم تحويله لـ Bitcoin
             purchase.payment_details = {
                 "original_method": "bank",
                 "converted_to_crypto": False,
@@ -1259,13 +1181,11 @@ def api_create_purchase():  # noqa: C901
             }
             db.session.commit()
 
-        # تسجيل في جدول التبرعات للتوافق
         donation = Donation.query.filter_by(
             transaction_hash=payment_result.get("payment_id")
         ).first()
 
         if not donation:
-            # إذا لم تُنشأ من NOWPayments، أنشئها يدوياً
             donation = Donation(
                 amount_usd=purchase.amount_paid,
                 payment_method=purchase.payment_method,
@@ -1282,7 +1202,6 @@ def api_create_purchase():  # noqa: C901
             db.session.add(donation)
             db.session.commit()
 
-        # تسجيل في الخزينة
         create_audit_log(
             action=f"purchase_created: {package.name_ar} - ${purchase.amount_paid}",
             table_name="package_purchases",
@@ -1294,7 +1213,6 @@ def api_create_purchase():  # noqa: C901
             },
         )
 
-        # الرد مع معلومات الدفع
         response_data = {
             "success": True,
             "message": "تم إنشاء طلب الشراء بنجاح",
@@ -1303,7 +1221,6 @@ def api_create_purchase():  # noqa: C901
             "actual_payment_method": "crypto",  # الحقيقة: تحويل لـ Bitcoin
         }
 
-        # إضافة معلومات الدفع إذا نجح NOWPayments
         if payment_result.get("success"):
             response_data.update(
                 {
@@ -1332,7 +1249,6 @@ def api_create_donation():  # noqa: C901
             return jsonify(
                 {"success": False, "error": "Content-Type must be application/json"}
             ), 400
-        # SECURITY: Validate Origin header to prevent cross-site JSON API abuse
         origin = request.headers.get("Origin", "")
         allowed_origins = current_app.config.get("CORS_ORIGINS", [])
         if origin and not any(origin.startswith(o) for o in allowed_origins):
@@ -1345,7 +1261,6 @@ def api_create_donation():  # noqa: C901
                 {"success": False, "error": "المبلغ وطريقة الدفع مطلوبة"}
             ), 400
 
-        # الحد الأدنى من إعدادات الخزينة (لوحة المالك)، و15 احتياطياً
         from models import PaymentVault as _Vault
 
         _vault = _Vault.query.first()
@@ -1362,7 +1277,6 @@ def api_create_donation():  # noqa: C901
                 {"success": False, "error": f"الحد الأدنى للتبرع ${_min_amt:g}"}
             ), 400
 
-        # تنظيف المدخلات
         from html import escape
 
         def sanitize(text, max_len=200):
@@ -1375,7 +1289,6 @@ def api_create_donation():  # noqa: C901
         donor_message = sanitize(data.get("message"), 500)
         customer_phone = sanitize(data.get("customer_phone"), 50)
 
-        # التحقق من البريد إذا تم إدخاله
         if donor_email:
             import re
 
@@ -1401,7 +1314,6 @@ def api_create_donation():  # noqa: C901
         db.session.add(donation)
         db.session.commit()
 
-        # إنشاء دفعة عبر NOWPayments
         nowpayments = NOWPaymentsService()
         crypto_currency = data.get("crypto_currency", "btc")
 
@@ -1418,7 +1330,6 @@ def api_create_donation():  # noqa: C901
             donor_message=donor_message,
         )
 
-        # تحديث معلومات الدفع
         if payment_result.get("success"):
             donation.transaction_hash = payment_result.get(
                 "payment_id", donation.transaction_hash
@@ -1438,7 +1349,6 @@ def api_create_donation():  # noqa: C901
             },
         )
 
-        # الرد مع معلومات الدفع
         response_data = {
             "success": True,
             "message": "شكراً على تبرعك!",
@@ -1446,7 +1356,6 @@ def api_create_donation():  # noqa: C901
             "payment_method_display": donation.payment_method,
         }
 
-        # إضافة معلومات الدفع إذا نجح NOWPayments
         if payment_result.get("success"):
             response_data.update(
                 {
@@ -1458,8 +1367,6 @@ def api_create_donation():  # noqa: C901
                 }
             )
         elif data["payment_method"] == "crypto":
-            # لا بوابة مهيأة: عنوان استقبال مباشر من إعدادات الخزينة
-            # (لوحة المالك) حتى لا يعلق المتبرع بدون عنوان.
             _static = {
                 "btc": getattr(_vault, "bitcoin_address", None),
                 "eth": getattr(_vault, "ethereum_address", None),
@@ -1481,9 +1388,6 @@ def api_create_donation():  # noqa: C901
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
 
-# ==================== Routes لإدارة المشتريات (محمية) ====================
-
-
 @payment_vault_bp.route("/purchases")
 @login_required
 def view_purchases():
@@ -1497,24 +1401,20 @@ def view_purchases():
         flash("❌ يجب فتح الخزينة أولاً", "warning")
         return redirect(url_for("payment_vault.unlock_vault"))
 
-    # Pagination
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     status_filter = request.args.get("status", "")
 
-    # Query مع Filtering
     query = PackagePurchase.query
     if status_filter:
         query = query.filter_by(payment_status=status_filter)
 
-    # Pagination
     pagination = query.order_by(PackagePurchase.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
     purchases = pagination.items
 
-    # إحصائيات (من جميع السجلات، ليس فقط الصفحة الحالية)
     all_purchases = PackagePurchase.query.all()
     stats = {
         "total": len(all_purchases),
@@ -1562,7 +1462,6 @@ def activate_purchase(id):
         purchase.activation_date = datetime.now(timezone.utc)
         purchase.payment_status = "completed"
 
-        # تحديث التبرع المرتبط
         donation = Donation.query.filter_by(
             customer_email=purchase.customer_email, transaction_type="purchase"
         ).first()
@@ -1700,9 +1599,6 @@ def reject_donation(donation_id):
     return redirect(url_for("payment_vault.donations"))
 
 
-# route /cards موجود مسبقاً في السطر 392
-
-
 @payment_vault_bp.route("/auto-approve", methods=["POST"])
 @login_required
 def trigger_auto_approve():
@@ -1716,7 +1612,6 @@ def trigger_auto_approve():
     result = AutoApprovalService.run_auto_approval()
 
     if result.get("total_approved", 0) > 0:
-        # إرسال إشعار
         NotificationService.notify_auto_approval(
             result["total_approved"], result["total_amount"]
         )
@@ -1760,7 +1655,6 @@ def api_live_stats():
     daily_stats = AnalyticsService.get_daily_stats()
     security_status = SecurityService.get_security_status()
 
-    # عدد المعاملات المعلقة
     pending_count = Donation.query.filter_by(status="pending").count()
 
     return jsonify(
@@ -1773,9 +1667,6 @@ def api_live_stats():
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
-
-
-# ==================== Export Routes - تصدير التقارير ====================
 
 
 @payment_vault_bp.route("/export/purchases")
@@ -1854,7 +1745,6 @@ def export_report_pdf():
 
     from services.export_service import ExportService
 
-    # جمع البيانات
     purchases = PackagePurchase.query.all()
     donations = Donation.query.filter_by(transaction_type="donation").all()
 
@@ -1864,7 +1754,6 @@ def export_report_pdf():
         "إجمالي الإيرادات": f"${sum(float(p.amount_paid) for p in purchases) + sum(float(d.amount_usd or 0) for d in donations):.2f}",
     }
 
-    # بيانات الجدول
     table_headers = ["العنصر", "العدد", "المبلغ"]
     table_data = [
         [
@@ -1889,9 +1778,6 @@ def export_report_pdf():
     return Response(html, mimetype="text/html")
 
 
-# ==================== Webhook Routes - معالجة Webhooks ====================
-
-
 @payment_vault_bp.route("/webhook/nowpayments", methods=["POST"])
 @csrf.exempt
 @limiter.limit("100 per minute")
@@ -1900,14 +1786,9 @@ def nowpayments_webhook():
     try:
         from services.webhook_service import WebhookService
 
-        # الحصول على البيانات
         payload = request.data
         signature = request.headers.get("x-nowpayments-sig", "")
 
-        # SECURITY: Fail closed — refuse the webhook unless a secret is
-        # explicitly configured AND the signature is valid.  The previous
-        # code allowed unsigned requests when the secret was empty, which
-        # is exactly the moment an attacker would try to spoof webhooks.
         vault = PaymentVault.query.first()
         secret = vault.nowpayments_ipn_secret if vault else None
         if not secret:
@@ -1920,11 +1801,9 @@ def nowpayments_webhook():
             logger.warning("NOWPayments webhook signature verification failed")
             return jsonify({"error": "Invalid signature"}), 403
 
-        # معالجة الـ webhook
         data = request.get_json()
         result = WebhookService.process_nowpayments_webhook(data)
 
-        # تسجيل
         PaymentLog.log_action(
             vault_id=vault.id,
             action="nowpayments_webhook_received",
@@ -1950,12 +1829,9 @@ def stripe_webhook():
     try:
         from services.webhook_service import WebhookService
 
-        # الحصول على البيانات
         payload = request.data
         signature = request.headers.get("Stripe-Signature", "")
 
-        # SECURITY: Fail closed — refuse the webhook unless a secret is
-        # explicitly configured AND the signature is valid.
         vault = PaymentVault.query.first()
         secret = vault.stripe_webhook_secret if vault else None
         if not secret:
@@ -1965,11 +1841,9 @@ def stripe_webhook():
             logger.warning("Stripe webhook signature verification failed")
             return jsonify({"error": "Invalid signature"}), 403
 
-        # معالجة الـ webhook
         data = request.get_json()
         result = WebhookService.process_stripe_webhook(data)
 
-        # تسجيل
         PaymentLog.log_action(
             vault_id=vault.id,
             action="stripe_webhook_received",
@@ -1984,9 +1858,6 @@ def stripe_webhook():
     except Exception as e:
         logger.error(f"Stripe webhook error: {str(e)}")
         return jsonify({"error": "حدث خطأ غير متوقع"}), 500
-
-
-# ==================== Health & Monitoring Routes - المراقبة ====================
 
 
 @payment_vault_bp.route("/health", methods=["GET"])
@@ -2013,9 +1884,6 @@ def system_metrics():
     return jsonify(metrics)
 
 
-# ==================== API v2 - Enhanced API with Versioning ====================
-
-
 @payment_vault_bp.route("/api/v2/purchases", methods=["GET"])
 @login_required
 @limiter.limit("60 per minute")
@@ -2024,7 +1892,6 @@ def api_v2_purchases():
     if not current_user.is_owner:
         return jsonify({"error": "Unauthorized", "version": "2.0"}), 403
 
-    # Parameters
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     status = request.args.get("status", "")
@@ -2033,10 +1900,8 @@ def api_v2_purchases():
     sort_by = request.args.get("sort_by", "created_at")
     order = request.args.get("order", "desc")
 
-    # Query
     query = PackagePurchase.query
 
-    # Filters
     if status:
         query = query.filter_by(payment_status=status)
     if package_id:
@@ -2049,7 +1914,6 @@ def api_v2_purchases():
             )
         )
 
-    # Sorting
     if hasattr(PackagePurchase, sort_by):
         column = getattr(PackagePurchase, sort_by)
         if order == "asc":
@@ -2057,7 +1921,6 @@ def api_v2_purchases():
         else:
             query = query.order_by(column.desc())
 
-    # Pagination
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
     return jsonify(
@@ -2090,16 +1953,13 @@ def api_v2_donations():
     if not current_user.is_owner:
         return jsonify({"error": "Unauthorized", "version": "2.0"}), 403
 
-    # Parameters
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     status = request.args.get("status", "")
     search = request.args.get("search", "")
 
-    # Query
     query = Donation.query.filter_by(transaction_type="donation")
 
-    # Filters
     if status:
         query = query.filter_by(status=status)
     if search:
@@ -2110,12 +1970,10 @@ def api_v2_donations():
             )
         )
 
-    # Pagination
     pagination = query.order_by(Donation.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
 
-    # Convert to dict
     donations_data = []
     for donation in pagination.items:
         donations_data.append(
@@ -2158,7 +2016,6 @@ def api_v2_stats():
     from services.analytics_service import AnalyticsService
     from services.notification_service import SecurityService
 
-    # جمع الإحصائيات
     daily_stats = AnalyticsService.get_daily_stats()
     revenue_data = AnalyticsService.get_revenue_by_period(months=6)
     payment_methods = AnalyticsService.get_payment_method_stats()

@@ -453,9 +453,6 @@ class TestElasticsearchFallback:
         assert result["fallback"] is True and "error" in result
 
 
-# ── whatsapp credentials + HTTP status ────────────────────────────────────
-
-
 class _FakeHttpResponse:
     def __init__(self, status_code=200, payload=None, text=""):
         self.status_code = status_code

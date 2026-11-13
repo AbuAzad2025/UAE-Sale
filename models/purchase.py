@@ -45,9 +45,6 @@ class Purchase(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # تاريخ استحقاق الذمم الدائنة — يُشتق من شروط دفع المورد أو يُحدَّد
-    # صراحةً (services/due_date_service.py). بلا تاريخ استحقاق تُعامل
-    # الفاتورة كأنها مستحقّة في تاريخها.
     due_date = db.Column(db.Date, nullable=True, index=True)
 
     subtotal = db.Column(db.Numeric(15, 3), default=0)
@@ -56,11 +53,9 @@ class Purchase(TenantScopedMixin, db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     tax_inclusive = db.Column(db.Boolean, default=False)
     tax_treatment = db.Column(db.String(10), default="standard")
-    # الضريبة غير قابلة للاسترداد (سيارات، ترفيه...) مسموح بتكليفها في المنتج/المصاريف
     vat_recoverable = db.Column(
         db.Boolean, nullable=False, default=True, server_default=sa.true()
     )
-    # مورد أجنبي لم تُحصَّل منه ضريبة — المشتري يقيّد ضريبة المدخلات والمخرجات
     reverse_charge = db.Column(
         db.Boolean, nullable=False, default=False, server_default=sa.false()
     )
@@ -72,9 +67,6 @@ class Purchase(TenantScopedMixin, db.Model):
 
     status = db.Column(db.String(20), default="confirmed", index=True)
 
-    # تتبع السداد (كانت خدمة أعمار الذمم الدائنة تفلتر على عمودين غير موجودين)
-    # F3: يُكتبان الآن عند تسديد فاتورة الشراء (انظر recalculate_payment_status)
-    # والقيم بعملة الأساس (amount_base) — لا تُشتق من total_amount.
     paid_amount = db.Column(db.Numeric(15, 3), default=0)
     payment_status = db.Column(db.String(20), default="unpaid", index=True)
 
@@ -195,12 +187,10 @@ class Purchase(TenantScopedMixin, db.Model):
         Calculate all financial totals with proper decimal precision
         Ensures accurate financial calculations with rounding
         """
-        # Calculate subtotal from all lines - ensure Decimal type
         self.subtotal = sum(
             (Decimal(str(line.line_total)) for line in self.lines), Decimal("0")
         )
 
-        # Ensure all amounts are Decimal
         discount = (
             Decimal(str(self.discount_amount)) if self.discount_amount else Decimal("0")
         )
@@ -211,7 +201,6 @@ class Purchase(TenantScopedMixin, db.Model):
             Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal("1")
         )
 
-        # Mixed per-line treatments (standard/zero/exempt) — same engine as sales.
         from services.sale_tax_calculation import sale_tax_totals_mixed
 
         line_specs = [
@@ -232,9 +221,6 @@ class Purchase(TenantScopedMixin, db.Model):
             invoice_treatment=invoice_treatment,
         )
 
-        # Calculate base amount with proper rounding.
-        # F13: نفس فرع عملة الأساس في Sale.calculate_totals — الفاتورة بعملة
-        # الأساس لا تُضرب في سعر الصرف (كان الضرب دائماً يضاعف المبلغ).
         try:
             from services.currency_service import CurrencyService
 

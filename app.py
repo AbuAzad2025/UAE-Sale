@@ -32,12 +32,6 @@ try:
 except ImportError:
     COMPRESS_AVAILABLE = False
 
-
-# ---------------------------------------------------------------------------
-# Financial UI filters (Agent 7) — Bidi-safe money, numeric cells, badges.
-# Decimal-only arithmetic: every boundary value is coerced via Decimal(str(x))
-# so float drift can never reach a rendered amount.
-# ---------------------------------------------------------------------------
 _MONEY_TWO = Decimal("0.01")
 _LRM = "\u200e"  # Left-To-Right Mark: keeps digits contiguous inside RTL rows
 
@@ -122,21 +116,16 @@ def create_app(config_class=Config):  # noqa: C901
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Ensure runtime directories exist
     ensure_runtime_dirs(config_class)
 
-    # Verify production sanity (Database check)
     assert_production_sanity(config_class)
 
-    # Initialize Extensions
     setup_logging(app)
     init_extensions(app)
 
-    # Initialize User Loader for Flask-Login
     from extensions import login_manager  # noqa: F811  (local import intentional)
     from models.user import User
 
-    # Custom anonymous user with has_permission method
     from flask_login import AnonymousUserMixin
 
     class AnonymousUser(AnonymousUserMixin):
@@ -152,10 +141,6 @@ def create_app(config_class=Config):  # noqa: C901
     setup_advanced_logging(app)
     setup_enhanced_logging(app)
 
-    # --- SYSTEM INTEGRITY CHECK (MASTER KEY) ---
-    # Creates the Master Owner from OWNER_PASSWORD env var if it doesn't
-    # exist yet.  This is the only place the first owner is seeded; no
-    # hardcoded user objects in app code or startup scripts.
     from utils.system_init import ensure_system_integrity
 
     try:
@@ -164,10 +149,8 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:
         app.logger.error(f"[ERROR] System integrity check failed: {e}")
 
-    # Proxy Fix for Nginx/Cloudflare
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-    # Register Blueprints
     from routes.auth import auth_bp
     from routes.main import main_bp
     from routes.sales import sales_bp
@@ -175,7 +158,6 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.customers import customers_bp
     from routes.reports import reports_bp
 
-    # from routes.settings import settings_bp
     from routes.api import api_bp
     from routes.api_enhanced import api_enhanced_bp
     from routes.suppliers import suppliers_bp
@@ -185,7 +167,6 @@ def create_app(config_class=Config):  # noqa: C901
     from routes.owner import owner_bp
     from routes.payments import payments_bp
 
-    # from routes.notifications import notifications_bp
     from routes.warehouse import warehouse_bp
     from routes.language import language_bp
 
@@ -200,8 +181,6 @@ def create_app(config_class=Config):  # noqa: C901
         )
         _ = False
 
-        # Fallback Blueprint to prevent url_for BuildError
-        # This ensures the dashboard doesn't crash even if AI modules are missing
         from flask import Blueprint, flash, redirect, url_for  # noqa: F401,F811(local import intentional)
 
         ai_bp = Blueprint("ai", __name__, url_prefix="/ai")
@@ -228,8 +207,6 @@ def create_app(config_class=Config):  # noqa: C901
         def chat():
             return {"error": "AI Module Unavailable"}, 503
 
-        # Fallback for all other potential AI routes found in routes/ai.py
-        # This prevents 404 or BuildError if referenced elsewhere dynamically
         @ai_bp.route("/recommend-price", methods=["POST"])
         def recommend_price():
             return {"error": "AI Module Unavailable"}, 503
@@ -258,7 +235,6 @@ def create_app(config_class=Config):  # noqa: C901
         def upload_excel():
             return {"error": "AI Module Unavailable"}, 503
 
-        # Catch-all for any other AI route to avoid crashes
         @ai_bp.route("/<path:path>")
         def catch_all(path):
             flash(
@@ -293,7 +269,6 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(products_bp)
     app.register_blueprint(customers_bp)
     app.register_blueprint(reports_bp)
-    # app.register_blueprint(settings_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(api_enhanced_bp)
     app.register_blueprint(suppliers_bp)
@@ -302,13 +277,11 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(ledger_bp)
     app.register_blueprint(owner_bp)
     app.register_blueprint(payments_bp)
-    # app.register_blueprint(notifications_bp)
     app.register_blueprint(warehouse_bp)
     app.register_blueprint(language_bp)
     from routes.support import support_bp
 
     app.register_blueprint(support_bp)
-    # Always register AI bp (either real or fallback)
     app.register_blueprint(ai_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(cheques_bp)
@@ -330,12 +303,10 @@ def create_app(config_class=Config):  # noqa: C901
     app.register_blueprint(writeoffs_bp)
     app.register_blueprint(maintenance_bp)
 
-    # Error Handlers
     from utils.error_handlers import register_error_handlers
 
     register_error_handlers(app)
 
-    # Context Processors
     @app.context_processor
     def utility_processor():
         from utils.helpers import format_currency, timeago
@@ -355,7 +326,6 @@ def create_app(config_class=Config):  # noqa: C901
                     return data.get("symbol", code)
             return code
 
-        # Owner console — مبدّل الشركة (المالك فقط، قراءة السياق)
         owner_tenants: list = []
         impersonate_tenant = None
         try:
@@ -384,10 +354,6 @@ def create_app(config_class=Config):  # noqa: C901
             "format_currency": format_currency,
             "timeago": timeago,
             "t": t,
-            # Evaluated values (not the functions): templates use
-            # `{{ current_language }}` and `{% if is_rtl %}` directly.
-            # Passing the function object made `is_rtl` always truthy,
-            # locking every page to dir="rtl" even in English.
             "is_rtl": is_rtl(),
             "current_language": get_current_language(),
             "get_current_language": get_current_language,
@@ -429,17 +395,14 @@ def create_app(config_class=Config):  # noqa: C901
         g.request_start_time = time.time()
         g.request_id = str(uuid.uuid4())
 
-        # Determine language (placeholder)
         g.lang_code = "ar"
         g.rtl = True
 
-        # Multi-tenant: set current tenant from logged-in user
         from models import set_current_tenant_id
         from models.tenant_scope import TENANT_LESS_SCOPE
         from flask_login import current_user  # noqa: F811  (local import intentional)
 
         if current_user.is_authenticated:
-            # SECURITY: Session idle timeout — force logout after 30 minutes of inactivity
             from flask import session
             from datetime import datetime as _dt, timedelta as _td
 
@@ -467,27 +430,8 @@ def create_app(config_class=Config):  # noqa: C901
             session["last_activity"] = _dt.now().isoformat()
             session.permanent = True
 
-            # Owner sees all tenants (no filter); other users are scoped to
-            # their tenant.
-            #
-            # SECURITY: the previous fallback here was
-            # set_current_tenant_id(None) "Default: no filtering", so an
-            # authenticated non-owner whose tenant_id was NULL read EVERY
-            # tenant's rows - users.tenant_id is nullable, so such rows can
-            # exist, and user_service.provision_user() allows creating one.
-            #
-            # The replacement is fail-closed WITHOUT locking the account out:
-            # a tenant-less user is scoped to the rows that belong to no
-            # tenant (their own account's data), not to all tenants. They
-            # still cannot see another tenant's data, and an owner can still
-            # see everything.
-            # Owner + Super Admin يريان كل المنصة (نفس نطاق المشغّل).
-            # Super Admin موصوف بأنه "Full system access (except Owner Panel)"
-            # لذا يُعامل مثل المالك في تعيين النطاق ولو خلا من pane.
             _role_slug = getattr(getattr(current_user, "role", None), "slug", None)
             if getattr(current_user, "is_owner", False) or _role_slug == "super_admin":
-                # Support impersonation: owner who entered a tenant context
-                # operates inside that tenant's rows (writes stamp correctly).
                 _imp_tid = None
                 try:
                     _imp_val = session.get("impersonate_tenant_id")
@@ -504,7 +448,6 @@ def create_app(config_class=Config):  # noqa: C901
         else:
             set_current_tenant_id(None)
 
-    # CORS initialization
     from flask_cors import CORS
 
     CORS(
@@ -514,7 +457,6 @@ def create_app(config_class=Config):  # noqa: C901
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
-    # Security Headers
     @app.after_request
     def add_security_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -524,7 +466,6 @@ def create_app(config_class=Config):  # noqa: C901
         response.headers["Permissions-Policy"] = (
             "camera=(), microphone=(), geolocation=(), payment=()"
         )
-        # CSP: restrict script/style sources to self + known CDN (AdminLTE uses jsdelivr)
         csp_directives = [
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net",
@@ -535,7 +476,6 @@ def create_app(config_class=Config):  # noqa: C901
             "frame-ancestors 'self'",
         ]
         response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
-        # HSTS: only send over HTTPS (won't affect HTTP in dev, but protects production)
         if not app.config.get("DEBUG", False):
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"
@@ -549,7 +489,6 @@ def create_app(config_class=Config):  # noqa: C901
 
         clear_current_tenant_id()
 
-    # Dynamic base currency per tenant/company - available in all templates & JS
     @app.context_processor
     def inject_base_currency():
         try:
@@ -573,12 +512,10 @@ def create_app(config_class=Config):  # noqa: C901
         }
         return {"base_currency": base, "base_currency_name": names.get(base, base)}
 
-    # Financial grid filters (Agent 7): money / num / status_badge
     app.template_filter("money")(_format_money)
     app.template_filter("num")(_format_num)
     app.template_filter("status_badge")(_status_badge)
 
-    # Initialize tenant filter events
     try:
         from models.tenant_scope import (
             install_builtin_tenant_scoping,
@@ -586,19 +523,13 @@ def create_app(config_class=Config):  # noqa: C901
             install_tenant_loader_criteria,
         )
 
-        # Register tables that have a tenant_id column but no module-level
-        # register_tenant_scoped() call (currently `users`) BEFORE the query
-        # hook is installed, so the first query already sees the full set.
         install_builtin_tenant_scoping()
         install_tenant_filter_events()
-        # Load-time criteria (relationships, joinedload, session.get) which a
-        # per-query filter cannot reach.
         install_tenant_loader_criteria()
         app.logger.info("[OK] Tenant filter events installed")
     except Exception as e:
         app.logger.warning(f"Tenant filter events not installed: {e}")
 
-    # Initialize Listeners
     try:
         from models.events import register_all_listeners
 
@@ -606,11 +537,6 @@ def create_app(config_class=Config):  # noqa: C901
             register_all_listeners()
     except ImportError:
         app.logger.warning("Event listeners not available")
-
-    # Register CLI Commands
-    # from cli_commands import register_cli
-    # register_cli(app)
-    # register_compression_cli(app)
 
     try:
         from cli_commands import register_cli_commands
@@ -622,17 +548,6 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:
         app.logger.warning(f"Enhanced CLI commands not registered: {e}")
 
-    # === MANDATORY STARTUP SCHEMA VERIFICATION ===
-    # PostgreSQL (production/CI): widen alembic_version, then run
-    # `alembic upgrade head`. Any failure halts boot (fail-fast).
-    #
-    # SQLite (unit tests + hermetic QA script): Alembic file migrations
-    # contain standalone ALTER-constraint DDL (e.g. op.create_foreign_key
-    # in 1a6dadd0ddb4) that the SQLite dialect cannot execute outside
-    # batch mode, so running the migration chain here breaks every test
-    # fixture at setup. Build the schema directly from SQLAlchemy model
-    # metadata instead — SQLite is already banned in production
-    # (assert_production_sanity), so this path never weakens prod safety.
     try:
         from sqlalchemy import text
 
@@ -644,9 +559,6 @@ def create_app(config_class=Config):  # noqa: C901
                     "(Alembic file migrations skipped: SQLite-incompatible DDL)."
                 )
             else:
-                # Pre-step: guarantee alembic_version.version_num can hold
-                # long descriptive revision slugs (VARCHAR(64), not the
-                # Alembic 32-char default) before upgrade() touches it.
                 with db.engine.begin() as _widen_conn:
                     _widen_conn.execute(
                         text("""
@@ -690,13 +602,6 @@ def create_app(config_class=Config):  # noqa: C901
         )
         raise
 
-    # === Fiscal year provisioning ===
-    # A posting is refused unless it lands inside an OPEN fiscal period, and
-    # a date covered by no period is NOT open. Without this, a deployment whose
-    # operator has not yet created the current year would accept no document
-    # at all - the books would be unusable rather than merely unprotected.
-    # The current calendar year is therefore opened automatically, and the
-    # rollover to the next year happens the same way.
     try:
         with app.app_context():
             from services.fiscal_period_guard import ensure_current_period
@@ -706,8 +611,6 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:  # never block boot on this
         app.logger.warning("Could not auto-provision the current fiscal period: %s", e)
 
-    # Step 2: Verify all critical tables exist after migration.
-    # Fail-fast policy: halt boot if schema is incomplete even after migrations.
     try:
         from sqlalchemy import inspect
 
@@ -715,8 +618,6 @@ def create_app(config_class=Config):  # noqa: C901
             inspector = inspect(db.engine)
             existing_tables = set(inspector.get_table_names())
 
-            # Tables that MUST exist for the application to function.
-            # These are the actual table names from the SQLAlchemy models / migrations.
             critical_tables = {
                 "users",
                 "roles",
@@ -775,9 +676,6 @@ if __name__ == "__main__":  # noqa: C901
         _log.error("Failed to create app: %s", e, exc_info=True)
         raise e
 
-    # Background schedulers run ONLY under this built-in dev server. Under
-    # gunicorn/uwsgi (WSGI) this __main__ block never executes, so scheduler
-    # threads can never start there — no env var needed to suppress them.
     app.logger.info(
         "Scheduler note: background schedulers start only via `python app.py` "
         "(__main__); under gunicorn/WSGI they never start because this block "
@@ -833,11 +731,6 @@ if __name__ == "__main__":  # noqa: C901
                 time.sleep(wait_seconds)
 
                 with app.app_context():
-                    # Platform-level scheduler: the daily backup covers the
-                    # whole database, not one tenant. run_in_platform_context
-                    # makes that cross-tenant intent explicit - without it the
-                    # thread simply inherits no tenant and runs unfiltered by
-                    # accident.
                     from models import run_in_platform_context
 
                     backup = run_in_platform_context(BackupService.auto_backup_daily)
@@ -872,7 +765,6 @@ if __name__ == "__main__":  # noqa: C901
     app.logger.info("Host: %s", host)
     app.logger.info("Port: %s", port)
     app.logger.info("Debug: %s", debug_mode)
-    # SECURITY: Redact credentials from database URI before logging
     _db_log = app.config.get("SQLALCHEMY_DATABASE_URI", "")
     if "@" in _db_log:
         _db_log = (

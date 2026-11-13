@@ -837,7 +837,6 @@ def test_expenses_cash_cheque_edit_categories_archive_delete(
     assert jbody["category"]["name"].startswith("JSON-")
 
     # Back user_id with the created owner fixture row (same semantics as
-    # the raw id=1 seed; keeps the FK valid on PostgreSQL where it is
     # enforced, while SQLite ignored it).
     archived_cycle = Expense(
         expense_number=_uniq("EXP-ARC-"),

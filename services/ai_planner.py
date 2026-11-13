@@ -31,7 +31,6 @@ class Plan:
     source: str = "unknown"
 
 
-# ربط النية → أداة
 _INTENT_TO_TOOL = {
     "balance": "set_customer_balance",
     "customer": "create_customer",
@@ -46,7 +45,6 @@ _INTENT_TO_TOOL = {
     "warehouse": "inventory_status",
     "ledger": "sales_summary",
     "user": None,
-    # intents من semantic_matcher
     "create_invoice": "create_sale",
     "create_receipt": "record_payment",
     "customer_balance": "get_customer_balance",
@@ -54,7 +52,6 @@ _INTENT_TO_TOOL = {
     "sales_analysis": "sales_summary",
 }
 
-# حقول مطلوبة لكل أداة (لاكتشاف النقص)
 _REQUIRED = {
     "create_customer": ["name"],
     "create_product": ["name"],
@@ -88,7 +85,6 @@ def extract_entities(message: str) -> dict:
         "expense_description": None,
     }
 
-    # أرقام + مبالغ
     for m in re.finditer(
         r"(\d+(?:,\d+)*(?:\.\d+)?)\s*(درهم|دولار|ريال|aed|usd|sar)?", norm
     ):
@@ -105,23 +101,19 @@ def extract_entities(message: str) -> dict:
     if not ents["amounts"] and ents["numbers"]:
         ents["amounts"] = [{"value": n, "currency": "aed"} for n in ents["numbers"][:2]]
 
-    # هواتف إماراتية (0xxxxxxxx / +971)
     for m in re.finditer(r"(\+?(?:971|0)5\d{7,8})", norm.replace(" ", "")):
         ents["phones"].append(m.group(1))
 
-    # SKUs قطع غيار: حرف/رقم/شرطة (مثل 1R0716, C-123, فلتر-99)
     for m in re.finditer(r"\b([A-Za-z0-9]{2,4}[-\w]{2,12})\b", text):
         token = m.group(1)
         if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
             ents["skus"].append(token)
 
-    # تواريخ مرقمة yyyy-mm-dd / dd/mm/yyyy
     for m in re.finditer(
         r"\b(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b", text
     ):
         ents["dates"].append(m.group(1))
 
-    # أسماء بعد مؤشرات (أسماء متعددة الكلمات)
     for m in re.finditer(
         r"(?:للعميل|العميل|عميل|زبون|customer)\s+([\u0600-\u06FF\w\s]{2,40}?)(?:\s+[,،]|$)",
         text,
@@ -129,12 +121,10 @@ def extract_entities(message: str) -> dict:
     ):
         raw = re.sub(r"\s+", " ", m.group(1)).strip()
         if raw and len(raw) >= 2:
-            # قصّ عند أدوات حشو
             raw = re.split(r"\s+(?:بمبلغ|بقيمة|بـ|مبلغ|عليه|له)\b", raw)[0].strip()
             if raw:
                 ents["names"].append(raw)
 
-    # منتج/قطعة بعد مؤشرات + SKU اختياري
     for m in re.finditer(
         r"(?:لـ?لمنتج|المنتج|منتج|قطعة|فلتر|بضاعة|product)\s+([\u0600-\u06FF\w\-\s]{2,40}?)(?:\s+[,،]|$)",
         text,
@@ -149,7 +139,6 @@ def extract_entities(message: str) -> dict:
             if raw not in ents["names"]:
                 ents["names"].append(raw)
             break
-    # مورد بعد مؤشرات
     for m in re.finditer(
         r"(?:للمورد|المورد|مورد|supplier)\s+([\u0600-\u06FF\w\s]{2,40}?)(?:\s+[,،]|$)",
         text,
@@ -160,7 +149,6 @@ def extract_entities(message: str) -> dict:
         if raw and len(raw) >= 2:
             ents["supplier_name"] = raw
             break
-    # وصف مصروف: بعد "مصروف" أو "نفقات" أو "إضافة مصروف"
     for m in re.finditer(
         r"(?:مصروف|نفقات?|نفقات)\s+([\u0600-\u06FF\w\s]{3,50}?)(?:\s+(?:بمبلغ|بقيمة|بـ|مبلغ|\d)|$)",
         text,
@@ -170,7 +158,6 @@ def extract_entities(message: str) -> dict:
         if raw and len(raw) >= 3 and not raw.lower().startswith(("جديد", "جديده")):
             ents["expense_description"] = raw
             break
-    # تواريخ نسبية
     if "اليوم" in norm or "اليوم" in text:
         ents["relative_dates"].append(
             "today"
@@ -189,7 +176,6 @@ def plan(message: str, user=None) -> Plan:
     norm = _norm(msg)
     ents = extract_entities(msg)
 
-    # 1) تدفقات كلمات مفتاحية (نفس القوائم)
     flow = find_flow(norm)
     if flow:
         tool = _INTENT_TO_TOOL.get(flow.key)
@@ -261,7 +247,6 @@ def plan(message: str, user=None) -> Plan:
             source="ai_flows",
         )
 
-    # 2) semantic matcher
     try:
         from ai_knowledge.semantic_matcher import understand_message
 
@@ -269,7 +254,6 @@ def plan(message: str, user=None) -> Plan:
         if res.get("intent") and (res.get("confidence") or 0) >= 0.30:
             intent = res["intent"]
             tool = _INTENT_TO_TOOL.get(intent)
-            # حماية: فقط القراءات تُسمح من الـ semantic (الكتابة من الـ flows أقوى)
             if tool in ("get_customer_balance", "inventory_status", "sales_summary"):
                 params = {}
                 if ents["names"]:

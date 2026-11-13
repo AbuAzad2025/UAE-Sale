@@ -135,7 +135,6 @@ class TestAccountLockout:
                 follow_redirects=True,
             )
 
-        # Try with correct password
         response = client.post(
             "/auth/login",
             data={

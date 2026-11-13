@@ -16,10 +16,6 @@ class NOWPaymentsService:
     """خدمة NOWPayments للدفع بالعملات الرقمية"""
 
     def __init__(self):
-        # Key resolution order: owner-panel vault FIRST (operator-controlled),
-        # environment config as fallback. Previously only the env var was
-        # read, so keys entered in the vault settings page were silently
-        # ignored and gateway payments could never work.
         self.api_key = current_app.config.get("NOWPAYMENTS_API_KEY") or ""
         self.ipn_secret = current_app.config.get("NOWPAYMENTS_IPN_SECRET") or ""
         try:
@@ -70,11 +66,9 @@ class NOWPaymentsService:
             dict: معلومات الدفعة
         """
         try:
-            # التحقق من الحد الأدنى
             if amount < 1:
                 return {"success": False, "error": "الحد الأدنى للتبرع هو $1"}
 
-            # إعداد البيانات
             data = {
                 "price_amount": float(amount),
                 "price_currency": currency.lower(),
@@ -84,11 +78,9 @@ class NOWPaymentsService:
                 "ipn_callback_url": f"{current_app.config.get('BASE_URL')}/auth/payment/callback",
             }
 
-            # إضافة إيميل العميل إذا كان متوفراً
             if customer_email:
                 data["customer_email"] = customer_email
 
-            # إرسال الطلب
             headers = {"x-api-key": self.api_key, "Content-Type": "application/json"}
 
             response = requests.post(
@@ -98,7 +90,6 @@ class NOWPaymentsService:
             if response.status_code == 201:
                 payment_data = response.json()
 
-                # حفظ الدفعة في قاعدة البيانات
                 donation = Donation(
                     amount_usd=Decimal(str(amount)),
                     payment_method="crypto",
@@ -109,10 +100,8 @@ class NOWPaymentsService:
                     gateway_name="nowpayments",
                     gateway_transaction_id=payment_data.get("payment_id"),
                     gateway_status="pending",
-                    # معلومات المعاملة
                     transaction_type=transaction_type,
                     package=package,
-                    # معلومات العميل/المتبرع
                     customer_name=customer_name
                     if transaction_type == "purchase"
                     else donor_name,
@@ -120,7 +109,6 @@ class NOWPaymentsService:
                     if transaction_type == "purchase"
                     else donor_email,
                     customer_phone=customer_phone,
-                    # معلومات التبرع
                     donor_name=donor_name,
                     donor_email=donor_email,
                     donor_message=donor_message,
@@ -284,13 +272,10 @@ class NOWPaymentsService:
             if not donation:
                 return False
 
-            # تحديث حالة التبرع
             if status == "finished":
                 donation.status = "completed"
                 donation.completed_at = datetime.utcnow()
             elif status in ("failed", "expired"):
-                # expired is terminal: the funds will never arrive, so the
-                # donation must not linger as pending.
                 donation.status = "failed"
             elif status == "refunded":
                 donation.status = "refunded"

@@ -796,7 +796,6 @@ def test_csrf_required_for_reception(client, app, maintenance_env):
         )
         assert response.status_code == 400
         # The session-scoped app context is shared by this project's fixture;
-        # production requests get a fresh g and therefore a fresh token cache.
         g.pop("csrf_token", None)
         page = client.get("/maintenance/create")
         assert page.status_code == 200

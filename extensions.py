@@ -14,7 +14,6 @@ from flask_mail import Mail
 from flask_babel import Babel
 import pickle
 
-# Monkey patch cachelib.serializers.BaseSerializer.dumps to fix UnboundLocalError
 try:
     from cachelib.serializers import BaseSerializer
 
@@ -121,11 +120,6 @@ class ColorFormatter(logging.Formatter):
         return message
 
 
-# ======================
-# Setup Logging
-# ======================
-
-
 def setup_logging(app):
     """Configure application logging with UTF-8 support"""
     level_name = app.config.get("LOG_LEVEL", "INFO").upper()
@@ -143,7 +137,6 @@ def setup_logging(app):
                 sys.stderr.buffer, encoding="utf-8", errors="replace"
             )
 
-    # SECURITY: Install log sanitizer to filter sensitive data from all log output
     try:
         from utils.log_sanitizer import SanitizeFilter
 
@@ -187,8 +180,6 @@ login_manager.login_view = "auth.login"
 login_manager.login_message = "الرجاء تسجيل الدخول للوصول لهذه الصفحة"
 login_manager.login_message_category = "warning"
 
-# User loader for Flask-Login
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -197,8 +188,6 @@ def load_user(user_id):
     try:
         uid = int(user_id)
     except (TypeError, ValueError):
-        # Tampered/garbage session cookie (e.g. user_id='abc'): fail closed
-        # with None instead of raising ValueError into a 500.
         return None
     if uid <= 0:
         return None
@@ -284,9 +273,6 @@ def init_extensions(app):
         else:
             limiter.default_limits = [default_limit]
 
-    # SECURITY: No global rate limiter bypass for any role.
-    # Per-route exemptions are applied via @limiter.exempt on specific
-    # trusted endpoints (e.g., health checks) only.
     def _no_global_bypass():
         return False
 

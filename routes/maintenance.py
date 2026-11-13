@@ -49,9 +49,6 @@ from datetime import date, datetime, timedelta, timezone
 maintenance_bp = Blueprint("maintenance", __name__, url_prefix="/maintenance")
 install_feature_gate(maintenance_bp, "maintenance")
 
-# Write endpoints that are verified. Anything else (notifications, purchase
-# orders, settings of a not-yet-verified kind) is refused by the server, not
-# merely hidden in the interface.
 ALLOWED_WRITE_ENDPOINTS = {
     "maintenance.create_order",
     "maintenance.change_order_status",
@@ -80,8 +77,6 @@ ALLOWED_WRITE_ENDPOINTS = {
 
 @maintenance_bp.before_request
 def _maintenance_safety_gate():
-    # Let login_required redirect anonymous visitors; never infer a tenant from
-    # the platform owner's user id or operate with an unscoped tenant.
     if not current_user.is_authenticated:
         return
     try:
@@ -114,9 +109,6 @@ def _flash_error(exc):
     flash(str(exc), "danger")
 
 
-# ---------------------------------------------------------------------------
-# List
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/")
 @login_required
 @permission_required("maintenance_view")
@@ -153,9 +145,6 @@ def list_orders():
     )
 
 
-# ---------------------------------------------------------------------------
-# Create
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/create", methods=["GET", "POST"])
 @login_required
 @permission_required("maintenance_receive")
@@ -183,7 +172,6 @@ def create_order():
                 service_advisor_id=request.form.get("service_advisor_id", type=int)
                 or None,
             )
-            # If a deposit was specified, create a linked receipt immediately.
             deposit = request.form.get("deposit", type=float) or 0
             if deposit and deposit > 0:
                 try:
@@ -218,9 +206,6 @@ def create_order():
     )
 
 
-# ---------------------------------------------------------------------------
-# View
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>")
 @login_required
 @permission_required("maintenance_view")
@@ -250,9 +235,6 @@ def view_order(id):
     )
 
 
-# ---------------------------------------------------------------------------
-# Status change
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/status", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -267,9 +249,6 @@ def change_order_status(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Add item (part)
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/item", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -294,9 +273,6 @@ def add_item(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Add service
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/service", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -322,9 +298,6 @@ def add_service(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Discount
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/discount", methods=["POST"])
 @login_required
 @permission_required("maintenance_discount")
@@ -335,8 +308,6 @@ def apply_discount(id):
             override = False
         apply_order_discount(
             order_id=id,
-            # Exactly one of the two may be sent: the percentage wins when it
-            # is set, otherwise the fixed amount is used.
             discount_percent=(request.form.get("discount_percent", type=float) or None),
             discount_value=(request.form.get("discount_value", type=float) or None),
             changed_by=current_user.id,
@@ -348,9 +319,6 @@ def apply_discount(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Warranty
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/warranty", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -371,9 +339,6 @@ def warranty(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Receipt
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/receive", methods=["POST"])
 @login_required
 @permission_required("maintenance_cashier")
@@ -393,9 +358,6 @@ def receive(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Invoice
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/invoice", methods=["POST"])
 @login_required
 @permission_required("maintenance_close")
@@ -413,9 +375,6 @@ def create_invoice(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Credit Note
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/credit-note", methods=["POST"])
 @login_required
 @permission_required("maintenance_close")
@@ -434,9 +393,6 @@ def create_credit_note(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Return
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/return", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -467,9 +423,6 @@ def create_return(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Quality control and completion time
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/<int:id>/quality-check", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -495,9 +448,6 @@ def set_completion_time_order(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ---------------------------------------------------------------------------
-# Settings
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/settings", methods=["GET", "POST"])
 @login_required
 @permission_required("maintenance_settings")
@@ -556,9 +506,6 @@ def settings():
     )
 
 
-# ---------------------------------------------------------------------------
-# Services (fixed price)
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/services", methods=["GET", "POST"])
 @login_required
 @permission_required("maintenance_settings")
@@ -605,17 +552,12 @@ def services_list():
     return render_template("maintenance/services.html", services=services)
 
 
-# ---------------------------------------------------------------------------
-# Device registry
-# ---------------------------------------------------------------------------
 @maintenance_bp.route("/devices", methods=["GET", "POST"])
 @login_required
 @permission_required("maintenance_view")
 def devices_list():
     tenant_id = _tenant_id()
     if request.method == "POST":
-        # Writing the registry can grant free warranty work, so it needs the
-        # administrative permission, not the view permission.
         if not current_user.has_permission("maintenance_settings"):
             abort(403)
         customer_id = request.form.get("customer_id", type=int)
@@ -663,9 +605,6 @@ def devices_list():
     )
 
 
-# ===========================================================================
-# Print
-# ===========================================================================
 @maintenance_bp.route("/<int:id>/print-intake")
 @login_required
 @permission_required("maintenance_view")
@@ -714,9 +653,6 @@ def print_invoice(id):
     )
 
 
-# ===========================================================================
-# Cost report
-# ===========================================================================
 @maintenance_bp.route("/cost-report")
 @login_required
 @permission_required("maintenance_view")
@@ -858,9 +794,6 @@ def maintenance_cost_report():
     )
 
 
-# ===========================================================================
-# Notify the customer (real provider, real outcome)
-# ===========================================================================
 @maintenance_bp.route("/<int:id>/notify", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -884,9 +817,6 @@ def notify_customer(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ===========================================================================
-# Purchasing maintenance parts (supplier side)
-# ===========================================================================
 @maintenance_bp.route("/purchases", methods=["GET", "POST"])
 @login_required
 @permission_required("maintenance_purchase")
@@ -978,9 +908,6 @@ def pay_supplier():
     return redirect(url_for("maintenance.purchases_list"))
 
 
-# ===========================================================================
-# Customer rating
-# ===========================================================================
 @maintenance_bp.route("/<int:id>/rate", methods=["POST"])
 @login_required
 @permission_required("maintenance_view")
@@ -999,9 +926,6 @@ def rate_order(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ===========================================================================
-# Warranty period after the service
-# ===========================================================================
 @maintenance_bp.route("/<int:id>/warranty-period", methods=["POST"])
 @login_required
 @permission_required("maintenance_work")
@@ -1020,9 +944,6 @@ def set_warranty_period(id):
     return redirect(url_for("maintenance.view_order", id=id))
 
 
-# ===========================================================================
-# Archive order (soft delete)
-# ===========================================================================
 @maintenance_bp.route("/<int:id>/archive", methods=["POST"])
 @login_required
 @permission_required("maintenance_close")

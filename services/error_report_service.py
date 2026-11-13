@@ -146,6 +146,7 @@ def report_error(
     user=None,
     path=None,
     method=None,
+    extra_context=None,
 ):
     """Persist one structured error record. Returns ErrorLog or None.
 
@@ -178,6 +179,9 @@ def report_error(
         request_id=snap["request_id"],
         ip_address=snap["ip_address"],
         user_agent=snap["user_agent"],
+        extra_context=_clean(extra_context, 4000)
+        if extra_context is not None
+        else None,
     )
     try:
         if not has_app_context():
@@ -226,48 +230,76 @@ def report_exception(exc=None, *, source="flask-500", **kwargs):
 
 
 def report_security_event(
-    message, *, severity=ErrorLog.SEVERITY_WARNING, source="security", **kwargs
+    message,
+    *,
+    severity=ErrorLog.SEVERITY_WARNING,
+    source="security",
+    extra_context=None,
+    **kwargs,
 ):
     """Security event: brute force, SQL injection attempt, XSS, CSRF violation, tenant breach, etc."""
-    extra = kwargs.pop("extra_context", None)
-    if extra is not None:
-        kwargs["extra_context"] = str(extra)
     return report_error(
-        CATEGORY_SECURITY, message, severity=severity, source=source, **kwargs
+        CATEGORY_SECURITY,
+        message,
+        severity=severity,
+        source=source,
+        extra_context=extra_context,
+        **kwargs,
     )
 
 
 def report_financial_error(
-    message, *, severity=ErrorLog.SEVERITY_ERROR, source="financial", **kwargs
+    message,
+    *,
+    severity=ErrorLog.SEVERITY_ERROR,
+    source="financial",
+    extra_context=None,
+    **kwargs,
 ):
     """Financial/accounting error: unbalanced GL, negative stock, tax mismatch, etc."""
-    extra = kwargs.pop("extra_context", None)
-    if extra is not None:
-        kwargs["extra_context"] = str(extra)
     return report_error(
-        CATEGORY_FINANCIAL, message, severity=severity, source=source, **kwargs
+        CATEGORY_FINANCIAL,
+        message,
+        severity=severity,
+        source=source,
+        extra_context=extra_context,
+        **kwargs,
     )
 
 
 def report_db_error(
-    message, *, severity=ErrorLog.SEVERITY_ERROR, source="database", **kwargs
+    message,
+    *,
+    severity=ErrorLog.SEVERITY_ERROR,
+    source="database",
+    extra_context=None,
+    **kwargs,
 ):
     """Database error: connection failure, migration error, constraint violation, etc."""
-    extra = kwargs.pop("extra_context", None)
-    if extra is not None:
-        kwargs["extra_context"] = str(extra)
     return report_error(
-        CATEGORY_DATABASE, message, severity=severity, source=source, **kwargs
+        CATEGORY_DATABASE,
+        message,
+        severity=severity,
+        source=source,
+        extra_context=extra_context,
+        **kwargs,
     )
 
 
 def report_migration_error(
-    message, *, severity=ErrorLog.SEVERITY_CRITICAL, source="migration", **kwargs
+    message,
+    *,
+    severity=ErrorLog.SEVERITY_CRITICAL,
+    source="migration",
+    extra_context=None,
+    **kwargs,
 ):
     """Migration error: schema mismatch, failed migration, etc."""
-    extra = kwargs.pop("extra_context", None)
-    if extra is not None:
-        kwargs["extra_context"] = str(extra)
     return report_error(
-        CATEGORY_MIGRATION, message, severity=severity, source=source, **kwargs
+        CATEGORY_MIGRATION,
+        message,
+        severity=severity,
+        source=source,
+        extra_context=extra_context,
+        **kwargs,
     )

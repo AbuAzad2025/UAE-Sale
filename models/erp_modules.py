@@ -202,8 +202,8 @@ class QuotationLine(TenantScopedMixin, db.Model):
     tenant_id = db.Column(
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
     )
-    quotation_id = db.Column(db.Integer, db.ForeignKey("quotations.id"), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    quotation_id = db.Column(db.Integer, db.ForeignKey("quotations.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
@@ -325,7 +325,7 @@ class PurchaseOrderLine(TenantScopedMixin, db.Model):
     order_id = db.Column(
         db.Integer, db.ForeignKey("purchase_orders.id"), nullable=False
     )
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     unit_cost = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
@@ -451,7 +451,7 @@ class StockTransferLine(TenantScopedMixin, db.Model):
     transfer_id = db.Column(
         db.Integer, db.ForeignKey("stock_transfers.id"), nullable=False
     )
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     quantity = db.Column(db.Numeric(15, 3), nullable=False)
     notes = db.Column(db.String(255))
 
@@ -509,7 +509,7 @@ class StockTakeItem(TenantScopedMixin, db.Model):
     stocktake_id = db.Column(
         db.Integer, db.ForeignKey("stock_takes.id"), nullable=False
     )
-    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     system_quantity = db.Column(db.Numeric(15, 3), nullable=False)
     counted_quantity = db.Column(db.Numeric(15, 3))
     variance = db.Column(db.Numeric(15, 3), default=0)

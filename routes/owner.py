@@ -3196,12 +3196,18 @@ def data_cleanup():
         deleted_count = 0
 
         if cleanup_type == "logs":
+            # Soft-delete: mark as archived instead of hard-deleting
             deleted_count = AuditLog.query.filter(
-                AuditLog.created_at < cutoff_date
-            ).delete()
+                AuditLog.created_at < cutoff_date,
+                AuditLog.is_archived.is_(False),
+            ).update({"is_archived": True}, synchronize_session=False)
         elif cleanup_type == "archived":
+            # Hard-delete only archived records older than 7-year retention
+            from datetime import timedelta
+
+            retention_cutoff = cutoff_date - timedelta(days=365 * 7)
             deleted_count = ArchivedRecord.query.filter(
-                ArchivedRecord.archived_at < cutoff_date
+                ArchivedRecord.archived_at < retention_cutoff
             ).delete()
         else:
             db.session.rollback()

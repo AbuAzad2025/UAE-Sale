@@ -92,6 +92,8 @@ class Config:
 
     if _db_uri.startswith("postgresql"):
         SQLALCHEMY_ENGINE_OPTIONS["pool_size"] = 10
+    elif _db_uri.startswith("sqlite"):
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"timeout": 30}
         SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 20
         _statement_timeout = os.environ.get("STATEMENT_TIMEOUT_MS", "5000").strip()
         try:

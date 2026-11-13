@@ -24,8 +24,10 @@ class Tenant(db.Model):
 
     business_type = db.Column(
         db.String(50), default="garage"
-    )  # garage, workshop, spare_parts, etc.
-    industry = db.Column(db.String(100))  # automotive, heavy_equipment, etc.
+    )  # garage, workshop, spare_parts, etc. (English/default)
+    business_type_ar = db.Column(db.String(50))  # Arabic label
+    industry = db.Column(db.String(100))  # automotive, heavy_equipment, etc. (English/default)
+    industry_ar = db.Column(db.String(100))  # Arabic label
 
     address_ar = db.Column(db.Text)
     address_en = db.Column(db.Text)
@@ -150,8 +152,21 @@ class Tenant(db.Model):
             "name_ar": self.name_ar,
             "slug": self.slug,
             "business_type": self.business_type,
+            "business_type_ar": self.business_type_ar,
+            "industry": self.industry,
+            "industry_ar": self.industry_ar,
             "country": self.country,
             "default_currency": self.default_currency,
             "is_active": self.is_active,
             "subscription_plan": self.subscription_plan,
         }
+
+    def get_business_type(self, lang="ar"):
+        if lang == "ar" and self.business_type_ar:
+            return self.business_type_ar
+        return self.business_type or ""
+
+    def get_industry(self, lang="ar"):
+        if lang == "ar" and self.industry_ar:
+            return self.industry_ar
+        return self.industry or ""

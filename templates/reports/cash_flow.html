@@ -3,8 +3,7 @@
 {% block page_title %}قائمة التدفقات النقدية{% endblock %}
 
 {% block content %}
-{#- مطابقة رصيد النقدية: يُقرأ من دفتر الأستاذ، والرقم المحسوب للمقارنة.
-    المفاتيح قد لا تصل بعد (المسار يمرّرها)، فكل قراءة محمية. -#}
+
 {% set _report = report if (report is defined and report is not none) else none %}
 {% set _tie = tie_out if (tie_out is defined and tie_out is not none) else none %}
 {% if _tie is none and _report is not none %}
@@ -22,7 +21,7 @@
 {% if _cash_ending_computed is none and _report is not none %}
   {% set _cash_ending_computed = _report.get('cash_ending_computed') %}
 {% endif %}
-<!-- Date filter -->
+
 <div class="row mb-3">
   <div class="col-12">
     <div class="card">
@@ -59,7 +58,6 @@
   </div>
 </div>
 
-<!-- Net Change Summary -->
 <div class="row mb-4">
   <div class="col-md-3">
     <div class="info-box {% if operating_total >= 0 %}bg-success{% else %}bg-danger{% endif %}">
@@ -101,7 +99,7 @@
 
 <div class="card">
   <div class="card-body">
-    <!-- Operating Activities -->
+    
     <h4 class="text-success mb-3">
       <i class="fas fa-store mr-2"></i>الأنشطة التشغيلية
     </h4>
@@ -136,7 +134,7 @@
     <p class="text-muted mb-4">لا توجد حركات تشغيلية في الفترة المحددة</p>
     {% endif %}
 
-    <!-- Investing Activities -->
+    
     <h4 class="text-info mb-3">
       <i class="fas fa-industry mr-2"></i>الأنشطة الاستثمارية
     </h4>
@@ -171,7 +169,7 @@
     <p class="text-muted mb-4">لا توجد حركات استثمارية في الفترة المحددة</p>
     {% endif %}
 
-    <!-- Financing Activities -->
+    
     <h4 class="text-warning mb-3">
       <i class="fas fa-university mr-2"></i>الأنشطة التمويلية
     </h4>
@@ -206,7 +204,7 @@
     <p class="text-muted mb-4">لا توجد حركات تمويلية في الفترة المحددة</p>
     {% endif %}
 
-    <!-- Net Summary -->
+    
     <div class="card bg-light">
       <div class="card-body">
         <h4 class="mb-0">
@@ -236,7 +234,7 @@
       </div>
     </div>
 
-    <!-- Tie-out: رصيد دفتر الأستاذ مقابل الرصيد المحسوب -->
+    
     {% if _tie is not none and _tie.balanced is defined %}
     <div class="card mt-4">
       <div class="card-header">

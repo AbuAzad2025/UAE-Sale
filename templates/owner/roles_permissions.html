@@ -41,14 +41,14 @@
 <div class="content roles-permissions-page">
   <div class="container-fluid">
     
-    <!-- نظرة عامة -->
+    
     <div class="alert alert-info">
       <h5><i class="fas fa-info-circle"></i> نظام الصلاحيات</h5>
       <p>يتحكم النظام بـ {{ roles|length + 1 }} أدوار رئيسية. كل دور له صلاحيات محددة لضمان الأمان والتنظيم.</p>
       <p class="mb-0"><i class="fas fa-sliders-h"></i> استخدم <strong>محرر الصلاحيات التفاعلي</strong> أدناه لمنح أو سحب صلاحيات أي دور — كل تغيير يُسجَّل في سجل التدقيق.</p>
     </div>
     
-    <!-- محرر الصلاحيات التفاعلي -->
+    
     <div class="card card-primary card-outline">
       <div class="card-header bg-gradient-primary">
         <h3 class="card-title text-white">
@@ -118,10 +118,10 @@
       </div>
     </div>
     
-    <!-- بطاقات الأدوار -->
+    
     <div class="row">
       
-      <!-- Owner -->
+      
       <div class="col-md-6 mb-4">
         <div class="card card-danger card-outline">
           <div class="card-header">
@@ -151,7 +151,7 @@
         </div>
       </div>
       
-      <!-- Super Admin -->
+      
       <div class="col-md-6 mb-4">
         <div class="card card-primary card-outline">
           <div class="card-header">
@@ -181,7 +181,7 @@
         </div>
       </div>
       
-      <!-- Manager -->
+      
       <div class="col-md-6 mb-4">
         <div class="card card-info card-outline">
           <div class="card-header">
@@ -211,7 +211,7 @@
         </div>
       </div>
       
-      <!-- Seller -->
+      
       <div class="col-md-6 mb-4">
         <div class="card card-secondary card-outline">
           <div class="card-header">
@@ -243,7 +243,7 @@
       
     </div>
     
-    <!-- جدول الصلاحيات المفصل -->
+    
     <div class="card">
       <div class="card-header bg-gradient-primary">
         <h3 class="card-title text-white">
@@ -368,7 +368,7 @@
       </div>
     </div>
     
-    <!-- الأمان -->
+    
     <div class="card card-warning">
       <div class="card-header">
         <h3 class="card-title" style="color: #000;">
@@ -402,7 +402,7 @@
       </div>
     </div>
     
-    <!-- إرشادات -->
+    
     <div class="card card-success">
       <div class="card-header">
         <h3 class="card-title text-white">
@@ -428,7 +428,7 @@
       </div>
     </div>
     
-    <!-- زر العودة -->
+    
     <div class="row">
       <div class="col-12">
         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">

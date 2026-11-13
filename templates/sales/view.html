@@ -9,7 +9,7 @@
     </p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    <!-- Template Selector Dropdown -->
+    
     <div class="btn-group d-flex align-items-center" role="group">
       <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
         <i class="fas fa-file-alt mr-1"></i> قالب الطباعة
@@ -194,7 +194,7 @@
         </div>
         {% endif %}
         
-        <!-- قسم الدفعات -->
+        
         {% if sale.payments %}
         <h5 class="text-primary mb-3 mt-4"><i class="fas fa-money-bill-wave mr-2"></i>الدفعات</h5>
         <div class="table-responsive">
@@ -254,7 +254,7 @@
   </div>
 
   <div class="col-md-4">
-    <!-- Payment Status Card -->
+    
     <div class="card mb-3">
       <div class="card-body text-center">
         <h5 class="mb-3">حالة الدفع</h5>
@@ -274,7 +274,7 @@
       </div>
     </div>
 
-    <!-- Totals Card -->
+    
     <div class="card mb-3">
       <div class="card-header" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
         <h3 class="card-title text-white mb-0">
@@ -362,7 +362,7 @@
       </div>
     </div>
 
-    <!-- Actions Card -->
+    
     <div class="card">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-cog mr-2"></i>الإجراءات</h3>
@@ -385,7 +385,7 @@
           </form>
           {% if current_user.is_owner %}
           <hr>
-          <!-- Delete Button -->
+          
           <button type="button" class="btn btn-outline-danger w-100" onclick="confirmDelete()">
             <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
           </button>

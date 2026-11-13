@@ -21,7 +21,7 @@
           <form method="post" action="{{ url_for('sales.edit', id=sale.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
-            <!-- معلومات الفاتورة (للعرض فقط) -->
+            
             <div class="row mb-4">
               <div class="col-md-6">
                 <h5>معلومات الفاتورة</h5>
@@ -48,7 +48,7 @@
               </div>
             </div>
 
-            <!-- المنتجات (للعرض فقط) -->
+            
             <h5>المنتجات (لا يمكن تعديلها)</h5>
             <table class="table table-bordered mb-4">
               <thead>
@@ -73,7 +73,7 @@
               </tbody>
             </table>
 
-            <!-- الحقول القابلة للتعديل -->
+            
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">

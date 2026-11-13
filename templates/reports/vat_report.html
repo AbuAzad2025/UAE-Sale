@@ -3,7 +3,7 @@
 {% block page_title %}تقرير ضريبة القيمة المضافة ({{ vat_label }}){% endblock %}
 
 {% block content %}
-<!-- Date filter -->
+
 <div class="row mb-3">
   <div class="col-12">
     <div class="card">
@@ -40,7 +40,6 @@
   </div>
 </div>
 
-<!-- VAT Summary -->
 <div class="row mb-4">
   <div class="col-md-3">
     <div class="info-box bg-gradient-danger">
@@ -139,7 +138,6 @@
   </div>
 </div>
 
-<!-- Sales Summary -->
 <div class="row mb-4">
   <div class="col-md-6">
     <div class="card">
@@ -215,7 +213,6 @@
   </div>
 </div>
 
-<!-- Taxable Sales Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -259,7 +256,6 @@
   </div>
 </div>
 
-<!-- Credit Notes (Returns) Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -303,7 +299,6 @@
   </div>
 </div>
 
-<!-- Exempt Sales Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -344,7 +339,6 @@
   </div>
 </div>
 
-<!-- Zero-rated Sales Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -385,7 +379,6 @@
   </div>
 </div>
 
-<!-- Unclassified 0% Sales -->
 <div class="card mb-4">
   <div class="card-header bg-warning">
     <h4 class="card-title mb-0">
@@ -423,7 +416,6 @@
   </div>
 </div>
 
-<!-- Taxable Purchases Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -467,7 +459,6 @@
   </div>
 </div>
 
-<!-- Purchases without VAT: Zero-rated / Unclassified -->
 <div class="card mb-4">
   <div class="card-header bg-info text-white">
     <h4 class="card-title text-white mb-0">
@@ -540,7 +531,6 @@
   </div>
 </div>
 
-<!-- Exempt Purchases Detail -->
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
@@ -581,7 +571,6 @@
   </div>
 </div>
 
-<!-- Net VAT Calculation -->
 <div class="card">
   <div class="card-header bg-primary">
     <h4 class="card-title text-white mb-0">
@@ -629,7 +618,7 @@
     </div>
   </div>
 </div>
-<!-- تجميع حسب النسبة + Reverse Charge + غير قابلة للاسترداد -->
+
 {% if by_rate %}
 <div class="card mt-3">
   <div class="card-header">

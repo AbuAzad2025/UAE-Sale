@@ -52,7 +52,7 @@
     
     <div class="card-body">
       
-      <!-- 1. Voucher Direction (In/Out) -->
+      
       <div class="row mb-4 justify-content-center">
         <div class="col-md-5">
           <div class="card type-card text-center p-3 selected" id="card-incoming" onclick="selectDirection('incoming')">
@@ -74,7 +74,7 @@
 
       <hr>
 
-      <!-- 2. Party Selection -->
+      
       <div class="row">
         <div class="col-md-4">
           <div class="form-group">
@@ -91,7 +91,7 @@
             <label class="font-weight-bold">اسم الجهة</label>
             <select class="form-control select2" name="party_id" id="party_id" required>
               <option value="">اختر الجهة...</option>
-              <!-- Populated via JS -->
+              
             </select>
           </div>
         </div>
@@ -127,7 +127,7 @@
         </div>
       </div>
 
-      <!-- Cheque Fields -->
+      
       <div class="row bg-light p-3 rounded mb-3" id="cheque_fields" style="display: none;">
         <div class="col-md-4">
           <div class="form-group mb-0">
@@ -166,7 +166,6 @@
   </form>
 </div>
 
-<!-- Data Store for JS -->
 <script type="application/json" id="customers-data">{{ customers|tojson }}</script>
 <script type="application/json" id="suppliers-data">{{ suppliers|tojson }}</script>
 

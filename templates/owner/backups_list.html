@@ -51,7 +51,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- الإحصائيات العامة -->
+
 <div class="row">
   <div class="col-lg-3 col-6">
     <div class="small-box bg-info">
@@ -102,7 +102,6 @@
   </div>
 </div>
 
-<!-- بطاقة تعليمات وإرشادات -->
 <div class="row mb-3">
   <div class="col-md-12">
     <div class="alert alert-info d-flex align-items-start" style="border-radius: 10px; border-left: 4px solid #17a2b8;">
@@ -121,7 +120,6 @@
   </div>
 </div>
 
-<!-- أزرار الإجراءات -->
 <div class="row mb-3">
   <div class="col-md-12">
     <div class="card shadow">
@@ -132,7 +130,7 @@
       </div>
       <div class="card-body">
         <div class="row">
-          <!-- نسخة يدوية فورية -->
+          
           <div class="col-md-6 mb-3 mb-md-0">
             <form method="POST" action="{{ url_for('owner.backup_now') }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -156,7 +154,7 @@
             </form>
           </div>
           
-          <!-- إعدادات النسخ المجدول -->
+          
           <div class="col-md-6">
             <label class="font-weight-bold mb-2">
               <i class="fas fa-clock text-primary mr-1"></i>
@@ -176,7 +174,7 @@
         
         <hr class="my-3">
         
-        <!-- زر التحديث -->
+        
         <div class="text-center">
           <button class="btn btn-info" onclick="location.reload()">
             <i class="fas fa-sync mr-1"></i> تحديث القائمة
@@ -191,7 +189,6 @@
   </div>
 </div>
 
-<!-- قائمة النسخ الاحتياطية -->
 <div class="row">
   {% if backups %}
     {% for backup in backups %}
@@ -207,7 +204,7 @@
           </h5>
         </div>
         <div class="card-body">
-          <!-- التاريخ والوقت -->
+          
           <p class="mb-2">
             <i class="far fa-calendar-alt text-primary"></i>
             <strong>التاريخ:</strong> 
@@ -220,14 +217,14 @@
             {{ backup.timestamp[9:11] }}:{{ backup.timestamp[11:13] }}:{{ backup.timestamp[13:15] }}
           </p>
 
-          <!-- الحجم -->
+          
           <p class="mb-2">
             <i class="fas fa-hdd text-warning"></i>
             <strong>الحجم:</strong> 
             <span class="badge badge-warning">{{ backup.size_mb }} MB</span>
           </p>
 
-          <!-- المواصفات -->
+          
           <p class="mb-2">
             <i class="fas fa-info-circle text-secondary"></i>
             {% if backup.compressed %}
@@ -254,7 +251,7 @@
           </p>
           {% endif %}
 
-          <!-- اسم الملف -->
+          
           <p class="mb-0">
             <small class="text-muted">
               <i class="fas fa-file"></i> {{ backup.filename }}
@@ -263,7 +260,7 @@
         </div>
 
         <div class="card-footer">
-          <!-- أزرار الاستعادة -->
+          
           {% if current_user.is_owner %}
           <div class="btn-group" role="group">
             <button type="button" class="btn btn-sm btn-warning" 
@@ -286,7 +283,7 @@
           </div>
           {% endif %}
 
-          <!-- زر الحذف -->
+          
           <form method="POST" action="{{ url_for('owner.delete_backup') }}" 
                 style="display: inline-block;"
                 onsubmit="return confirm('⚠️ هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n📁 {{ backup.filename }}\n\n{% if not backup.manual %}⚠️ تنبيه: هذه نسخة تلقائية.\n{% endif %}⚠️ لا يمكن التراجع عن هذا الإجراء!');">
@@ -297,7 +294,7 @@
             </button>
           </form>
 
-          <!-- زر التحميل -->
+          
           <a href="{{ url_for('owner.download_backup', filename=backup.filename) }}" 
              class="btn btn-sm btn-success"
              title="تحميل النسخة الاحتياطية"
@@ -305,7 +302,7 @@
             <i class="fas fa-download mr-1"></i> تحميل
           </a>
 
-          <!-- زر التحقق -->
+          
           <button type="button" class="btn btn-sm btn-info" 
                   onclick="verifyBackup('{{ backup.filename }}')"
                   title="التحقق من سلامة النسخة">
@@ -316,7 +313,7 @@
     </div>
     {% endfor %}
   {% else %}
-  <!-- لا توجد نسخ -->
+  
   <div class="col-md-12">
     <div class="card">
       <div class="card-body text-center py-5">
@@ -335,7 +332,6 @@
   {% endif %}
 </div>
 
-<!-- معلومات إضافية -->
 {% if stats.latest_backup %}
 <div class="row mt-3">
   <div class="col-md-12">
@@ -370,7 +366,6 @@
 </div>
 {% endif %}
 
-<!-- Modal للاستعادة الكاملة -->
 <div class="modal fade" id="restoreModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -418,7 +413,6 @@
   </div>
 </div>
 
-<!-- Modal للاستعادة المخصصة -->
 <div class="modal fade" id="customRestoreModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -433,22 +427,22 @@
       <form method="POST" id="customRestoreForm" action="">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
-          <!-- تحذير -->
+          
           <div class="alert alert-warning">
             <i class="fas fa-exclamation-circle"></i>
             <strong>ملاحظة:</strong> سيتم استعادة الجداول المحددة فقط من النسخة الاحتياطية
           </div>
           
-          <!-- معلومات النسخة -->
+          
           <div class="mb-3 p-3 bg-light border rounded">
             <p class="mb-1"><i class="fas fa-file text-primary mr-1"></i><strong>النسخة:</strong> <span id="customRestoreFilename"></span></p>
             <p class="mb-0"><i class="fas fa-info-circle text-info mr-1"></i><strong>نوع الاستعادة:</strong> استعادة جداول محددة فقط</p>
           </div>
           
-          <!-- قائمة الجداول -->
+          
           <h6 class="mb-3"><i class="fas fa-table mr-2"></i>اختر الجداول المراد استعادتها:</h6>
           <div class="row" id="tablesCheckboxList">
-            <!-- سيتم ملؤها ديناميكياً -->
+            
             <div class="col-md-6">
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="sales" id="table_sales">
@@ -517,7 +511,7 @@
           
           <hr>
           
-          <!-- خيارات سريعة -->
+          
           <div class="mb-3">
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTables()">
               <i class="fas fa-check-double mr-1"></i>تحديد الكل
@@ -527,7 +521,7 @@
             </button>
           </div>
           
-          <!-- كلمة المرور -->
+          
           <div class="form-group">
             <label><i class="fas fa-key mr-1"></i>أدخل كلمة المرور للتأكيد:</label>
             <input type="password" name="confirm_password" class="form-control" 

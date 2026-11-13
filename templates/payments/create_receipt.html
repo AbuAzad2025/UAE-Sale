@@ -64,7 +64,7 @@
 {% set selected_payment_method = submitted.get('payment_method') if submitted and submitted.get('payment_method') else 'cash' %}
 {% set selected_ewallet = submitted.get('ewallet_name') if submitted and submitted.get('ewallet_name') else '' %}
 {% if sale %}
-<!-- معلومات فاتورة المبيعات -->
+
 <div class="row mb-4">
   <div class="col-md-12">
     <div class="card card-info">
@@ -87,8 +87,7 @@
           </div>
           <div class="col-md-3">
             <strong>المتبقي:</strong><br>
-            {# F6: المتبقي (balance_due) بعملة الأساس دائماً — انظر
-               models/sale.py::recompute_sale_settlement #}
+            
             <span class="text-danger">{{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}</span>
           </div>
         </div>
@@ -97,7 +96,7 @@
   </div>
 </div>
 {% elif purchase %}
-<!-- معلومات فاتورة المشتريات -->
+
 <div class="row mb-4">
   <div class="col-md-12">
     <div class="card card-danger">
@@ -142,7 +141,7 @@
     <div class="card-body">
       <div class="row">
         {% if not is_payment %}
-        <!-- العميل (سند قبض فقط) -->
+        
         <div class="col-md-6">
           <div class="form-group">
             <label>
@@ -160,7 +159,7 @@
           </div>
         </div>
         {% else %}
-        <!-- المورد (سند صرف فقط) -->
+        
         <div class="col-md-6">
           <div class="form-group">
             <label>
@@ -171,7 +170,7 @@
         </div>
         {% endif %}
 
-        <!-- المبلغ -->
+        
         <div class="col-md-3">
           <div class="form-group">
             <label>
@@ -190,7 +189,7 @@
           </div>
         </div>
 
-        <!-- العملة -->
+        
         <div class="col-md-3">
           <div class="form-group">
             <label>
@@ -206,17 +205,13 @@
       </div>
 
       <div class="row">
-        <!-- سعر الصرف -->
+        
         <div class="col-md-12">
           <div class="form-group">
             <label>
               <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف مقابل {{ base_currency }}
             </label>
-            <!-- F5: الحقل قابل للتعديل (كان readonly ومحمّلاً بسعر الفاتورة:
-                 سند بعملة EUR كان يُقيَّد بسعر USD→ILS ⇒ خطأ ~10% في سند نقدي).
-                 الخادم (routes/payments.py::_resolve_document_rate) يرفض سعر
-                 مستند مختلف ويرجع لسعر السوق — والواجهة الآن تعرض السعر
-                 الصحيح حسب العملة المختارة. -->
+            
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" step="0.000001" min="0.000001"
                    value="{% if purchase %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}">
@@ -228,7 +223,7 @@
       </div>
 
       <div class="row">
-        <!-- طريقة الدفع -->
+        
         <div class="col-md-6">
           <div class="form-group">
             <label>
@@ -242,7 +237,7 @@
           </div>
         </div>
 
-        <!-- رقم المرجع -->
+        
         <div class="col-md-6">
           <div class="form-group">
             <label>
@@ -254,7 +249,7 @@
         </div>
       </div>
 
-      <!-- حقول الشيك (تظهر عند اختيار شيك) -->
+      
       <div id="cheque_fields" class="row" style="display: none;">
         <div class="col-md-4">
           <div class="form-group">
@@ -276,7 +271,7 @@
         </div>
       </div>
 
-      <!-- حقول البطاقة (فيزا/ماستركارد) -->
+      
       <div id="card_fields" class="row" style="display: none;">
         <div class="col-md-6">
           <div class="form-group">
@@ -292,7 +287,7 @@
         </div>
       </div>
 
-      <!-- حقول التحويل البنكي -->
+      
       <div id="bank_transfer_fields" class="row" style="display: none;">
         <div class="col-md-6">
           <div class="form-group">
@@ -308,7 +303,7 @@
         </div>
       </div>
 
-      <!-- حقول المحفظة الإلكترونية -->
+      
       <div id="ewallet_fields" class="row" style="display: none;">
         <div class="col-md-6">
           <div class="form-group">
@@ -329,7 +324,7 @@
         </div>
       </div>
 
-      <!-- الملاحظات -->
+      
       <div class="row">
         <div class="col-12">
           <div class="form-group">
@@ -342,7 +337,7 @@
         </div>
       </div>
 
-      <!-- معلومات العميل (تظهر عند اختيار عميل) -->
+      
       <div id="customerInfo" class="row" style="display: none;">
         <div class="col-12">
           <div class="alert alert-info">

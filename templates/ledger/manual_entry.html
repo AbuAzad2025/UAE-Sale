@@ -4,7 +4,6 @@
 
 {% block content %}
 
-<!-- ملخص سريع - FIXED -->
 <div class="card border-info mb-3" id="quickSummaryCard" style="position: relative;">
   <div class="card-header bg-info text-white">
     <h5 class="mb-0">
@@ -25,7 +24,6 @@
   </div>
 </div>
 
-<!-- قوالب سريعة - FIXED -->
 <div class="card border-success mb-3" id="quickTemplatesCard" style="position: relative;">
   <div class="card-header bg-success text-white">
     <h5 class="mb-0">
@@ -83,7 +81,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="line_count" id="lineCountHidden" value="2">
       
-      <!-- معلومات القيد -->
+      
       <div class="row">
         <div class="col-md-8">
           <div class="form-group">
@@ -110,7 +108,7 @@
         </div>
       </div>
 
-      <!-- جدول السطور -->
+      
       <div class="card">
         <div class="card-header bg-light">
           <h5 class="mb-0">
@@ -118,7 +116,7 @@
           </h5>
         </div>
         
-        <!-- توضيح المدين والدائن - بسيط وواضح -->
+        
         <div class="alert alert-light border-info m-3 mb-0" style="background: linear-gradient(135deg, #e8f5e9 0%, #fff3e0 100%); border-width: 2px;">
           <div class="row text-center">
             <div class="col-md-6 border-left">
@@ -172,7 +170,7 @@
                 </tr>
               </thead>
               <tbody id="linesTableBody">
-                <!-- سطور القيد ستضاف هنا بواسطة JavaScript -->
+                
               </tbody>
               <tfoot class="bg-light">
                 <tr>
@@ -196,7 +194,7 @@
         </div>
       </div>
 
-      <!-- أزرار الحفظ -->
+      
       <div class="row mt-3">
         <div class="col-12">
           <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>

@@ -1,11 +1,9 @@
-"""
-Error Log Model
-سجل الأخطاء المركزي — توثيق منظم لكل خلل في النظام
+"""Error Log Model - comprehensive error tracking for the ERP system.
 
 Every fault recorded here carries: when it happened, which layer
-(backend / frontend / logic / programming), who was affected, where
-it happened, and the full (sanitized) technical detail. The username
-is denormalized on purpose: the record must survive user deletion,
+(backend / frontend / logic / programming / security / financial / database),
+who was affected, where it happened, and the full (sanitized) technical detail.
+The username is denormalized on purpose: the record must survive user deletion,
 exactly like journal audit entries survive journal deletion.
 """
 
@@ -14,28 +12,40 @@ from extensions import db
 
 
 class ErrorLog(db.Model):
-    """سجل منظم لكل أخطاء النظام — باكند/فرونت/منطق/برمجة."""
+    """Structured error journal - backend/frontend/logic/programming/security/financial/database."""
 
     __tablename__ = "error_logs"
 
+    # Categories
     CATEGORY_BACKEND = "backend"
     CATEGORY_FRONTEND = "frontend"
     CATEGORY_LOGIC = "logic"
     CATEGORY_PROGRAMMING = "programming"
+    CATEGORY_SECURITY = "security"
+    CATEGORY_FINANCIAL = "financial"
+    CATEGORY_DATABASE = "database"
+    CATEGORY_MIGRATION = "migration"
     CATEGORIES = (
         CATEGORY_BACKEND,
         CATEGORY_FRONTEND,
         CATEGORY_LOGIC,
         CATEGORY_PROGRAMMING,
+        CATEGORY_SECURITY,
+        CATEGORY_FINANCIAL,
+        CATEGORY_DATABASE,
+        CATEGORY_MIGRATION,
     )
 
+    # Severities
     SEVERITY_CRITICAL = "critical"
     SEVERITY_ERROR = "error"
     SEVERITY_WARNING = "warning"
+    SEVERITY_INFO = "info"
     SEVERITIES = (
         SEVERITY_CRITICAL,
         SEVERITY_ERROR,
         SEVERITY_WARNING,
+        SEVERITY_INFO,
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -75,6 +85,9 @@ class ErrorLog(db.Model):
         db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
+    # Extra context for security/financial/database events
+    extra_context = db.Column(db.Text)
+
     def __repr__(self):
         return "<ErrorLog %s [%s/%s] %s>" % (
             self.id,
@@ -84,7 +97,6 @@ class ErrorLog(db.Model):
         )
 
     def to_dict(self):
-        """تحويل إلى dictionary."""
         return {
             "id": self.id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -97,4 +109,5 @@ class ErrorLog(db.Model):
             "path": self.path,
             "request_id": self.request_id,
             "resolved": bool(self.resolved),
+            "extra_context": self.extra_context,
         }

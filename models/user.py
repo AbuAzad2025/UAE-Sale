@@ -47,6 +47,10 @@ class Role(db.Model):
 
     __tablename__ = "roles"
 
+    __table_args__ = (
+        db.UniqueConstraint("tenant_id", "slug", name="uq_role_tenant_slug"),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True

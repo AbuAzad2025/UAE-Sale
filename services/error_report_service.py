@@ -164,10 +164,20 @@ def report_error(
     user_id, username, role = _actor_snapshot(user)
     snap = _request_snapshot(path=path, method=method)
 
+    # Tenant context: distinguish errors per tenant
+    tenant_id = None
+    try:
+        from models.tenant_scope import get_current_tenant_id
+
+        tenant_id = get_current_tenant_id()
+    except Exception:
+        pass
+
     entry = ErrorLog(
         category=category,
         severity=severity,
         source=(source or "manual")[:50],
+        tenant_id=tenant_id,
         user_id=user_id,
         username=username,
         user_role=role,
@@ -179,9 +189,7 @@ def report_error(
         request_id=snap["request_id"],
         ip_address=snap["ip_address"],
         user_agent=snap["user_agent"],
-        extra_context=_clean(extra_context, 4000)
-        if extra_context is not None
-        else None,
+        extra_context=_clean(extra_context, 4000) if extra_context is not None else None,
     )
     try:
         if not has_app_context():

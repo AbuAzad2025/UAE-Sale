@@ -62,12 +62,17 @@
           <option value="frontend" {% if filters.category == 'frontend' %}selected{% endif %}>فرونت اند (متصفح)</option>
           <option value="logic" {% if filters.category == 'logic' %}selected{% endif %}>منطق وظيفي</option>
           <option value="programming" {% if filters.category == 'programming' %}selected{% endif %}>برمجي</option>
+<option value="security" {% if filters.category == 'security' %}selected{% endif %}>امنیت</option>
+<option value="financial" {% if filters.category == 'financial' %}selected{% endif %}>مالی</option>
+<option value="database" {% if filters.category == 'database' %}selected{% endif %}>پایگاه داده</option>
+<option value="migration" {% if filters.category == 'migration' %}selected{% endif %}>مهاجرت</option>
         </select>
         <select name="severity" class="form-control mr-2 mb-2">
           <option value="all" {% if filters.severity == 'all' %}selected{% endif %}>كل الخطورة</option>
           <option value="critical" {% if filters.severity == 'critical' %}selected{% endif %}>حرج</option>
           <option value="error" {% if filters.severity == 'error' %}selected{% endif %}>خطأ</option>
           <option value="warning" {% if filters.severity == 'warning' %}selected{% endif %}>تحذير</option>
+<option value="info" {% if filters.severity == 'info' %}selected{% endif %}>اطلاعات</option>
         </select>
         <select name="status" class="form-control mr-2 mb-2">
           <option value="all" {% if filters.status == 'all' %}selected{% endif %}>الكل</option>

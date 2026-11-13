@@ -156,6 +156,7 @@ for _model_cls in [
     ArchivedRecord,
     AuditLog,
     JournalEntryAudit,
+    ErrorLog,
 ]:
     register_tenant_scoped(_model_cls)
 

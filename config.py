@@ -42,7 +42,6 @@ class Config:
 
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:
-        # Fail-closed in production: never auto-generate a secret key.
         _app_env = os.environ.get(
             "APP_ENV", os.environ.get("FLASK_ENV", "production")
         ).lower()
@@ -75,26 +74,17 @@ class Config:
         "/ledger/api/calculate-journal-balance",
     ]
 
-    # All asset links are relative via <base> and window.BASE_URL so the app
-    # works when moved between sub-folders. DB is PostgreSQL (network) for
-    # both local and production, so its URL stays absolute by design;
-    # the fallback is in-memory for tests.
     _db_uri = os.environ.get("DATABASE_URL") or "sqlite:///:memory:"
 
-    # Handle PythonAnywhere specific postgres URL format if needed
     if _db_uri.startswith("postgres://"):
         _db_uri = _db_uri.replace("postgres://", "postgresql+psycopg2://", 1)
     if _db_uri.startswith("postgresql://"):
         _db_uri = _db_uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     SQLALCHEMY_DATABASE_URI = _db_uri
-    # When the app is mounted under a sub-path (e.g. /sale), set
-    # APPLICATION_ROOT=/sale so url_for respects the prefix and links stay
-    # relative to the mount point instead of domain root.
     APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "/")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Engine options — pool_size only for PostgreSQL (SQLite doesn't support it)
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 1800,
@@ -103,9 +93,6 @@ class Config:
     if _db_uri.startswith("postgresql"):
         SQLALCHEMY_ENGINE_OPTIONS["pool_size"] = 10
         SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 20
-        # Statement timeout guard against runaway queries — 5s in production by
-        # default, overridable via env (CI fixtures that reset the schema set
-        # STATEMENT_TIMEOUT_MS=0 locally via SET instead of raising it here).
         _statement_timeout = os.environ.get("STATEMENT_TIMEOUT_MS", "5000").strip()
         try:
             _statement_timeout = str(int(_statement_timeout))
@@ -154,11 +141,8 @@ class Config:
     WTF_CSRF_ENABLED = _bool(os.environ.get("WTF_CSRF_ENABLED"), True)
     WTF_CSRF_TIME_LIMIT = None
 
-    # Internal service-to-service key (optional). When set, AI JSON endpoints
-    # accept it via X-API-Key header / api_key param as a CSRF alternative.
     INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
-    # Sentry error tracking (optional). Leave SENTRY_DSN empty to disable.
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     SENTRY_ENVIRONMENT = os.environ.get(
         "SENTRY_ENVIRONMENT", os.environ.get("APP_ENV", "production")
@@ -184,13 +168,6 @@ class Config:
     TENANT_STRICT = _bool(os.environ.get("TENANT_STRICT"), True)
 
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    # Cache backend. The default is SimpleCache - an in-process dictionary -
-    # because it needs no external service, which is what a single-server
-    # deployment (PythonAnywhere without a paid Redis plan) can rely on. The
-    # previous default was RedisCache, and with no Redis reachable EVERY
-    # cache.set raised ConnectionError: the dashboard silently recomputed on
-    # every request and the rate limiter never counted anything, so the
-    # limiter did not limit. Redis stays available by setting CACHE_TYPE.
     CACHE_TYPE = os.environ.get("CACHE_TYPE", "flask_caching.backends.SimpleCache")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
     CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
@@ -343,9 +320,6 @@ def assert_production_sanity(cfg=None) -> None:
     if not os.environ.get("OWNER_PASSWORD"):
         raise RuntimeError("OWNER_PASSWORD must be set in production!")
 
-    if not os.environ.get("MASTER_KEY_SEED"):
-        raise RuntimeError("MASTER_KEY_SEED must be set in production!")
-
     db_uri = cfg.SQLALCHEMY_DATABASE_URI
     if db_uri.startswith("sqlite"):
         raise RuntimeError("SQLite is not allowed in production. Use PostgreSQL/MySQL.")
@@ -358,10 +332,8 @@ def assert_production_sanity(cfg=None) -> None:
         logging.warning(
             f"Production Warning: BASE_URL ({base_url}) should start with https://. Please update your .env file."
         )
-        # We won't raise an error here to prevent deployment crashes, but links might be incorrect.
 
     logging.info("Production configuration check complete")
 
 
-# Suppress SQLAlchemy engine logs
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)

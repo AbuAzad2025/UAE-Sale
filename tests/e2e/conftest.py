@@ -149,7 +149,6 @@ ROLE_PERMISSIONS = {
         "manage_warehouse",
         "view_costs",
         # utils/system_init.py gives 'manager' manage_users, which is the only
-        # seeded role besides owner that can reach /users/create and
         # /users/<id>/delete.
         "manage_users",
     ],
@@ -184,7 +183,6 @@ ROLE_PASSWORDS = {
 
 _ALL_TABLES = []
 
-# Reference data seeded once per session and preserved across the per-test
 # wipe. gl_accounts is the canonical chart of accounts; re-running
 # ensure_core_accounts() after every wipe would cost ~1.2s per test, so the
 # tree is kept intact instead.
@@ -514,7 +512,6 @@ def users(db, e2e_tenant):
     made = {}
     for slug in ROLE_PERMISSIONS:
         # Non-owners get the tenant at construction time; the owner keeps
-        # tenant_id None because the platform owner legitimately bypasses the
         # tenant filter (app.py sets tenant None for is_owner).
         tenant_for_user = None if slug == "owner" else e2e_tenant.id
         made[slug] = _make_user(slug, tenant_id=tenant_for_user)

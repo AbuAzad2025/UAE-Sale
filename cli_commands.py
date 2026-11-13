@@ -17,14 +17,8 @@ def register_cli_commands(app: Flask) -> None:
     standard ``flask db migrate`` / ``flask db upgrade`` workflow
     works.  Other operational commands can be added here.
     """
-    # Flask-Migrate auto-registers ``flask db`` when Migrate is
-    # attached to both the app and the CLI.  The ``migrate`` /
-    # ``upgrade`` / ``downgrade`` / ``history`` / ``heads`` /
-    # ``current`` / ``stamp`` / ``show`` / ``merge`` / ``check``
-    # subcommands are all provided by Flask-Migrate out of the box.
     from extensions import db, migrate
 
-    # Re-attach the existing Migrate to the CLI so ``flask db`` works.
     migrations_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "migrations",

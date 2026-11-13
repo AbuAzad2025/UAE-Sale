@@ -31,7 +31,6 @@ class AutoApprovalService:
                 hours=hours_threshold
             )
 
-            # جلب التبرعات المعلقة الأقدم من ساعة
             pending_donations = Donation.query.filter(
                 Donation.status == "pending",
                 Donation.transaction_type == "donation",
@@ -45,7 +44,6 @@ class AutoApprovalService:
                 donation.status = "completed"
                 donation.completed_at = datetime.now(timezone.utc)
 
-                # تسجيل في Audit Log
                 create_audit_log(
                     action=f"auto_approved_donation: ${donation.amount_usd}",
                     table_name="donations",
@@ -95,7 +93,6 @@ class AutoApprovalService:
                 hours=hours_threshold
             )
 
-            # جلب المشتريات المعلقة الأقدم من ساعة
             pending_purchases = PackagePurchase.query.filter(
                 PackagePurchase.payment_status == "pending",
                 PackagePurchase.created_at <= threshold_time,
@@ -109,7 +106,6 @@ class AutoApprovalService:
                 purchase.activation_status = "activated"
                 purchase.activation_date = datetime.now(timezone.utc)
 
-                # تحديث التبرع المرتبط
                 related_donation = Donation.query.filter(
                     Donation.transaction_type == "purchase",
                     Donation.customer_email == purchase.customer_email,
@@ -120,7 +116,6 @@ class AutoApprovalService:
                     related_donation.status = "completed"
                     related_donation.completed_at = datetime.now(timezone.utc)
 
-                # تسجيل
                 create_audit_log(
                     action=f"auto_approved_purchase: {purchase.package.name_ar if purchase.package else 'N/A'}",
                     table_name="package_purchases",
@@ -164,12 +159,10 @@ class AutoApprovalService:
         """
         logger.info("🔄 Running auto-approval service...")
 
-        # قبول التبرعات
         donations_result = AutoApprovalService.approve_pending_donations(
             hours_threshold=1
         )
 
-        # قبول المشتريات
         purchases_result = AutoApprovalService.approve_pending_purchases(
             hours_threshold=1
         )
@@ -193,11 +186,6 @@ def schedule_auto_approval(app):
         while True:
             try:
                 with app.app_context():
-                    # Platform-level by design: this job settles pending
-                    # Donations and PackagePurchases, neither of which carries
-                    # a tenant_id - they are global payment records. A thread
-                    # inherits no tenant context, so the cross-tenant scope is
-                    # stated explicitly rather than left implicit.
                     from models import run_in_platform_context
 
                     result = run_in_platform_context(
@@ -208,10 +196,8 @@ def schedule_auto_approval(app):
             except Exception as e:
                 logger.error(f"❌ Error in auto-approval task: {str(e)}")
             finally:
-                # الانتظار ساعة واحدة قبل التشغيل التالي
                 time.sleep(3600)  # 3600 ثانية = 1 ساعة
 
-    # بدء المهمة في خلفية منفصلة
     thread = threading.Thread(target=approval_task, daemon=True)
     thread.start()
     logger.info("✅ Auto-approval scheduler started")

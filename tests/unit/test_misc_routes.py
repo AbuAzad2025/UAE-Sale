@@ -183,7 +183,6 @@ class TestGraphql:
         assert "Insufficient permissions" in resp.get_json()["errors"][0]
 
     def test_allowed_field_executes(self, client, misc_owner):
-        # Owner bypasses field checks; proves the execution pipeline works.
         # (Non-view_reports roles like seller are rejected by the base
         # view_reports gate before field checks — covered above.)
         _login(client, misc_owner)
@@ -226,7 +225,6 @@ class TestApprovals:
 
 class TestReturns:
     def test_view_missing_returns_404(self, client, misc_owner):
-        # Owner bypasses manage_sales gate; missing ProductReturn -> get_or_404.
         # Renders 404 (not a login redirect).
         _login(client, misc_owner)
         resp = client.get("/returns/view/999999")

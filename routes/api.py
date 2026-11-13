@@ -55,17 +55,6 @@ def api_product_info(product_id):
                 }
             ), 404
         warehouse_name = warehouse.name
-        # الرصيد الفعلي في هذا المستودع يأتي من حركات المخزون، لا من
-        # current_stock الإجمالي للمنتج.
-        #
-        # Sign convention (services/stock_service.py): a StockMovement
-        # ALWAYS carries the sign of the stock change it represents — a
-        # purchase/receipt is positive, a sale/issue is NEGATIVE, an
-        # adjustment follows its direction.  The old "received − issued"
-        # formula therefore ADDED the sales back (100 purchased − (−30)
-        # sold = 130 instead of 70) and ignored adjustment/return/transfer
-        # movements entirely.  The plain SUM of the movement quantities is
-        # correct whatever the movement_type mix is.
         try:
             from models import StockMovement
 
@@ -82,7 +71,6 @@ def api_product_info(product_id):
             )
             stock = float(total)
         except Exception:
-            # لا motions ⇒ المستودع مخصص للبيع فقط؛ يبقى الرصيد الإجمالي
             current_app.logger.warning(
                 "Product stock breakdown unavailable for product %s", product.id
             )
@@ -97,9 +85,6 @@ def api_product_info(product_id):
         "barcode": product.barcode,
         "unit": product.unit,
         "current_stock": stock,
-        # static/js/sales.js reads `available` (and looks for a .stock-badge
-        # element) — both keys carry the same figure so the POS screen can
-        # never show "no stock" while the API has one.
         "available": stock,
         "default_price": float(product.regular_price or 0),
         "unit_price": float(product.regular_price or 0),
@@ -110,9 +95,6 @@ def api_product_info(product_id):
         "partner_price": (
             float(product.partner_price) if product.partner_price else None
         ),
-        # SECURITY: cost data only for roles allowed to see costs
-        # (owner / super_admin / manager). Cashiers and sellers use this
-        # endpoint from the POS screen — never expose cost to them.
         "cost_price": (float(product.cost_price) if product.cost_price else 0)
         if current_user.can_see_costs()
         else None,
@@ -354,9 +336,6 @@ def _search_entities(query, search_type, page=1, per_page=20):
     يقود المسار /api/search?type= والمسار /api/search/<target> معاً حتى لا
     تختلف نتائجهما. يعيد (results, has_more).
     """
-    # ========================================
-    # 1. البحث عن المنتجات
-    # ========================================
     if search_type == "products":
         products = (
             Product.query.filter(
@@ -383,9 +362,6 @@ def _search_entities(query, search_type, page=1, per_page=20):
                 "regular_price": float(p.regular_price or 0),
                 "merchant_price": float(p.merchant_price) if p.merchant_price else None,
                 "partner_price": float(p.partner_price) if p.partner_price else None,
-                # SECURITY: cost data only for roles allowed to see costs
-                # (owner / super_admin / manager). Cashiers and sellers use this
-                # endpoint from the POS screen — never expose cost to them.
                 "cost_price": (float(p.cost_price) if p.cost_price else 0)
                 if current_user.can_see_costs()
                 else None,
@@ -397,9 +373,6 @@ def _search_entities(query, search_type, page=1, per_page=20):
 
         return results, len(results) >= per_page
 
-    # ========================================
-    # 2. البحث عن الموردين
-    # ========================================
     if search_type == "suppliers":
         base_query = Supplier.query.filter(Supplier.is_active == True).order_by(
             Supplier.name
@@ -439,9 +412,6 @@ def _search_entities(query, search_type, page=1, per_page=20):
 
         return results, has_more
 
-    # ========================================
-    # 3. البحث عن الزبائن (الافتراضي)
-    # ========================================
     base_query = Customer.query.filter(Customer.is_active == True).order_by(
         Customer.name
     )  # noqa: E712  (SQLAlchemy boolean filter)
@@ -650,9 +620,6 @@ def client_errors():
         return jsonify(
             {"success": False, "error": "Content-Type must be application/json"}
         ), 400
-    # Same-host rule (mirrors the language-switch referrer guard): the
-    # page reporting the error must live on this host, or the Origin must
-    # be explicitly allowed. Blocks cross-site report flooding.
     origin = request.headers.get("Origin", "")
     if origin:
         own_host = (request.host or "").split(":")[0].lower()

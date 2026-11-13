@@ -14,45 +14,35 @@ class AdvancedFinancialAnalytics:
         if not date_to:
             date_to = date.today()
 
-        # حساب الأصول المتداولة (يبدأ الكود بـ 11)
         current_assets = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             "11", date_to
         )
 
-        # حساب إجمالي الأصول (يبدأ الكود بـ 1)
         total_assets = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             "1", date_to
         )
 
-        # حساب الخصوم المتداولة (يبدأ الكود بـ 21)
         current_liabilities = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             "21", date_to
         )
 
-        # حساب إجمالي الخصوم (يبدأ الكود بـ 2)
         total_liabilities = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             "2", date_to
         )
 
-        # حساب حقوق الملكية (يبدأ الكود بـ 3)
         equity = AdvancedFinancialAnalytics._calculate_balance_by_prefix("3", date_to)
 
-        # حساب الإيرادات (يبدأ الكود بـ 4)
         revenue = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             "4", date_from, date_to, is_pl=True
         )
 
-        # حساب المصروفات (يبدأ الكود بـ 5 أو 6)
         expenses = AdvancedFinancialAnalytics._calculate_balance_by_prefix(
             ["5", "6"], date_from, date_to, is_pl=True
         )
 
-        # صافي الربح
         net_profit = revenue - expenses
 
-        # النسب المالية
         ratios = {
-            # نسب السيولة
             "liquidity": {
                 "current_ratio": float(current_assets / current_liabilities)
                 if current_liabilities > 0
@@ -68,7 +58,6 @@ class AdvancedFinancialAnalytics:
                 if current_liabilities > 0
                 else 0,
             },
-            # نسب الربحية
             "profitability": {
                 "gross_profit_margin": float((net_profit / revenue) * 100)
                 if revenue > 0
@@ -83,7 +72,6 @@ class AdvancedFinancialAnalytics:
                 if equity > 0
                 else 0,
             },
-            # نسب الكفاءة
             "efficiency": {
                 "asset_turnover": float(revenue / total_assets)
                 if total_assets > 0
@@ -92,7 +80,6 @@ class AdvancedFinancialAnalytics:
                 if revenue > 0
                 else 0,
             },
-            # نسب المديونية
             "leverage": {
                 "debt_to_equity": float(total_liabilities / equity)
                 if equity > 0
@@ -102,7 +89,6 @@ class AdvancedFinancialAnalytics:
                 else 0,
                 "equity_multiplier": float(total_assets / equity) if equity > 0 else 0,
             },
-            # البيانات الأساسية
             "base_data": {
                 "current_assets": float(current_assets),
                 "total_assets": float(total_assets),
@@ -143,11 +129,9 @@ class AdvancedFinancialAnalytics:
         accounts = query.all()
         total = Decimal(0)
 
-        # تحديد تواريخ الفلترة
         filter_start = date_from if is_pl else None
         filter_end = date_to
 
-        # Ensure filter_end includes the full day if it's a date object
         if (
             filter_end
             and isinstance(filter_end, date)
@@ -174,19 +158,11 @@ class AdvancedFinancialAnalytics:
             lines = lines_query.all()
 
             for line in lines:
-                # amount_base represents (Debit - Credit) in AED
-                # Asset/Expense: Normal Balance is Debit (+)
-                # Liability/Equity/Revenue: Normal Balance is Credit (-)
-
                 val = line.amount_base
 
                 if account.type in ["asset", "expense"]:
                     total += val
                 else:
-                    # For credit-normal accounts, a positive amount_base (Debit > Credit) reduces the balance
-                    # A negative amount_base (Credit > Debit) increases the balance (absolute value)
-                    # So we subtract val:
-                    # If Credit=100, Debit=0 -> amount_base = -100 -> total -= (-100) -> total += 100 (Correct)
                     total -= val
 
         return total
@@ -199,13 +175,11 @@ class AdvancedFinancialAnalytics:
         ).all()
         total = Decimal(0)
 
-        # Ensure date_to includes the full day if it's a date object
         if date_to and isinstance(date_to, date) and not isinstance(date_to, datetime):
             date_to = datetime.combine(date_to, datetime.max.time())
 
         for account in accounts:
             if date_from and date_to:
-                # حساب الحركة في الفترة
                 lines = (
                     GLJournalLine.query.join(GLJournalEntry)
                     .filter(
@@ -223,7 +197,6 @@ class AdvancedFinancialAnalytics:
                     else:
                         total -= line.amount_base
             else:
-                # الرصيد الكامل
                 balance = account.get_balance()
                 total += abs(balance)
 
@@ -262,7 +235,6 @@ class AdvancedFinancialAnalytics:
 
             current_date = month_end
 
-        # حساب التغيرات الشهرية
         for i in range(1, len(trends)):
             prev_profit = trends[i - 1]["profit"]
             current_profit = trends[i]["profit"]
@@ -340,7 +312,6 @@ class AdvancedFinancialAnalytics:
                 }
             )
 
-        # حساب النسب المئوية
         for item in breakdown:
             if total_expenses > 0:
                 item["percentage"] = round(
@@ -349,7 +320,6 @@ class AdvancedFinancialAnalytics:
             else:
                 item["percentage"] = 0
 
-        # ترتيب حسب المبلغ
         breakdown.sort(key=lambda x: x["amount"], reverse=True)
 
         return {"items": breakdown, "total": float(total_expenses)}
@@ -376,7 +346,6 @@ class AdvancedFinancialAnalytics:
                 }
             )
 
-        # حساب النسب المئوية
         for item in breakdown:
             if total_revenue > 0:
                 item["percentage"] = round(
@@ -385,7 +354,6 @@ class AdvancedFinancialAnalytics:
             else:
                 item["percentage"] = 0
 
-        # ترتيب حسب المبلغ
         breakdown.sort(key=lambda x: x["amount"], reverse=True)
 
         return {"items": breakdown, "total": float(total_revenue)}
@@ -393,25 +361,21 @@ class AdvancedFinancialAnalytics:
     @staticmethod
     def get_forecasting_data(months_ahead=6):
         """توقعات مالية"""
-        # الحصول على البيانات التاريخية
         historical = AdvancedFinancialAnalytics.get_trend_analysis(months=12)
 
         if not historical or len(historical) < 3:
             return []
 
-        # حساب المتوسطات للتوقع البسيط
         _ = sum(item["revenue"] for item in historical) / len(historical)
         _ = sum(item["expenses"] for item in historical) / len(historical)
         avg_growth = sum(item.get("change", 0) for item in historical[1:]) / (
             len(historical) - 1
         )
 
-        # توقعات الأشهر القادمة
         forecasts = []
         last_month = historical[-1]
 
         for i in range(months_ahead):
-            # تطبيق معدل النمو المتوسط
             growth_factor = 1 + (avg_growth / 100)
 
             forecast_revenue = last_month["revenue"] * (growth_factor ** (i + 1))

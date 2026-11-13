@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 class ExportService:
     """خدمة تصدير التقارير"""
 
-    # ── CSV ──────────────────────────────────────────────────────────────
-
     @staticmethod
     def export_to_csv(data, headers, filename="export.csv"):
         """Export rows to a CSV file with UTF-8 BOM for Excel compat."""
@@ -31,8 +29,6 @@ class ExportService:
         output.write(str_output.getvalue().encode("utf-8"))
         output.seek(0)
         return output
-
-    # ── Excel (.xlsx) ────────────────────────────────────────────────────
 
     @staticmethod
     def export_to_excel(
@@ -69,7 +65,6 @@ class ExportService:
         if right_to_left:
             ws.sheet_view.rightToLeft = True
 
-        # Styles
         header_font = Font(bold=True, color="FFFFFF", size=11)
         header_fill = PatternFill(
             start_color="4472C4", end_color="4472C4", fill_type="solid"
@@ -83,13 +78,11 @@ class ExportService:
         )
         money_fmt = "#,##0.000"
 
-        # Title row
         ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
         title_cell = ws.cell(row=1, column=1, value=title)
         title_cell.font = Font(bold=True, size=14, color="4472C4")
         title_cell.alignment = Alignment(horizontal="center")
 
-        # Timestamp
         ts_row = 2
         ws.merge_cells(
             start_row=ts_row, start_column=1, end_row=ts_row, end_column=len(headers)
@@ -103,7 +96,6 @@ class ExportService:
         ts_cell.alignment = Alignment(horizontal="center")
         ts_cell.font = Font(italic=True, color="888888")
 
-        # Headers
         header_row = 4
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=header_row, column=col_idx, value=header)
@@ -112,18 +104,15 @@ class ExportService:
             cell.alignment = header_align
             cell.border = thin_border
 
-        # Data rows
         for row_idx, row_data in enumerate(rows, header_row + 1):
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = thin_border
                 cell.alignment = Alignment(vertical="center")
-                # Auto-format numbers
                 if isinstance(value, (int, float)):
                     cell.number_format = money_fmt
                     cell.alignment = Alignment(horizontal="right", vertical="center")
 
-        # Summary section
         if summary:
             summary_row = header_row + len(rows) + 2
             ws.merge_cells(
@@ -143,7 +132,6 @@ class ExportService:
                 if isinstance(value, (int, float)):
                     c.number_format = money_fmt
 
-        # Auto-width columns (approximate) — optimized: only scan first 100 rows
         max_rows_to_scan = min(len(rows), 100)
         for col_idx in range(1, len(headers) + 1):
             max_len = max(len(str(headers[col_idx - 1])), 12)
@@ -153,13 +141,10 @@ class ExportService:
                     max_len = max(max_len, min(len(str(val)), 40))
             ws.column_dimensions[get_column_letter(col_idx)].width = max_len + 2
 
-        # Save
         output = BytesIO()
         wb.save(output)
         output.seek(0)
         return output
-
-    # ── PDF (via weasyprint) ─────────────────────────────────────────────
 
     @staticmethod
     def export_to_pdf(
@@ -256,14 +241,10 @@ class ExportService:
         output.seek(0)
         return output
 
-    # ── Convenience: build rows from dicts ───────────────────────────────
-
     @staticmethod
     def dicts_to_rows(items, keys):
         """Convert a list of dicts to a list of lists using `keys` order."""
         return [[item.get(k, "") for k in keys] for item in items]
-
-    # ── Legacy CSV helpers (kept for backward compat) ────────────────────
 
     @staticmethod
     def export_purchases_to_csv(purchases):
@@ -346,8 +327,6 @@ class ExportService:
                 ]
             )
         return ExportService.export_to_csv(data, headers, "cards.csv")
-
-    # ── Legacy PDF (HTML string) ─────────────────────────────────────────
 
     @staticmethod
     def generate_pdf_report(title, data, filename="report.pdf"):

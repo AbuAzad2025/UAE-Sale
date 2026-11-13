@@ -17,19 +17,16 @@ class Tenant(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Basic Info - معلومات أساسية
     name = db.Column(db.String(200), nullable=False, unique=True)
     name_ar = db.Column(db.String(200), nullable=False)
     name_en = db.Column(db.String(200))
     slug = db.Column(db.String(100), unique=True, nullable=False, index=True)
 
-    # Business Type - نوع النشاط
     business_type = db.Column(
         db.String(50), default="garage"
     )  # garage, workshop, spare_parts, etc.
     industry = db.Column(db.String(100))  # automotive, heavy_equipment, etc.
 
-    # Contact Info - معلومات التواصل
     address_ar = db.Column(db.Text)
     address_en = db.Column(db.Text)
     city = db.Column(db.String(100))
@@ -41,13 +38,11 @@ class Tenant(db.Model):
     email = db.Column(db.String(120))
     website = db.Column(db.String(200))
 
-    # Legal Info - معلومات قانونية
     tax_number = db.Column(db.String(100), index=True)  # TRN
     commercial_register = db.Column(db.String(100))
     license_number = db.Column(db.String(100))
     license_expiry = db.Column(db.Date)
 
-    # Bank info for invoices (per tenant — not Azad)
     bank_name = db.Column(db.String(200))
     bank_account_number = db.Column(db.String(100))
     iban = db.Column(db.String(100))
@@ -57,31 +52,26 @@ class Tenant(db.Model):
     default_invoice_note_ar = db.Column(db.Text)
     active_template = db.Column(db.String(50), default="modern")
 
-    # Branding - العلامة التجارية
     logo_url = db.Column(db.String(500))
     logo_dark_url = db.Column(db.String(500))
     favicon_url = db.Column(db.String(500))
     brand_color_primary = db.Column(db.String(20), default="#007A3D")
     brand_color_secondary = db.Column(db.String(20), default="#D4AF37")
 
-    # Subscription - الاشتراك
     subscription_plan = db.Column(
         db.String(50), default="basic"
     )  # basic, pro, enterprise
-    # تاريخ توقيع العقد من قبل الشركة (اختياري) — يظهر في النموذج فقط للمصادقة المبدئية
     contract_signed_at = db.Column(db.DateTime, nullable=True)
     subscription_start = db.Column(db.DateTime)
     subscription_end = db.Column(db.DateTime)
     is_trial = db.Column(db.Boolean, default=False)
     trial_days_remaining = db.Column(db.Integer, default=0)
 
-    # Limits - الحدود
     max_users = db.Column(db.Integer, default=5)
     max_products = db.Column(db.Integer, default=1000)
     max_customers = db.Column(db.Integer, default=500)
     max_storage_mb = db.Column(db.Integer, default=1024)  # 1GB
 
-    # Features - المميزات المفعلة
     enable_multi_warehouse = db.Column(db.Boolean, default=True)
     enable_multi_currency = db.Column(db.Boolean, default=True)
     enable_gl = db.Column(db.Boolean, default=True)
@@ -90,34 +80,26 @@ class Tenant(db.Model):
     enable_api = db.Column(db.Boolean, default=False)
     enable_maintenance = db.Column(db.Boolean, default=True)
 
-    # Preferences - التفضيلات
     default_currency = db.Column(db.String(3), default="AED")
     default_language = db.Column(db.String(10), default="ar")
     timezone = db.Column(db.String(50), default="Asia/Dubai")
     date_format = db.Column(db.String(20), default="%Y-%m-%d")
     time_format = db.Column(db.String(20), default="%H:%M")
 
-    # Financial Settings - إعدادات مالية
     fiscal_year_start = db.Column(db.Integer, default=1)  # Month: 1-12
     enable_tax = db.Column(db.Boolean, default=True)
     default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("5.00"))
-    # الدولة الضريبية (ISO-2) + نسبة الضريبة (UAE 5%، SA 15%...) — المحرك يلتقط الفرع
     tax_country = db.Column(db.String(2), default="AE")
-    # شامل الضريبة (True) أم إضافي (False)
     tax_inclusive = db.Column(db.Boolean, default=False)
-    # ضريبة الشركات (الدخل) — لكل تينانت حسب القانون المحلي
     corp_tax_enabled = db.Column(db.Boolean, default=False)
     corp_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("9.00"))
     corp_tax_threshold = db.Column(db.Numeric(15, 2), default=Decimal("375000.00"))
-    # عملات مسموحة للشركة (مفصولة بفاصلة، فارغ = كل عملات Lookup)
     allowed_currencies = db.Column(db.Text)
 
-    # Status - الحالة
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     is_suspended = db.Column(db.Boolean, default=False)
     suspension_reason = db.Column(db.Text)
 
-    # Meta
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -130,8 +112,6 @@ class Tenant(db.Model):
         db.Integer, db.ForeignKey("users.id", use_alter=True), nullable=True
     )
 
-    # Relationships
-
     def __repr__(self):
         return f"<Tenant {self.name}>"
 
@@ -140,7 +120,6 @@ class Tenant(db.Model):
         """Get current tenant (single tenant for now, multi-tenant ready)"""
         tenant = Tenant.query.filter_by(is_active=True).first()
         if not tenant:
-            # Create default tenant
             tenant = Tenant(
                 name="Default Garage",
                 name_ar="كراج افتراضي",

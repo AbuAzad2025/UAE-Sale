@@ -6,32 +6,21 @@ CRITICAL: Validates table names and file paths to prevent SQL injection and path
 import os
 from sqlalchemy import inspect as sa_inspect
 
-
-#: جداول ممنوع مسحها أو إتلافها من أي مسار في التطبيق.
-#:
-#: القائمة تضم (١) جداول الهوية والصلاحيات، (٢) كل أثر التدقيق
-#: (audit trail)، (٣) دفتر الأستاذ العام، (٤) المستندات المالية.
-#: مسح أيٍّ منها يعني محو الدليل أو المحاسبة نفسها، لذلك يُرفض المسح
-#: من أي مسار — لا من مسار لوحة المالك وحده.
 PROTECTED_TABLES = frozenset(
     {
-        # identity & access
         "users",
         "roles",
         "permissions",
         "tenants",
         "role_permissions",
-        # audit trail
         "audit_logs",
         "journal_entry_audits",
         "error_logs",
         "login_history",
         "security_alerts",
-        # general ledger
         "gl_journal_entries",
         "gl_journal_lines",
         "gl_accounts",
-        # financial documents
         "sales",
         "sale_lines",
         "payments",
@@ -41,7 +30,6 @@ PROTECTED_TABLES = frozenset(
         "product_returns",
         "product_return_lines",
         "expenses",
-        # stock & master data
         "products",
         "warehouses",
         "stock_movements",
@@ -101,13 +89,11 @@ def validate_table_name(table_name, allowed=None):
     if not table_name or not isinstance(table_name, str):
         raise ValueError("Invalid table name")
 
-    # Strict regex: only alphanumeric and underscores
     import re
 
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name):
         raise ValueError(f"Invalid table name format: {table_name}")
 
-    # Reject SQL keywords that could be abused
     dangerous = {
         "pg_",
         "information_schema",
@@ -153,11 +139,9 @@ def validate_backup_filename(filename, backup_dir):
     if not filename or not isinstance(filename, str):
         raise ValueError("Invalid filename")
 
-    # Reject null bytes
     if "\x00" in filename:
         raise ValueError("Invalid filename: contains null bytes")
 
-    # Use werkzeug's secure_filename to strip dangerous characters
     from werkzeug.utils import secure_filename
 
     safe_name = secure_filename(filename)
@@ -165,12 +149,10 @@ def validate_backup_filename(filename, backup_dir):
     if not safe_name or safe_name != filename:
         raise ValueError(f"Invalid filename: {filename}")
 
-    # Build the full path and resolve it
     full_path = os.path.normpath(os.path.join(backup_dir, filename))
     abs_backup_dir = os.path.realpath(backup_dir)
     abs_full_path = os.path.realpath(full_path)
 
-    # Ensure the resolved path is within the backup directory
     if (
         not abs_full_path.startswith(abs_backup_dir + os.sep)
         and abs_full_path != abs_backup_dir

@@ -38,7 +38,6 @@ class Shipment(TenantScopedMixin, db.Model):
 
     shipment_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
-    # Source — from any warehouse of any tenant (company/branch)
     from_warehouse_id = db.Column(
         db.Integer,
         db.ForeignKey("warehouses.id", ondelete="RESTRICT"),
@@ -46,7 +45,6 @@ class Shipment(TenantScopedMixin, db.Model):
         index=True,
     )
 
-    # Destination — either a warehouse (formal site) or free-text site name
     destination_warehouse_id = db.Column(
         db.Integer,
         db.ForeignKey("warehouses.id", ondelete="SET NULL"),
@@ -59,8 +57,6 @@ class Shipment(TenantScopedMixin, db.Model):
     )  # site / warehouse / customer
 
     status = db.Column(db.String(20), nullable=False, default="draft", index=True)
-    # draft → in_transit → arrived → selling → closed
-    # draft/cancelled allowed to be cancelled at any step before closed
 
     total_value = db.Column(db.Numeric(15, 3), nullable=False, default=Decimal("0.000"))
     total_quantity = db.Column(
@@ -91,7 +87,6 @@ class Shipment(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     tenant = db.relationship("Tenant", foreign_keys=[tenant_id])
     from_warehouse = db.relationship("Warehouse", foreign_keys=[from_warehouse_id])
     destination_warehouse = db.relationship(
@@ -105,8 +100,6 @@ class Shipment(TenantScopedMixin, db.Model):
         cascade="all, delete-orphan",
         lazy="joined",
     )
-    # Sales created from this shipment (optional link — Sale.shipment_id)
-    # Defined via backref on Sale (see sale.py)
 
     @validates("destination_name")
     def _validate_destination(self, key, value):

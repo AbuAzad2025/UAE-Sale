@@ -93,7 +93,6 @@ def upgrade():
     if not _has_table(conn, "gl_accounts"):
         return
 
-    # Seed the bad debt expense account, and mark it a system account so it
     # cannot be renamed, retyped or deleted out from under the posting.
     account = sa.table(
         "gl_accounts",

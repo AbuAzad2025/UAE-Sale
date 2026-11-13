@@ -15,9 +15,6 @@ def _effective_quantity(quantity, returned_quantity):
     return effective if effective > 0 else Decimal("0")
 
 
-# ---------------------------------------------------------------------------
-# 1. رأس أمر الصيانة
-# ---------------------------------------------------------------------------
 class MaintenanceOrder(TenantScopedMixin, db.Model):
     """أمر صيانة — رأس الأمر"""
 
@@ -36,7 +33,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("customers.id"), nullable=False, index=True
     )
 
-    # بيانات الجهاز
     device_brand = db.Column(db.String(100), nullable=True)
     device_model = db.Column(db.String(100), nullable=True)
     device_serial = db.Column(db.String(100), nullable=True, index=True)
@@ -44,7 +40,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     device_plate = db.Column(db.String(50), nullable=True)
     device_problem = db.Column(db.Text, nullable=True)
 
-    # التواريخ والحالة
     received_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     valid_until = db.Column(db.Date, nullable=True)
     status = db.Column(
@@ -52,7 +47,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     )  # received/diagnosis/waiting_approval/in_progress/waiting_parts/ready/closed/cancelled/on_hold
     priority = db.Column(db.String(20), default="normal")  # low/normal/urgent
 
-    # الكفالة
     warranty_status = db.Column(
         db.String(20), nullable=True
     )  # under_warranty/expired/void/unknown
@@ -64,27 +58,22 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
     warranty_notes = db.Column(db.Text, nullable=True)
     color_tag = db.Column(db.String(20), nullable=True)  # green/red/yellow
 
-    # الكفالة المرتبطة ببيع سابق
     warranty_sale_id = db.Column(db.Integer, db.ForeignKey("sales.id"), nullable=True)
 
-    # المستخدمون
     received_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     engineer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     service_advisor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     notes = db.Column(db.Text, nullable=True)
 
-    # تقييم العميل
     customer_rating = db.Column(db.Integer, nullable=True)  # 1-5
     customer_comment = db.Column(db.Text, nullable=True)
     rated_at = db.Column(db.DateTime, nullable=True)
 
-    # فترة ضمان ما بعد الصيانة
     warranty_period_days = db.Column(db.Integer, nullable=True)
     warranty_period_notes = db.Column(db.Text, nullable=True)
     warranty_period_start = db.Column(db.Date, nullable=True)
     warranty_period_end = db.Column(db.Date, nullable=True)
 
-    # المالي - العملة
     currency = db.Column(
         db.String(3), default="AED", nullable=False, index=True
     )  # عملة المعاملة
@@ -121,7 +110,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         db.Numeric(15, 3), default=0
     )  # الرصيد المستحق بعملة الأساس
 
-    # تفاصيل التكلفة والسعر
     cost_price_total = db.Column(
         db.Numeric(15, 3), default=0
     )  # تكلفة القطع والخدمات الفعلية
@@ -134,7 +122,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         db.Numeric(10, 2), nullable=True
     )  # وقت الإكمال بالساعات
 
-    # الموافقات والتدقيق
     is_archived = db.Column(db.Boolean, default=False)
     archived_at = db.Column(db.DateTime, nullable=True)
     archived_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
@@ -145,7 +132,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # العلاقات
     customer = db.relationship("Customer")
     received_by_user = db.relationship("User", foreign_keys=[received_by])
     engineer = db.relationship("User", foreign_keys=[engineer_id])
@@ -226,8 +212,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
             )
 
         percent = Decimal(str(self.discount_total_percent or 0))
-        # When a percentage is applied, the stored money amount is the derived
-        # one, so it must not be sent to the engine as a second discount.
         value = (
             Decimal(str(self.discount_total_value or 0))
             if percent <= 0
@@ -253,7 +237,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.total_amount = totals.total_amount
         self.balance_due = self.total_amount - Decimal(str(self.paid_amount or 0))
 
-        # تحويل المبالغ إلى عملة التينانت الأساسية
         rate = Decimal(str(self.exchange_rate or 1))
         self.subtotal_base = (self.subtotal * rate).quantize(Decimal("0.001"))
         self.tax_amount_base = (self.tax_amount * rate).quantize(Decimal("0.001"))
@@ -263,9 +246,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
             self.total_amount_base - self.paid_amount_base
         ).quantize(Decimal("0.001"))
 
-        # Actual cost of the work (analytic: the GL carries the inventory-backed
-        # part; labour is tracked here because the payroll flow expenses wages
-        # at payment time and has no accrual clearing path).
         parts_cost = sum(
             (
                 Decimal(str(it.cost_price or 0))
@@ -286,9 +266,6 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.selling_price_total = self.total_amount
 
 
-# ---------------------------------------------------------------------------
-# 2. بنود القطع (أمر الصيانة)
-# ---------------------------------------------------------------------------
 class MaintenanceOrderItem(db.Model):
     """بند قطعة غيار في أمر الصيانة"""
 
@@ -304,7 +281,6 @@ class MaintenanceOrderItem(db.Model):
     warehouse_id = db.Column(db.Integer, db.ForeignKey("warehouses.id"), nullable=True)
     quantity = db.Column(db.Numeric(15, 3), default=1)
     unit_price = db.Column(db.Numeric(15, 3), default=0)
-    # عملة البند (تيرث من الأمر إذا لم تُحدد)
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -371,9 +347,6 @@ class MaintenanceOrderItem(db.Model):
         self.line_total = (net + tax).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
-# ---------------------------------------------------------------------------
-# 3. الخدمات (ميكانيك/كهرباء/جهد/أخرى)
-# ---------------------------------------------------------------------------
 class MaintenanceOrderService(db.Model):
     """بند خدمة في أمر الصيانة"""
 
@@ -388,7 +361,6 @@ class MaintenanceOrderService(db.Model):
     service_name_ar = db.Column(db.String(200), nullable=True)
     unit_price = db.Column(db.Numeric(15, 3), default=0)
     duration_minutes = db.Column(db.Integer, default=0)
-    # عملة البند (تيرث من الأمر إذا لم تُحدد)
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -437,9 +409,6 @@ class MaintenanceOrderService(db.Model):
         self.line_total = (net + tax).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
-# ---------------------------------------------------------------------------
-# 4. سجل انتقال الحالات
-# ---------------------------------------------------------------------------
 class MaintenanceOrderStatusLog(db.Model):
     """سجل تغيير حالات أمر الصيانة"""
 
@@ -459,9 +428,6 @@ class MaintenanceOrderStatusLog(db.Model):
     user = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 5. سندات القبض (استقبال فقط)
-# ---------------------------------------------------------------------------
 class MaintenanceReceipt(db.Model):
     """سند قبض لأمر الصيانة"""
 
@@ -472,7 +438,6 @@ class MaintenanceReceipt(db.Model):
         db.Integer, db.ForeignKey("maintenance_orders.id"), nullable=False, index=True
     )
     receipt_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    # عملة القبض
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -493,9 +458,6 @@ class MaintenanceReceipt(db.Model):
     cashier = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 6. فواتير الصيانة (مستقلة عن مبيعات المبيعات)
-# ---------------------------------------------------------------------------
 class MaintenanceInvoice(db.Model):
     """فاتورة صيانة — مستقلة عن فواتير المبيعات العادية"""
 
@@ -510,7 +472,6 @@ class MaintenanceInvoice(db.Model):
         unique=True,
     )
     invoice_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    # عملة الفاتورة
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -535,9 +496,6 @@ class MaintenanceInvoice(db.Model):
     order = db.relationship("MaintenanceOrder", back_populates="invoice")
 
 
-# ---------------------------------------------------------------------------
-# 7. مرتجعات الصيانة
-# ---------------------------------------------------------------------------
 class MaintenanceReturn(db.Model):
     """مرتجع صيانة"""
 
@@ -548,7 +506,6 @@ class MaintenanceReturn(db.Model):
         db.Integer, db.ForeignKey("maintenance_orders.id"), nullable=False, index=True
     )
     return_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    # عملة المرتجع
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -566,9 +523,6 @@ class MaintenanceReturn(db.Model):
     user = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 8. بنود المرتجعات
-# ---------------------------------------------------------------------------
 class MaintenanceReturnLine(db.Model):
     """بند مرتجع صيانة"""
 
@@ -593,9 +547,6 @@ class MaintenanceReturnLine(db.Model):
     service = db.relationship("MaintenanceOrderService")
 
 
-# ---------------------------------------------------------------------------
-# 9. إعدادات الصيانة لكل تينانت
-# ---------------------------------------------------------------------------
 class MaintenanceSetting(db.Model):
     """إعدادات وحدة الصيانة لكل تينانت"""
 
@@ -630,9 +581,6 @@ class MaintenanceSetting(db.Model):
     )
 
 
-# ---------------------------------------------------------------------------
-# 10. الخدمات الثابتة السعر (لوحة المشرف)
-# ---------------------------------------------------------------------------
 class MaintenanceService(db.Model):
     """خدمة صيانة بسعر ثابت"""
 
@@ -662,9 +610,6 @@ class MaintenanceService(db.Model):
     )
 
 
-# ---------------------------------------------------------------------------
-# 11. تدقيق الكفالات
-# ---------------------------------------------------------------------------
 class MaintenanceWarrantyAudit(db.Model):
     """تدقيق عمليات الكفالة"""
 
@@ -691,9 +636,6 @@ class MaintenanceWarrantyAudit(db.Model):
     user = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 13. سجل مدفوعات ذمم الصيانة للموردين
-# ---------------------------------------------------------------------------
 class MaintenanceSupplierPayment(db.Model):
     """سداد ذمم الصيانة دائنة لمورد قطع"""
 
@@ -706,7 +648,6 @@ class MaintenanceSupplierPayment(db.Model):
     supplier_id = db.Column(
         db.Integer, db.ForeignKey("suppliers.id"), nullable=False, index=True
     )
-    # عملة السداد
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -725,9 +666,6 @@ class MaintenanceSupplierPayment(db.Model):
     user = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 13. إشعارات الدائن للصيانة (لإلغاء الفاتورة والسماح بالمرتجع بعدها)
-# ---------------------------------------------------------------------------
 class MaintenanceCreditNote(db.Model):
     """إشعار دائن لصيانة — لعكس الفاتورة والسماح بالمرتجع بعدها."""
 
@@ -738,7 +676,6 @@ class MaintenanceCreditNote(db.Model):
         db.Integer, db.ForeignKey("maintenance_orders.id"), nullable=False, index=True
     )
     credit_note_no = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    # عملة إشعار الدائن
     currency = db.Column(db.String(3), nullable=True)
     exchange_rate = db.Column(db.Numeric(15, 6), nullable=True)
     amount_base = db.Column(
@@ -757,9 +694,6 @@ class MaintenanceCreditNote(db.Model):
     user = db.relationship("User")
 
 
-# ---------------------------------------------------------------------------
-# 14. سجل الأجهزة
-# ---------------------------------------------------------------------------
 class MaintenanceDeviceRegistry(db.Model):
     """سجل أجهزة العملاء"""
 
@@ -804,8 +738,6 @@ for _audit_model in (MaintenanceOrderStatusLog, MaintenanceWarrantyAudit):
     event.listen(_audit_model, "before_update", _reject_audit_mutation)
     event.listen(_audit_model, "before_delete", _reject_audit_mutation)
 
-    # Local SQLite testing uses create_all instead of Alembic. Install matching
-    # database guards there too; PostgreSQL gets its triggers via migration b33.
     for _action in ("UPDATE", "DELETE"):
         _trigger = f"trg_{_audit_model.__tablename__}_{_action.lower()}_b33"
         _ddl = DDL(

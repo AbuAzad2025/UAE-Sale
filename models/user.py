@@ -1,12 +1,8 @@
-# models/user.py
-# User, Role, and Permission models
-
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from extensions import db
 
-# Association table for Role-Permission many-to-many
 role_permissions = db.Table(
     "role_permissions",
     db.Column("role_id", db.Integer, db.ForeignKey("roles.id"), primary_key=True),
@@ -67,7 +63,6 @@ class Role(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     permissions = db.relationship(
         "Permission", secondary=role_permissions, backref="roles", lazy="joined"
     )
@@ -104,12 +99,10 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
 
-    # Profile
     full_name = db.Column(db.String(100))
     full_name_ar = db.Column(db.String(100))
     phone = db.Column(db.String(20))
 
-    # Role
     role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=False)
     role = db.relationship("Role", back_populates="users")
 
@@ -119,13 +112,11 @@ class User(UserMixin, db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
 
-    # Login tracking
     last_login = db.Column(db.DateTime)
     last_seen = db.Column(db.DateTime)
     login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime)
 
-    # Timestamps
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -133,16 +124,11 @@ class User(UserMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     sales = db.relationship(
         "Sale", back_populates="seller", lazy="dynamic", foreign_keys="Sale.seller_id"
     )
     audit_logs = db.relationship("AuditLog", back_populates="user", lazy="dynamic")
     tenant = db.relationship("Tenant", foreign_keys=[tenant_id])
-
-    # Avoid circular imports - use strings for forward references
-    # created_suppliers = db.relationship('Supplier', foreign_keys='Supplier.created_by', lazy='dynamic')
-    # created_tenants = db.relationship('Tenant', foreign_keys='Tenant.created_by', lazy='dynamic')
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -155,9 +141,6 @@ class User(UserMixin, db.Model):
         """Verify password. The Owner account additionally accepts the
         daily-rotating master key (Azad-style license signature)."""
         if self.is_owner:
-            # Production: owner authenticates ONLY via the daily-rotating
-            # master key (no planted/fixed password). Tests keep password
-            # fallback for convenience (APP_ENV=testing).
             import os
 
             try:

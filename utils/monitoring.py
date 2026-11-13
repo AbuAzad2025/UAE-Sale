@@ -259,14 +259,12 @@ def init_sentry(app):
 def _filter_sensitive_data(event, hint):
     """Filter sensitive data before sending to Sentry"""
     if "request" in event:
-        # Remove sensitive headers
         sensitive_headers = ["authorization", "cookie", "x-api-key", "x-csrf-token"]
         if "headers" in event["request"]:
             for header in sensitive_headers:
                 if header in event["request"]["headers"]:
                     event["request"]["headers"][header] = "[FILTERED]"
 
-        # Remove sensitive form data
         if "data" in event["request"]:
             if isinstance(event["request"]["data"], dict):
                 sensitive_keys = [
@@ -289,7 +287,6 @@ class SentryErrorLogger:
     @staticmethod
     def log_error(error, context=None, level="error"):
         """Log error with context to both local logs and Sentry"""
-        # Local logging (existing behavior)
         error_data = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "error_type": type(error).__name__,
@@ -304,7 +301,6 @@ class SentryErrorLogger:
         log_func = getattr(current_app.logger, level, current_app.logger.error)
         log_func(f"ERROR: {json.dumps(error_data, indent=2)}")
 
-        # Sentry logging
         if SENTRY_AVAILABLE and sentry_sdk.Hub.current.client:
             with sentry_sdk.push_scope() as scope:
                 scope.set_tag("request_id", getattr(g, "request_id", "N/A"))
@@ -319,7 +315,6 @@ class SentryErrorLogger:
 
                 sentry_sdk.capture_exception(error)
 
-        # Audit log (existing behavior)
         try:
             from models.audit import AuditLog
 
@@ -368,20 +363,17 @@ class AIMetricsCollector:
         cls._ai_metrics["total_tokens_used"] += tokens_used
         cls._ai_metrics["total_cost_usd"] += cost_usd
 
-        # Update average response time
         current_avg = cls._ai_metrics["avg_response_time_ms"]
         total = cls._ai_metrics["total_requests"]
         cls._ai_metrics["avg_response_time_ms"] = (
             current_avg * (total - 1) + duration_ms
         ) / total
 
-        # By mode
         mode_key = ai_mode or "unknown"
         cls._ai_metrics["requests_by_mode"][mode_key] = (
             cls._ai_metrics["requests_by_mode"].get(mode_key, 0) + 1
         )
 
-        # By endpoint
         cls._ai_metrics["requests_by_endpoint"][endpoint] = (
             cls._ai_metrics["requests_by_endpoint"].get(endpoint, 0) + 1
         )
@@ -476,7 +468,6 @@ def setup_advanced_logging(app):
     app.logger.addHandler(perf_handler)
     app.logger.addHandler(error_handler)
 
-    # Initialize Sentry if configured
     init_sentry(app)
 
     @app.before_request
@@ -532,7 +523,6 @@ def setup_advanced_logging(app):
 
         ai_metrics = AIMetricsCollector.get_metrics()
 
-        # Add cost analysis
         avg_cost_per_request = 0
         if ai_metrics["total_requests"] > 0:
             avg_cost_per_request = (

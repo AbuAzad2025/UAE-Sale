@@ -112,7 +112,6 @@ class TestPaymentVaultLockout:
         assert vault.unlock_vault("wrong-2") is False
         assert vault.unlock_vault("wrong-3") is False
         assert vault.is_locked_out() is True
-        # Correct password is now blocked; counter keeps incrementing.
         assert vault.unlock_vault("VaultPass123!") is False
         assert vault.failed_attempts == 4
         assert vault.is_locked is True
@@ -520,7 +519,6 @@ class TestInternalApiKeyAndCsrf:
     def test_key_gate_allows_match_and_blocks_mismatch(self, app, monkeypatch):
         from routes.ai import _validate_csrf_token
 
-        # gitleaks:allow — fake value used only to test the gate, not a secret
         monkeypatch.setitem(
             app.config, "INTERNAL_API_KEY", "cov-secret-key-123"
         )  # gitleaks:allow
@@ -564,7 +562,6 @@ class TestInternalApiKeyAndCsrf:
 
 
 # ---------------------------------------------------------------------------
-# SanitizeFilter + error-handler secrecy (TESTS ONLY — prove no secret leaks)
 # ---------------------------------------------------------------------------
 
 
@@ -581,7 +578,6 @@ class TestSecretRedaction:
     def test_error_record_with_secrets_is_redacted(self):
         from utils.log_sanitizer import REDACTED, SanitizeFilter
 
-        # gitleaks:allow — fake "secret" string proving the sanitizer strips it
         record = logging.LogRecord(
             "utils.error_handlers",
             logging.ERROR,

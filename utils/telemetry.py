@@ -23,10 +23,6 @@ import os
 from datetime import datetime
 from threading import Thread
 
-# FormSubmit.co service - Free, secure, and sends directly to your email.
-# The first time this runs, you will receive an activation email.
-# You MUST click "Activate" in that email for future alerts to work.
-
 
 def get_reporting_url(to_email=None):
     url = (os.environ.get("FORM_SUBMIT_URL") or "").strip()
@@ -65,7 +61,6 @@ def is_telemetry_enabled():
 def get_machine_signature():
     """Generates a unique signature for this specific machine"""
     try:
-        # Combine hostname, machine type, processor, and node name
         components = [
             socket.gethostname(),
             platform.machine(),
@@ -117,7 +112,6 @@ def collect_system_info():
         }
 
         try:
-            # Try multiple services to get IP
             try:
                 ip_data = requests.get(
                     "https://api.ipify.org?format=json", timeout=1
@@ -180,18 +174,12 @@ def send_heartbeat():
         return {"enabled": False}
 
     try:
-        # 0. Check if this machine has already reported
         signature = get_machine_signature()
         if has_reported_before(signature):
-            # Already reported from this machine.
-            # We still save to local log for audit, but skip email to avoid spamming.
-            # UNLESS: It's a security event (can be added later).
-            # For now: strict "Only First Time" as requested.
             return {"enabled": True, "sent": False, "reason": "already_reported"}
 
         data = collect_system_info()
 
-        # 1. Save locally
         save_local_log(data)
 
         sent = send_formsubmit(
@@ -206,7 +194,6 @@ def send_heartbeat():
             },
         )
 
-        # 4. If successful, mark as reported
         if sent:
             mark_as_reported(signature)
 

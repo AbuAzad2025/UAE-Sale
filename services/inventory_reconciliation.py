@@ -49,8 +49,6 @@ from utils.balance_checker import TOLERANCE, get_control_account_balance, to_dec
 
 logger = logging.getLogger(__name__)
 
-#: حساب مراقبة المخزون في دليل الحسابات (services/gl_service.py::
-#: ensure_core_accounts يبذّره بالرمز '1140').
 DEFAULT_INVENTORY_CONTROL_CODES = ["1140"]
 
 try:  # pragma: no cover - the resolver ships with the GL rollout
@@ -122,7 +120,6 @@ def _document_weights():
 
     weights = {}
 
-    # ---- فواتير البيع: قيد تكلفة المبيعات (مدين COGS / دائن المخزون) ----
     sales = (
         db.session.query(
             Sale.id,
@@ -143,7 +140,6 @@ def _document_weights():
             (product_id, to_decimal(weight))
         )
 
-    # ---- المشتريات: قيد المخزون (مدين 1140) ----
     purchases = (
         db.session.query(
             PurchaseLine.purchase_id,
@@ -158,9 +154,6 @@ def _document_weights():
             (product_id, to_decimal(weight))
         )
 
-    # ---- المرتجعات: قيد إعادة المخزون (مدين 1140) ----
-    # أساس التكلفة: تكلفة سطر البيع (أساس تاريخي) وإلا متوسط التكلفة
-    # المتحرك للمنتج.
     product_costs = {
         pid: CostingService.current_unit_cost(product)
         for pid, product in db.session.query(Product.id, Product).all()
@@ -201,7 +194,6 @@ def _document_weights():
             (product_id, to_decimal(cost))
         )
 
-    # ---- تسويات المخزون: مرجعه حركة المخزون نفسها ----
     movements = db.session.query(StockMovement.id, StockMovement.product_id).all()
     for movement_id, product_id in movements:
         weights.setdefault(("stock_adjustment", movement_id), []).append(
@@ -307,10 +299,8 @@ def reconcile_inventory(
 
     movement_totals = _movement_quantities(tenant_id=tenant_id, product_ids=product_ids)
 
-    # ---- رصيد المخزون في الأستاذ العام ----
     control_balance = get_control_account_balance(codes)
 
-    # ---- توزيع سطور الأستاذ على المنتجات ----
     weights = _document_weights()
     gl_by_product = {}
     unattributed = Decimal("0")
@@ -337,9 +327,6 @@ def reconcile_inventory(
         qty = movement_totals.get(product.id, Decimal("0"))
         stock = to_decimal(product.current_stock)
         difference = stock - qty
-        # أساس التقييم = المتوسط المتحرك (average_cost) — نفس أساس
-        # حساب المخزون في الأستاذ (المدفوع فعلياً). يبقى cost_price
-        # مرجعاً يُعرض للمقارنة فقط.
         cost = CostingService.current_unit_cost(product)
         valuation = _q3(qty * cost)
         gl_amount = _q3(gl_by_product.get(product.id, Decimal("0")))
@@ -359,7 +346,6 @@ def reconcile_inventory(
             "average_cost": _q2(cost),
             "cost_price": _q2(to_decimal(product.cost_price)),
             "valuation_at_average_cost": _q2(valuation),
-            # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
             "valuation_at_cost_price": _q2(valuation),
             "gl_control_balance": _q2(gl_amount),
             "gl_difference": _q2(gl_difference),
@@ -395,7 +381,6 @@ def reconcile_inventory(
         "total_quantity_from_movements": _q3(total_qty),
         "total_current_stock": _q3(total_stock),
         "total_valuation_at_average_cost": _q2(total_valuation),
-        # اسم قديم محفوظ للتوافق (القيمة نفسها الآن: qty × المتوسط)
         "total_valuation_at_cost_price": _q2(total_valuation),
         "difference": _q3(total_difference),
         "gl_difference": _q2(gl_difference),

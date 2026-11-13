@@ -24,14 +24,8 @@ import os
 from flask import current_app
 from PIL import Image, UnidentifiedImageError
 
-# Pillow refuses images above this by default (decompression bomb guard).
-# The pixel budget here is deliberately modest: product photos do not need
-# more, and a smaller budget bounds the memory one upload can consume.
 MAX_PIXELS = 40_000_000
 
-# Formats we re-encode to. Anything else is rejected: converting an
-# arbitrary format to JPEG is where image libraries have historically had
-# their parsing bugs.
 _SUPPORTED_FORMATS = ("JPEG", "PNG", "WEBP")
 
 
@@ -59,8 +53,6 @@ def process_and_store(
 
     from utils.helpers import save_uploaded_file
 
-    # 1) التحقق من الصلاحية والحجم عبر المساعد المُحصَّن.
-    # save_uploaded_file يتوقّع مجموعة امتدادات مسطّحة، لا قاموس الإعدادات.
     image_extensions = {"images"}
     try:
         configured = current_app.config.get("ALLOWED_UPLOAD_EXTENSIONS", {})
@@ -78,7 +70,6 @@ def process_and_store(
 
     absolute_path = os.path.join(current_app.static_folder, relative_path)
 
-    # 2) فتح الصورة فعلياً - هذا يثبت أنها صورة لا ملفاًnamed صورة.
     try:
         with Image.open(absolute_path) as image:
             image.load()
@@ -89,7 +80,6 @@ def process_and_store(
             if image.width * image.height > MAX_PIXELS:
                 raise ImageProcessingError("أبعاد الصورة كبيرة جداً")
 
-            # 3) التصغير: الحافة الأطول لا تتجاوز max_side.
             max_side = _clamp(max_side, 1200, 64, 4096)
             quality = _clamp(quality, 82, 40, 95)
             thumb_side = _clamp(thumb_side, 400, 64, 2048)
@@ -100,14 +90,12 @@ def process_and_store(
             if max(image.size) > max_side:
                 image.thumbnail((max_side, max_side), Image.LANCZOS)
 
-            # 4) الحفظ النهائي بصيغة JPEG/JPG品質.
             stem, _ = os.path.splitext(absolute_path)
             final_path = f"{stem}.jpg"
             image.convert("RGB").save(
                 final_path, "JPEG", quality=quality, optimize=True
             )
 
-            # 5) المصغّرة.
             thumb = image.copy()
             thumb.thumbnail((thumb_side, thumb_side), Image.LANCZOS)
             thumb_path = f"{stem}_thumb.jpg"
@@ -115,14 +103,12 @@ def process_and_store(
                 thumb_path, "JPEG", quality=quality, optimize=True
             )
     except ImageProcessingError:
-        # الملف محفوظ لكن غير صالح - لا نتركه معلّقاً.
         _cleanup(absolute_path)
         raise
     except (UnidentifiedImageError, OSError, ValueError) as exc:
         _cleanup(absolute_path)
         raise ImageProcessingError(f"تعذّر قراءة الصورة: {exc}") from exc
 
-    # إن اختلف الامتداد (PNG) حُذف الأصل لأن النسخة النهائية JPEG.
     if final_path != absolute_path:
         _cleanup(absolute_path)
 

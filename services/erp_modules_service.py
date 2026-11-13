@@ -159,8 +159,6 @@ class QuotationService:
         q = get_owned_or_raise(Quotation, quotation_id)
         if q is None:
             raise ValueError("عرض الأسعار غير موجود")
-        # 🔒 Concurrency: lock the quotation row so two concurrent converts
-        # cannot both pass the status/converted_sale_id guards.
         q = Quotation.query.filter_by(id=quotation_id).with_for_update().first() or q
         QuotationService._auto_expire(q)
         if q.status == "converted" or q.converted_sale_id is not None:
@@ -287,7 +285,6 @@ class QuotationService:
             is_latest_version=True,
             version_notes=f"نسخة من {q.quotation_number} (v{q.version or 1})",
         )
-        # Mark old version as not latest
         q.is_latest_version = False
         db.session.add(new_q)
         db.session.flush()
@@ -468,8 +465,6 @@ class PurchaseOrderService:
 
         db.session.flush()
 
-        # Stock movement + GL — mirror /purchases/create so the received
-        # goods actually land in inventory and the ledger.
         from services.stock_service import StockService
 
         StockService.process_purchase_lines(purchase, po.warehouse_id)
@@ -540,7 +535,6 @@ class FiscalPeriodService:
             start_date=date(year, 1, 1),
             end_date=date(year, 12, 31),
         )
-        # عمود tenant_id قد لا يكون موجوداً في القاعدة قبل الترحيل.
         if hasattr(FiscalPeriod, "tenant_id"):
             fp.tenant_id = tenant_id
         db.session.add(fp)
@@ -676,14 +670,12 @@ class StockTransferService:
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
         for line in transfer.lines:
-            # Deduct from source
             StockTransferService._adjust_stock_no_gl(
                 line.product_id,
                 -line.quantity,
                 f"Transfer OUT to {transfer.transfer_number}",
                 transfer.from_warehouse_id,
             )
-            # Add to destination
             StockTransferService._adjust_stock_no_gl(
                 line.product_id,
                 line.quantity,
@@ -756,7 +748,6 @@ class StockTakeService:
             if product.id in wh_qty:
                 system_qty = wh_qty[product.id]
             elif product.id in moved_anywhere:
-                # Tracked stock lives in other warehouses only.
                 continue
             else:
                 system_qty = product.current_stock or Decimal("0")
@@ -827,7 +818,6 @@ class DunningService:
             if days_overdue < 15:
                 continue
 
-            # Determine dunning level
             if days_overdue <= 30:
                 level = 1
             elif days_overdue <= 60:
@@ -837,7 +827,6 @@ class DunningService:
             else:
                 level = 4
 
-            # Check if letter already sent at this level
             existing = DunningLetter.query.filter_by(
                 sale_id=sale.id, level=level, status="sent"
             ).first()

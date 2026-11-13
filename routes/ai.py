@@ -53,29 +53,19 @@ def handle_ai_service_error(error: AIServiceError):
     ), 500
 
 
-# ======================
-# Security Utilities
-# ======================
-
-
 def _validate_csrf_token():
     """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
 
     For AI routes, we exempt specific endpoints via @csrf.exempt but still
     perform manual validation for sensitive operations.
     """
-    # Skip CSRF validation for GET, HEAD, OPTIONS
     if request.method in ("GET", "HEAD", "OPTIONS"):
         return True
 
-    # Check for API key or internal service markers
     api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
     if api_key and api_key == current_app.config.get("INTERNAL_API_KEY"):
         return True
 
-    # For AJAX requests, check custom header.
-    # NOTE: the shipped frontend (templates/ai/assistant.html) sends
-    # 'X-CSRFToken' (Flask-WTF default); accept both spellings.
     for header_name in ("X-CSRFToken", "X-CSRF-Token"):
         csrf_token = request.headers.get(header_name)
         if csrf_token:
@@ -87,7 +77,6 @@ def _validate_csrf_token():
                     f"AI CSRF header token invalid ({header_name}): {exc}"
                 )
 
-    # Fall back to standard form token
     csrf_token = request.form.get("csrf_token")
     if csrf_token:
         try:
@@ -96,7 +85,6 @@ def _validate_csrf_token():
         except Exception as exc:
             current_app.logger.warning(f"AI CSRF form token invalid: {exc}")
 
-    # JSON body token (some clients embed it in the payload)
     try:
         body = request.get_json(silent=True) or {}
         csrf_token = body.get("csrf_token")
@@ -175,7 +163,6 @@ def _require_csrf_for_sensitive_ops():
         "delete_",
     }
 
-    # Check if the operation is in the sensitive list
     operation = getattr(request, "ai_operation", None)
     if operation and any(op in operation for op in sensitive_operations):
         if _validate_csrf_token():
@@ -196,7 +183,6 @@ def _detect_ai_operation(message):
         msg = (message or "").lower()
         if ":" not in (message or ""):
             return "chat_ai"
-        # Read-only queries are never gated, even with ':' present
         read_only_markers = (
             "عرض رصيد",
             "رصيد العميل",
@@ -268,12 +254,8 @@ class ConversationContextStore(threading.local):
         return self._contexts.pop(user_id, default)
 
 
-# ========== نظام حفظ السياق المتقدم للمحادثة ==========
 conversation_context = ConversationContextStore()
 
-# Permission codes required for destructive AI chat actions (C2 of the
-# permission_required decorator pattern): inline checks reuse
-# current_user.has_permission → Role.has_permission.
 _AI_ACTION_PERMISSIONS = {
     "رصيد": "manage_customers",
     "عميل": "manage_customers",
@@ -371,13 +353,6 @@ def _ai_audit(table_name, record_id, changes=None, action="create"):
         return
 
 
-# =====================================================================
-# AI → النظام المالي: كل تعديل مالي من المساعد الذكي يمرّ عبر الخدمات
-# الرسمية (StockService / SaleService / PaymentService) حتى يُسجَّل له
-# حركة مخزون، وقيد محاسبي، وصف تدقيق.
-# =====================================================================
-
-
 def _ai_decimal(value, default=None):
     """تحويل مبلغ إلى Decimal (لا حسابات بمؤشرات عائمة)."""
     if value is None or (isinstance(value, str) and not value.strip()):
@@ -412,7 +387,6 @@ def _ai_create_sale(
     if qty is None or qty <= 0:
         raise ValidationError("الكمية يجب أن تكون أكبر من صفر")
 
-    # F2 — لا فاتورة بلا أساس تكلفة (وإلا قُيّد الإيراد بلا تكلفة).
     StockService.require_cost_basis(product, qty)
 
     unit_price = _ai_decimal(product.get_price_for_customer(customer.customer_type))
@@ -445,9 +419,6 @@ def _ai_create_sale(
 
     from utils.helpers import create_audit_log
 
-    # SaleService.create_sale has already committed the sale itself, so the
-    # audit row is committed on its own here (commit=True) — otherwise it
-    # would stay pending and be rolled back with the request.
     create_audit_log(
         "create",
         "sales",
@@ -553,26 +524,19 @@ def _ai_set_customer_balance(user, customer, new_balance, reason=None):
     return customer
 
 
-# ========== مستمعات ذكية ==========
-
-
 def smart_listener(message, context):
     """مستمع ذكي يفهم نية المستخدم"""
     msg_lower = message.lower().strip()
 
-    # كلمات العودة
     if any(word in msg_lower for word in ["عودة", "رجوع", "إلغاء", "خروج", "إيقاف"]):
         return "back"
 
-    # كلمات المساعدة
     if any(word in msg_lower for word in ["مساعدة", "help", "ساعدني"]):
         return "help"
 
-    # كلمات التأكيد
     if any(word in msg_lower for word in ["نعم", "yes", "تأكيد", "موافق", "ok"]):
         return "confirm"
 
-    # كلمات الإلغاء
     if any(word in msg_lower for word in ["لا", "no", "إلغاء"]):
         return "cancel"
 
@@ -591,7 +555,6 @@ def train_local_ai(action, data, result):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # حفظ للتدريب المستقبلي
         import json
         import os
         from ai_knowledge import get_knowledge_path
@@ -605,7 +568,6 @@ def train_local_ai(action, data, result):
 
         training_history.append(training_data)
 
-        # الحفاظ على آخر 1000 عملية فقط
         if len(training_history) > 1000:
             training_history = training_history[-1000:]
 
@@ -694,7 +656,6 @@ def create_final_options(action_name, item_name, item_id):
 @login_required
 def recommend_price():
     """API: توصية السعر"""
-    # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
@@ -719,7 +680,6 @@ def recommend_price():
 @login_required
 def check_stock():
     """API: فحص المخزون"""
-    # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
@@ -807,7 +767,6 @@ def chat():
     ai_mode = data.get("ai_mode", "groq")
     context = data.get("context", {})
 
-    # Security: detect sensitive shortcut operations, then enforce CSRF/Origin
     request.ai_operation = _detect_ai_operation(message)
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
@@ -833,7 +792,6 @@ def chat():
 
     response = AIService.chat_response(message, context)
 
-    # Record AI metrics
     try:
         from utils.monitoring import AIMetricsCollector
 
@@ -878,11 +836,8 @@ def _process_user_action(message, user):  # noqa: C901
 
         msg_lower = message.lower()
 
-        # ========== نظام الحوار الذكي التفاعلي ==========
         user_id = user.id
 
-        # Phase 3: tenant_id إلزامي — يرفض أي كتابة لمستخدم بلا tenant
-        # (القراءة تبقى مسموحة ومحصورة في صفوف بلا tenant).
         _is_write_intent = False
         try:
             from services.ai_flows import find_flow as _find_flow_for_guard
@@ -901,9 +856,6 @@ def _process_user_action(message, user):  # noqa: C901
         if _tenant_denial:
             return _tenant_denial
 
-        # Phase 2b: معالجات مقسمة لكل كيان — المسار الجديد أولاً للرسائل
-        # الحاملة بيانات (':' أو أرقام). القوائم الرقمية المجردة تُترك للقديم
-        # لأنه يحمل حالة الحوار (last_action/step). أي خطأ → fallback للقديم.
         try:
             from services.ai_handlers import dispatch_for_action as _dispatch_for_action
 
@@ -913,9 +865,6 @@ def _process_user_action(message, user):  # noqa: C901
         except Exception:
             pass
 
-        # إذا كان المستخدم يطلب مساعدة أو خيارات
-        # ===== Phase 2: Unified Flow Registry (table-driven menu dispatch) =====
-        # 13 قائمة كانت نسخ-لصق — الآن مرجع واحد (خدمة ai_flows) بنفس النصوص والحالة
         try:
             from services.ai_flows import (
                 find_flow,
@@ -930,13 +879,11 @@ def _process_user_action(message, user):  # noqa: C901
         except Exception:
             pass  # fallback: تابع لتدفقات ':' المباشرة بالأسفل
 
-        # ========== معالجة خيارات "رصيد" ==========
         if (
             msg_lower.strip() == "2"
             and user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "رصيد"
         ):
-            # توجيه لخيار "استلام دفعة"
             conversation_context[user_id] = {"last_action": "استلام", "step": 0}
             return """🤖 تم التحويل لخيار "استلام دفعة من العميل"
 
@@ -949,7 +896,6 @@ def _process_user_action(message, user):  # noqa: C901
             and user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "رصيد"
         ):
-            # توجيه لخيار "إعطاء دفعة"
             conversation_context[user_id] = {"last_action": "إعطاء", "step": 0}
             return """🤖 تم التحويل لخيار "إعطاء دفعة للعميل"
 
@@ -988,7 +934,6 @@ def _process_user_action(message, user):  # noqa: C901
             and user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "رصيد"
         ):
-            # تعديل رصيد العميل
             conversation_context[user_id]["step"] = 1
             conversation_context[user_id]["option"] = "1"
             conversation_context[user_id]["data"] = {}
@@ -1001,7 +946,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الآن..."""
 
-        # ========== معالجة خطوات تعديل الرصيد ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "رصيد"
@@ -1011,7 +955,6 @@ def _process_user_action(message, user):  # noqa: C901
             data = conversation_context[user_id].get("data", {})
 
             if step == 1:
-                # البحث عن العميل
                 from models.customer import Customer
 
                 customer = Customer.query.filter_by(
@@ -1051,7 +994,6 @@ def _process_user_action(message, user):  # noqa: C901
                     if new_balance is None:
                         raise ValueError("الرصيد غير صالح")
 
-                    # Phase 3: confirm_required قبل التعديل المدمّر — لا نطبّق مباشرة
                     data["pending_balance"] = new_balance
                     conversation_context[user_id]["data"] = data
                     conversation_context[user_id]["step"] = 3
@@ -1091,7 +1033,6 @@ def _process_user_action(message, user):  # noqa: C901
                     from models.customer import Customer
 
                     customer = get_owned_or_404(Customer, data["customer_id"], code=404)
-                    # Phase 3: لا كتابة مباشرة customer.balance= — عبر خدمة مدقَّقة
                     _ai_set_customer_balance(
                         user=user,
                         customer=customer,
@@ -1131,19 +1072,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار للموردين ==========
-
-        # ========== نظام الحوار للمشتريات ==========
-
-        # ========== نظام الحوار للشيكات ==========
-
-        # ========== نظام الحوار لدفتر الأستاذ ==========
-
-        # ========== نظام الحوار للمستودعات ==========
-
-        # ========== نظام الحوار لإدارة المستخدمين ==========
-
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة عميل جديد) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -1161,7 +1089,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب الاسم الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة عميل) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "عميل"
@@ -1170,11 +1097,9 @@ def _process_user_action(message, user):  # noqa: C901
             step = conversation_context[user_id].get("step", 0)
             data = conversation_context[user_id].get("data", {})
 
-            # التحقق من المستمع الذكي
             listener_response = smart_listener(message, conversation_context[user_id])
 
             if listener_response == "back":
-                # العودة للقائمة الرئيسية
                 del conversation_context[user_id]
                 return """🔙 **تم العودة للقائمة الرئيسية**
 
@@ -1207,7 +1132,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
             if step == 1:
-                # حفظ الاسم والانتقال للخطوة التالية
                 data["name"] = message.strip()
                 conversation_context[user_id]["data"] = data
                 conversation_context[user_id]["step"] = 2
@@ -1226,7 +1150,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم الهاتف الآن...""".format(name=data["name"])
 
             elif step == 2:
-                # حفظ الهاتف والانتقال للخطوة التالية
                 data["phone"] = message.strip()
                 conversation_context[user_id]["data"] = data
                 conversation_context[user_id]["step"] = 3
@@ -1245,7 +1168,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب العنوان الآن...""".format(phone=data["phone"])
 
             elif step == 3:
-                # حفظ العنوان وإنشاء العميل
                 data["address"] = message.strip()
 
                 _denial = _ai_action_denied(user, "manage_customers")
@@ -1288,14 +1210,12 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except Exception as e:
-                    # تدريب الذكاء المحلي من الخطأ
                     train_local_ai(
                         "create_customer",
                         data,
                         {"success": False, "error": "حدث خطأ غير متوقع"},
                     )
 
-                    # مسح السياق في حالة الخطأ
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء العميل:**
@@ -1306,7 +1226,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة منتج جديد) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -1324,7 +1243,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المنتج الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة منتج) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "منتج"
@@ -1333,7 +1251,6 @@ def _process_user_action(message, user):  # noqa: C901
             step = conversation_context[user_id].get("step", 0)
             data = conversation_context[user_id].get("data", {})
 
-            # التحقق من المستمع الذكي
             listener_response = smart_listener(message, conversation_context[user_id])
 
             if listener_response == "back":
@@ -1360,7 +1277,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
             if step == 1:
-                # حفظ الاسم والانتقال للخطوة التالية
                 data["name"] = message.strip()
                 conversation_context[user_id]["data"] = data
                 conversation_context[user_id]["step"] = 2
@@ -1374,7 +1290,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم القطعة الآن...""".format(name=data["name"])
 
             elif step == 2:
-                # حفظ رقم القطعة والانتقال للخطوة التالية
                 data["part_number"] = message.strip()
                 conversation_context[user_id]["data"] = data
                 conversation_context[user_id]["step"] = 3
@@ -1388,7 +1303,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب السعر الآن...""".format(part_number=data["part_number"])
 
             elif step == 3:
-                # حفظ السعر والانتقال للخطوة التالية
                 try:
                     data["price"] = float(
                         message.strip().replace("درهم", "").replace("د.إ", "").strip()
@@ -1411,7 +1325,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال السعر..."""
 
             elif step == 4:
-                # حفظ الكمية وإنشاء المنتج
                 _denial = _ai_action_denied(user, "manage_products")
                 if _denial:
                     del conversation_context[user_id]
@@ -1474,7 +1387,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
                 except Exception as e:
-                    # Outer exception handler
                     train_local_ai(
                         "create_product",
                         data,
@@ -1491,7 +1403,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إنشاء فاتورة جديدة) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -1509,7 +1420,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الآن..."""
 
-        # ========== معالجة الخطوات التالية (إنشاء فاتورة) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "فاتورة"
@@ -1527,7 +1437,6 @@ def _process_user_action(message, user):  # noqa: C901
                 return listener_msg
 
             if step == 1:
-                # التحقق من طلبات خاصة
                 if any(
                     word in message.lower()
                     for word in ["عرض", "اعرض", "show", "list", "العملاء"]
@@ -1558,7 +1467,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-                # البحث عن العميل
                 from models.customer import Customer
 
                 customer = Customer.query.filter_by(
@@ -1589,7 +1497,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب اسم المنتج الآن...""".format(customer_name=customer.name)
 
             elif step == 2:
-                # التحقق من طلبات خاصة
                 if any(
                     word in message.lower()
                     for word in ["عرض", "اعرض", "show", "list", "المنتجات"]
@@ -1620,7 +1527,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-                # البحث عن المنتج
                 from models.product import Product
 
                 product = Product.query.filter_by(
@@ -1654,7 +1560,6 @@ def _process_user_action(message, user):  # noqa: C901
                 )
 
             elif step == 3:
-                # حفظ الكمية وإنشاء الفاتورة
                 _denial = _ai_action_denied(user, "manage_sales")
                 if _denial:
                     del conversation_context[user_id]
@@ -1668,8 +1573,6 @@ def _process_user_action(message, user):  # noqa: C901
                     customer = get_owned_or_404(Customer, data["customer_id"], code=404)
                     product = get_owned_or_404(Product, data["product_id"], code=404)
 
-                    # F2/F4: the canonical sale path — stock movement,
-                    # revenue + COGS journal entries, cost snapshot.
                     sale = _ai_create_sale(
                         user=user,
                         customer=customer,
@@ -1705,7 +1608,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                 except ValidationError as ve:
-                    # F2: a zero-cost product must fail loudly, naming it.
                     db.session.rollback()
                     train_local_ai(
                         "create_sale", data, {"success": False, "error": str(ve)}
@@ -1734,7 +1636,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (استلام دفعة) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -1752,7 +1653,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الآن..."""
 
-        # ========== معالجة الخطوات التالية (استلام دفعة) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "استلام"
@@ -1770,7 +1670,6 @@ def _process_user_action(message, user):  # noqa: C901
                 return listener_msg
 
             if step == 1:
-                # البحث عن العميل
                 from models.customer import Customer
 
                 customer = Customer.query.filter_by(
@@ -1801,7 +1700,6 @@ def _process_user_action(message, user):  # noqa: C901
                 )
 
             elif step == 2:
-                # حفظ المبلغ والانتقال للخطوة التالية
                 try:
                     data["amount"] = float(
                         message.strip().replace("درهم", "").replace("د.إ", "").strip()
@@ -1824,7 +1722,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال المبلغ..."""
 
             elif step == 3:
-                # حفظ طريقة الدفع وتسجيل الدفعة
                 data["payment_method"] = message.strip()
 
                 _denial = _ai_action_denied(user, "manage_payments")
@@ -1837,8 +1734,6 @@ def _process_user_action(message, user):  # noqa: C901
 
                     customer = get_owned_or_404(Customer, data["customer_id"], code=404)
 
-                    # F4: PaymentService writes the receipt, the GL entry,
-                    # the customer balance and the audit row.
                     receipt = _ai_record_receipt(
                         user=user,
                         customer=customer,
@@ -1891,7 +1786,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إعطاء دفعة) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -1909,7 +1803,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم العميل الآن..."""
 
-        # ========== معالجة الخطوات التالية (إعطاء دفعة) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "إعطاء"
@@ -1927,7 +1820,6 @@ def _process_user_action(message, user):  # noqa: C901
                 return listener_msg
 
             if step == 1:
-                # البحث عن العميل
                 from models.customer import Customer
 
                 customer = Customer.query.filter_by(
@@ -1958,7 +1850,6 @@ def _process_user_action(message, user):  # noqa: C901
                 )
 
             elif step == 2:
-                # حفظ المبلغ والانتقال للخطوة التالية
                 try:
                     data["amount"] = float(
                         message.strip().replace("درهم", "").replace("د.إ", "").strip()
@@ -1981,7 +1872,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال المبلغ..."""
 
             elif step == 3:
-                # حفظ السبب وتسجيل الدفعة
                 data["reason"] = message.strip()
 
                 _denial = _ai_action_denied(user, "manage_payments")
@@ -1994,9 +1884,6 @@ def _process_user_action(message, user):  # noqa: C901
 
                     customer = get_owned_or_404(Customer, data["customer_id"], code=404)
 
-                    # F4: Payment row + GL entry + audit row (interim refund
-                    # path — services/payment_service.py still owes a
-                    # create_refund() API).
                     payment = _ai_record_refund(
                         user=user,
                         customer=customer,
@@ -2048,7 +1935,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مصروف) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2066,7 +1952,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب وصف المصروف الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة مصروف) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "مصروف"
@@ -2084,7 +1969,6 @@ def _process_user_action(message, user):  # noqa: C901
                 return listener_msg
 
             if step == 1:
-                # حفظ الوصف والانتقال للخطوة التالية
                 data["description"] = message.strip()
                 conversation_context[user_id]["data"] = data
                 conversation_context[user_id]["step"] = 2
@@ -2098,7 +1982,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب المبلغ الآن...""".format(description=data["description"])
 
             elif step == 2:
-                # حفظ المبلغ والانتقال للخطوة التالية
                 try:
                     data["amount"] = float(
                         message.strip().replace("درهم", "").replace("د.إ", "").strip()
@@ -2121,7 +2004,6 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 أعد إدخال المبلغ..."""
 
             elif step == 3:
-                # حفظ الفئة وإنشاء المصروف
                 data["category"] = message.strip()
 
                 _denial = _ai_action_denied(user, "manage_expenses")
@@ -2180,7 +2062,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مورد جديد) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2200,7 +2081,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المورد الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة مورد) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "مورد"
@@ -2331,7 +2211,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مشتريات جديدة) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2349,7 +2228,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المورد الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة مشتريات) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "مشتريات"
@@ -2500,7 +2378,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة شيك جديد) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2518,7 +2395,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب نوع الشيك الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة شيك) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "شيك"
@@ -2648,7 +2524,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (عرض دفتر الأستاذ) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2690,7 +2565,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (عرض المستودعات) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2723,7 +2597,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 1 (إضافة مستخدم جديد) ==========
         if (
             msg_lower.strip() == "1"
             and user_id in conversation_context
@@ -2741,7 +2614,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المستخدم الآن..."""
 
-        # ========== معالجة الخطوات التالية (إضافة مستخدم) ==========
         if (
             user_id in conversation_context
             and conversation_context[user_id].get("last_action") == "مستخدم"
@@ -2886,7 +2758,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 2 (عرض جميع العناصر) ==========
         if (
             msg_lower.strip() == "2"
             and user_id in conversation_context
@@ -3201,7 +3072,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== نظام الحوار التفاعلي للرقم 3 (البحث عن العناصر) ==========
         if (
             msg_lower.strip() == "3"
             and user_id in conversation_context
@@ -3364,7 +3234,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المستخدم أو إيميله الآن..."""
 
-        # ========== نظام الحوار التفاعلي للرقم 4 (إدارة المخزون) ==========
         if msg_lower.strip() == "4" and any(
             word in msg_lower
             for word in ["مستودع", "مستودعات", "مخزون", "إدارة مستودعات"]
@@ -3381,7 +3250,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المستودع الآن..."""
 
-        # ========== نظام الحوار التفاعلي للرقم 4 (تعديل صلاحيات المستخدمين) ==========
         if msg_lower.strip() == "4" and any(
             word in msg_lower
             for word in ["مستخدم", "مستخدمين", "إضافة مستخدم", "إنشاء مستخدم"]
@@ -3398,7 +3266,6 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب اسم المستخدم الآن..."""
 
-        # ========== نظام الحوار التفاعلي للرقم 4 (رفع منتجات من Excel) ==========
         if (
             msg_lower.strip() == "4"
             and user_id in conversation_context
@@ -3559,11 +3426,6 @@ http://localhost:5000/ai/assistant
                     if not product:
                         return f"❌ المنتج '{product_name}' غير موجود. أنشئه أولاً!"
 
-                    # F2/F4: the sale now goes through the canonical sale
-                    # path (StockService movement + revenue/COGS journal
-                    # entries + cost snapshot on the line).  A product
-                    # without a cost basis is refused loudly instead of
-                    # posting a revenue-only entry.
                     try:
                         sale = _ai_create_sale(
                             user=user,
@@ -3643,9 +3505,6 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    # F4: goes through PaymentService — a receipt row, the
-                    # GL entry (Dr cash / Cr AR), the customer balance and
-                    # an audit row are all written by the service.
                     receipt = _ai_record_receipt(
                         user=user,
                         customer=customer,
@@ -3665,7 +3524,6 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== تعديل رصيد العميل ==========
         if (
             any(word in msg_lower for word in ["رصيد", "تعديل رصيد", "تغيير رصيد"])
             and ":" in message
@@ -3689,7 +3547,6 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    # Phase 3: الاختصار السريع المدمّر يتطلب تأكيداً مثل التدفق متعدد الخطوات
                     if not message.strip().endswith(
                         ("نعم", "نعم تأكيد", "تأكيد")
                     ) and not msg_lower.strip().endswith("نعم"):
@@ -3713,8 +3570,6 @@ http://localhost:5000/ai/assistant
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
                     old_balance = customer.balance
-                    # F4/F14: the correction is audited with the old and the
-                    # new figure — it used to overwrite the column silently.
                     _ai_set_customer_balance(
                         user=user,
                         customer=customer,
@@ -3732,7 +3587,6 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== استلام دفعة من العميل ==========
         if (
             any(word in msg_lower for word in ["استلام", "استلم", "دفعة من"])
             and ":" in message
@@ -3757,7 +3611,6 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    # F4: PaymentService (receipt + GL + balance + audit).
                     receipt = _ai_record_receipt(
                         user=user,
                         customer=customer,
@@ -3779,7 +3632,6 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== عرض رصيد العميل ==========
         if (
             any(word in msg_lower for word in ["عرض رصيد", "رصيد العميل", "رصيد عميل"])
             and ":" in message
@@ -3794,7 +3646,6 @@ http://localhost:5000/ai/assistant
                 if not customer:
                     return f"❌ العميل '{customer_name}' غير موجود!"
 
-                # جلب آخر 5 دفعات
                 recent_payments = (
                     Payment.query.filter_by(customer_id=customer.id)
                     .order_by(Payment.payment_date.desc())
@@ -3818,7 +3669,6 @@ http://localhost:5000/ai/assistant
 
 🤖 المصدر: GROQ API + التحليل المحلي"""
 
-        # ========== إعطاء دفعة للعميل ==========
         if (
             any(word in msg_lower for word in ["إعطاء", "أعطى", "دفعة لل", "دفعة ل"])
             and ":" in message
@@ -3843,9 +3693,6 @@ http://localhost:5000/ai/assistant
                     if not customer:
                         return f"❌ العميل '{customer_name}' غير موجود!"
 
-                    # F4: Payment row + GL entry + audit row (the interim
-                    # refund path — services/payment_service.py still owes
-                    # a create_refund() API).
                     payment = _ai_record_refund(
                         user=user,
                         customer=customer,
@@ -3900,7 +3747,6 @@ def guide_api():
         return jsonify(
             {"success": True, "query": q, "is_owner": is_owner, "hits": hits}
         )
-    # list titles only (no full owner content if not owner)
     return jsonify(
         {
             "success": True,
@@ -4135,9 +3981,7 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                 )
                 if not name or name.lower() == "nan" or name.lower() == "none":
                     continue
-                # Skip note/header-like rows (no valid part number and name looks like a note)
                 if not part_number or part_number.lower() in ("nan", "none", ""):
-                    # Allow products without part_number only if name doesn't look like a note
                     if (
                         name[:2].rstrip(".").isdigit()
                         or "ملاحظ" in name
@@ -4241,7 +4085,6 @@ def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
                     db.session.flush()
                     products_created += 1
 
-                # Stock movement so average_cost and warehouse stay consistent
                 if quantity and quantity > 0:
                     try:
                         StockService.create_movement(
@@ -4322,7 +4165,6 @@ def _intelligent_column_detector(df):
     """كاشف ذكي لأعمدة Excel - يفهم أي تسمية (عربي/إنجليزي)"""
     column_mapping = {}
 
-    # More specific keywords first to avoid collisions (e.g. cost vs price)
     name_ar_keywords = ["اسم_ar", "name_ar", "arabic", "عربي", "اسم عربي"]
     name_keywords = ["اسم", "name", "product", "منتج", "item", "description", "وصف"]
     part_keywords = ["رقم", "part", "code", "كود", "sku", "reference", "مرجع"]
@@ -4362,7 +4204,6 @@ def _intelligent_column_detector(df):
     columns_lower = [str(col).lower().strip() for col in df.columns]
 
     for idx, col in enumerate(columns_lower):
-        # Specific first
         if any(k in col for k in name_ar_keywords):
             column_mapping["name_ar"] = df.columns[idx]
         elif any(k in col for k in barcode_keywords):
@@ -4394,7 +4235,6 @@ def _intelligent_column_detector(df):
         elif any(k in col for k in quantity_keywords):
             column_mapping["quantity"] = df.columns[idx]
 
-    # Fallbacks for required columns
     if "name" not in column_mapping and len(df.columns) > 0:
         column_mapping["name"] = df.columns[0]
     if "part_number" not in column_mapping and len(df.columns) > 1:
@@ -4404,7 +4244,6 @@ def _intelligent_column_detector(df):
     if "quantity" not in column_mapping and len(df.columns) > 3:
         column_mapping["quantity"] = df.columns[3]
 
-    # Need at least name + part_number + price
     required = {"name", "part_number", "price"}
     if not required.issubset(column_mapping.keys()):
         return None
@@ -4425,8 +4264,6 @@ def _train_ai_from_excel(df, created, updated, user_id):
             "sample_data": df.head(5).to_dict(),
         }
 
-        # learning_system.learn_from_user_data(learning_data)  # تعطيل مؤقت
-
     except Exception as e:
         current_app.logger.warning(f"AI training from Excel failed: {e}")
 
@@ -4444,10 +4281,6 @@ def predict_sales():
 @login_required
 def analyze_margins():
     """💰 API: تحليل هوامش الربح"""
-    # SECURITY: the payload carries the total cost of goods sold, the total
-    # profit, the margin and the per-product profit — all of them are
-    # cost-derived. The twin endpoint (routes/api_enhanced.py) answers 403
-    # for a role without cost visibility; this one must do the same.
     if not current_user.can_see_costs():
         abort(403)
     analysis = AIService.analyze_profit_margins()
@@ -4475,8 +4308,6 @@ def inventory_health():
 @permission_required("view_reports")
 def deep_analysis():
     """📊 API: تحليل عميق شامل"""
-    # SECURITY: deep_business_analysis embeds the profit-margin section,
-    # which is cost-derived (COGS + margin per product).
     if not current_user.can_see_costs():
         abort(403)
     analysis = AIService.deep_business_analysis()
@@ -4497,15 +4328,8 @@ def cash_flow_prediction():
 @login_required
 def smart_price():
     """💎 API: محرك التسعير الذكي الخارق"""
-    # SECURITY: the pricing engine is cost-derived — the neural fallback
-    # returns predicted_price = cost_price * 1.30, so the cost is
-    # recoverable from the answer (cost = predicted / 1.30).
     if not current_user.can_see_costs():
         abort(403)
-    # get_json() raises on a body-less POST, and this handler has no error
-    # handler of its own, so a sweep or any client that posts without JSON got
-    # an uncaught 500 instead of the validation below. Matches the
-    # `request.get_json() or {}` idiom already used elsewhere in this file.
     data = request.get_json(silent=True) or {}
     product_id = data.get("product_id")
     customer_id = data.get("customer_id")
@@ -4536,8 +4360,6 @@ def churn_prediction():
 @permission_required("manage_warehouse")
 def optimize_inventory():
     """📦 API: تحسين مستويات المخزون"""
-    # SECURITY: the recommendation carries estimated_cost = qty *
-    # product.cost_price, i.e. the product cost itself.
     if not current_user.can_see_costs():
         abort(403)
     optimization = AIService.optimize_inventory_levels()
@@ -4981,10 +4803,8 @@ def external_sources():
 @login_required
 def ask_genius():
     """🌟 API: اسأل العبقري - الواجهة الموحدة"""
-    # Security: Track operation type for CSRF audit
     request.ai_operation = "ask_genius"
 
-    # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
@@ -5012,10 +4832,8 @@ def ask_genius():
 @login_required
 def quick_calc():
     """⚡ API: حسابات سريعة"""
-    # Security: Track operation type for CSRF audit
     request.ai_operation = "quick_calc"
 
-    # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
@@ -5041,10 +4859,8 @@ def quick_calc():
 @login_required
 def transformers_understand():
     """🤖 API: فهم بالـ Transformers"""
-    # Security: Track operation type for CSRF audit
     request.ai_operation = "transformers_understand"
 
-    # Security: Validate CSRF for this state-changing operation
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check

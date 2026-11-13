@@ -30,14 +30,12 @@ class ReturnService:
             ProductReturn: The created return record.
         """
         try:
-            # 1. Validate Sale
             sale = get_owned_or_raise(Sale, sale_id)
             if not sale:
                 raise ValueError(f"Sale with ID {sale_id} not found.")
             if sale.status == "cancelled":
                 raise ValueError("Cannot create return for a cancelled sale.")
 
-            # 2. Prepare Return Record
             return_number = generate_number("R", ProductReturn, "return_number")
 
             product_return = ProductReturn(
@@ -61,14 +59,10 @@ class ReturnService:
             total_return_amount = Decimal("0")
             return_line_specs = []
             gl_lines = []
-            # cost_basis_fallback lines that need a human review.
             review_flags = []
 
-            # GL account routing via central TaxEngine/resolver (literal fallbacks
-            # keep today's codes until Agent 1's account_resolution module lands).
             routing = TaxEngine.liability_routing()
 
-            # 3. Process Lines
             for line_data in return_lines_data:
                 sale_line_id = line_data.get("sale_line_id")
                 quantity = Decimal(str(line_data.get("quantity", 0)))
@@ -79,19 +73,11 @@ class ReturnService:
                 sale_line = get_owned_or_raise(SaleLine, sale_line_id, for_update=True)
                 if not sale_line:
                     raise ValueError(f"Sale line {sale_line_id} not found.")
-                # Must sit outside the `not found` branch: it used to be nested
-                # under the raise above, where it was unreachable, so a return
-                # could book lines belonging to an unrelated sale and post GL
-                # against the wrong revenue.
                 if sale_line.sale_id != sale.id:
                     raise ValueError(
                         f"Sale line {sale_line_id} does not belong to sale {sale.id}."
                     )
 
-                # Validate Quantity (Cannot return more than sold)
-                # Only APPROVED returns consume the returnable quantity: a
-                # pending or cancelled return must not permanently block the
-                # customer from returning the goods.
                 previous_returned = db.session.query(
                     db.func.sum(ProductReturnLine.quantity)
                 ).join(ProductReturn).filter(
@@ -104,11 +90,6 @@ class ReturnService:
                         f"Cannot return {quantity} of {sale_line.product.name}. Already returned: {previous_returned}, Sold: {sale_line.quantity}."
                     )  # noqa: E501
 
-                # Calculate refund amount for this line
-                # NET OF THE LINE DISCOUNT: the original revenue was booked
-                # net of discount_percent (models/sale.py::calculate_line_total),
-                # so the refund must be net of it too — and the tax reversal
-                # follows the same (discounted) base.
                 unit_price = Decimal(str(sale_line.unit_price or 0))
                 discount_percent = Decimal(str(sale_line.discount_percent or 0))
                 if discount_percent < Decimal("0") or discount_percent > Decimal("100"):
@@ -127,7 +108,6 @@ class ReturnService:
                     }
                 )
 
-                # Create Return Line
                 return_line = ProductReturnLine(
                     return_id=product_return.id,
                     sale_line_id=sale_line.id,
@@ -140,8 +120,6 @@ class ReturnService:
                 )
                 db.session.add(return_line)
 
-                # Stock Update: Return to Inventory
-                # Using 'return' movement type
                 StockService.create_movement(
                     product_id=sale_line.product_id,
                     quantity=quantity,
@@ -152,15 +130,6 @@ class ReturnService:
                     warehouse_id=sale.warehouse_id,  # Return to same warehouse
                 )
 
-                # Prepare COGS Reversal GL Data (Credit COGS, Debit Inventory)
-                # Cost basis: the HISTORICAL cost captured on the sale line at
-                # sell time.  The column default is 0 (models/sale.py), so a
-                # ZERO cost is just as unreliable as a NULL one: it means the
-                # line was never costed, not that the goods were free.
-                # A zero/None line cost therefore falls back to the product's
-                # CURRENT cost (so the return is not half-posted: inventory
-                # and COGS are both reversed) and the return is escalated for
-                # review.  With no basis at all the return is refused.
                 product = get_owned_or_404(Product, sale_line.product_id)
                 line_cost = sale_line.cost_price
                 reliable = line_cost is not None and Decimal(str(line_cost)) > Decimal(
@@ -202,7 +171,6 @@ class ReturnService:
                 )
 
                 if cost_value > 0:
-                    # Inventory (Asset) - Debit (Increase)
                     gl_lines.append(
                         {
                             "account": routing["inventory"],
@@ -211,7 +179,6 @@ class ReturnService:
                             "description": f"Inventory Restock - {product.name}",
                         }
                     )
-                    # COGS (Expense) - Credit (Decrease)
                     gl_lines.append(
                         {
                             "account": routing["cogs"],
@@ -223,19 +190,10 @@ class ReturnService:
 
             product_return.calculate_totals()
 
-            # F6: a return whose cost basis had to be taken from the
-            # product's CURRENT cost is escalated for review — the marker
-            # travels with the document so it cannot be lost.
             if review_flags:
                 marker = "\n[مراجعة مطلوبة] " + " | ".join(review_flags)
                 product_return.notes = (product_return.notes or "") + marker
 
-            # 4. Financial GL Entries (Revenue Reversal)
-            # Per-line snapshot split of the returned portion; a whole-invoice
-            # treatment (zero/exempt) overrides line treatments. The revenue
-            # reversal covers net of ALL buckets (zero/exempt returns are
-            # still sales revenue being reversed); VAT applies only to the
-            # standard bucket.
             tax_rate = Decimal(str(sale.tax_rate or 0))
             invoice_treatment = getattr(sale, "tax_treatment", "standard") or "standard"
             shipping = Decimal(str(sale.shipping_cost or 0))
@@ -264,7 +222,6 @@ class ReturnService:
                 gross_return_amount  # Default to full refund of value
             )
 
-            # Debit Sales Returns/Revenue (reducing revenue)
             gl_lines.append(
                 {
                     "account": routing["sales_returns"],
@@ -274,7 +231,6 @@ class ReturnService:
                 }
             )
 
-            # Debit Output VAT liability (Reducing liability)
             if tax_amount > 0:
                 gl_lines.append(
                     {
@@ -285,7 +241,6 @@ class ReturnService:
                     }
                 )
 
-            # Credit Accounts Receivable (Reducing customer debt)
             _return_party = (
                 sale.customer.id
                 if getattr(sale.customer, "customer_type", None) == "partner"
@@ -301,13 +256,10 @@ class ReturnService:
                 }
             )
 
-            # عكس تناسبي لحصص شركاء المنتج مع الكمية المرتجعة — داخل نفس
-            # المعاملة؛ الفشل يُجهض المرتجع كاملًا (الذرّية قبل أي شيء).
             from services.partner_profit import post_partner_shares_for_return
 
             post_partner_shares_for_return(product_return, sale)
 
-            # Post GL Entry
             if gl_lines:
                 GLService.post_entry(
                     lines=gl_lines,
@@ -318,13 +270,6 @@ class ReturnService:
                     exchange_rate=sale.exchange_rate,
                 )
 
-            # 5. Settlement (LEAK-GUARD): the lines above always credit AR,
-            # but when the invoice was already (fully or partially) paid in
-            # cash, that credit would sit as negative AR with no recorded
-            # cash outflow and no customer-balance movement.  Split the
-            # refund into a cash-out part (Dr AR / Cr Cash + an outgoing
-            # refund Payment row) and an AR-credit remainder, then keep
-            # paid/balance_due/customer.balance consistent.
             from services.currency_service import CurrencyService
             from models import Payment
 
@@ -388,29 +333,15 @@ class ReturnService:
                     )
                 )
 
-            # F3: لا تحرير يدوي لـ paid_amount / balance_due / payment_status.
-            # تسوية الفاتورة تُشتق من مستنداتها (سند الاسترداد + المرتجع
-            # المعتمد) عبر المصدر الوحيد: models/sale.recompute_sale_settlement.
-            # الكتابة اليدوية كانت تتنازع مع إعادة الاحتساب فتُنتج انحرافاً
-            # بين الفاتورة ورصيد العميل.
-            # flush: الاشتقاق يقرأ المستندات من القاعدة (Core) — يجب تثبيت
-            # المرتجع وسند الاسترداد قبل إعادة الاحتساب.
             db.session.flush()
             from models.sale import recompute_sale_settlement
 
-            # NOTE: يُمرَّر الاتصال صراحةً — models/sale.py يستورد `db`
-            # محلياً بعد السطر 114 في الاستدعاء ( UnboundLocalError
-            # عند connection=None ). الملف ليس ضمن نطاق التعديل هنا.
             recompute_sale_settlement(sale.id, connection=db.session.connection())
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد بعد أن استقرت تسوية
-            # الفاتورة (المستندون الآن في القاعدة).
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(sale.customer_id)
 
-            # F14: a refund is a destructive financial operation — the audit
-            # row carries the amounts, the tax base and the cost basis.
             create_audit_log(
                 "create",
                 "product_returns",

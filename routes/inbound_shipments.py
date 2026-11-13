@@ -131,7 +131,6 @@ def arrive_inbound(id):
 @permission_required("manage_warehouse")
 def inspect_inbound(id):
     try:
-        # Accept all by default; detailed quantities can be posted as line_id/quantity_accepted
         with atomic_transaction():
             InboundShipmentService.inspect_shipment(id)
         flash("✅ تم الفحص", "success")

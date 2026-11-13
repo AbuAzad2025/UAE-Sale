@@ -45,7 +45,6 @@ class AuditLog(TenantScopedMixin, db.Model):
             "view": {"ar": "عرض", "en": "View"},
             "export": {"ar": "تصدير", "en": "Export"},
             "print": {"ar": "طباعة", "en": "Print"},
-            # عمليات تدميرية على البيانات المالية والتدقيق
             "truncate_table": {"ar": "مسح جدول", "en": "Truncate table"},
             "restore_backup": {"ar": "استعادة نسخة احتياطية", "en": "Restore backup"},
             "restore_backup_failed": {

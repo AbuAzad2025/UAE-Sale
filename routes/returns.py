@@ -7,7 +7,6 @@ from utils.decorators import permission_required
 from utils.decorators import get_owned_or_404
 from utils.transaction import atomic_transaction
 
-
 returns_bp = Blueprint("returns", __name__, url_prefix="/returns")
 
 
@@ -74,6 +73,5 @@ def api_create_return():
 @permission_required("manage_sales")
 def view(id):
     product_return = db.get_or_404(ProductReturn, id)
-    # ProductReturn has no tenant_id: enforce ownership through its sale.
     get_owned_or_404(Sale, product_return.sale_id)
     return render_template("returns/view.html", product_return=product_return)

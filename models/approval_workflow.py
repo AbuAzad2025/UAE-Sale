@@ -23,14 +23,11 @@ class ApprovalWorkflow(TenantScopedMixin, db.Model):
     name_ar = db.Column(db.String(100))
     description = db.Column(db.Text)
 
-    # Which entity type this applies to: 'sale', 'payment', 'purchase'
     entity_type = db.Column(db.String(20), nullable=False, index=True)
 
-    # Amount threshold: workflow triggers when amount >= threshold
     min_amount = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     max_amount = db.Column(db.Numeric(15, 3))  # NULL = no upper limit
 
-    # Number of approval levels required (1 = single approver, 2 = manager + owner, etc.)
     levels_required = db.Column(db.Integer, default=1, nullable=False)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
@@ -44,7 +41,6 @@ class ApprovalWorkflow(TenantScopedMixin, db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
     requests = db.relationship(
         "ApprovalRequest", back_populates="workflow", lazy="dynamic"
     )
@@ -99,7 +95,6 @@ class ApprovalRequest(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("approval_workflows.id"), nullable=False
     )
 
-    # The entity being approved
     entity_type = db.Column(
         db.String(20), nullable=False, index=True
     )  # sale, payment, purchase
@@ -108,19 +103,14 @@ class ApprovalRequest(TenantScopedMixin, db.Model):
     amount = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default="ILS", nullable=False)
 
-    # Status: pending → approved | rejected | cancelled
     status = db.Column(db.String(20), default="pending", nullable=False, index=True)
 
-    # Current approval level (1-based)
     current_level = db.Column(db.Integer, default=1, nullable=False)
 
-    # Who requested
     requested_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
-    # Description / reason
     description = db.Column(db.Text)
 
-    # Timestamps
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -131,7 +121,6 @@ class ApprovalRequest(TenantScopedMixin, db.Model):
     )
     resolved_at = db.Column(db.DateTime)
 
-    # Relationships
     workflow = db.relationship("ApprovalWorkflow", back_populates="requests")
     requester = db.relationship("User", foreign_keys=[requested_by])
     approvals = db.relationship(
@@ -192,20 +181,16 @@ class ApprovalLevel(TenantScopedMixin, db.Model):
     )
     level = db.Column(db.Integer, nullable=False)  # 1, 2, 3, ...
 
-    # Who can approve at this level (role names: 'owner', 'admin', 'manager')
     required_role = db.Column(db.String(20), nullable=False)
 
-    # Who actually approved/rejected
     approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-    # Status: pending → approved | rejected | skipped
     status = db.Column(db.String(20), default="pending", nullable=False)
 
     notes = db.Column(db.Text)
 
     approved_at = db.Column(db.DateTime)
 
-    # Relationships
     request = db.relationship("ApprovalRequest", back_populates="approvals")
     approver = db.relationship("User", foreign_keys=[approved_by])
 

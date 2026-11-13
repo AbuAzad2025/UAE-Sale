@@ -29,7 +29,6 @@ branch_labels = None
 depends_on = None
 
 
-# The seeded chart of accounts, marked as system accounts so they cannot be
 # renamed, retyped or deleted. Mirrors GLAccount.CORE_CODES.
 CORE_CODES = (
     "1000",
@@ -215,7 +214,6 @@ def upgrade():
             "END $$;"
         )
 
-    # 3. Mark the seeded chart of accounts as system accounts.
     op.execute(
         "UPDATE gl_accounts SET is_system = true WHERE code IN ({})".format(
             ", ".join(f"'{c}'" for c in CORE_CODES)

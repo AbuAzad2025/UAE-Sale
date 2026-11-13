@@ -38,7 +38,6 @@ def index():
     status = request.args.get("status", "", type=str)
     search = request.args.get("search", "", type=str)
 
-    # تحديث حالة كل الشيكات
     Cheque.update_all_statuses()
 
     query = Cheque.query.filter_by(is_active=True)
@@ -169,11 +168,6 @@ def create():
                 )
             amount = Decimal(str(request.form.get("amount")))
 
-            # A cheque is a positive instrument: a negative amount is not a
-            # reversal, it is a malformed document. It was accepted and stored
-            # as-is, so amount_base went negative and every total that sums
-            # it - the statistics panel on /cheques/incoming included - was
-            # wrong. Reverse a cheque through POST /cheques/<id>/cancel.
             if amount <= 0:
                 flash("رقم الشيك يجب أن يكون أكبر من صفر.", "warning")
                 customers = (
@@ -203,14 +197,12 @@ def create():
                 _base_cc = "ILS"
             currency = request.form.get("currency") or _base_cc
 
-            # حساب سعر الصرف مقابل عملة القاعدة الديناميكية
             exchange_rate = CurrencyService.get_exchange_rate(
                 currency,
                 _base_cc,
                 user_rate=request.form.get("exchange_rate", type=float),
             )
 
-            # تحويل التواريخ
             issue_date = datetime.strptime(
                 request.form.get("issue_date"), "%Y-%m-%d"
             ).date()
@@ -245,7 +237,6 @@ def create():
             db.session.add(cheque)
             db.session.commit()
 
-            # إنشاء القيد المحاسبي الأولي
             try:
                 if cheque.cheque_type == "incoming":
                     cheque.receive_cheque()
@@ -300,7 +291,6 @@ def view(id):
     cheque.update_status_based_on_date()
     db.session.commit()
 
-    # إضافة today للـ template
     today = datetime.now().strftime("%Y-%m-%d")
 
     return render_template("cheques/view.html", cheque=cheque, today=today)
@@ -313,7 +303,6 @@ def edit(id):
     """تعديل الشيك"""
     cheque = get_owned_or_404(Cheque, id)
 
-    # لا يمكن تعديل شيك تم صرفه أو ملغي
     if cheque.status in ["cleared", "cancelled", "bounced"]:
         flash(
             "⚠️ لا يمكن تعديل شيك تم صرفه أو إلغاؤه.\n💡 الشيكات المصروفة أو الملغاة لا يمكن تعديلها للحفاظ على السجلات.",
@@ -450,16 +439,13 @@ def clear_cheque(id):
             else None
         )
 
-        # سعر الصرف وقت الصرف (اختياري)
         clearance_exchange_rate = request.form.get(
             "clearance_exchange_rate", type=float
         )
 
-        # تأكيد الصرف - هنا تحدث المحاسبة!
         cheque.clear_cheque(clearance_date, clearance_exchange_rate)
         db.session.commit()
 
-        # رسالة مفصلة عند وجود فرق عملة
         if cheque.currency_gain_loss and abs(cheque.currency_gain_loss) > Decimal(
             "0.01"
         ):
@@ -510,7 +496,6 @@ def bounce_cheque(id):
         details = request.form.get("bounce_details", "")
         full_reason = f"{reason}. {details}" if details else reason
 
-        # رفض الشيك - إرجاع الدين
         cheque.bounce_cheque(full_reason)
         db.session.commit()
 
@@ -581,10 +566,8 @@ def delete(id):
     """حذف (أرشفة) الشيك"""
     cheque = get_owned_or_404(Cheque, id)
 
-    # التحقق من الارتباطات
     has_links = False
 
-    # 1. حالة الشيك (إذا لم يكن معلقاً، فهو جزء من التاريخ)
     if cheque.status in [
         "cleared",
         "deposited",
@@ -594,7 +577,6 @@ def delete(id):
     ]:
         has_links = True
 
-    # 2. ارتباطات بكيانات أخرى
     if (
         cheque.receipt_id
         or cheque.payment_id
@@ -606,10 +588,8 @@ def delete(id):
 
     try:
         if has_links:
-            # أرشفة (Soft Delete)
             reason = request.form.get("delete_reason", "أرشفة بسبب وجود ارتباطات")
 
-            # عكس القيد المحاسبي إذا كان نشطاً (يتم داخل دالة archive)
             cheque.archive(reason)
             db.session.commit()
 
@@ -620,9 +600,6 @@ def delete(id):
             )
 
         else:
-            # حذف نهائي (Hard Delete): القيود المرحَّلة تُعكس (لا تُحذف
-            # أبداً — القيد المحاسبي أثر دائم) والمسودات فقط تُحذف.
-            # قطع روابط القيد المحاسبي أولاً (قبل حذف القيود نفسها)
             cheque.gl_journal_entry_id = None
             cheque.gl_clearing_entry_id = None
             cheque.gl_bounce_entry_id = None

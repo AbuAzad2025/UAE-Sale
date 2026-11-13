@@ -88,7 +88,6 @@ class InboundShipmentService:
             raise ValueError(f"لا يمكن تأكيد الوصول من حالة {sh.status}")
         sh.status = "arrived"
         sh.arrived_at = datetime.now(timezone.utc)
-        # copy expected to received by default
         for line in sh.lines:
             if line.quantity_received == 0:
                 line.quantity_received = line.quantity_expected
@@ -134,7 +133,6 @@ class InboundShipmentService:
             raise ValueError("الشحنة غير موجودة")
         if sh.status != "inspected":
             raise ValueError(f"لا يمكن الإدخال من حالة {sh.status}")
-        # Move stock for each accepted line
         from services.stock_service import StockService
 
         for line in sh.lines:
@@ -149,15 +147,12 @@ class InboundShipmentService:
                         post_gl=False,
                     )
                 except TypeError:
-                    # fallback for older signature without post_gl
                     StockService.adjust_stock(line.product_id, qty)
-        # Update linked PO if any
         if sh.purchase_order_id:
             from models.erp_modules import PurchaseOrder
 
             po = db.session.get(PurchaseOrder, sh.purchase_order_id)
             if po:
-                # naive: if all lines accepted, mark received
                 total_exp = sum((l.quantity_expected for l in sh.lines), Decimal("0"))
                 total_acc = sum((l.quantity_accepted for l in sh.lines), Decimal("0"))
                 if total_acc >= total_exp:

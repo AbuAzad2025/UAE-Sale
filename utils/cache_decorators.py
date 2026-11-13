@@ -22,21 +22,17 @@ def _cache_scope_token():
         if not getattr(current_user, "is_authenticated", False):
             return "anon"
         if getattr(current_user, "is_owner", False):
-            # Owner bypasses tenant filter and sees all costs.
             return "owner"
         role_slug = (
             getattr(getattr(current_user, "role", None), "slug", None) or "norole"
         )
         tenant = getattr(current_user, "tenant_id", None) or "0"
-        # Cost visibility is permission-driven; include the effective bit so a
-        # same-slug role with divergent view_costs grants never shares a body.
         try:
             costs = "c1" if current_user.can_see_costs() else "c0"
         except Exception:
             costs = "cx"
         return f"{role_slug}:{costs}:t{tenant}"
     except Exception:
-        # Fail closed: never share a cached body across unknown scopes.
         return "unknown"
 
 
@@ -53,9 +49,6 @@ def cached_query(timeout=300, key_prefix=None):
             try:
                 result = cache.get(cache_key)
             except Exception as e:
-                # Cache read failure must never break the request — treat as
-                # a miss and recompute (e.g. unpicklable response objects in
-                # test environments, or a corrupted/evicted entry).
                 try:
                     current_app.logger.warning(
                         f"Cache get failed for key {cache_key}: {str(e)}"
@@ -70,7 +63,6 @@ def cached_query(timeout=300, key_prefix=None):
             try:
                 cache.set(cache_key, result, timeout=timeout)
             except Exception as e:
-                # If caching fails (e.g. UnboundLocalError in cachelib), log it but don't crash
                 current_app.logger.warning(
                     f"Cache set failed for key {cache_key}: {str(e)}"
                 )
@@ -106,7 +98,6 @@ def invalidate_cache(key_pattern):
                 or fnmatch.fnmatch(key, pattern)
             )
 
-        # 1) cachelib in-memory store (SimpleCache._cache dict)
         try:
             store = getattr(getattr(cache, "cache", None), "_cache", None)
             if isinstance(store, dict):
@@ -126,7 +117,6 @@ def invalidate_cache(key_pattern):
         except Exception:
             pass
 
-        # 2) Redis-backed caches via SCAN (never KEYS — production-safe)
         try:
             client = getattr(getattr(cache, "cache", None), "_client", None)
             if client is not None and hasattr(client, "scan_iter"):
@@ -146,7 +136,6 @@ def invalidate_cache(key_pattern):
         except Exception:
             pass
 
-        # 3) literal fallback (preserves old behavior for exact keys)
         try:
             cache.delete(pattern)
         except Exception:

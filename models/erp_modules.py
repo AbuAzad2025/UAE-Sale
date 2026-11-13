@@ -17,8 +17,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
-# ==================== QUOTATIONS ====================
-
 
 class Quotation(TenantScopedMixin, db.Model):
     """Sales quotation / proposal"""
@@ -38,9 +36,6 @@ class Quotation(TenantScopedMixin, db.Model):
 
     quotation_date = db.Column(db.Date, nullable=False, index=True)
     valid_until = db.Column(db.Date, nullable=False)
-    # Deprecated duplicate of valid_until. The physical column stays declared
-    # (schema frozen, no drop) but is unmapped: instance access aliases
-    # valid_until so there is a single source of truth.
     _expiry_date_column = db.Column("expiry_date", db.Date)
 
     @property
@@ -59,14 +54,12 @@ class Quotation(TenantScopedMixin, db.Model):
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_amount = db.Column(db.Numeric(15, 3), default=0)
 
-    # Phase 1 — ضريبة على مستوى الفاتورة (شاملة/إضافية + معاملة)
     tax_inclusive = db.Column(
         db.Boolean, default=False, nullable=False, server_default=db.text("false")
     )
     tax_treatment = db.Column(
         db.String(10), default="standard", nullable=False, server_default="standard"
     )
-    # draft, sent, accepted, rejected, expired, converted
 
     currency = db.Column(db.String(3), default="ILS")
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
@@ -78,7 +71,6 @@ class Quotation(TenantScopedMixin, db.Model):
     converted_at = db.Column(db.DateTime, nullable=True)
     notes = db.Column(db.Text)
 
-    # Phase 1 — شروط/صلاحية/نشاط
     payment_terms = db.Column(db.Text, nullable=True)
     terms_and_conditions = db.Column(db.Text, nullable=True)
     validity_days = db.Column(
@@ -88,7 +80,6 @@ class Quotation(TenantScopedMixin, db.Model):
         db.Boolean, default=True, nullable=False, server_default=db.text("true")
     )
 
-    # Phase 2 — versioning
     version = db.Column(db.Integer, default=1, nullable=False, server_default="1")
     parent_quotation_id = db.Column(
         db.Integer, db.ForeignKey("quotations.id"), nullable=True
@@ -98,7 +89,6 @@ class Quotation(TenantScopedMixin, db.Model):
     )
     version_notes = db.Column(db.Text, nullable=True)
 
-    # Phase 2 — email tracking
     email_sent_at = db.Column(db.DateTime, nullable=True)
     email_sent_to = db.Column(db.String(255), nullable=True)
 
@@ -218,7 +208,6 @@ class QuotationLine(TenantScopedMixin, db.Model):
     unit_price = db.Column(db.Numeric(15, 3), nullable=False)
     discount_percent = db.Column(db.Numeric(5, 2), default=0)
     line_total = db.Column(db.Numeric(15, 3), nullable=False)
-    # Phase 1 — لقطة تكلفة + معاملة ضريبية (مطابقة لـ SaleLine)
     cost_price = db.Column(db.Numeric(15, 3), nullable=True)
     tax_treatment = db.Column(
         db.String(10), default="standard", nullable=False, server_default="standard"
@@ -239,9 +228,6 @@ class QuotationLine(TenantScopedMixin, db.Model):
         self.line_total = (
             qty * price * (Decimal("100") - disc) / Decimal("100")
         ).quantize(Decimal("0.001"), ROUND_HALF_UP)
-
-
-# ==================== PURCHASE ORDERS ====================
 
 
 class PurchaseOrder(TenantScopedMixin, db.Model):
@@ -271,9 +257,7 @@ class PurchaseOrder(TenantScopedMixin, db.Model):
     exchange_rate = db.Column(db.Numeric(15, 6), default=1)
 
     status = db.Column(db.String(20), default="draft", index=True)
-    # draft, submitted, approved, partially_received, received, cancelled
 
-    # Link to final purchase invoice
     purchase_id = db.Column(db.Integer, db.ForeignKey("purchases.id"))
 
     notes = db.Column(db.Text)
@@ -365,18 +349,12 @@ class PurchaseOrderLine(TenantScopedMixin, db.Model):
         ).quantize(Decimal("0.001"), ROUND_HALF_UP)
 
 
-# ==================== FISCAL PERIODS ====================
-
-
 class FiscalPeriod(db.Model):
     """Fiscal period locking to prevent backdating"""
 
     __tablename__ = "fiscal_periods"
 
     id = db.Column(db.Integer, primary_key=True)
-    # F10: الفترة المالية قد تكون خاصة بمستأجر واحد أو عامة لكل المستأجرين.
-    # NULL = فترة عامة (تغطي الجميع). بدون هذا العمود كان إغلاق سنة من
-    # مستأجر يُجمّد كل المستأجرين. (يتطلب ترحيلاً — انظر التقرير)
     tenant_id = db.Column(
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
     )
@@ -418,9 +396,6 @@ class FiscalPeriod(db.Model):
     @property
     def status_ar(self):
         return "مغلقة" if self.is_closed else "مفتوحة"
-
-
-# ==================== STOCK TRANSFERS ====================
 
 
 class StockTransfer(TenantScopedMixin, db.Model):
@@ -482,9 +457,6 @@ class StockTransferLine(TenantScopedMixin, db.Model):
 
     transfer = db.relationship("StockTransfer", back_populates="lines")
     product = db.relationship("Product")
-
-
-# ==================== STOCK TAKE ====================
 
 
 class StockTake(TenantScopedMixin, db.Model):
@@ -551,9 +523,6 @@ class StockTakeItem(TenantScopedMixin, db.Model):
             self.variance = self.counted_quantity - self.system_quantity
 
 
-# ==================== DUNNING LETTERS ====================
-
-
 class DunningLetter(TenantScopedMixin, db.Model):
     """Automated collection reminder for overdue receivables"""
 
@@ -590,9 +559,6 @@ class DunningLetter(TenantScopedMixin, db.Model):
             3: "إنذار عاجل",
             4: "إنذار قانوني",
         }.get(self.level, str(self.level))
-
-
-# ==================== RECURRING EXPENSES ====================
 
 
 class RecurringExpense(TenantScopedMixin, db.Model):
@@ -634,9 +600,6 @@ class RecurringExpense(TenantScopedMixin, db.Model):
         elif self.frequency == "annual":
             return self.next_due_date + timedelta(days=365)
         return self.next_due_date
-
-
-# ==================== LOT/SERIAL TRACKING ====================
 
 
 class ProductLot(TenantScopedMixin, db.Model):
@@ -682,9 +645,6 @@ class ProductLot(TenantScopedMixin, db.Model):
         if not self.expiry_date:
             return None
         return (self.expiry_date - date.today()).days
-
-
-# ==================== BIN/LOCATION TRACKING ====================
 
 
 class WarehouseBin(TenantScopedMixin, db.Model):
@@ -762,9 +722,6 @@ class ProductBin(TenantScopedMixin, db.Model):
     )
 
 
-# ==================== E-INVOICING (FATOORA) ====================
-
-
 class EInvoice(TenantScopedMixin, db.Model):
     """UAE FATOORA e-invoice record"""
 
@@ -779,31 +736,25 @@ class EInvoice(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("sales.id"), nullable=False, index=True
     )
 
-    # FATOORA fields
     uuid = db.Column(db.String(100), unique=True)
     invoice_type = db.Column(
         db.String(30), default="standard"
     )  # standard, simplified, credit, debit
     invoice_date = db.Column(db.DateTime, nullable=False)
 
-    # Buyer info
     buyer_name = db.Column(db.String(200), nullable=False)
     buyer_trn = db.Column(db.String(50))  # Tax Registration Number
     buyer_address = db.Column(db.Text)
 
-    # Amounts
     total_amount = db.Column(db.Numeric(15, 3), nullable=False)
     tax_amount = db.Column(db.Numeric(15, 3), default=0)
     total_with_tax = db.Column(db.Numeric(15, 3), nullable=False)
     currency = db.Column(db.String(3), default="ILS")
 
-    # Status
     status = db.Column(db.String(20), default="draft", index=True)
-    # draft, submitted, accepted, rejected, cancelled
     submitted_at = db.Column(db.DateTime)
     accepted_at = db.Column(db.DateTime)
 
-    # XML/JSON payload
     xml_payload = db.Column(db.Text)
     json_payload = db.Column(db.Text)
     fta_response = db.Column(db.Text)
@@ -839,7 +790,6 @@ class EInvoice(TenantScopedMixin, db.Model):
             "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
         )
 
-        # Header
         h = SubElement(root, "ExchangedDocumentContext")
         SubElement(
             h,
@@ -861,26 +811,21 @@ class EInvoice(TenantScopedMixin, db.Model):
         )
         SubElement(hdr, "TypeCode").text = "380"  # Invoice
 
-        # SupplyChainTradeTransaction
         sct = SubElement(root, "SupplyChainTradeTransaction")
         ApplicableHeaderTradeAgreement = SubElement(
             sct, "ApplicableHeaderTradeAgreement"
         )
 
-        # Seller
         seller = SubElement(ApplicableHeaderTradeAgreement, "SellerTradeParty")
         SubElement(seller, "Name").text = "Seller"
 
-        # Buyer
         buyer = SubElement(ApplicableHeaderTradeAgreement, "BuyerTradeParty")
         SubElement(buyer, "Name").text = self.buyer_name or ""
         if self.buyer_trn:
             SubElement(buyer, "ID").text = self.buyer_trn
 
-        # Delivery
         SubElement(sct, "ApplicableHeaderTradeDelivery")
 
-        # Payment
         SubElement(sct, "ApplicableHeaderTradeSettlement")
 
         xml_str = tostring(root, encoding="unicode")
@@ -902,8 +847,6 @@ class EInvoice(TenantScopedMixin, db.Model):
                         "quantity": float(line.quantity),
                         "unit_price": float(line.unit_price),
                         "total": float(line.line_total),
-                        # Honest naming: this is the per-unit VAT amount (5% of
-                        # unit price), not a rate.
                         "vat_amount_per_unit": float(line.unit_price * Decimal("0.05")),
                     }
                 )

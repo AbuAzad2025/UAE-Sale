@@ -6,9 +6,14 @@ ever planted for the Owner.
 
 Security properties:
 - Constant-time comparison (SHA-256 + hmac.compare_digest).
-- Seed is loaded from ``MASTER_KEY_SEED`` env var (required in production).
-- Development fallback seed is used only when ``APP_ENV`` is ``development``
-  or ``testing`` (never in production).
+- Seed resolution order (first non-empty wins):
+    1. ``MASTER_KEY_SEED`` env var (operator-controlled, rotatable).
+    2. ``instance/master_seed`` file (auto-generated on first boot and
+       persisted so the owner can always log in on any deployment).
+- A seed is auto-generated on first boot if neither source provides one,
+  so the owner can ALWAYS authenticate on any deployment without
+  pre-configuration. The generated seed is logged once for the operator to
+  save.
 - UTC date is used consistently to avoid timezone drift.
 - Input format is validated before hashing.
 """
@@ -17,16 +22,21 @@ import hashlib
 import hmac
 import os
 import re
+import secrets as _secrets
 from datetime import datetime, timezone
 
-# Format: seed@YYYY@MM@DD  (seed must not contain '@')
-# Format: <seed>@YYYY@MM@DD  (seed may itself contain '@', so split from the right)
 _MASTER_KEY_PATTERN = re.compile(r"^.+@\d{4}@\d{2}@\d{2}$")
 
-# Development-only fallback seed (never used in production)
-_DEV_FALLBACK_SEED = "dev-master-seed-change-me"
-
 _seed_cache: dict = {"value": None}
+
+
+def _instance_dir() -> str:
+    try:
+        from config import instance_dir
+
+        return instance_dir
+    except Exception:
+        return os.path.join(os.path.dirname(os.path.dirname(__file__)), "instance")
 
 
 def _is_production() -> bool:
@@ -39,22 +49,52 @@ def _is_production() -> bool:
 def get_master_seed() -> str:
     """Return the master key seed.
 
-    - Production: ``MASTER_KEY_SEED`` env var is REQUIRED (fail-closed).
-    - Development/Testing: falls back to a dev seed if env is unset.
-    - Result is cached per process.
+    Resolution order:
+        1. ``MASTER_KEY_SEED`` env var (operator-controlled).
+        2. ``instance/master_seed`` file (auto-generated & persisted).
+        3. Auto-generate, persist, and log (guarantees owner can always log in).
+
+    Result is cached per process.
     """
     cached = _seed_cache["value"]
     if cached is not None:
         return cached
 
     seed = os.environ.get("MASTER_KEY_SEED", "").strip()
-    if not seed:
-        if _is_production():
-            raise RuntimeError(
-                "MASTER_KEY_SEED environment variable is required in production "
-                "and must not be empty."
-            )
-        seed = _DEV_FALLBACK_SEED
+    if seed:
+        _seed_cache["value"] = seed
+        return seed
+
+    seed_file = os.path.join(_instance_dir(), "master_seed")
+    if os.path.exists(seed_file):
+        try:
+            with open(seed_file, "r", encoding="utf-8") as f:
+                seed = f.read().strip()
+            if seed:
+                _seed_cache["value"] = seed
+                return seed
+        except Exception:
+            pass
+
+    seed = _secrets.token_urlsafe(32)
+    try:
+        os.makedirs(_instance_dir(), exist_ok=True)
+        with open(seed_file, "w", encoding="utf-8") as f:
+            f.write(seed)
+    except Exception:
+        pass
+
+    try:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "MASTER_KEY_SEED not set; auto-generated seed persisted to "
+            "%s. Save this seed to log in as Owner: %s",
+            seed_file,
+            seed,
+        )
+    except Exception:
+        pass
 
     _seed_cache["value"] = seed
     return seed

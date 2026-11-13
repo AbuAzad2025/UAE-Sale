@@ -53,7 +53,6 @@ def list_shipments():
 @permission_required("manage_warehouse")
 def view_shipment(id):
     s = db.get_or_404(Shipment, id)
-    # Sales linked to this shipment (if any)
     from models.sale import Sale
 
     sales = (
@@ -194,7 +193,6 @@ def cancel_shipment(id):
     return redirect(url_for("shipments.view_shipment", id=id))
 
 
-# JSON helpers for Select2 (reuse shipments.js expectations)
 @shipment_bp.route("/api/warehouses")
 @login_required
 def api_warehouses():

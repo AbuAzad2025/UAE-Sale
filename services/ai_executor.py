@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-
 _MISSING_AR = {
     "name": "الاسم",
     "customer_name": "اسم العميل",
@@ -92,12 +91,10 @@ def _find_customer(user, name: str):
     if not name:
         return None
     q = Customer.query.filter_by(is_active=True)
-    # عزل دفاعي صريح فوق ORM
     if user is not None and not getattr(user, "is_owner", False):
         tid = getattr(user, "tenant_id", None)
         if tid:
             q = q.filter(Customer.tenant_id == tid)
-    # أولاً مطابقة تامة ثم جزئية
     exact = q.filter(Customer.name == name).first()
     if exact:
         return exact
@@ -161,12 +158,10 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
             "needs_clarification": False,
         }
 
-    # 1) الصلاحية
     denied = _permission_denied(user, tool_def.permission)
     if denied:
         return {"executed": False, "response": denied, "needs_clarification": False}
 
-    # 2) Tenant (الكتابة فقط)
     is_write = tool not in (
         "get_customer_balance",
         "inventory_status",
@@ -177,7 +172,6 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
     if denied_t:
         return {"executed": False, "response": denied_t, "needs_clarification": False}
 
-    # 3) اكتمال
     if plan.missing_fields:
         return {
             "executed": False,
@@ -185,7 +179,6 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
             "needs_clarification": True,
         }
 
-    # 4) تأكيد للمدمّر
     if tool_def.destructive and not confirmed:
         return {
             "executed": False,
@@ -193,7 +186,6 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
             "needs_clarification": True,
         }
 
-    # 5) التنفيذ
     try:
         from services import ai_commands as cmd
 

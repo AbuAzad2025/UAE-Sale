@@ -44,7 +44,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from extensions import db
 from services.currency_service import CurrencyService
 
-# حل ديناميكي لحسابات GL (عقد Agent 1) مع سقوط آمن إلى الرموز الحرفية الحالية
 try:
     from services.account_resolution import AccountResolver, AccountRole
 except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوازي
@@ -61,7 +60,6 @@ FALLBACK_ACCOUNT_CODES = {
 MONEY_QUANTUM = Decimal("0.01")
 ZERO = Decimal("0.00")
 BALANCE_TOLERANCE = Decimal("0.0001")
-# الحالة التي تكون فيها الفاتورة أو الشراء مُرحَّلة في الأستاذ العام
 POSTED_STATUS = "confirmed"
 
 
@@ -165,7 +163,6 @@ def _approved_returns(sale_ids):
     except Exception:  # pragma: no cover - جدول غير متاح
         return {}
     totals = {}
-    # دفعات صغيرة: SQLite/MySQL تحدّ عدد المتغيرات في استعلام واحد.
     unique_ids = list(dict.fromkeys(sale_ids))
     for start in range(0, len(unique_ids), 400):
         batch = unique_ids[start : start + 400]
@@ -202,10 +199,6 @@ class FXRevaluationService:
     """تجميع الأرصدة المفتوحة بالعملة الأجنبية وإنتاج قيد إعادة تقييم غير محقق."""
 
     REFERENCE_TYPE = "fx_revaluation"
-
-    # ------------------------------------------------------------------
-    # الفترة ومرجع القيد
-    # ------------------------------------------------------------------
 
     @staticmethod
     def base_currency():
@@ -298,10 +291,6 @@ class FXRevaluationService:
             return entry
         return None
 
-    # ------------------------------------------------------------------
-    # جمع الأرصدة
-    # ------------------------------------------------------------------
-
     @staticmethod
     def collect_open_ar_balances(as_of=None):
         """أرصدة عملاء مفتوحة حسب العملة الأجنبية من المبيعات المؤكدة.
@@ -389,7 +378,6 @@ class FXRevaluationService:
             rate = _dec(purchase.exchange_rate)
             if rate <= 0:
                 continue
-            # Correct: convert paid_amount to base currency before subtracting
             paid_base = _dec(purchase.paid_amount or 0) * rate
             carrying = _dec(purchase.amount_base or 0) - paid_base
             carrying = _clamp_non_negative(carrying)
@@ -411,10 +399,6 @@ class FXRevaluationService:
             if str(rate) not in entry["historical_rates"]:
                 entry["historical_rates"].append(str(rate))
         return balances
-
-    # ------------------------------------------------------------------
-    # مسودة القيد
-    # ------------------------------------------------------------------
 
     @staticmethod
     def resolve_rate(currency, base, overrides=None):
@@ -532,14 +516,12 @@ class FXRevaluationService:
                     f"إعادة تقييم ذمم مدينة مفتوحة بعملة {currency}"
                 )
                 lines.append(line_ar)
-            # الالتزام عكس الأصل: زيادة الذمة الدائنة تُسجل دائنًا
             line_ap = _balance_sheet_line(ap_code, "AP_CONTROL", -delta_ap)
             if line_ap:
                 line_ap["description"] = (
                     f"إعادة تقييم ذمم دائنة مفتوحة بعملة {currency}"
                 )
                 lines.append(line_ap)
-            # سطر ربح/خسارة **لكل عملة**: الربح والخسارة لا يلغيان بعضهما.
             if unrealized > 0:
                 lines.append(
                     {
@@ -585,10 +567,6 @@ class FXRevaluationService:
             "balanced": abs(total_debit - total_credit) <= BALANCE_TOLERANCE,
             "journal_entry_id": None,
         }
-
-    # ------------------------------------------------------------------
-    # التشغيل والترحيل
-    # ------------------------------------------------------------------
 
     @staticmethod
     def run_revaluation(rates=None, as_of=None, dry_run=True, created_by=None):
@@ -636,7 +614,6 @@ class FXRevaluationService:
         as_of = result.get("as_of")
         entry_date = _as_of_datetime(as_of) or datetime.now(timezone.utc)
 
-        # حارس الفترة المالية: لا ترحيل إلى فترة مغلقة أو بلا فترة.
         from services.fiscal_period_guard import assert_period_open
 
         assert_period_open(entry_date)

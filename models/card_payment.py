@@ -53,40 +53,32 @@ class CardPayment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # معلومات العميل
     customer_name = db.Column(db.String(200), nullable=False)
     customer_email = db.Column(db.String(200))
     customer_phone = db.Column(db.String(50))
 
-    # معلومات المشترية/التبرع
     transaction_type = db.Column(db.String(20), nullable=False)  # purchase, donation
     package = db.Column(db.String(50))  # للمشتريات
     amount = db.Column(db.Numeric(15, 2), nullable=False)
 
-    # معلومات البطاقة (مشفرة)
     card_last_4 = db.Column(db.String(4))  # آخر 4 أرقام فقط (غير مشفرة)
     card_type = db.Column(db.String(20))  # Visa, Mastercard, Amex
     card_bin = db.Column(db.String(6))  # أول 6 أرقام (BIN)
 
-    # بيانات مشفرة (لا تُحفظ إلا إذا ضروري جداً)
     encrypted_data = db.Column(db.Text)  # بيانات مشفرة إضافية
 
-    # معلومات المعاملة
     transaction_id = db.Column(db.String(200), unique=True, index=True)
     payment_gateway = db.Column(db.String(50))  # stripe, paypal, etc
     gateway_response = db.Column(db.Text)  # JSON response
 
-    # الحالة
     status = db.Column(
         db.String(20), default="pending"
     )  # pending, completed, failed, refunded
 
-    # معلومات الأمان
     ip_address = db.Column(db.String(50))
     user_agent = db.Column(db.String(500))
     country_code = db.Column(db.String(10))
 
-    # Timestamps
     created_at = db.Column(
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -100,7 +92,6 @@ class CardPayment(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # ملاحظات
     notes = db.Column(db.Text)
     admin_notes = db.Column(db.Text)
 
@@ -130,7 +121,6 @@ class CardPayment(db.Model):
 
             clean = str(card_number).replace(" ", "").replace("-", "")
 
-            # SECURITY: cvv intentionally never enters `data` (accept-and-discard)
             data = {
                 "masked_pan": f"****{clean[-4:]}",
                 "token_hash": self._token_hash(clean),
@@ -141,10 +131,8 @@ class CardPayment(db.Model):
             encrypted = cipher.encrypt(json.dumps(data).encode("utf-8")).decode("ascii")
             self.encrypted_data = encrypted
 
-            # حفظ آخر 4 أرقام ونوع البطاقة
             self.card_last_4 = clean[-4:]
 
-            # تحديد نوع البطاقة من BIN
             if clean.startswith("4"):
                 self.card_type = "Visa"
             elif clean.startswith(("51", "52", "53", "54", "55")):
@@ -154,7 +142,6 @@ class CardPayment(db.Model):
             else:
                 self.card_type = "Unknown"
 
-            # حفظ BIN
             self.card_bin = clean[:6] if len(clean) >= 6 else None
 
             return True
@@ -178,7 +165,6 @@ class CardPayment(db.Model):
             raw = cipher.decrypt(self.encrypted_data.encode("ascii"))
             data = json.loads(raw.decode("utf-8"))
         except Exception:
-            # Not decryptable as Fernet → either legacy base64 or corrupt.
             if self._looks_like_legacy_payload():
                 raise ValueError(LEGACY_PAYLOAD_MESSAGE)
             return None
@@ -216,7 +202,6 @@ class CardPayment(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
-        # فقط المالك يمكنه رؤية البيانات المشفرة
         if include_encrypted and current_app.config.get("ALLOW_CARD_DECRYPTION"):
             decrypted = self.decrypt_card_data()
             if decrypted:

@@ -44,10 +44,8 @@ from utils.decorators import assert_same_tenant
 from utils.errors import ValidationError
 from utils.helpers import create_audit_log
 
-# تقريب المبالغ (3 منازل عشرية) — نفس أعمدة Money في قاعدة البيانات
 MONEY_Q = Decimal("0.001")
 
-# سبب افتراضي عندما لا يُذكر سبب (العمود NOT NULL في قاعدة البيانات)
 DEFAULT_REASON = "مديونية مشطوبة"
 
 
@@ -98,10 +96,6 @@ def _apply_balance_delta(customer, delta_base):
 
 
 class WriteOffService:
-    # ------------------------------------------------------------------
-    # creation
-    # ------------------------------------------------------------------
-
     @staticmethod
     def create_writeoff(
         customer,
@@ -142,9 +136,6 @@ class WriteOffService:
 
         base_currency = CurrencyService.get_base_currency()
         currency = (currency or base_currency or "ILS").upper()
-        # Never fetch a live rate implicitly in a posting path: the books
-        # must be reproducible. Foreign write-offs require an explicit rate;
-        # base-currency write-offs always use rate 1.
         if currency != base_currency:
             if exchange_rate in (None, ""):
                 raise ValidationError(
@@ -164,7 +155,6 @@ class WriteOffService:
                 "قيمة المشطوبة بالعملة الأساسية يجب أن تكون أكبر من صفر"
             )
 
-        # عزل المستأجر: لا تُشطب ديون عميل من مستأجر آخر.
         assert_same_tenant(
             customer, message="لا يمكن تنفيذ العملية لعميل من مستأجر آخر"
         )
@@ -176,7 +166,6 @@ class WriteOffService:
             if sale_owner is not None and sale_owner != customer.id:
                 raise ValidationError("الفاتورة المحددة لا تخصّ هذا العميل")
 
-        # الرصيد المستحق — من الاشتقاق الوحيد (models.customer).
         from models.customer import derive_customer_balance
 
         outstanding = derive_customer_balance(customer.id)
@@ -248,7 +237,6 @@ class WriteOffService:
             )
             write_off.gl_entry_id = entry.id
 
-            # الرصيد ينقص بالمبلغ المشطوب — عبر الاشتقاق والكاتب الوحيد.
             _apply_balance_delta(customer, -amount_base)
 
             create_audit_log(
@@ -284,10 +272,6 @@ class WriteOffService:
         except Exception:
             db.session.rollback()
             raise
-
-    # ------------------------------------------------------------------
-    # void
-    # ------------------------------------------------------------------
 
     @staticmethod
     def void_writeoff(write_off, user=None, reason=None) -> WriteOff:
@@ -338,7 +322,6 @@ class WriteOffService:
             write_off.status = WriteOff.STATUS_VOID
             write_off.voided_at = void_date
 
-            # الرصيد يعود كما كان قبل المشطوبة.
             _apply_balance_delta(customer, _dec(write_off.amount_base))
 
             create_audit_log(
@@ -371,10 +354,6 @@ class WriteOffService:
         except Exception:
             db.session.rollback()
             raise
-
-    # ------------------------------------------------------------------
-    # queries
-    # ------------------------------------------------------------------
 
     @staticmethod
     def list_writeoffs(customer=None, status=None, limit=100) -> list:

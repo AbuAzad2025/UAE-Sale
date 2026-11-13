@@ -57,7 +57,6 @@ def sale_tax_totals_mixed(
     std_sum, zero_sum, exempt_sum = split_lines(lines)
     subtotal = std_sum + zero_sum + exempt_sum
     if invoice_treatment in ZERO_TREATMENTS:
-        # المستند كله صفري أو معفى — ائتلاف كامل إلى سلة تلك المعاملة.
         allocable = (subtotal - discount + shipping).quantize(
             MONEY_Q, rounding=ROUND_HALF_UP
         )
@@ -69,8 +68,6 @@ def sale_tax_totals_mixed(
         tax = Decimal("0")
         return tax, Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0")
 
-    # Shipping and global discount are spread over lines in proportion to
-    # their value; zero/exempt lines take no VAT but do take their share.
     std_share = std_sum / subtotal
     zero_share = zero_sum / subtotal
     exempt_share = exempt_sum / subtotal
@@ -167,7 +164,6 @@ def return_tax_parts(
     if inclusive:
         divisor = Decimal("1") + rate / Decimal("100")
         net_std = (std_base / divisor).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-        # نفس منزلة net حتى لا ينكسر net + tax == gross
         tax = (std_base - net_std).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
         return tax, net_std, zero_base, exempt_base
     tax = (std_base * rate / Decimal("100")).quantize(TAX_Q, rounding=ROUND_HALF_UP)

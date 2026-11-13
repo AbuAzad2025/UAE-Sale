@@ -41,9 +41,6 @@ def prefetch_related(instances, relationship_name, related_model):
 
     instance_ids = [instance.id for instance in instances]
 
-    # Resolve the FK on related_model via the relationship's own join
-    # condition — never by table-name convention (e.g. Customer.sales
-    # joins on sales.customer_id, not sales.customers_id).
     fk_column = None
     prop = getattr(
         getattr(type(instances[0]), relationship_name, None), "property", None
@@ -54,7 +51,6 @@ def prefetch_related(instances, relationship_name, related_model):
             break
 
     if fk_column is None:
-        # Unresolvable relationship: fail safe with empty prefetches.
         for instance in instances:
             setattr(instance, f"_prefetched_{relationship_name}", [])
         return instances

@@ -31,8 +31,6 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-
-# شرائح التأخير — المصدر الوحيد لترتيب الشرائح في كل الشاشات والتقارير
 OVERDUE_BUCKETS = ("not_due", "1-30", "31-60", "61-90", "90+")
 
 

@@ -25,7 +25,6 @@ branch_labels = None
 depends_on = None
 
 # Roles that must keep cost visibility under the permission-driven model.
-# owner bypasses the permission check in code, but is granted for consistency.
 COST_PRIVILEGED_ROLE_SLUGS = ("owner", "super_admin", "manager", "developer")
 
 
@@ -56,7 +55,6 @@ def upgrade():
     )
 
     # Ensure the permission row exists (fresh DBs get it from system_init,
-    # but a DB upgraded before 13 may predate the view_costs seed).
     perm = bind.execute(
         sa.select(permissions.c.id).where(permissions.c.code == "view_costs")
     ).scalar()

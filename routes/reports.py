@@ -28,21 +28,12 @@ from services.costing_service import CostingService
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 
-# ═══════════════════════════════════════════════════════════════════════════
-# مساعدات مشتركة مع دفتر الأستاذ (نفس مصدر البيانات ⇒ نفس الأرقام)
-# ═══════════════════════════════════════════════════════════════════════════
 from routes.ledger import (  # noqa: E402  (استيراد بعد تعريف Blueprint)
     _REPORT_BUCKET_KEYS,
     _archived_record_ids,
     _receivables_aging,
 )
 
-# ═══════════════════════════════════════════════════════════════════════════
-# قائمة سماح أعمدة التقارير المخصصة (F8)
-# ═══════════════════════════════════════════════════════════════════════════
-# SECURITY: الأعمدة المسموح عرضها في «التقرير المخصص» محددة صراحةً لكل
-# نموذج. أي عمود غير مذكور هنا لا يُعرض أبداً — حتى لو أُضيف عمود جديد
-# إلى النموذج لاحقاً، فلا يظهر قبل مراجعته هنا.
 _REPORT_FIELD_ALLOWLIST = {
     "sales": (
         "sale_number",
@@ -123,7 +114,6 @@ _REPORT_FIELD_ALLOWLIST = {
     ),
 }
 
-# أعمدة التكلفة — تُضاف فقط لمن يملك صلاحية view_costs
 _REPORT_COST_FIELDS = {
     "products": ("cost_price", "average_cost"),
 }
@@ -155,7 +145,6 @@ def quotation_pipeline():
     if date_to:
         base = base.filter(Quotation.quotation_date <= date_to)
 
-    # Status counts + values
     status_rows = db.session.query(
         Quotation.status,
         func.count(Quotation.id).label("cnt"),
@@ -195,13 +184,11 @@ def quotation_pipeline():
         total_count += info["count"]
         total_value += info["value"]
 
-    # Conversion rate
     accepted = status_map.get("accepted", {}).get("count", 0) + status_map.get(
         "converted", {}
     ).get("count", 0)
     conversion_rate = (accepted / total_count * 100) if total_count else 0.0
 
-    # Top customers by quotation value
     top_customers = (
         db.session.query(
             Customer.name,
@@ -222,13 +209,11 @@ def quotation_pipeline():
         .all()
     )
 
-    # Monthly trend (last 6 months)
     from datetime import date as _d
 
     today = _d.today()
     monthly = []
     for m in range(5, -1, -1):
-        # compute month
         y = today.year
         mo = today.month - m
         while mo <= 0:
@@ -258,7 +243,6 @@ def quotation_pipeline():
             {"label": month_start.strftime("%Y-%m"), "count": cnt, "value": float(val)}
         )
 
-    # Expiring soon (within 7 days, not converted/rejected)
     expiring = (
         Quotation.query.filter(
             Quotation.is_active.is_(True),
@@ -295,8 +279,6 @@ def partners():  # noqa: C901
     date_from = request.args.get("date_from", "", type=str)
     date_to = request.args.get("date_to", "", type=str)
 
-    # --- 1. PRODUCT SHARES CALCULATION (aggregated at DB level) ---
-    # Aggregate sales per product in a single query
     partner_sales_agg = (
         db.session.query(
             SaleLine.product_id,
@@ -352,8 +334,6 @@ def partners():  # noqa: C901
                     partner_share_totals.get(p_id, Decimal("0")) + partner_amount
                 )
 
-    # Find products linked to a merchant
-    # Aggregate merchant sales at DB level
     merchant_sales_agg = (
         db.session.query(
             SaleLine.product_id,
@@ -406,11 +386,8 @@ def partners():  # noqa: C901
                 merchant_share_totals.get(m_id, Decimal("0")) + merchant_amount
             )
 
-    # --- 2. FINANCIAL SUMMARIES (Partners & Merchants) ---
-    # Helper to get payments/receipts
     def get_financials(customer_type, share_totals_dict):
         customers = Customer.query.filter_by(customer_type=customer_type).all()
-        # Aggregate payments and receipts per customer at DB level
         paid_agg = (
             db.session.query(
                 Payment.customer_id, func.sum(Payment.amount_base).label("paid")
@@ -485,11 +462,9 @@ def partners():  # noqa: C901
     partners_summary = get_financials("partner", partner_share_totals)
     merchants_summary = get_financials("merchant", merchant_share_totals)
 
-    # --- 3. SUPPLIERS SUMMARY (aggregated at DB level) ---
     suppliers = Supplier.query.filter_by(is_active=True).all()
     suppliers_summary = []
 
-    # Aggregate purchases per supplier once
     purchase_agg = db.session.query(
         Purchase.supplier_id, func.sum(Purchase.amount_base).label("total_purchases")
     ).filter(Purchase.status == "confirmed")
@@ -504,7 +479,6 @@ def partners():  # noqa: C901
         r.supplier_id: (r.total_purchases or Decimal("0")) for r in purchase_agg
     }
 
-    # Aggregate payments per supplier once
     payment_agg = db.session.query(
         Payment.supplier_id, func.sum(Payment.amount_base).label("total_paid")
     ).filter(Payment.direction == "outgoing")
@@ -515,7 +489,6 @@ def partners():  # noqa: C901
     payment_agg = payment_agg.group_by(Payment.supplier_id).all()
     paid_dict = {r.supplier_id: (r.total_paid or Decimal("0")) for r in payment_agg}
 
-    # Aggregate refunds per supplier once
     refund_agg = db.session.query(
         Payment.supplier_id, func.sum(Payment.amount_base).label("total_refunds")
     ).filter(Payment.direction == "incoming", Payment.supplier_id.isnot(None))
@@ -620,9 +593,6 @@ def purchases():  # noqa: C901
 
     query = Purchase.query.filter_by(status="confirmed")
 
-    # F3: الأرشفة تكتب صفاً في archived_records ولا تقلب is_active ولا
-    # status — فالمشتريات المؤرشفة تبقى 'confirmed' وتُحتسب في التقرير.
-    # لذلك الاستبعاد يجب أن يكون صريحاً (نفس فلتر routes/ledger.py).
     query = query.filter(~Purchase.id.in_(_archived_record_ids("purchases")))
 
     if date_from:
@@ -638,24 +608,20 @@ def purchases():  # noqa: C901
 
     total_amount = Decimal("0")
 
-    # Calculate total purchases amount
     for p in purchases_list:
         amount = p.amount_base or Decimal("0")
         total_amount += amount
-        # Add dummy attributes for template compatibility if not present
         if not hasattr(p, "paid_amount"):
             p.paid_amount = Decimal("0")
         if not hasattr(p, "balance_due"):
             p.balance_due = amount
 
-    # Calculate total paid from Payments table
     from models import Payment
 
     payment_query = Payment.query.filter(
         Payment.direction == "outgoing", Payment.supplier_id.isnot(None)
     )
 
-    # F3: السندات المؤرشفة لا تُحتسب ضمن المدفوع (نفس منطق الاستبعادات).
     payment_query = payment_query.filter(
         ~Payment.id.in_(_archived_record_ids("payments"))
     )
@@ -674,8 +640,6 @@ def purchases():  # noqa: C901
         (p.amount_base or Decimal("0") for p in payments_list), Decimal("0")
     )
 
-    # Total due is rough estimate: Purchases - Payments
-    # Note: This doesn't account for opening balance
     total_due = total_amount - total_paid
 
     stats = {
@@ -685,7 +649,6 @@ def purchases():  # noqa: C901
         "total_due": float(total_due),
     }
 
-    # Get suppliers for filter
     from models import Supplier
 
     suppliers = Supplier.query.filter_by(is_active=True).all()
@@ -715,8 +678,6 @@ def receivables():
 
     aging = _receivables_aging(as_of_date)
 
-    # مفاتيح القالب القديمة (current / days_30 / ...) مع حدود الشرائح
-    # الدقيقة الموثّقة في routes/ledger.py.
     aging_data = {
         _REPORT_BUCKET_KEYS[bucket]: {"sales": [], "total": Decimal("0")}
         for bucket in ("0-30", "31-60", "61-90", "91-120", "over_120")
@@ -761,7 +722,6 @@ def inventory():
     for p in products:
         total_items += p.current_stock or Decimal("0")
         if current_user.can_see_costs():
-            # القيمة الدفترية على أساس المتوسط المتحرك — لا سعر آخر شراء.
             total_value += CostingService.stock_value(p)
 
     summary = {
@@ -770,7 +730,6 @@ def inventory():
         "total_value": float(total_value) if current_user.can_see_costs() else None,
     }
 
-    # SECURITY: cost columns in the template are gated on can_see_costs()
     return render_template(
         "reports/inventory.html",
         products=products,
@@ -824,7 +783,6 @@ def api_model_fields():
 
     model, allowlist_key = entry
 
-    # SECURITY: قائمة السماح الصريحة + أعمدة التكلفة لمن يملك الصلاحية.
     allowed = set(_REPORT_FIELD_ALLOWLIST[allowlist_key])
     if current_user.can_see_costs():
         allowed |= set(_REPORT_COST_FIELDS.get(allowlist_key, ()))
@@ -843,9 +801,7 @@ def api_model_fields():
             date_fields.append(name)
         columns.append(name)
 
-    # كل الحقول (بما فيها التاريخية) هي الخيارات الكاملة.
     all_fields = list(columns)
-    # تاريخية أولاً في القائمة الكاملة لأنها الأكثر استخداماً.
     all_fields = [f for f in date_fields if f in all_fields] + [
         f for f in columns if f not in date_fields
     ]
@@ -899,8 +855,6 @@ def api_entity_search():
             q_filter = q_filter.filter_by(customer_type="partner")
         elif entity_type == "merchant":
             q_filter = q_filter.filter_by(customer_type="merchant")
-        # If 'customer', we search all or just regular? Let's search all if type is generic, or filter if specific.
-        # User dropdown will likely send specific types.
 
         customers = q_filter.limit(10).all()
         for c in customers:
@@ -933,11 +887,9 @@ def entity_report_fragment(type, id):  # noqa: C901
             context["entity"] = entity
             context["type_label"] = "مورد"
 
-            # Balance
             context["balance"] = entity.get_balance_aed()
             context["balance_label"] = "مستحق للمورد"
 
-            # Products (Purchased)
             p_lines = (
                 db.session.query(
                     Product.name,
@@ -964,8 +916,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 for p in p_lines
             ]
 
-            # Invoices (Purchases)
-            # F3: استبعاد المشتريات المؤرشفة (الأرشفة لا تقلب is_active).
             purchases = (
                 Purchase.query.filter_by(supplier_id=id)
                 .filter(~Purchase.id.in_(_archived_record_ids("purchases")))
@@ -984,8 +934,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 for p in purchases
             ]
 
-            # Transactions (Payments TO Supplier)
-            # F3: استبعاد السندات المؤرشفة.
             payments = (
                 Payment.query.filter_by(supplier_id=id)
                 .filter(~Payment.id.in_(_archived_record_ids("payments")))
@@ -1014,11 +962,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 "vip": "VIP",
             }.get(entity.customer_type, "زبون")
 
-            # Balance calculation (Receivables/Payables)
-            # Sales (He took goods) + Payments Out (He took money) - Receipts (He gave money)
-            # F3: الأرشفة تكتب صفاً في archived_records ولا تقلب is_active ولا
-            # status — فالمستند المؤرشف يبقى 'confirmed' ويُحتسب في كشف
-            # الحساب. الاستبعاد هنا صريح (نفس فلتر routes/ledger.py).
             total_sales = (
                 db.session.query(func.sum(Sale.amount_base))
                 .filter(Sale.customer_id == id, Sale.status == "confirmed")
@@ -1033,7 +976,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 .scalar()
                 or 0
             )
-            # Payments made TO customer (e.g. returns/share/drawings)
             total_payments_to = (
                 db.session.query(func.sum(Payment.amount_base))
                 .filter(Payment.customer_id == id, Payment.direction == "outgoing")
@@ -1050,7 +992,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 context["balance"] = abs(context["balance"])
                 context["balance_label"] = "مستحق للعميل"
 
-            # Products (Sold) - Products the customer BOUGHT
             s_lines = (
                 db.session.query(
                     Product.name,
@@ -1077,7 +1018,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 for p in s_lines
             ]
 
-            # IF PARTNER: Fetch products they have a share in (Products they EARN from)
             if entity.customer_type == "partner":
                 shared_products_query = (
                     db.session.query(
@@ -1111,7 +1051,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                         }
                     )
 
-            # IF MERCHANT: Fetch products they own (Products they EARN from)
             if entity.customer_type == "merchant":
                 merchant_products_query = (
                     db.session.query(
@@ -1144,7 +1083,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                         }
                     )
 
-            # Invoices (Sales) — F3: بلا المستندات المؤرشفة
             sales = (
                 Sale.query.filter_by(customer_id=id)
                 .filter(~Sale.id.in_(_archived_record_ids("sales")))
@@ -1163,7 +1101,6 @@ def entity_report_fragment(type, id):  # noqa: C901
                 for s in sales
             ]
 
-            # Transactions (Receipts + Payments) — F3: بلا السندات المؤرشفة
             receipts = (
                 Receipt.query.filter_by(customer_id=id)
                 .filter(~Receipt.id.in_(_archived_record_ids("receipts")))
@@ -1252,11 +1189,6 @@ def top_selling():
     return render_template("reports/top_selling.html", products=products)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PHASE 2: NEW REPORTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
 @reports_bp.route("/inventory-valuation")
 @login_required
 @permission_required("view_reports")
@@ -1275,11 +1207,6 @@ def inventory_valuation():
     warehouse_id = request.args.get("warehouse_id", type=int)
     category_id = request.args.get("category_id", type=int)
 
-    # Schema reality: Product carries one global current_stock column with no
-    # per-product warehouse link; per-warehouse quantities live in StockMovement
-    # (warehouse_id NOT NULL). When a warehouse filter is present we therefore
-    # aggregate net movement quantity per product for that warehouse instead of
-    # using the global stock figure.
     qty_by_product = {}
     if warehouse_id:
         movement_rows = (
@@ -1308,7 +1235,6 @@ def inventory_valuation():
 
     products = products_query.order_by(Product.name).all()
 
-    # Group by category
     categories_data = {}
     total_value = Decimal("0")
     total_qty = Decimal("0")
@@ -1318,9 +1244,6 @@ def inventory_valuation():
             qty = qty_by_product.get(product.id) or Decimal("0")
         else:
             qty = product.current_stock or Decimal("0")
-        # أساس التقييم: المتوسط المتحرك لتكلفة الوحدة (average_cost) —
-        # وهو نفس الأساس الذي يحمله حساب المخزون في الأستاذ العام
-        # (المبلغ المدفوع فعلياً)، فالتقرير يلتقي بالميزانية.
         cost = Decimal(str(product.average_cost or 0))
         if cost <= 0:
             cost = CostingService.current_unit_cost(product)
@@ -1362,15 +1285,6 @@ def inventory_valuation():
     warehouses = Warehouse.query.filter_by(is_active=True).all()
     categories = ProductCategory.query.filter_by(is_active=True).all()
 
-    # F7: قياس فرق المخزون عن الأستاذ العام.
-    # قيمة الإدارة (qty × average_cost) تُقارن بقيد حساب المخزون في
-    # الأستاذ العام — والطرفين على **نفس الأساس** (المبلغ المدفوع
-    # فعلياً، صافي خصم المستند) بعد التحويل إلى المتوسط المتحرك — فالفرق
-    # المقاس فرق حقيقي لا فرق تعريف. خدمة
-    # services/inventory_reconciliation تقيس الفرق: الحركات مقابل
-    # product.current_stock مقابل حساب المخزون في الأستاذ.
-    # القياس يُمرَّر للقالب (يحتاج سطراً في القالب من صاحبه) ويُتاح أيضاً
-    # عبر /reports/inventory-valuation/reconciliation.
     inventory_reconciliation = _inventory_reconciliation_summary()
 
     return render_template(
@@ -1492,14 +1406,10 @@ def ap_aging():
                 f"  {s['supplier'].name}: total={s.get('total')}, overdue={s.get('overdue_total')}"
             )
 
-        # تحويل التقرير إلى التنسيق المتوقع من القالب
         supplier_aging = []
         for supplier_data in report.get("suppliers", []):
             sup = supplier_data["supplier"]
-            # تحديد السلة بناءً على المتأخرات (overdue) للعرض
             overdue = supplier_data.get("overdue_total", 0)
-            # للتوافق مع القالب الحالي نحسب days_old بناءً على أقدم فاتورة
-            # لكن السلة الحقيقية هي overdue_buckets
             supplier_aging.append(
                 {
                     "supplier": sup,
@@ -1681,7 +1591,6 @@ def _vat_report_data(date_from=None, date_to=None):
     """
     from models import ArchivedRecord  # noqa: F401  (مستخدم عبر المساعد)
 
-    # --- المبيعات الخاضعة للضريبة (ضريبة مخرجات) ---
     sales_query = Sale.query.filter(
         Sale.status == "confirmed",
         Sale.is_active.is_(True),
@@ -1717,7 +1626,6 @@ def _vat_report_data(date_from=None, date_to=None):
         invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
         lines = list(sale.lines or [])
         if not lines:
-            # فاتورة بلا سطور — ائتلاف كامل على أساس الفاتورة نفسها.
             gross_base = sale.amount_base or Decimal("0")
             tax_base = Decimal(str(sale.tax_amount or 0)) * fx
             net_all = gross_base - tax_base
@@ -1773,7 +1681,6 @@ def _vat_report_data(date_from=None, date_to=None):
             "gross_amount": sale.amount_base or Decimal("0"),
         }
         if tax_rate == 0 and invoice_treatment == "standard":
-            # فواتير بنسبة صفر بلا تصنيف — لا تُصنّف آلياً.
             unclassified_sales.append(
                 {
                     **base_row,
@@ -1808,11 +1715,8 @@ def _vat_report_data(date_from=None, date_to=None):
                 exempt_sales.append(row)
                 total_exempt_sales += net
 
-    # --- إشعارات الدائنة (المرتجعات) ---
     from models import ProductReturn
 
-    # ProductReturn is not tenant-scoped itself. Join the owning sale and
-    # apply the active scope explicitly, including tenant-less accounts.
     from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
 
     returns_query = ProductReturn.query.join(
@@ -1863,14 +1767,12 @@ def _vat_report_data(date_from=None, date_to=None):
         sale = product_return.sale
         invoice_treatment = getattr(sale, "tax_treatment", None) or "standard"
         if tax_rate == 0 and invoice_treatment == "standard":
-            # المستند كله غامض — تُخصم كامل قيمة المرتجع من سلة غير المصنّف.
             credit_net_by_treatment["unclassified"] += net_base
         else:
             credit_net_by_treatment["standard"] += r_std
             credit_net_by_treatment["zero"] += r_zero
             credit_net_by_treatment["exempt"] += r_exempt
 
-    # --- المشتريات الخاضعة للضريبة (ضريبة مدخلات) ---
     purchases_query = Purchase.query.filter(Purchase.status == "confirmed")
     if date_from:
         purchases_query = purchases_query.filter(
@@ -2015,10 +1917,8 @@ def _vat_report_data(date_from=None, date_to=None):
                 exempt_purchases.append(row)
                 total_exempt_purchases += net
 
-    # Reverse charge: ضريبة المخرجات تُقيّم ذاتياً من المشتري — تُضاف للأرقام
     total_output_vat += total_reverse_charge_vat
 
-    # التجميع حسب النسبة (by rate) — للمبيعات والمشتريات
     rate_map = {}
 
     def _accrue(rate, side, net, tax):
@@ -2052,7 +1952,6 @@ def _vat_report_data(date_from=None, date_to=None):
             entry["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
-    # --- المصروفات (سندات الصرف / مصروف) — نفس منطق المعالجة ---
     from models import Expense
     from services.expense_gl import compute_expense_tax
 
@@ -2132,7 +2031,6 @@ def _vat_report_data(date_from=None, date_to=None):
             entry["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
-    # المرتجعات تخصم من المبيعات الخاضعة ومن ضريبة المخرجات
     total_taxable_sales -= credit_net_by_treatment["standard"]
     total_zero_rated_sales -= credit_net_by_treatment["zero"]
     total_exempt_sales -= credit_net_by_treatment["exempt"]
@@ -2246,11 +2144,6 @@ def vat_report():
     )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# PHASE 3: EXPORT ENDPOINTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
 def _send_export(export_func, filename, format_type):
     """Helper: generate export and return as downloadable file."""
     output = export_func()
@@ -2291,9 +2184,7 @@ def export_inventory_valuation():
     from services.export_service import ExportService
 
     fmt = request.args.get("format", "xlsx")
-    # SECURITY: export carries the same cost columns as the valuation page.
     if not current_user.can_see_costs():
-        # F4: الرفض يُدقَّق أيضاً (لا يُخفى تصدير مرفوض).
         _audit_export(
             "inventory_valuation",
             fmt,
@@ -2335,7 +2226,6 @@ def export_inventory_valuation():
         )
     summary = {"إجمالي الكمية": float(total_qty), "إجمالي القيمة": float(total_value)}
 
-    # F7: لا يُخفى فرق التقييم عن الأستاذ — يُذكر في الملف المُصدَّر.
     reconciliation = _inventory_reconciliation_summary()
     if reconciliation.get("available"):
         summary["رصيد المخزون في الأستاذ العام"] = reconciliation.get("control_balance")
@@ -2485,7 +2375,6 @@ def export_cash_flow():
         "cash_flow", fmt, filters={"date_from": date_from, "date_to": date_to}
     )
 
-    # نفس المصدر الواحد المستخدم في الشاشة — نفس الصفوف ونفس الإجماليات.
     report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
 
     headers = ["القسم", "الحساب", "المدين", "الدائن", "صافي"]
@@ -2546,7 +2435,6 @@ def export_vat_report():  # noqa: C901
         "vat_report", fmt, filters={"date_from": date_from, "date_to": date_to}
     )
 
-    # نفس المصدر الواحد المستخدم في الشاشة ⇒ نفس الصفوف ونفس الإجماليات.
     data = _vat_report_data(date_from, date_to)
     summary = data["summary"]
 
@@ -2856,7 +2744,6 @@ def export_vat_report():  # noqa: C901
             ws3.cell(row=last_row, column=1, value="الشركة").font = Font(italic=True)
             ws3.cell(row=last_row, column=2, value=_report_subtitle)
 
-        # الورقة الأولى يجب أن تكون قابلة للعرض (Excel لا يقبل ورقة بلا عنوان)
         default_sheet = wb["Sheet"]
         wb.remove(default_sheet)
         wb.active = 0
@@ -2868,7 +2755,6 @@ def export_vat_report():  # noqa: C901
 
     def build():
         if fmt == "pdf":
-            # كل قسم بعناوينه الخاصة — لا تختلط صفوف المبيعات والمشتريات
             all_rows = (
                 [["── المبيعات الخاضعة للضريبة ──"] + [""] * 5]
                 + [sales_headers]
@@ -2956,7 +2842,6 @@ def export_vat_report():  # noqa: C901
                 subtitle=_report_subtitle,
             )
         elif fmt == "csv":
-            # كل قسم بعناوينه الخاصة — لا تُدمج المشتريات تحت عناوين المبيعات
             combined = (
                 [["── المبيعات الخاضعة للضريبة ──"] + [""] * 5]
                 + [sales_headers]

@@ -10,7 +10,6 @@ from utils.decorators import tx, get_owned_or_raise
 from utils.errors import ValidationError
 from utils.helpers import generate_number
 
-# تقريب المبالغ (3 منازل عشرية) — نفس أعمدة Money
 MONEY_Q = Decimal("0.001")
 
 
@@ -64,10 +63,6 @@ def write_receipt_audit(action, record_id, changes):
 
 
 class PaymentService:
-    # ------------------------------------------------------------------
-    # F2: التخصيص بالعملة الأساسية (سعر السند الفعلي)
-    # ------------------------------------------------------------------
-
     @staticmethod
     def compute_allocation(
         sale, receipt, remaining_base, remaining_txn, requested_txn=None
@@ -105,7 +100,6 @@ class PaymentService:
             MONEY_Q, rounding=ROUND_HALF_UP
         )
 
-        # أقصى نقد متاح من السند (بالعملة الأساسية)
         cash_base = min(
             remaining_base,
             (remaining_txn * receipt_rate).quantize(MONEY_Q, rounding=ROUND_HALF_UP),
@@ -119,8 +113,6 @@ class PaymentService:
             )
 
         if cash_txn >= sale_remaining_txn:
-            # السند يغطي كامل الفاتورة → الفاتورة تُسوّى بسعرها وتُسجَّل
-            # فروق العملة على حسابات الربح/الخسارة.
             allocated_base = sale_remaining_base
             allocated_txn = sale_remaining_txn
             cash_consumed = (allocated_txn * receipt_rate).quantize(
@@ -130,7 +122,6 @@ class PaymentService:
                 MONEY_Q, rounding=ROUND_HALF_UP
             )
         else:
-            # تسوية جزئية: يُسجَّل النقد الفعلي فقط
             allocated_base = min(cash_base, sale_remaining_base)
             allocated_txn = (allocated_base / receipt_rate).quantize(
                 MONEY_Q, rounding=ROUND_HALF_UP
@@ -202,7 +193,6 @@ class PaymentService:
                 },
             ]
 
-        # ذرّي: فرق العملات يُسجَّل ضمن معاملة إنشاء السند — أي فشل يُرجع السند كله
         GLService.ensure_core_accounts()
         return GLService.post_entry(
             lines,
@@ -254,14 +244,12 @@ class PaymentService:
         if allocated_base <= Decimal("0"):
             return Decimal("0")
 
-        # المدفوع بعملة الأساس (F2) + ما يقابله بعملة الفاتورة
         sale.paid_amount_base = _dec(sale.paid_amount_base) + allocated_base
         if sale_rate > 0:
             sale.paid_amount = (sale.paid_amount_base / sale_rate).quantize(
                 MONEY_Q, rounding=ROUND_HALF_UP
             )
 
-        # المرتجعات المعتمدة تُخصم (تُلغي قيمة الفاتورة)
         from models.sale import compute_sale_returns_base
 
         returns_base = compute_sale_returns_base(sale.id)
@@ -393,7 +381,6 @@ class PaymentService:
         customer = get_owned_or_raise(
             Customer, customer_id, missing_message="العميل غير موجود"
         )
-        # 🔒 Concurrency: lock customer row (balance is derived).
         customer = (
             get_owned_or_raise(Customer, customer.id, for_update=True) or customer
         )
@@ -404,11 +391,8 @@ class PaymentService:
         allocation_summary = []
         auto_fifo = False
 
-        # C4: resolve the allocation mode up-front (before the receipt row is
-        # built) so source_type and audit flags reflect the real behavior.
         allocate_requested = payment_data.get("allocate_to_sales")
         if allocate_requested == {}:
-            # explicit empty dict → force-unallocated
             allocate_to_sales = None
         elif not allocate_requested:
             allocate_to_sales = None
@@ -417,7 +401,6 @@ class PaymentService:
             allocate_to_sales = allocate_requested
 
         try:
-            # Convert cheque_date to date object if it's a string
             if cheque_date and isinstance(cheque_date, str):
                 try:
                     cheque_date = datetime.strptime(cheque_date, "%Y-%m-%d").date()
@@ -432,17 +415,14 @@ class PaymentService:
                 user_rate=user_exchange_rate,
             )
 
-            # F8: شيك تحت التحصيل ليس مؤكَّداً — لا يُسوّي الفاتورة قبل صرفه
             is_cheque = payment_method == "cheque" and bool(cheque_number)
             payment_confirmed = not is_cheque
 
-            # تحديد نوع المصدر والاتجاه
             source_type = "manual"  # افتراضي
             source_id = None
             direction = "incoming"  # سندات القبض دائماً وارد
 
             if allocate_to_sales:
-                # إذا كان مرتبط بفاتورة بيع
                 source_type = "sale"
                 source_id = list(allocate_to_sales.keys())[0]  # أول فاتورة
 
@@ -452,9 +432,6 @@ class PaymentService:
                 source_id=source_id,
                 direction=direction,
                 customer_id=customer.id,
-                # F4: ربط السند بالفاتورة (sale_id) — بدونه كان ارتداد الشيك
-                # لا يعكس الفاتورة إطلاقاً. (sale_id و purchase_id mutually
-                # exclusive — قيد ck_receipt_xor_parent)
                 sale_id=(
                     int(source_id)
                     if source_type == "sale" and source_id and not purchase_id
@@ -474,8 +451,6 @@ class PaymentService:
                 bank_name=bank_name,
                 notes=notes,
                 payment_confirmed=payment_confirmed,
-                # Explicit actor wins; session user next; headless callers
-                # get NULL (never a magic user_id=1 that may not exist).
                 user_id=payment_data.get("user_id")
                 or (
                     current_user.id
@@ -487,7 +462,6 @@ class PaymentService:
             db.session.add(receipt)
             db.session.flush()
 
-            # إنشاء سجل الشيك إذا كانت طريقة الدفع شيك
             if is_cheque:
                 from models import Cheque
 
@@ -511,22 +485,18 @@ class PaymentService:
                 db.session.add(cheque)
                 db.session.flush()
 
-                # ربط الشيك بالسند
                 receipt.cheque_id = cheque.id
                 gl_posted = True
 
-                # استخدام منطق الشيك المحاسبي (شيكات تحت التحصيل -> ذمم مدينة)
                 cheque.receive_cheque()
 
             else:
-                # GL Entry for Standard Receipt (Cash/Bank) — ذرّي مع السند
                 GLService.ensure_core_accounts()
                 payment_account = GLService.get_payment_debit_account(
                     receipt.payment_method
                 )
                 credit_account = GLService.get_customer_credit_account(customer)
 
-                # Create GL entries
                 lines = [
                     {
                         "account": payment_account,
@@ -550,7 +520,6 @@ class PaymentService:
                 gl_posted = True
                 gl_entry_ref = entry.entry_number
 
-            # Allocation Logic (Restored) — F2/F8/F9
             remaining_base = _dec(receipt.amount_base)
             remaining_txn = _dec(receipt.amount)
             stored_allocations = []
@@ -571,8 +540,6 @@ class PaymentService:
                         remaining_base = Decimal("0")
                     if remaining_txn < Decimal("0"):
                         remaining_txn = Decimal("0")
-                    # F8: السند غير المؤكّد (شيك تحت التحصيل) لا يُسوّي
-                    # الفاتورة الآن — يُحفظ التخصيص ليُطبَّق عند التأكيد.
                     if payment_confirmed:
                         PaymentService._commit_allocation(sale, receipt, plan)
                     stored_allocations.append(
@@ -608,9 +575,6 @@ class PaymentService:
                     if not sale or sale.customer_id != customer.id:
                         continue
 
-                    # F7: تحذير عند اختلاف عملة السند عن عملة الفاتورة —
-                    # التخصيص يتم بسعر السند (النقد الفعلي) ويُرحَّل فرق
-                    # العملة على حسابات الربح/الخسارة.
                     if (
                         sale.currency
                         and currency
@@ -626,7 +590,6 @@ class PaymentService:
                     _allocate(sale, Decimal(str(allocated)))
 
             elif auto_fifo:
-                # C4 auto-FIFO: oldest open sales first, same internal loop.
                 for sale in PaymentService.get_unpaid_sales(customer):
                     if remaining_txn <= 0:
                         break
@@ -636,21 +599,13 @@ class PaymentService:
 
                     _allocate(sale, None)
 
-            # F9: حفظ التخصيصات (JSON) لكل فاتورة — تُستعمل لعكس التخصيصات
-            # عند حذف السند وتطبيقها عند تأكيد شيك تحت التحصيل.
             receipt.set_allocations(stored_allocations)
 
-            # F4: اربط السند بأول فاتورة تخصّص لها (مهم في التخصيص التلقائي
-            # FIFO حيث لا يوجد مصدر مسبق) — بدونه لا يعكس ارتداد الشيك الفاتورة.
-            # (source_type يبقى كما هو: 'manual' يعني "تخصيص تلقائي" وليس
-            #  تخصيصاً صريحاً — عقد C4)
             if receipt.sale_id is None and stored_allocations:
                 receipt.sale_id = int(stored_allocations[0]["sale_id"])
 
             db.session.flush()
 
-            # F1: رصيد العميل يُشتق من مصدره الواحد (المستمع يعيد الاحتساب
-            # بعد تحديث الفاتورة) — لا زيادة تدريجية هنا.
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
@@ -701,10 +656,6 @@ class PaymentService:
                 },
             )
             raise
-
-    # ------------------------------------------------------------------
-    # F8 — استرداد نقدي للعميل + ضبط يدوي للرصيد
-    # ------------------------------------------------------------------
 
     @staticmethod
     def create_refund(
@@ -823,14 +774,12 @@ class PaymentService:
                 exchange_rate=rate,
             )
         except Exception as e:
-            # fail-closed: لا سند بلا قيد (وإلا نقد بلا أثر محاسبي).
             db.session.rollback()
             current_app.logger.error(
                 f"Refund posting failed for customer {customer.id}: {e}"
             )
             raise
 
-        # F1: رصيد العميل من مصدره الواحد (لا زيادة يدوية).
         from models.customer import recompute_customer_balance
 
         recompute_customer_balance(customer.id)
@@ -903,15 +852,12 @@ class PaymentService:
         difference = (target - old_derived).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
         if difference != Decimal("0"):
-            # التثبيت داخل الاشتقاق: يُضاف الفرق (بالعملة الأساسية)
-            # إلى الرصيد الافتتاحي — وهو البند القابل للزيادة.
             rate = _dec(customer.opening_balance_rate, "1") or Decimal("1")
             if rate <= 0:
                 rate = Decimal("1")
             customer.opening_balance = (
                 _dec(customer.opening_balance) + (difference / rate)
             ).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-            # flush: الاشتقاق يقرأ من القاعدة (Core).
             db.session.flush()
 
         new_value = recompute_customer_balance(customer.id)
@@ -999,7 +945,6 @@ class PaymentService:
                         remaining_base = Decimal("0")
                     if remaining_txn < Decimal("0"):
                         remaining_txn = Decimal("0")
-                    # F8: لا تخصيص فعلي قبل التأكيد
                     if receipt.payment_confirmed:
                         PaymentService._commit_allocation(sale, receipt, result)
                     stored.append(
@@ -1018,7 +963,6 @@ class PaymentService:
 
             remaining_after = remaining_txn
 
-            # F9: حفظ التخصيصات
             receipt.set_allocations(stored)
 
             db.session.flush()

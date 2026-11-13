@@ -15,8 +15,6 @@ logger = logging.getLogger(__name__)
 class ApprovalService:
     """Configurable multi-level approval workflow service."""
 
-    # ── Find matching workflow ───────────────────────────────────────────
-
     @staticmethod
     def find_workflow(entity_type, amount):
         """
@@ -33,8 +31,6 @@ class ApprovalService:
             if wf.matches(entity_type, amount):
                 return wf
         return None
-
-    # ── Submit a new approval request ────────────────────────────────────
 
     @staticmethod
     def submit(
@@ -64,7 +60,6 @@ class ApprovalService:
         db.session.add(request)
         db.session.flush()
 
-        # Create approval level entries based on workflow levels
         role_map = {1: "manager", 2: "owner"}
         for level_num in range(1, workflow.levels_required + 1):
             role = role_map.get(level_num, "admin")
@@ -95,8 +90,6 @@ class ApprovalService:
         )
         return request
 
-    # ── Approve at current level ─────────────────────────────────────────
-
     @staticmethod
     def approve(request_id, approver_id, notes=None):
         """
@@ -110,7 +103,6 @@ class ApprovalService:
         if request.status != "pending":
             return False, f"الطلب {request.status_ar}"
 
-        # Find the current pending level
         current_level = (
             ApprovalLevel.query.filter_by(request_id=request_id, status="pending")
             .order_by(ApprovalLevel.level)
@@ -120,7 +112,6 @@ class ApprovalService:
         if not current_level:
             return False, "لا توجد خطوة معلقة"
 
-        # Update the level
         current_level.approved_by = approver_id
         current_level.status = "approved"
         current_level.approved_at = datetime.now(timezone.utc)
@@ -136,7 +127,6 @@ class ApprovalService:
             changes={"level": current_level.level, "approver_id": approver_id},
         )
 
-        # Check if all levels are now approved
         workflow = request.workflow
         required = workflow.levels_required if workflow else 1
         approved_count = sum(
@@ -146,7 +136,6 @@ class ApprovalService:
         )
 
         if approved_count >= required:
-            # Fully approved
             request.status = "approved"
             request.resolved_at = datetime.now(timezone.utc)
             db.session.flush()
@@ -154,15 +143,12 @@ class ApprovalService:
             ApprovalService._on_approved(request)
             return True, "تمت الموافقة على الطلب بالكامل ✅"
         else:
-            # Move to next level
             request.current_level = current_level.level + 1
             db.session.flush()
             return (
                 True,
                 f"تمت الموافقة على الخطوة {current_level.level} — في انتظار الخطوة {request.current_level}",
             )
-
-    # ── Reject ───────────────────────────────────────────────────────────
 
     @staticmethod
     def reject(request_id, approver_id, notes=None):
@@ -201,8 +187,6 @@ class ApprovalService:
         ApprovalService._on_rejected(request)
         return True, "تم رفض الطلب ❌"
 
-    # ── Cancel ───────────────────────────────────────────────────────────
-
     @staticmethod
     def cancel(request_id, user_id):
         """Cancel a pending request (requester or admin only)."""
@@ -217,14 +201,9 @@ class ApprovalService:
         db.session.flush()
         return True, "تم إلغاء الطلب"
 
-    # ── Hooks: what happens after approval/rejection ─────────────────────
-
     @staticmethod
     def _on_approved(request):
         """Post-approval actions. Called after full approval."""
-        # For sales: the sale can now proceed normally
-        # For payments: the payment can be confirmed
-        # Currently just logs — hooks can be extended per entity type
         logger.info(
             f"Approval flow completed for {request.entity_type}#{request.entity_id}"
         )
@@ -233,8 +212,6 @@ class ApprovalService:
     def _on_rejected(request):
         """Post-rejection actions."""
         logger.info(f"Approval rejected for {request.entity_type}#{request.entity_id}")
-
-    # ── Query helpers ────────────────────────────────────────────────────
 
     @staticmethod
     def get_pending_for_user(user):

@@ -33,13 +33,11 @@ def register_all_listeners():
     تسجيل جميع المستمعات التلقائية
     يجب استدعاء هذه الدالة في app.py بعد تعريف Models
     """
-    # المستمعات الأساسية للعمليات المالية
     register_sale_listeners()
     register_receipt_listeners()
     register_purchase_listeners()
     register_payment_listeners()
 
-    # المستمعات الإضافية الشاملة
     register_stock_movement_listeners()
     register_cheque_listeners()
     register_product_return_listeners()
@@ -48,8 +46,6 @@ def register_all_listeners():
     register_validation_listeners()
     register_audit_listeners()
 
-    # مستمعات المساعد الذكي (AI) — تُفعّل في بيئة التطوير فقط
-    # في الإنتاج، تسبب هذه المستمعات بطء شديد عند كل عملية قاعدة بيانات
     import os
 
     app_env = os.environ.get("APP_ENV", "production").lower()
@@ -62,17 +58,11 @@ def register_all_listeners():
             "[OK] AI + Neural listeners DISABLED (production environment — use services/ for AI)"
         )
 
-    # مستمعات القيود المحاسبية التلقائية
     register_automatic_gl_listeners()
 
     logger.info(
         "[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled"
     )
-
-
-# ============================================================================
-# Sale Listeners - مستمعات الفواتير
-# ============================================================================
 
 
 def register_sale_listeners():  # noqa: C901
@@ -94,11 +84,9 @@ def register_sale_listeners():  # noqa: C901
         المصدر الوحيد لرصيد العميل (models/customer.recompute_customer_balance)
         فكل مسارات الكتابة تنتج نفس القيمة.
         """
-        # لا نفعل شيء إذا كانت الفاتورة ملغية أو محذوفة
         if not target.is_active or target.status == "cancelled":
             return
 
-        # تحديث رصيد العميل تلقائياً
         try:
             from models.customer import recompute_customer_balance
 
@@ -143,11 +131,6 @@ def register_sale_listeners():  # noqa: C901
             logger.warning(f"Failed to log sale deletion: {e}")
 
 
-# ============================================================================
-# Receipt Listeners - مستمعات سندات القبض
-# ============================================================================
-
-
 def register_receipt_listeners():
     """تسجيل مستمعات سندات القبض"""
     from models import Receipt
@@ -185,13 +168,6 @@ def register_receipt_listeners():
         logger.warning(
             f"Attempted to delete receipt {target.receipt_number} - use cancellation instead"
         )
-        # يمكن رفع استثناء هنا لمنع الحذف:
-        # raise ValueError("لا يمكن حذف سندات القبض، يجب إلغاؤها بدلاً من ذلك")
-
-
-# ============================================================================
-# Purchase Listeners - مستمعات المشتريات
-# ============================================================================
 
 
 def register_purchase_listeners():
@@ -227,11 +203,6 @@ def register_purchase_listeners():
             logger.error(f"❌ Failed to auto-update supplier totals: {e}")
 
 
-# ============================================================================
-# Payment Listeners - مستمعات سندات الصرف
-# ============================================================================
-
-
 def register_payment_listeners():
     """تسجيل مستمعات سندات الصرف"""
     from models import Payment
@@ -247,7 +218,6 @@ def register_payment_listeners():
         what we owe the supplier.
         """
         try:
-            # ---- المورد (F6) -------------------------------------------
             if target.supplier_id is not None:
                 logger.info(
                     f"💰 Payment created - amount: {target.amount_base} AED to supplier {target.supplier_id}"
@@ -263,7 +233,6 @@ def register_payment_listeners():
                 except Exception as e:
                     logger.error(f"❌ Failed to auto-update supplier on payment: {e}")
 
-            # ---- فاتورة الشراء المرتبطة (F3) ---------------------------
             if target.purchase_id is not None:
                 try:
                     from models.purchase import Purchase as _Purchase
@@ -287,7 +256,6 @@ def register_payment_listeners():
                             .where(_Purchase.__table__.c.id == target.purchase_id)
                             .values(paid_amount=paid, payment_status=status)
                         )
-                        # مزامنة ذاكرة هوية الجلسة
                         try:
                             from sqlalchemy.orm.attributes import set_committed_value
                             from sqlalchemy.orm.util import identity_key
@@ -304,15 +272,12 @@ def register_payment_listeners():
                 except Exception as e:
                     logger.error(f"❌ Failed to update purchase settlement: {e}")
 
-            # ---- فاتورة البيع المرتبطة (F2/F8) --------------------------
             if target.sale_id is not None:
                 try:
                     from models.sale import recompute_sale_settlement
 
                     recompute_sale_settlement(target.sale_id, connection=connection)
 
-                    # F1: رصيد العميل يُشتق من مصدره الواحد (الكتابة عبر Core
-                    # لا تُطلق مستمع التحديث → نعيد الاحتساب صراحةً).
                     from models.customer import recompute_customer_balance
                     from models.sale import Sale as _Sale
 
@@ -328,9 +293,6 @@ def register_payment_listeners():
                 except Exception as e:
                     logger.error(f"❌ Failed to update sale settlement: {e}")
 
-            # ---- العميل (F11) ------------------------------------------
-            # استرداد/سحب للعميل بلا فاتورة مرتبطة: هو الذي كان يُهمَل
-            # فيستثني الذمم المدينة بكل استرداد.
             if target.customer_id is not None and target.sale_id is None:
                 try:
                     from models.customer import recompute_customer_balance
@@ -369,11 +331,6 @@ def _purchase_paid_base(purchase_id, connection):
     return total.quantize(Decimal("0.001"))
 
 
-# ============================================================================
-# Utility Functions - دوال مساعدة
-# ============================================================================
-
-
 def validate_decimal_precision(value, max_digits=15, decimal_places=3):
     """
     التحقق من دقة الأرقام العشرية
@@ -392,11 +349,9 @@ def validate_decimal_precision(value, max_digits=15, decimal_places=3):
     try:
         decimal_value = Decimal(str(value))
 
-        # فحص عدد الخانات العشرية
         if abs(decimal_value.as_tuple().exponent) > decimal_places:
             return False
 
-        # فحص إجمالي الأرقام
         total_digits = len(decimal_value.as_tuple().digits)
         if total_digits > max_digits:
             return False
@@ -426,21 +381,17 @@ def ensure_balance_consistency(connection, model, record_id):
         dict: {'stored': Decimal, 'calculated': Decimal, 'consistent': bool}
               (وللمورد: مفاتيح paid إضافية)
     """
-    # هذه دالة مساعدة يمكن استخدامها في Listeners
-    # لمقارنة الأرصدة المخزنة مع المحسوبة
 
     try:
         from models import Customer, Supplier
 
         if model == Customer:
-            # F1/F12: نفس المصدر الواحد لرصيد العميل
             from models.customer import derive_customer_balance
 
             calculated_balance = derive_customer_balance(
                 record_id, connection=connection
             )
 
-            # الحصول على الرصيد المخزن
             customer = connection.execute(
                 Customer.__table__.select().where(Customer.id == record_id)
             ).first()
@@ -455,7 +406,6 @@ def ensure_balance_consistency(connection, model, record_id):
             }
 
         if model == Supplier:
-            # F6/F12: نفس المصدر الواحد لإحصائيات المورد
             from models.supplier import derive_supplier_totals
 
             total_purchases, total_paid = derive_supplier_totals(
@@ -485,12 +435,6 @@ def ensure_balance_consistency(connection, model, record_id):
         return {"stored": None, "calculated": None, "consistent": None}
 
 
-# ============================================================================
-# Example: Advanced Listener with Transaction Handling
-# مثال: مستمع متقدم مع معالجة المعاملات
-# ============================================================================
-
-
 def register_advanced_sale_listener():
     """
     مثال على مستمع متقدم مع معالجة المعاملات
@@ -517,7 +461,6 @@ def register_advanced_sale_listener():
             return
 
         try:
-            # F9: المصدر الوحيد لرصيد العميل
             from models.customer import recompute_customer_balance
 
             new_balance = recompute_customer_balance(
@@ -530,17 +473,6 @@ def register_advanced_sale_listener():
 
         except Exception as e:
             logger.error(f"Failed to auto-update customer balance: {e}")
-            # لا نرفع الاستثناء لتجنب إيقاف العملية الأساسية
-
-
-# ============================================================================
-# Example: Validation Listener
-# مثال: مستمع للتحقق من البيانات
-# ============================================================================
-
-# ============================================================================
-# Stock Movement Listeners - مستمعات حركات المخزون
-# ============================================================================
 
 
 def register_stock_movement_listeners():
@@ -577,11 +509,6 @@ def register_stock_movement_listeners():
             logger.error(f"❌ Failed to log stock movement: {e}")
 
 
-# ============================================================================
-# Cheque Listeners - مستمعات الشيكات
-# ============================================================================
-
-
 def register_cheque_listeners():  # noqa: C901
     """تسجيل مستمعات الشيكات"""
     from models import Cheque
@@ -592,7 +519,6 @@ def register_cheque_listeners():  # noqa: C901
     def auto_update_cheque_status(mapper, connection, target):
         """تحديث تلقائي لحالة الشيك حسب التاريخ"""
         try:
-            # إذا كان الشيك pending وتجاوز تاريخ الاستحقاق
             if target.status == "pending" and target.due_date:
                 if isinstance(target.due_date, datetime):
                     due = target.due_date.date()
@@ -601,7 +527,6 @@ def register_cheque_listeners():  # noqa: C901
 
                 today = date.today()
 
-                # إذا تجاوز تاريخ الاستحقاق بـ 7 أيام → تحت التحصيل
                 days_overdue = (today - due).days
 
                 if days_overdue > 7:
@@ -616,7 +541,6 @@ def register_cheque_listeners():  # noqa: C901
     def auto_log_cheque_status_change(mapper, connection, target):
         """تسجيل تغييرات حالة الشيك"""
         try:
-            # تسجيل تغيير الحالة
             if target.status in ["cleared", "bounced"]:
                 status_ar = "تم الصرف" if target.status == "cleared" else "مرتد"
                 logger.info(
@@ -625,11 +549,6 @@ def register_cheque_listeners():  # noqa: C901
 
         except Exception as e:
             logger.error(f"❌ Failed to log cheque status change: {e}")
-
-
-# ============================================================================
-# Product Return Listeners - مستمعات الإرجاعات
-# ============================================================================
 
 
 def register_product_return_listeners():
@@ -645,9 +564,6 @@ def register_product_return_listeners():
                     f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement"
                 )
 
-            # F1/F3: المرتجع المعتمد يُلغي قيمة الفاتورة فينقص رصيد
-            # العميل — والاشتقاق هو المصدر الوحيد للرصيد
-            # (models/customer.recompute_customer_balance).
             if target.status == "approved" and target.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -655,11 +571,6 @@ def register_product_return_listeners():
 
         except Exception as e:
             logger.error(f"❌ Failed to process product return: {e}")
-
-
-# ============================================================================
-# Expense Listeners - مستمعات المصروفات
-# ============================================================================
 
 
 def register_expense_listeners():
@@ -680,11 +591,6 @@ def register_expense_listeners():
             logger.error(f"❌ Failed to log expense: {e}")
 
 
-# ============================================================================
-# GL (General Ledger) Listeners - مستمعات دفتر الأستاذ
-# ============================================================================
-
-
 def _journal_line_totals(target, connection):
     """مجموع (مدين، دائن) لسطور القيد + هل السطور مرئية؟
 
@@ -698,7 +604,6 @@ def _journal_line_totals(target, connection):
     credit = Decimal("0")
     has_lines = False
 
-    # 1) سطور مُعلّقة في الجلسة مرتبطة بهذا القيد
     try:
         from extensions import db
 
@@ -713,7 +618,6 @@ def _journal_line_totals(target, connection):
     if has_lines:
         return debit, credit, True
 
-    # 2) سطور محفوظة (تحديث قيد قائم)
     if getattr(target, "id", None) is not None:
         from sqlalchemy import select
 
@@ -756,7 +660,6 @@ def register_gl_listeners():
         debit, credit, has_lines = _journal_line_totals(target, connection)
 
         if not has_lines:
-            # لا سطور مرئية بعد → قارن إجماليات الرأس (خط دفاع أخير).
             debit = target.total_debit or Decimal("0")
             credit = target.total_credit or Decimal("0")
             source = "إجماليات الرأس"
@@ -779,11 +682,6 @@ def register_gl_listeners():
         )
 
 
-# ============================================================================
-# Validation Listeners - مستمعات التحقق من البيانات
-# ============================================================================
-
-
 def register_validation_listeners():  # noqa: C901
     """تسجيل مستمعات التحقق من البيانات"""
     from models import Sale, Purchase, Receipt, Payment, Product
@@ -793,12 +691,9 @@ def register_validation_listeners():  # noqa: C901
     def validate_sale_amounts(mapper, connection, target):
         """التحقق من صحة مبالغ الفاتورة"""
         try:
-            # التحقق من المبالغ
             if target.amount_base and target.amount_base < 0:
                 logger.error(f"❌ Sale {target.sale_number}: Negative amount detected!")
 
-            # التحقق من الرصيد المتبقي — بنفس صيغة الاشتقاق الواحدة
-            # (amount_base − paid_amount_base − المرتجعات المعتمدة).
             if target.paid_amount_base and target.amount_base:
                 expected_balance = target.amount_base - target.paid_amount_base
                 try:
@@ -810,13 +705,11 @@ def register_validation_listeners():  # noqa: C901
                         )
                 except Exception:
                     pass
-                # لا يمكن أن يكون الرصيد سالباً (قيد ck_sale_balance_non_negative)
                 if expected_balance < Decimal("0"):
                     expected_balance = Decimal("0")
                 if target.balance_due and abs(
                     target.balance_due - expected_balance
                 ) > Decimal("0.01"):
-                    # تصحيح تلقائي
                     target.balance_due = expected_balance
                     logger.warning(
                         f"⚠️ Sale {target.sale_number}: Balance auto-corrected to {expected_balance}"
@@ -886,11 +779,6 @@ def register_validation_listeners():  # noqa: C901
             )
 
 
-# ============================================================================
-# Audit Listeners - مستمعات التدقيق
-# ============================================================================
-
-
 def register_audit_listeners():
     """تسجيل مستمعات التدقيق للعمليات الحساسة"""
     from models import Sale, Purchase, Receipt, Payment
@@ -922,11 +810,6 @@ def register_audit_listeners():
         logger.warning(f"🗑️ DELETED: Payment - Amount: {target.amount_base} AED")
 
 
-# ============================================================================
-# AI (Artificial Intelligence) Listeners - مستمعات الذكاء الاصطناعي
-# ============================================================================
-
-
 def register_ai_listeners():
     """تسجيل مستمعات الذكاء الاصطناعي المتقدمة"""
     register_ai_learning_listeners()
@@ -935,11 +818,6 @@ def register_ai_listeners():
     register_ai_accounting_listeners()
     register_ai_predictive_listeners()
     register_intelligent_assistant_listeners()  # 🧠 المساعد الذكي الحقيقي
-
-
-# ============================================================================
-# AI Learning Listeners - مستمعات التعلم الذكي
-# ============================================================================
 
 
 def register_ai_learning_listeners():  # noqa: C901
@@ -955,14 +833,12 @@ def register_ai_learning_listeners():  # noqa: C901
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # بيانات التعلم
             day_of_week = (
                 target.sale_date.strftime("%A") if target.sale_date else "Unknown"
             )
             hour = target.sale_date.hour if target.sale_date else 0
             month = target.sale_date.month if target.sale_date else 0
 
-            # البيانات التجارية
             learning_data = {
                 "sale_id": target.id,
                 "customer_id": target.customer_id,
@@ -982,10 +858,8 @@ def register_ai_learning_listeners():  # noqa: C901
                 },
             }
 
-            # استخدام نظام التعلم الموجود
             learning_system = AzadLearningSystem()
 
-            # تعلم النمط
             learning_system.learn_from_interaction(
                 question="Sale pattern analysis",
                 response=json.dumps(learning_data),
@@ -1010,7 +884,6 @@ def register_ai_learning_listeners():  # noqa: C901
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تحليل متعدد الأبعاد
             customer_insights = {
                 "customer_id": target.id,
                 "balance": float(target.balance or 0),
@@ -1019,24 +892,20 @@ def register_ai_learning_listeners():  # noqa: C901
                 "credit_limit": float(target.credit_limit or 0),
             }
 
-            # التنبيهات الذكية
             alerts = []
 
-            # 1. رصيد عالي
             if target.balance and target.balance > Decimal("10000"):
                 alerts.append("high_balance")
                 logger.info(
                     f"🤖 AI Priority: Customer {target.id} - High balance: {target.balance} AED"
                 )
 
-            # 2. تجاوز حد الائتمان
             if target.balance > target.credit_limit and target.credit_limit > 0:
                 alerts.append("credit_limit_exceeded")
                 logger.warning(
                     f"🤖 AI Alert: Customer {target.id} exceeded credit limit!"
                 )
 
-            # 3. ترقية التصنيف
             if (
                 target.total_purchases > 100000
                 and target.customer_classification != "vip"
@@ -1046,7 +915,6 @@ def register_ai_learning_listeners():  # noqa: C901
                     f"🤖 AI Insight: Customer {target.id} qualifies for VIP upgrade!"
                 )
 
-            # التعلم من السلوك
             try:
                 learning_system = AzadLearningSystem()
                 learning_system.learn_from_interaction(
@@ -1072,7 +940,6 @@ def register_ai_learning_listeners():  # noqa: C901
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # بيانات المنتج
             product_data = {
                 "product_id": target.id,
                 "name": target.name,
@@ -1087,7 +954,6 @@ def register_ai_learning_listeners():  # noqa: C901
                 ),
             }
 
-            # التعلم من أداء المنتج
             learning_system = AzadLearningSystem()
             learning_system.learn_from_interaction(
                 question=f"Product performance - {target.name}",
@@ -1096,7 +962,6 @@ def register_ai_learning_listeners():  # noqa: C901
                 context={"type": "product_performance", "product_id": target.id},
             )
 
-            # تحذيرات ذكية
             if target.current_stock < target.min_stock_alert:
                 logger.warning(
                     f"🤖 AI Reorder Alert: Product {target.name} - Stock: {target.current_stock}"
@@ -1116,13 +981,11 @@ def register_ai_learning_listeners():  # noqa: C901
         - تغيير سعر كبير
         """
         try:
-            # مخزون منخفض جداً
             if target.current_stock and target.current_stock < target.min_stock_alert:
                 logger.warning(
                     f"🤖 AI Alert: Product {target.id} ({target.name}) - Low stock: {target.current_stock}"
                 )
 
-            # مخزون راكد (عالي جداً)
             if target.current_stock and target.current_stock > 1000:
                 logger.warning(
                     f"🤖 AI Alert: Product {target.id} ({target.name}) - High stock: {target.current_stock} - Possible slow-moving item"
@@ -1143,14 +1006,12 @@ def register_ai_learning_listeners():  # noqa: C901
             anomalies = []
             insights = []
 
-            # 1. كشف المبالغ الكبيرة
             if target.amount_base and target.amount_base > Decimal("50000"):
                 anomalies.append("large_amount")
                 logger.warning(
                     f"🤖 AI Anomaly: Large sale! {target.sale_number} - {target.amount_base} AED"
                 )
 
-            # 2. كشف الخصومات الكبيرة
             if target.discount_amount and target.subtotal:
                 discount_percent = (target.discount_amount / target.subtotal) * 100
                 if discount_percent > Decimal("50"):
@@ -1159,7 +1020,6 @@ def register_ai_learning_listeners():  # noqa: C901
                         f"🤖 AI Anomaly: Large discount! {target.sale_number} - {discount_percent:.1f}%"
                     )
 
-            # 3. تحليل الربحية
             if target.lines:
                 total_cost = sum(
                     line.cost_price * line.quantity
@@ -1181,7 +1041,6 @@ def register_ai_learning_listeners():  # noqa: C901
                             f"🤖 AI Insight: Excellent profit! {target.sale_number} - {margin_percent:.1f}%"
                         )
 
-            # التعلم من التحليل
             learning_system = AzadLearningSystem()
             learning_system.learn_from_interaction(
                 question=f"Sale analysis - {target.sale_number}",
@@ -1192,11 +1051,6 @@ def register_ai_learning_listeners():  # noqa: C901
 
         except Exception as e:
             logger.error(f"❌ AI sale analysis failed: {e}")
-
-
-# ============================================================================
-# AI Linguistic Listeners - مستمعات التعلم اللغوي
-# ============================================================================
 
 
 def register_ai_linguistic_listeners():
@@ -1212,7 +1066,6 @@ def register_ai_linguistic_listeners():
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تعلم المصطلحات التقنية
             terminology = {
                 "arabic": target.name_ar or target.name,
                 "english": target.name,
@@ -1242,7 +1095,6 @@ def register_ai_linguistic_listeners():
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تعلم الأسماء باللغتين
             names_data = {
                 "arabic_name": target.name,
                 "english_name": target.name_ar,
@@ -1265,11 +1117,6 @@ def register_ai_linguistic_listeners():
             logger.error(f"❌ AI name learning failed: {e}")
 
 
-# ============================================================================
-# AI Professional Listeners - مستمعات التعلم المهني
-# ============================================================================
-
-
 def register_ai_professional_listeners():
     """
     مستمعات التعلم المهني - تعلم الممارسات التجارية
@@ -1283,7 +1130,6 @@ def register_ai_professional_listeners():
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تحليل الممارسة التجارية
             practice_data = {
                 "sale_number": target.sale_number,
                 "payment_terms": {
@@ -1308,7 +1154,6 @@ def register_ai_professional_listeners():
                 "tax_applied": target.tax_amount > 0 if target.tax_amount else False,
             }
 
-            # التعلم من الممارسة
             learning_system = AzadLearningSystem()
             learning_system.learn_from_interaction(
                 question="Sales practice analysis",
@@ -1330,7 +1175,6 @@ def register_ai_professional_listeners():
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تحليل استراتيجية الشراء
             procurement_data = {
                 "supplier_id": target.supplier_id,
                 "amount": float(target.amount_base),
@@ -1359,7 +1203,6 @@ def register_ai_professional_listeners():
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # تحليل نمط المصروف
             expense_data = {
                 "category_id": target.category_id,
                 "amount": float(target.amount_base),
@@ -1388,11 +1231,6 @@ def register_ai_professional_listeners():
             logger.error(f"❌ AI expense learning failed: {e}")
 
 
-# ============================================================================
-# AI Accounting Listeners - مستمعات التعلم المحاسبي
-# ============================================================================
-
-
 def register_ai_accounting_listeners():  # noqa: C901
     """
     مستمعات التعلم المحاسبي - تعلم المبادئ المحاسبية
@@ -1407,13 +1245,11 @@ def register_ai_accounting_listeners():  # noqa: C901
             from ai_knowledge.learning_system import AzadLearningSystem
             from sqlalchemy import inspect
 
-            # التحقق الآمن من السطور لتجنب تعارض الجلسة
             lines_count = 0
             ins = inspect(target)
             if "lines" not in ins.unloaded:
                 lines_count = len(target.lines)
 
-            # تحليل القيد المحاسبي
             entry_data = {
                 "entry_number": target.entry_number,
                 "total_debit": float(target.total_debit or 0),
@@ -1426,7 +1262,6 @@ def register_ai_accounting_listeners():  # noqa: C901
                 "lines_count": lines_count,
             }
 
-            # التعلم المحاسبي (بدون فلاش إضافي)
             try:
                 learning_system = AzadLearningSystem()
                 learning_system.learn_from_interaction(
@@ -1452,7 +1287,6 @@ def register_ai_accounting_listeners():  # noqa: C901
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # مبدأ الاعتراف بالإيراد
             revenue_data = {
                 "sale_number": target.sale_number,
                 "total_revenue": float(target.amount_base),
@@ -1486,7 +1320,6 @@ def register_ai_accounting_listeners():  # noqa: C901
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
-            # مبدأ المقابلة المحاسبية
             matching_data = {
                 "purchase_number": target.purchase_number,
                 "total_cost": float(target.amount_base),
@@ -1521,11 +1354,6 @@ def register_ai_accounting_listeners():  # noqa: C901
             logger.error(f"❌ AI expense recognition learning failed: {e}")
 
 
-# ============================================================================
-# AI Predictive Listeners - مستمعات التوقعات الذكية
-# ============================================================================
-
-
 def register_ai_predictive_listeners():  # noqa: C901
     """
     مستمعات التوقعات الذكية - توقع الاتجاهات والأنماط
@@ -1537,10 +1365,8 @@ def register_ai_predictive_listeners():  # noqa: C901
     def ai_predict_future_sales(mapper, connection, target):
         """توقع المبيعات المستقبلية"""
         try:
-            # حساب المبيعات الأخيرة للمقارنة
             pass
 
-            # المبيعات آخر 30 يوم
             thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
             recent_sales = connection.execute(
@@ -1555,7 +1381,6 @@ def register_ai_predictive_listeners():  # noqa: C901
                 )
                 avg_daily = total_recent / 30
 
-                # التوقع البسيط
                 predicted_month = avg_daily * 30
 
                 logger.info(
@@ -1571,7 +1396,6 @@ def register_ai_predictive_listeners():  # noqa: C901
         """توقع نفاذ المخزون"""
         try:
             if target.current_stock and target.current_stock < target.min_stock_alert:
-                # حساب معدل البيع اليومي
                 thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
                 movements = connection.execute(
@@ -1588,7 +1412,6 @@ def register_ai_predictive_listeners():  # noqa: C901
                     )
                     daily_rate = total_sold / 30
 
-                    # توقع أيام حتى النفاذ
                     if daily_rate > 0:
                         days_until_stockout = target.current_stock / daily_rate
 
@@ -1611,7 +1434,6 @@ def register_ai_predictive_listeners():  # noqa: C901
         try:
             pass
 
-            # آخر عملية شراء
             last_sale = connection.execute(
                 Sale.__table__.select()
                 .where(Sale.customer_id == target.id, Sale.status == "confirmed")
@@ -1620,7 +1442,6 @@ def register_ai_predictive_listeners():  # noqa: C901
             ).first()
 
             if last_sale:
-                # التأكد من أن sale_date timezone-aware
                 sale_date = last_sale.sale_date
                 if sale_date.tzinfo is None:
                     from datetime import timezone as tz
@@ -1628,7 +1449,6 @@ def register_ai_predictive_listeners():  # noqa: C901
                     sale_date = sale_date.replace(tzinfo=tz.utc)
                 days_since_purchase = (datetime.now(timezone.utc) - sale_date).days
 
-                # توقع خطر الخسارة
                 if days_since_purchase > 90:
                     churn_risk = "high"
                     logger.warning(
@@ -1642,7 +1462,6 @@ def register_ai_predictive_listeners():  # noqa: C901
                 else:
                     churn_risk = "low"
 
-                # حفظ التوقع للتعلم
                 from ai_knowledge.learning_system import AzadLearningSystem
 
                 learning_system = AzadLearningSystem()
@@ -1660,11 +1479,6 @@ def register_ai_predictive_listeners():  # noqa: C901
 
         except Exception as e:
             logger.error(f"❌ AI churn prediction failed: {e}")
-
-
-# ============================================================================
-# Neural Training Listeners - مستمعات التدريب العصبي التلقائي
-# ============================================================================
 
 
 def register_neural_training_listeners():  # noqa: C901
@@ -1690,10 +1504,6 @@ def register_neural_training_listeners():  # noqa: C901
                     from models.tenant_scope import run_in_platform_context
 
                     def _retrain():
-                        # Cross-tenant by design: the milestone counts sales
-                        # across every tenant and retrains one shared model.
-                        # Stated explicitly because a bare thread would run
-                        # with no tenant context at all.
                         run_in_platform_context(
                             AutoRetrainingScheduler.check_and_train_if_needed
                         )
@@ -1713,14 +1523,12 @@ def register_neural_training_listeners():  # noqa: C901
         تجميع بيانات العملاء للتدريب
         """
         try:
-            # حساب إجمالي العملاء
             total_customers = connection.execute(
                 Customer.__table__.select().where(Customer.is_active.is_(True))
             ).fetchall()
 
             customers_count = len(total_customers)
 
-            # إعادة تدريب مصنف العملاء كل 50 عميل
             if customers_count % 50 == 0:
                 logger.info(
                     f"🧠 Neural: {customers_count} customers - Retraining customer classifier..."
@@ -1735,7 +1543,6 @@ def register_neural_training_listeners():  # noqa: C901
         التعلم من تحديثات المخزون
         """
         try:
-            # إذا تغير المخزون بشكل كبير
             if hasattr(target, "current_stock"):
                 if target.current_stock == 0:
                     logger.warning(
@@ -1748,11 +1555,6 @@ def register_neural_training_listeners():  # noqa: C901
 
         except Exception as e:
             logger.error(f"❌ Neural inventory learning failed: {e}")
-
-
-# ============================================================================
-# Intelligent Assistant Listeners - مستمعات المساعد الذكي الحقيقي
-# ============================================================================
 
 
 def register_intelligent_assistant_listeners():  # noqa: C901
@@ -1773,13 +1575,9 @@ def register_intelligent_assistant_listeners():  # noqa: C901
 
             if current_app and current_app.config.get("TESTING"):
                 return
-            # تحليل ذكي فقط للفواتير المؤكدة
             if target.status != "confirmed" or not target.is_active:
                 return
 
-            # تحليل باستخدام Data Analyzer
-
-            # معلومات البيع
             sale_context = {
                 "amount": float(target.amount_base),
                 "items_count": len(target.lines) if target.lines else 0,
@@ -1804,10 +1602,8 @@ def register_intelligent_assistant_listeners():  # noqa: C901
                 else 0,
             }
 
-            # رؤى ذكية
             insights = []
 
-            # رؤية 1: هامش الربح
             if sale_context["profit_margin"] < 10:
                 insights.append(
                     f"⚠️ هامش ربح منخفض ({sale_context['profit_margin']:.1f}%) - راجع التسعير"
@@ -1817,11 +1613,9 @@ def register_intelligent_assistant_listeners():  # noqa: C901
                     f"✅ هامش ربح ممتاز ({sale_context['profit_margin']:.1f}%)"
                 )
 
-            # رؤية 2: حجم الفاتورة
             if sale_context["amount"] > 10000:
                 insights.append(f"🎉 فاتورة كبيرة! {sale_context['amount']:,.0f} درهم")
 
-            # رؤية 3: عدد الأصناف
             if sale_context["items_count"] > 10:
                 insights.append(f"📦 طلبية كبيرة: {sale_context['items_count']} صنف")
 
@@ -1844,7 +1638,6 @@ def register_intelligent_assistant_listeners():  # noqa: C901
 
             if current_app and current_app.config.get("TESTING"):
                 return
-            # تحليل الرصيد باستخدام Data Analyzer
             from ai_knowledge.data_analyzer import data_analyzer
 
             debt_analysis = data_analyzer.analyze_customer_debt(target.id)
@@ -1852,7 +1645,6 @@ def register_intelligent_assistant_listeners():  # noqa: C901
             if debt_analysis["success"]:
                 debt_info = debt_analysis["debt_analysis"]
 
-                # إنذارات ذكية
                 if debt_info["total_debt"] > 10000:
                     logger.warning(
                         f"🚨 High debt alert: Customer {target.id} owes {debt_info['total_debt']:,.0f} AED"
@@ -1873,14 +1665,9 @@ def register_intelligent_assistant_listeners():  # noqa: C901
         يتنبأ بنفاذ المخزون قبل حدوثه
         """
         try:
-            # تحقق من المخزون
             if target.current_stock <= target.min_stock_alert:
-                # حساب معدل الاستهلاك (بسيط)
-                # في المستقبل: استخدام Neural Engine للتنبؤ الدقيق
-
                 days_until_stockout = 0
                 if target.current_stock > 0:
-                    # تقدير بسيط: افترض استهلاك 10% يومياً
                     days_until_stockout = target.current_stock / (
                         target.min_stock_alert * 0.1
                     )
@@ -1897,14 +1684,6 @@ def register_intelligent_assistant_listeners():  # noqa: C901
             logger.error(f"❌ Intelligent inventory alert failed: {e}")
 
 
-# ============================================================================
-# Initialization
-# ============================================================================
-
-# ملاحظة: لتفعيل المستمعات، قم باستدعاء register_all_listeners()
-# في app.py بعد تعريف جميع Models
-
-
 """
 مثال في app.py:
 
@@ -1913,18 +1692,11 @@ from models.events import register_all_listeners
 def create_app():
     app = Flask(__name__)
 
-    # ... تهيئة التطبيق ...
-
     with app.app_context():
-        # تسجيل المستمعات
         register_all_listeners()
 
     return app
 """
-
-# ============================================================================
-# Automatic GL (General Ledger) Listeners - القيود المحاسبية التلقائية
-# ============================================================================
 
 
 def register_automatic_gl_listeners():

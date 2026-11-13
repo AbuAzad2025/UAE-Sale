@@ -18,26 +18,22 @@ class PaymentVault(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Vault Security - أمان الخزينة
     vault_password_hash = db.Column(db.String(255), nullable=False)  # كلمة مرور الخزينة
     vault_name = db.Column(db.String(100), default="Payment Vault")  # اسم الخزينة
     is_locked = db.Column(db.Boolean, default=True)  # هل مقفلة
     last_access = db.Column(db.DateTime, default=datetime.utcnow)  # آخر وصول
 
-    # Payment Gateway Settings - إعدادات بوابات الدفع
     nowpayments_api_key = db.Column(db.String(255))  # NOWPayments API Key
     nowpayments_ipn_secret = db.Column(db.String(255))  # IPN Secret
     bitcoin_address = db.Column(db.String(255))  # عنوان Bitcoin
     ethereum_address = db.Column(db.String(255))  # عنوان Ethereum
     usdt_address = db.Column(db.String(255))  # عنوان USDT
 
-    # PayPal Settings - إعدادات PayPal
     paypal_client_id = db.Column(db.String(255))  # PayPal Client ID
     paypal_client_secret = db.Column(db.String(255))  # PayPal Secret (مشفر)
     paypal_business_email = db.Column(db.String(200))  # البريد التجاري
     paypal_mode = db.Column(db.String(20), default="sandbox")  # sandbox أو live
 
-    # Bank Account Settings - الحساب البنكي للشركة
     bank_name = db.Column(db.String(200))  # اسم البنك
     bank_account_name = db.Column(db.String(200))  # اسم صاحب الحساب
     bank_account_number = db.Column(db.String(100))  # رقم الحساب
@@ -47,18 +43,15 @@ class PaymentVault(db.Model):
     bank_country = db.Column(db.String(100))  # البلد
     bank_currency = db.Column(db.String(10), default="USD")  # العملة
 
-    # Stripe Settings - إعدادات Stripe
     stripe_publishable_key = db.Column(db.String(255))  # Public Key
     stripe_secret_key = db.Column(db.String(255))  # Secret Key (مشفر)
     stripe_webhook_secret = db.Column(db.String(255))  # Webhook Secret
 
-    # Other Payment Gateways - بوابات أخرى
     mollie_api_key = db.Column(db.String(255))  # Mollie
     square_access_token = db.Column(db.String(255))  # Square
     razorpay_key_id = db.Column(db.String(255))  # Razorpay
     razorpay_key_secret = db.Column(db.String(255))  # Razorpay Secret
 
-    # Payment Limits - حدود الدفع
     min_donation_amount = db.Column(
         db.Numeric(10, 2), default=Decimal("10.00")
     )  # الحد الأدنى
@@ -69,21 +62,16 @@ class PaymentVault(db.Model):
         db.Numeric(15, 2), default=Decimal("50000.00")
     )  # الحد اليومي
 
-    # Security Settings - إعدادات الأمان
     require_2fa = db.Column(db.Boolean, default=True)  # يتطلب مصادقة ثنائية
     auto_lock_minutes = db.Column(db.Integer, default=30)  # قفل تلقائي بعد دقائق
     max_failed_attempts = db.Column(db.Integer, default=3)  # محاولات فاشلة
     failed_attempts = db.Column(db.Integer, default=0)  # عدد المحاولات الفاشلة
 
-    # Donation method switches - مفاتيح طرق التبرع (migration 18).
-    # False hides the method on the public donation page (donors are
-    # pointed to WhatsApp instead). Default True preserves behaviour.
     crypto_enabled = db.Column(db.Boolean, default=True)
     card_enabled = db.Column(db.Boolean, default=True)
     paypal_enabled = db.Column(db.Boolean, default=True)
     bank_enabled = db.Column(db.Boolean, default=True)
 
-    # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -102,10 +90,6 @@ class PaymentVault(db.Model):
     def unlock_vault(self, password):
         """فتح الخزينة"""
         if self.is_locked_out():
-            # Lockout enforced: even the correct password is blocked while
-            # failed attempts exceed the limit. The counter keeps incrementing
-            # (audit trail) and the caller surfaces the lockout via
-            # is_locked_out(). Reset only through reset_failed_attempts().
             self.failed_attempts = (self.failed_attempts or 0) + 1
             db.session.commit()
             return False
@@ -130,7 +114,6 @@ class PaymentVault(db.Model):
         if self.is_locked:
             return False
 
-        # التحقق من انتهاء صلاحية الجلسة
         if self.auto_lock_minutes > 0:
             time_diff = datetime.utcnow() - self.last_access
             if time_diff.total_seconds() > (self.auto_lock_minutes * 60):
@@ -160,7 +143,6 @@ class PaymentTransaction(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Transaction Info - معلومات المعاملة
     transaction_id = db.Column(
         db.String(100), unique=True, nullable=False
     )  # معرف المعاملة
@@ -168,29 +150,24 @@ class PaymentTransaction(db.Model):
     amount_crypto = db.Column(db.Numeric(20, 8))  # المبلغ بالعملة الرقمية
     crypto_currency = db.Column(db.String(10), nullable=False)  # العملة الرقمية
 
-    # Payment Details - تفاصيل الدفع
     payment_address = db.Column(db.String(255))  # عنوان الدفع
     payment_status = db.Column(db.String(20), default="pending")  # حالة الدفع
     payment_method = db.Column(db.String(50), default="crypto")  # طريقة الدفع
 
-    # Customer Info - معلومات العميل
     customer_email = db.Column(db.String(255))  # إيميل العميل
     customer_name = db.Column(db.String(255))  # اسم العميل
     customer_phone = db.Column(db.String(50))  # هاتف العميل
 
-    # Security - الأمان
     ip_address = db.Column(db.String(50))  # عنوان IP
     user_agent = db.Column(db.String(500))  # User Agent
     is_verified = db.Column(db.Boolean, default=False)  # هل تم التحقق
 
-    # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
     completed_at = db.Column(db.DateTime)  # وقت الإكمال
 
-    # Relations - العلاقات
     vault_id = db.Column(db.Integer, db.ForeignKey("payment_vault.id"), nullable=False)
     vault = db.relationship("PaymentVault", backref="transactions")
 
@@ -224,23 +201,18 @@ class PaymentLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Log Info - معلومات السجل
     action = db.Column(db.String(100), nullable=False)  # العملية
     description = db.Column(db.Text)  # الوصف
     level = db.Column(db.String(20), default="info")  # مستوى السجل
 
-    # Transaction Reference - مرجع المعاملة
     transaction_id = db.Column(db.String(100))  # معرف المعاملة
     amount = db.Column(db.Numeric(15, 2))  # المبلغ
 
-    # Security - الأمان
     ip_address = db.Column(db.String(50))  # عنوان IP
     user_agent = db.Column(db.String(500))  # User Agent
 
-    # Timestamps - الطوابع الزمنية
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relations - العلاقات
     vault_id = db.Column(db.Integer, db.ForeignKey("payment_vault.id"), nullable=False)
     vault = db.relationship("PaymentVault", backref="logs")
 

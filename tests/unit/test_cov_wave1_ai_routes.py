@@ -219,7 +219,6 @@ class TestAiAnalytics:
         assert client.get("/ai/data/analyze-sales").status_code == 200
 
     def test_analyze_products_owner_200(self, client, login_owner):
-        # Owner bypasses per-permission checks (User.has_permission True
         # for is_owner), so the 'view_products' gate does not apply.
         assert client.get("/ai/data/analyze-products").status_code == 200
 

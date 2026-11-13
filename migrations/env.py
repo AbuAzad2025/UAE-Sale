@@ -8,7 +8,6 @@ from alembic import context
 
 # Mark that we're inside an alembic run so application init code
 # (specifically utils.system_init.ensure_system_integrity) can
-# skip the owner / permission seeding that would otherwise race
 # with the migration's CREATE TABLE statements.
 os.environ["ALEMBIC_RUNNING"] = "1"
 

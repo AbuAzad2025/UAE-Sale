@@ -161,8 +161,6 @@ def create():
     from forms.customer import CustomerForm
 
     form = CustomerForm()
-    # Live lookup lists (single source of truth); the class-level WTForms
-    # choices remain as offline fallback.
     try:
         from services.lookup_service import get_lookup
 
@@ -180,17 +178,14 @@ def create():
 
     if form.validate_on_submit():
         try:
-            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
 
             _ok, _msg = trn_verdict(form.tax_number.data, current_tenant_country_code())
             if not _ok and _msg:
                 flash(f"⚠️ {_msg}", "warning")
 
-            # F4: الرصيد الافتتاحي — عميل مُرحَّل عليه رصيد سابق.
             opening = _parse_opening_balance(request.form)
 
-            # شروط الدفع (أيام)
             payment_terms_days = int(request.form.get("payment_terms_days", 0) or 0)
 
             customer = Customer(
@@ -215,8 +210,6 @@ def create():
             db.session.add(customer)
             db.session.commit()
 
-            # F4: الرصيد الافتتاحي جزء من اشتقاق رصيد العميل — يُعاد
-            # احتساب العمود المخزَّن من المصدر الواحد (models/customer.py).
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
@@ -273,8 +266,6 @@ def edit(id):
 
     if request.method == "POST":
         try:
-            # F54: validate like create() (WTForms: name required,
-            # customer_type in choices, currency optional but in choices).
             name = (request.form.get("name") or "").strip()
             customer_type = (request.form.get("customer_type") or "").strip()
             preferred_currency = (request.form.get("preferred_currency") or "").strip()
@@ -309,7 +300,6 @@ def edit(id):
                 )
                 return render_template("customers/edit.html", customer=customer)
 
-            # تحذير إرشادي فقط — لا يُمنع الحفظ (صيغة TRN لكل دولة)
             from utils.trn import trn_verdict, current_tenant_country_code
 
             _ok, _msg = trn_verdict(
@@ -329,7 +319,6 @@ def edit(id):
             customer.payment_terms_days = payment_terms_days
             customer.notes = request.form.get("notes")
 
-            # F4: تعديل الرصيد الافتتاحي (مبلغ + عملة + سعر صرف + تاريخ)
             opening = _parse_opening_balance(request.form)
             if opening:
                 customer.opening_balance = opening["amount"]
@@ -339,8 +328,6 @@ def edit(id):
 
             db.session.commit()
 
-            # F4: إعادة احتساب رصيد العميل من المصدر الواحد بعد أي تغيير
-            # في الرصيد الافتتاحي.
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(customer.id)
@@ -370,7 +357,6 @@ def delete(id):
     customer = get_owned_or_404(Customer, id)
 
     try:
-        # Check for related records preventing deletion
         sales_count = Sale.query.filter_by(customer_id=id).count()
         from models import Payment, Receipt
 
@@ -393,9 +379,7 @@ def delete(id):
 
     except Exception as e:
         db.session.rollback()
-        # Fallback to soft delete if hard delete fails (e.g. other constraints)
         try:
-            # Re-fetch customer to ensure it's attached to the new session transaction
             customer = get_owned_or_404(Customer, id)
             if customer:
                 customer.is_active = False
@@ -444,7 +428,6 @@ def statement(id):
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
 
-    # Bulk load related lines and payments to avoid N+1
     sales_ids = [s.id for s in sales]
     from sqlalchemy.orm import joinedload
 
@@ -676,7 +659,6 @@ def api_search():
     _ = request.args.get("page", 1, type=int)
     per_page = 20
 
-    # السماح بالبحث حتى بدون query (لعرض كل العملاء)
     if query and len(query) >= 1:
         customers = (
             Customer.query.filter(
@@ -692,7 +674,6 @@ def api_search():
             .all()
         )
     else:
-        # عرض كل العملاء (مرتبين أبجدياً)
         customers = (
             Customer.query.filter_by(is_active=True)
             .order_by(Customer.name)
@@ -723,7 +704,6 @@ def customer_balance(id):
     """Get customer balance and unpaid sales - API for payment receipts"""
     customer = get_owned_or_404(Customer, id)
 
-    # Get unpaid sales
     unpaid_sales = (
         Sale.query.filter(
             Sale.customer_id == id, Sale.balance_due > 0, Sale.is_active.is_(True)

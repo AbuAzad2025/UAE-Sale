@@ -42,40 +42,32 @@ celery.conf.update(
     result_expires=3600,  # Results expire after 1 hour
 )
 
-# ── Periodic Tasks (Beat Schedule) ──────────────────────────────────────
-# Every entry references a task name registered on THIS instance below.
 celery.conf.beat_schedule = {
-    # Balance repair: every 6 hours
     "balance-repair-every-6h": {
         "task": "celery_tasks.run_balance_repair",
         "schedule": crontab(minute=0, hour="*/6"),  # 00:00, 06:00, 12:00, 18:00
         "options": {"queue": "default"},
     },
-    # Auto-approval check: every hour
     "auto-approval-hourly": {
         "task": "celery_tasks.run_auto_approval",
         "schedule": crontab(minute=15),  # Every hour at :15
         "options": {"queue": "default"},
     },
-    # Security alerts scan: daily at 02:00
     "security-scan-daily": {
         "task": "celery_tasks.run_security_scan",
         "schedule": crontab(minute=0, hour=2),
         "options": {"queue": "default"},
     },
-    # Automatic database backup: daily at 03:00
     "auto-backup-daily": {
         "task": "celery_tasks.auto_backup_database",
         "schedule": crontab(minute=30, hour=3),
         "options": {"queue": "default"},
     },
-    # FX revaluation (IAS 21): daily at 04:30 — بعد النسخة الاحتياطية
     "fx-revaluation-daily": {
         "task": "celery_tasks.run_fx_revaluation",
         "schedule": crontab(minute=30, hour=4),  # 04:30
         "options": {"queue": "default"},
     },
-    # Sub-ledger reconciliation: weekly on Sunday at 04:00
     "subledger-reconciliation-weekly": {
         "task": "celery_tasks.run_subledger_reconciliation",
         "schedule": crontab(minute=0, hour=4, day_of_week="sun"),  # Sunday 04:00
@@ -91,8 +83,6 @@ def generate_monthly_report(month: int, year: int):
     try:
         from services.report_service import ReportService
     except ImportError as exc:
-        # No services.report_service module exists in this codebase; fail
-        # with a clear payload instead of raising ImportError in the worker.
         return {"success": False, "error": f"ReportService unavailable: {exc}"}
 
     app = create_app()
@@ -179,8 +169,6 @@ def send_payment_reminders():
                     if result.get("success"):
                         sent += 1
             except Exception:
-                # One bad customer (bad phone, API error, ...) must not
-                # abort the whole batch.
                 failed += 1
                 continue
 
@@ -196,9 +184,6 @@ def cleanup_old_cache():
         return {"success": True, "message": "Cache cleared"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
-# ── Scheduled maintenance tasks (referenced by beat_schedule above) ─────
 
 
 @celery.task(name="celery_tasks.run_balance_repair", bind=True, max_retries=2)
@@ -252,7 +237,6 @@ def run_security_scan(self):
             from models import LoginHistory
             from datetime import datetime, timedelta, timezone
 
-            # Check for users with too many failed logins
             cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
             suspicious = (
                 db.session.query(
@@ -273,13 +257,6 @@ def run_security_scan(self):
             }
     except Exception as exc:
         return {"error": str(exc)}
-
-
-# ── Scheduled controls: revaluation + sub-ledger reconciliation ──────────
-#
-# The two controls below share one rule: they NEVER raise into the
-# scheduler. A failed control must be reported (and logged), not retried
-# forever by beat, so every exception is caught and turned into a payload.
 
 
 def _log_task_failure(task_name, exc):

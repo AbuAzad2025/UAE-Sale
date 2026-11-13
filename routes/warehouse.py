@@ -43,9 +43,6 @@ def upload_product_image():
             }
         ), 400
 
-    # المجلد الفرعي يأتي من الطلب، فلا يُقبل إلا من قائمة بيضاء.
-    # 'products' هو المجلد الذي تستخدمه صفحة المنتج؛ أي مسار آخر (أو أي
-    # محاولة للخروج من static) يُرفض.
     subdir = (request.form.get("subdir") or "products").strip().strip("/")
     if subdir not in ("products", "product-images"):
         return jsonify(
@@ -71,7 +68,6 @@ def upload_product_image():
             }
         ), 400
     except ValueError as exc:
-        # save_uploaded_file يرفع ValueError للامتداد/الحجم غير المسموح.
         current_app.logger.warning("Product image rejected: %s", exc)
         return jsonify(
             {
@@ -191,7 +187,6 @@ def out_of_stock():
 def view_warehouse(id):
     warehouse = get_owned_or_404(Warehouse, id, code=404)
 
-    # Calculate stock for this warehouse from movements
     stock_query = (
         db.session.query(
             StockMovement.product_id,
@@ -204,7 +199,6 @@ def view_warehouse(id):
 
     warehouse_stock = []
     for product_id, quantity in stock_query:
-        # Convert quantity to float for comparison and display, handling None
         qty = float(quantity) if quantity is not None else 0.0
         if qty != 0:
             product = get_owned_or_404(Product, product_id)
@@ -224,7 +218,6 @@ def create_warehouse():  # noqa: C901
     from models import User
 
     parent_warehouses = Warehouse.query.filter_by(is_active=True, parent_id=None).all()
-    # Filter out owner to hide them from selection
     users = User.query.filter_by(is_active=True, is_owner=False).all()
 
     if request.method == "POST":
@@ -328,16 +321,13 @@ def delete_warehouse(id):
     """حذف مستودع"""
     warehouse = get_owned_or_404(Warehouse, id, code=404)
 
-    # Check if main warehouse
     if warehouse.is_main:
         flash("لا يمكن حذف المستودع الرئيسي", "danger")
         return redirect(url_for("warehouse.list_warehouses"))
 
     try:
-        # Check for stock
         has_stock = StockMovement.query.filter_by(warehouse_id=id).first()
         if has_stock:
-            # Soft delete
             warehouse.is_active = False
             db.session.commit()
             flash(
@@ -372,7 +362,6 @@ def add_stock(product_id):
                 {"success": False, "message": "الكمية يجب أن تكون أكبر من صفر"}
             ), 400
 
-        # Update product stock
         product.current_stock = (product.current_stock or Decimal("0")) + quantity
 
         if not warehouse_id:

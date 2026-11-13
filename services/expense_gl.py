@@ -68,7 +68,6 @@ def build_expense_gl_lines(expense):
     if method == "cash":
         payment_account = AccountResolver.resolve(AccountRole.CASH, tenant_id=tid)
     elif method == "cheque":
-        # ذمم دائنة إلى شيكات (تُسوّى عندما يُحَّصَل الشيك)
         payment_account = AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=tid)
     else:
         payment_account = AccountResolver.resolve(AccountRole.BANK, tenant_id=tid)

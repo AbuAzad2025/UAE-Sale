@@ -31,10 +31,6 @@ from flask_login import current_user
 from extensions import db
 from utils.decorators import get_owned_or_404
 
-# entity type -> (model, editable fields, required permission)
-#
-# The field lists are deliberately short: they cover the values a user
-# reasonably wants to correct in place, and nothing else.
 INLINE_EDITABLE = {
     "customer": {
         "model": "Customer",
@@ -178,8 +174,6 @@ def inline_edit(entity_type, entity_id):
             }
         ), 500
 
-    # get_owned_or_404 enforces the tenant boundary: a row of another tenant
-    # answers 404, never 200.
     obj = get_owned_or_404(model, entity_id, code=404)
     if obj is None:
         return jsonify(

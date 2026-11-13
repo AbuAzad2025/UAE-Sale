@@ -400,11 +400,9 @@ def test_employee_view_cross_tenant_forbidden(app, client):
 
 
 # =============================================================================
-# 14. Webhook signature rejection when secret empty
 # =============================================================================
 def test_nowpayments_webhook_empty_secret_rejected(app, client):
     """When IPN secret is not configured, the webhook MUST be rejected."""
-    # No vault row in DB -> no secret
     r = client.post(
         "/payment-vault/webhook/nowpayments",
         json={"payment_id": "fake", "payment_status": "finished"},
@@ -437,7 +435,6 @@ def test_nowpayments_webhook_bad_signature_rejected(app, client):
         json={"payment_id": "fake"},
         headers={"x-nowpayments-sig": "definitely-not-valid"},
     )
-    # No secret configured -> 503; with secret but bad sig -> 403
     assert r.status_code in (400, 403, 503), (
         f"Webhook accepted with bad signature: {r.status_code}"
     )

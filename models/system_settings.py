@@ -18,51 +18,43 @@ class SystemSettings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # System Identity - هوية النظام
     system_name = db.Column(db.String(200), default="Azad Garage System")
     system_version = db.Column(db.String(20), default="2.0.0")
     system_mode = db.Column(
         db.String(20), default="production"
     )  # development, production
 
-    # UI Settings - إعدادات الواجهة
     theme = db.Column(db.String(50), default="modern")  # modern, classic, custom
     primary_color = db.Column(db.String(20), default="#007A3D")
     secondary_color = db.Column(db.String(20), default="#D4AF37")
     sidebar_color = db.Column(db.String(20), default="#1a1a1a")
     navbar_color = db.Column(db.String(20), default="#2d2d2d")
 
-    # Layout - التخطيط
     sidebar_position = db.Column(db.String(20), default="right")  # right, left
     layout_style = db.Column(db.String(20), default="fixed")  # fixed, boxed, fluid
     enable_dark_mode = db.Column(db.Boolean, default=True)
     default_dark_mode = db.Column(db.Boolean, default=False)
 
-    # Language & Localization - اللغة والترجمة
     default_language = db.Column(db.String(10), default="ar")
     available_languages = db.Column(db.Text, default='["ar", "en"]')  # JSON array
     rtl_enabled = db.Column(db.Boolean, default=True)
 
-    # Date & Time - التاريخ والوقت
     timezone = db.Column(db.String(50), default="Asia/Dubai")
     date_format = db.Column(db.String(30), default="%Y-%m-%d")
     time_format = db.Column(db.String(30), default="%H:%M")
     datetime_format = db.Column(db.String(50), default="%Y-%m-%d %H:%M")
 
-    # Currency - العملة
     default_currency = db.Column(db.String(3), default="ILS")
     currency_symbol = db.Column(db.String(10), default="ILS")
     currency_position = db.Column(db.String(10), default="after")  # before, after
     decimal_places = db.Column(db.Integer, default=2)
 
-    # Tax Settings - إعدادات الضرائب
     enable_tax = db.Column(db.Boolean, default=True)
     tax_name_ar = db.Column(db.String(100), default="ضريبة القيمة المضافة")
     tax_name_en = db.Column(db.String(100), default="VAT")
     default_tax_rate = db.Column(db.Numeric(5, 2), default=Decimal("5.00"))
     tax_number_required = db.Column(db.Boolean, default=True)
 
-    # Modules - الوحدات
     enable_sales = db.Column(db.Boolean, default=True)
     enable_purchases = db.Column(db.Boolean, default=True)
     enable_inventory = db.Column(db.Boolean, default=True)
@@ -75,7 +67,6 @@ class SystemSettings(db.Model):
     enable_pos = db.Column(db.Boolean, default=False)
     enable_ecommerce = db.Column(db.Boolean, default=False)
 
-    # Features - المميزات
     enable_barcode_scanner = db.Column(db.Boolean, default=True)
     enable_multi_warehouse = db.Column(db.Boolean, default=True)
     enable_multi_currency = db.Column(db.Boolean, default=True)
@@ -84,7 +75,6 @@ class SystemSettings(db.Model):
     enable_batches = db.Column(db.Boolean, default=False)
     enable_serials = db.Column(db.Boolean, default=False)
 
-    # Security - الأمان
     session_timeout = db.Column(db.Integer, default=60)  # minutes
     password_min_length = db.Column(db.Integer, default=6)
     password_require_uppercase = db.Column(db.Boolean, default=False)
@@ -93,30 +83,25 @@ class SystemSettings(db.Model):
     max_login_attempts = db.Column(db.Integer, default=5)
     lockout_duration = db.Column(db.Integer, default=30)  # minutes
 
-    # Notifications - الإشعارات
     enable_email_notifications = db.Column(db.Boolean, default=False)
     enable_sms_notifications = db.Column(db.Boolean, default=False)
     enable_push_notifications = db.Column(db.Boolean, default=False)
     low_stock_notification = db.Column(db.Boolean, default=True)
 
-    # Performance - الأداء
     items_per_page = db.Column(db.Integer, default=25)
     enable_caching = db.Column(db.Boolean, default=True)
     cache_ttl = db.Column(db.Integer, default=300)  # seconds
     enable_compression = db.Column(db.Boolean, default=True)
 
-    # Backup - النسخ الاحتياطي
     auto_backup_enabled = db.Column(db.Boolean, default=True)
     backup_frequency = db.Column(
         db.String(20), default="daily"
     )  # daily, weekly, monthly
     backup_retention_days = db.Column(db.Integer, default=30)
 
-    # API Settings - إعدادات API
     enable_api = db.Column(db.Boolean, default=False)
     api_rate_limit = db.Column(db.Integer, default=100)  # requests per minute
 
-    # Custom Settings - إعدادات مخصصة (JSON)
     custom_settings = db.Column(db.Text)
 
     smtp_server = db.Column(db.String(200))
@@ -146,7 +131,6 @@ class SystemSettings(db.Model):
 
     owner_whitelist_ips = db.Column(db.Text)
 
-    # Meta
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
@@ -156,7 +140,6 @@ class SystemSettings(db.Model):
     )
     updated_by = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-    # Relationships
     user = db.relationship("User", foreign_keys=[updated_by])
 
     def __repr__(self):

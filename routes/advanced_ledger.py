@@ -33,7 +33,6 @@ advanced_ledger_bp = Blueprint(
 @permission_required("view_ledger")
 def professional_printing():
     """نظام الطباعة الاحترافي"""
-    # بيانات تجريبية للطباعة
     trial_balance_data = []
     accounts = (
         GLAccount.query.filter_by(is_active=True, is_header=False).limit(20).all()
@@ -273,7 +272,6 @@ def add_advanced_expense():
                 created_by=current_user.id,
             )
 
-            # حساب الضرائب والجمارك
             expense.calculate_taxes()
 
             db.session.add(expense)
@@ -288,7 +286,6 @@ def add_advanced_expense():
             current_app.logger.exception("handler failed")
             flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
-    # الحصول على البيانات المطلوبة
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     suppliers = Supplier.query.filter_by(is_active=True).all()
 
@@ -304,10 +301,8 @@ def add_advanced_expense():
 @permission_required("view_ledger")
 def cheque_integration():
     """تكامل الشيكات مع النظام المحاسبي"""
-    # الحصول على الشيكات الأخيرة
     recent_cheques = Cheque.query.order_by(Cheque.updated_at.desc()).limit(20).all()
 
-    # إحصائيات الشيكات
     stats = {
         "total_cheques": Cheque.query.count(),
         "pending_cheques": Cheque.query.filter_by(status="pending").count(),
@@ -376,10 +371,8 @@ def clear_cheque(cheque_id):
 @admin_required
 def real_time_events():
     """مستمعات الأحداث اللحظية"""
-    # الحصول على الأحداث الأخيرة
     recent_events = accounting_event_stream.get_recent_events(limit=100)
 
-    # إحصائيات الأحداث
     event_stats = {}
     for event in recent_events:
         event_type = event["type"]
@@ -425,18 +418,15 @@ def cheque_accounting_summary_api(cheque_id):
 @permission_required("view_ledger")
 def professional_reports():
     """تقارير مالية احترافية مع رسوم بيانية"""
-    # الحصول على البيانات
     trends = AdvancedFinancialAnalytics.get_trend_analysis(months=12)
     _ = AdvancedFinancialAnalytics.get_expense_breakdown()
     _ = AdvancedFinancialAnalytics.get_revenue_breakdown()
 
-    # حساب الإحصائيات
     total_revenue = sum(item["revenue"] for item in trends)
     total_expenses = sum(item["expenses"] for item in trends)
     net_profit = total_revenue - total_expenses
     profit_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-    # تحضير البيانات للرسوم البيانية
     months = [item["month"] for item in trends]
     revenue_data = [item["revenue"] for item in trends]
     expense_data = [item["expenses"] for item in trends]
@@ -487,7 +477,6 @@ def _attrify(obj):
 @admin_required
 def advanced_analytics():
     """نظام التحليل المالي المتقدم"""
-    # الحصول على جميع البيانات التحليلية
     dashboard_summary = AdvancedFinancialAnalytics.get_dashboard_summary()
 
     return render_template(

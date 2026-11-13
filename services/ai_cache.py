@@ -9,7 +9,6 @@ import hashlib
 import threading
 import time
 
-
 _TTL_SECONDS = 3600  # 1 hour default
 _MAX_ENTRIES = 500
 
@@ -76,7 +75,6 @@ def set_value(
     key = make_key(provider, model, message, knowledge_context)
     with _lock:
         if len(_store) >= _MAX_ENTRIES:
-            # evict oldest expired first, else arbitrary oldest
             now = time.time()
             expired = [k for k, (e, _) in _store.items() if e < now]
             for k in expired[:50]:

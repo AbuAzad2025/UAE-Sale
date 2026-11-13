@@ -132,7 +132,6 @@ def authorities_for_country(country_code):
     ]
 
 
-# --- تشفير الراحة ---
 def _get_cipher():
     try:
         from cryptography.fernet import Fernet

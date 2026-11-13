@@ -90,7 +90,6 @@ def tenant_consistency_validator(parent_fk_attr="id", tenant_fk_attr="tenant_id"
 
     def decorator(method):
         def wrapper(self, key, value):
-            # Triggered on tenant_id change OR on the parent FK change.
             if key == tenant_fk_attr:
                 child_tenant = value
                 parent_id = getattr(self, parent_fk_attr, None)
@@ -101,9 +100,6 @@ def tenant_consistency_validator(parent_fk_attr="id", tenant_fk_attr="tenant_id"
                 return value
             if child_tenant is None or parent_id is None:
                 return value
-            # Resolve the parent's tenant dynamically.  The model
-            # that owns the parent FK must expose a relationship
-            # named after ``parent_fk_attr`` for this to work.
             rel = getattr(type(self), parent_fk_attr, None)
             if rel is None or not hasattr(rel, "property"):
                 return value

@@ -23,7 +23,6 @@ class AdvancedJournalEntryManager:
         """إنشاء قيد مع التحقق المتقدم"""
         from services.gl_service import GLService
 
-        # التحقق من التوازن (Decimal إلزامي — ممنوع الحساب العشري float)
         total_debit = sum(
             (Decimal(str(line.get("debit", 0) or 0)) for line in lines), Decimal("0")
         )
@@ -36,7 +35,6 @@ class AdvancedJournalEntryManager:
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
 
-        # التحقق من الحسابات الرئيسية
         for line in lines:
             account_code = line.get("account_code")
             if account_code:
@@ -46,13 +44,10 @@ class AdvancedJournalEntryManager:
                         f"لا يمكن القيد على الحساب الرئيسي: {account.full_name}"
                     )
 
-        # F9: نوع القيد يُمرَّر إلى طبقة الخدمة عند الإنشاء — لا يُعدَّل
-        # القيد بعد ترحيله (القيد المرحّل غير قابل للتعديل عبر ORM).
         entry_type = kwargs.pop("entry_type", None)
         if entry_type:
             kwargs["entry_type"] = entry_type
 
-        # إنشاء القيد
         entry = GLService.create_manual_entry(
             description=description,
             lines=lines,
@@ -61,9 +56,6 @@ class AdvancedJournalEntryManager:
             created_by=created_by,
             **kwargs,
         )
-
-        # سجل التدقيق (F3) يكتبه GLService.create_manual_entry — وهو مسار
-        # واحد للجميع، فلا يُكتب صف تدقيق مزدوج لنفس العملية.
 
         return entry
 
@@ -80,20 +72,16 @@ class AdvancedJournalEntryManager:
         if entry.is_reversed:
             raise ValueError("لا يمكن تعديل قيد معكوس")
 
-        # حفظ القيم القديمة
         old_values = entry.to_dict()
 
-        # F6: سعر الصرف الخاص بالقيد — amount_base يُحسب في العملة الأساسية
         rate = Decimal(str(entry.exchange_rate or 1)) or Decimal("1")
 
-        # تطبيق التحديثات
         for field, value in updates.items():
             if field == "lines":
                 continue
             if hasattr(entry, field):
                 setattr(entry, field, value)
 
-        # التحقق من التوازن إذا تم تحديث السطور
         if "lines" in updates:
             total_debit = sum(
                 (Decimal(str(line.get("debit", 0) or 0)) for line in updates["lines"]),
@@ -109,8 +97,6 @@ class AdvancedJournalEntryManager:
                     f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}"
                 )
 
-            # VALIDATE ALL LINES FIRST (before mutating): كل حساب يجب أن
-            # يوجد قبل حذف السطور القديمة — لو فشل التحقق، لا يتأثر أي شيء.
             resolved_lines = []
             seen_accounts = {}
             for line_data in updates["lines"]:
@@ -136,7 +122,6 @@ class AdvancedJournalEntryManager:
                     raise ValueError("المبالغ يجب أن تكون موجبة")
                 if debit > 0 and credit > 0:
                     raise ValueError("السطر لا يحمل مديناً ودائناً في آن واحد")
-                # F8: اتجاه الحركة مقابل طبيعة الحساب
                 account.check_posting_direction(debit, credit)
                 resolved_lines.append(
                     {
@@ -144,13 +129,10 @@ class AdvancedJournalEntryManager:
                         "description": line_data.get("description", ""),
                         "debit": debit,
                         "credit": credit,
-                        # F6: يُضرب في سعر صرف القيد — كان debit - credit فقط،
-                        # فكان amount_base بالعملة الأساسية أصغر من الصحيح.
                         "amount_base": _quantize_3((debit - credit) * rate),
                     }
                 )
 
-            # All validations passed — now atomically replace lines.
             GLJournalLine.query.filter_by(entry_id=entry_id).delete()
             for resolved in resolved_lines:
                 db.session.add(
@@ -163,7 +145,6 @@ class AdvancedJournalEntryManager:
                         amount_base=resolved["amount_base"],
                     )
                 )
-            # F5: الإجماليات من نفس القيم المُكمّاة التي كُتبت في السطور
             entry.total_debit = sum((r["debit"] for r in resolved_lines), Decimal("0"))
             entry.total_credit = sum(
                 (r["credit"] for r in resolved_lines), Decimal("0")
@@ -171,7 +152,6 @@ class AdvancedJournalEntryManager:
 
         entry.updated_at = datetime.now(timezone.utc)
 
-        # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
             entry_id,
             "update",
@@ -197,10 +177,8 @@ class AdvancedJournalEntryManager:
         if not entry.is_posted:
             raise ValueError("لا يمكن عكس قيد غير مرحل")
 
-        # حفظ القيم القديمة
         old_values = entry.to_dict()
 
-        # إنشاء قيد عكسي إذا طُلب
         reversal_entry = None
         if create_reversal_entry:
             reversal_lines = []
@@ -221,18 +199,14 @@ class AdvancedJournalEntryManager:
                 notes=f"سبب العكس: {reason}",
                 created_by=reversed_by,
                 entry_type="reversing",
-                # F9: الربط بالمرجع يُحدَّد عند الإنشاء — تعديل القيد المرحّل
-                # بعد إنشائه ممنوع (حاجز ORM في models/gl.py).
                 reference_type=entry.reference_type,
                 reference_id=entry.reference_id,
             )
 
-            # ربط القيود
             entry.is_reversed = True
             entry.reversed_entry_id = reversal_entry.id
             reversal_entry.reversed_entry_id = entry.id
 
-        # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
             entry_id,
             "reverse",
@@ -258,15 +232,11 @@ class AdvancedJournalEntryManager:
         if entry.is_reversed:
             raise ValueError("لا يمكن حذف قيد معكوس")
 
-        # التحقق من وجود قيود مرتبطة
         if entry.reversed_entry_id:
             raise ValueError("لا يمكن حذف قيد له قيود عكسية مرتبطة")
 
-        # حفظ القيم القديمة
         old_values = entry.to_dict()
 
-        # تسجيل التدقيق أولاً (يشير للقيد وهو ما زال موجوداً؛
-        # CASCADE يحافظ على السجل بعد الحذف)
         AdvancedJournalEntryManager._log_audit(
             entry_id,
             "delete",
@@ -276,7 +246,6 @@ class AdvancedJournalEntryManager:
             deleted_by,
         )
 
-        # حذف السطور ثم القيد
         GLJournalLine.query.filter_by(entry_id=entry_id).delete()
         db.session.delete(entry)
 
@@ -291,7 +260,6 @@ class AdvancedJournalEntryManager:
         if entry.is_posted:
             raise ValueError("القيد مرحل مسبقاً")
 
-        # التحقق من التوازن مرة أخرى
         total_debit = sum((line.debit for line in entry.lines), Decimal("0"))
         total_credit = sum((line.credit for line in entry.lines), Decimal("0"))
 
@@ -300,11 +268,9 @@ class AdvancedJournalEntryManager:
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
 
-        # الموافقة
         entry.is_posted = True
         entry.updated_at = datetime.now(timezone.utc)
 
-        # تسجيل التدقيق
         AdvancedJournalEntryManager._log_audit(
             entry_id,
             "approve",
@@ -339,9 +305,6 @@ class AdvancedJournalEntryManager:
             performed_at=datetime.now(timezone.utc),
         )
         db.session.add(audit)
-
-
-# إضافة دالة مساعدة لـ GLJournalEntry
 
 
 def add_helper_methods():
@@ -398,7 +361,6 @@ def add_helper_methods():
             not self.is_posted and not self.is_reversed and not self.reversed_entry_id
         )
 
-    # إضافة الدوال للكلاس
     GLJournalEntry.to_dict = to_dict
     GLJournalEntry.get_balance_status = get_balance_status
     GLJournalEntry.can_be_modified = can_be_modified
@@ -406,5 +368,4 @@ def add_helper_methods():
     GLJournalEntry.can_be_deleted = can_be_deleted
 
 
-# استدعاء الدوال المساعدة
 add_helper_methods()

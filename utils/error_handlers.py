@@ -22,8 +22,6 @@ from services.error_report_service import (
 
 logger = logging.getLogger(__name__)
 
-# 404s for these paths are browser automatics, not application faults —
-# logging them would only bury real errors under favicon noise.
 _STATIC_NOISE_PATHS = frozenset({"/favicon.ico", "/robots.txt"})
 
 

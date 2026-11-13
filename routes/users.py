@@ -104,12 +104,9 @@ def create():
 
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
-    # SECURITY: Never offer roles higher than the actor's own level —
-    # prevents a manager from creating a super_admin in the role dropdown.
     roles = [r for r in roles if _role_level(r) <= current_level]
     default_form = {"is_active": "1"}
 
-    # Owner may pre-scope creation to a tenant (?tenant_id= → locked banner).
     fixed_tenant = None
     if _is_platform_owner():
         fixed_tenant_id = request.args.get("tenant_id", type=int)
@@ -130,8 +127,6 @@ def create():
                 )
                 is_owner = request.form.get("is_owner") == "on"
             else:
-                # SECURITY: same tenant, forced server-side; owners never
-                # created outside the platform-owner path.
                 tenant_id = getattr(current_user, "tenant_id", None)
                 is_owner = False
             with atomic_transaction():
@@ -199,13 +194,10 @@ def view(id):
     if not current_user.has_permission("manage_users"):
         abort(403)
 
-    # SECURITY: cross-tenant check via get_owned_or_404.
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner and not _is_platform_owner():
         abort(404)
 
-    # User-scoped activity (never global counters).
-    # Single-statement SQL aggregates (no per-row Python sums / N+1).
     from models import Sale, Payment, AuditLog
 
     sales_q = Sale.query.filter_by(seller_id=user.id)
@@ -245,11 +237,8 @@ def view(id):
 @login_required
 @admin_required
 def edit(id):
-    # SECURITY: use get_owned_or_404 to enforce cross-tenant isolation
-    # in addition to the @admin_required role gate.
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner and not _is_platform_owner():
-        # Owner accounts cannot be edited through this route by non-owners.
         abort(404)
 
     if request.method == "POST":
@@ -295,7 +284,6 @@ def edit(id):
 
     current_level = _current_user_level()
     roles = Role.query.filter_by(is_active=True).all()
-    # SECURITY: only offer roles at or below the actor's level.
     roles = [r for r in roles if _role_level(r) <= current_level]
     return render_template("users/edit.html", user=user, roles=roles)
 
@@ -304,10 +292,8 @@ def edit(id):
 @login_required
 @admin_required
 def toggle_active(id):
-    # SECURITY: cross-tenant check before mutating.
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner:
-        # Owner accounts are immune here (same as the legacy rule).
         abort(404)
 
     with atomic_transaction():
@@ -328,10 +314,8 @@ def delete(id):
         flash("⛔ ليس لديك صلاحية لحذف المستخدمين.", "danger")
         return redirect(url_for("users.index"))
 
-    # SECURITY: cross-tenant check before mutating.
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner and not _is_platform_owner():
-        # Never allow owner account to be deleted through this route.
         abort(404)
 
     try:

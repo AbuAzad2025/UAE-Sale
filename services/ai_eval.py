@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import json
 
-# (سؤال, نية متوقعة, أداة متوقعة, ناقص؟)
 _CASES = [
     ("أريد عميل جديد", "customer", "create_customer", []),
     ("عميل جديد: أحمد", "customer", "create_customer", []),

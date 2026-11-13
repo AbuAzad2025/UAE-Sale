@@ -25,13 +25,9 @@ def support():
     from flask import session
     from models import Package, PaymentVault
 
-    # جلب الباقات النشطة
     packages = (
         Package.query.filter_by(is_active=True).order_by(Package.sort_order.asc()).all()
     )
-    # إعدادات الدفع العامة (بدون أسرار): الطرق المتاحة + الحدود + بيانات
-    # الاستقبال المعلنة من لوحة المالك. الطريقة تظهر فقط إذا كانت مفعّلة
-    # ومُهيأة (مفتاح/عنوان/حساب موجود).
     vault = PaymentVault.query.first()
     pay_config = {
         "methods": {"crypto": False, "card": False, "paypal": False, "bank": False},
@@ -87,15 +83,12 @@ def support():
 @limiter.limit("20 per minute", methods=["POST"])
 def login():
     if current_user.is_authenticated:
-        # Already logged in: send to the role-appropriate dashboard
         if getattr(current_user, "is_owner", False) or current_user.is_super_admin():
             return redirect(url_for("owner.dashboard"))
         return redirect(url_for("main.dashboard"))
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()
-        # Make username case-insensitive check
-        # We will use the username as provided to find the user in a case-insensitive way
         password = request.form.get("password", "")
         remember = request.form.get("remember", False)
 
@@ -106,10 +99,8 @@ def login():
             )
             return render_template("auth/login.html")
 
-        # Case-insensitive query
         user = User.query.filter(User.username.ilike(username)).first()
 
-        # --- Account lockout check ---
         if (
             user
             and user.locked_until
@@ -122,7 +113,6 @@ def login():
             return render_template("auth/login.html")
 
         if not user or not user.check_password(password):
-            # Increment login attempts
             if user:
                 from config import Config
 
@@ -173,8 +163,6 @@ def login():
             )
             return render_template("auth/login.html")
 
-        # الإيقاف على مستوى الشركة: دخول بزنس شركة موقوفة/منتهية ممنوع
-        # (المالك/سوبر/المطور مشغّلو المنصة — لا شركة لهم)
         try:
             _role_slug = getattr(getattr(user, "role", None), "slug", None)
             if not (
@@ -203,7 +191,6 @@ def login():
         except Exception:
             pass
 
-        # Regenerate session to prevent session fixation
         session.clear()
         login_user(user, remember=remember)
         session["last_activity"] = datetime.now().isoformat()
@@ -232,18 +219,13 @@ def login():
 
         create_audit_log("login", "users", user.id)
 
-        # Force password change on first login if required
         if getattr(user, "must_change_password", False):
             return redirect(url_for("users.change_password"))
 
         next_page = request.args.get("next")
-        # Only relative paths; reject protocol-relative '//evil.com' open redirects
         if next_page and next_page.startswith("/") and not next_page.startswith("//"):
             return redirect(next_page)
 
-        # Role-based landing dashboard after login:
-        #   owner / super_admin -> /owner/dashboard
-        #   everyone else       -> /dashboard
         if getattr(user, "is_owner", False) or user.is_super_admin():
             return redirect(url_for("owner.dashboard"))
         return redirect(url_for("main.dashboard"))
@@ -259,12 +241,7 @@ def logout():
         session.pop("last_activity", None)
         flash("✅ تم تسجيل الخروج بنجاح. نراك قريباً!", "success")
 
-    # After logout, send the user back to the public landing page so
-    # they can browse marketing pages or sign back in cleanly.
     return redirect(url_for("public.landing"))
-
-
-# Payment Routes
 
 
 @auth_bp.route("/payment/create", methods=["POST"])
@@ -277,13 +254,11 @@ def create_payment():
         if not data:
             return jsonify({"success": False, "error": "بيانات غير صحيحة"}), 400
 
-        # Input validation
         try:
             amount = float(data.get("amount", 0))
         except (TypeError, ValueError):
             return jsonify({"success": False, "error": "Invalid amount"}), 400
 
-        # Sanitize string inputs (max lengths)
         crypto_currency = str(data.get("crypto_currency", "btc"))[:10]
         customer_email = str(data.get("customer_email") or data.get("email", ""))[:200]
         description = str(data.get("description", ""))[:500]
@@ -295,17 +270,14 @@ def create_payment():
         donor_email = str(data.get("donor_email", ""))[:200]
         donor_message = str(data.get("donor_message", ""))[:1000]
 
-        # Validate amount range
         if amount < 1 or amount > 100000:
             return jsonify(
                 {"success": False, "error": "Amount must be between $1 and $100,000"}
             ), 400
 
-        # Validate transaction type
         if transaction_type not in ("donation", "purchase"):
             transaction_type = "donation"
 
-        # إنشاء الدفعة
         nowpayments = NOWPaymentsService()
         result = nowpayments.create_payment(
             amount=amount,
@@ -379,17 +351,14 @@ def payment_status(payment_id):
 def payment_callback():
     """معالجة callback من NOWPayments"""
     try:
-        # الحصول على التوقيع
         signature = request.headers.get("x-nowpayments-sig")
         if not signature:
             return jsonify({"error": "توقيع مفقود"}), 400
 
-        # التحقق من التوقيع
         nowpayments = NOWPaymentsService()
         if not nowpayments.verify_ipn(request.get_json(), signature):
             return jsonify({"error": "توقيع غير صحيح"}), 400
 
-        # معالجة البيانات
         payment_data = request.get_json()
         success = nowpayments.process_payment_callback(payment_data)
 

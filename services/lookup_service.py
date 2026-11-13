@@ -14,7 +14,6 @@ logic) accept label edits only — add/disable are refused server-side.
 
 from utils import constants as _constants
 
-
 OVERRIDES_KEY = "lookup_overrides"
 
 
@@ -32,7 +31,6 @@ def _base_list(group):
     if group not in reg:
         raise ValueError(f"مجموعة ثوابت غير معروفة: {group}")
     if group == "subscription_plans":
-        # القاعدة الحية تتفوق على الثابتة — الأسعار والأوصاف من /owner/plans
         try:
             from models import SubscriptionPlan
 

@@ -76,9 +76,6 @@ from utils.balance_checker import TOLERANCE, get_control_account_balance, to_dec
 
 logger = logging.getLogger(__name__)
 
-# CENTRAL CONTRACT — dynamic CoA resolution (Agent 1's module consumed defensively).
-# If services.account_resolution is not importable yet, literal codes are used as
-# FALLBACK DEFAULTS so parallel rollout never blocks. Defaults equal today's codes.
 try:
     from services.account_resolution import AccountResolver, AccountRole
 except ImportError:  # pragma: no cover - resolver ships in Agent 1's turn
@@ -87,12 +84,8 @@ except ImportError:  # pragma: no cover - resolver ships in Agent 1's turn
 
 DEFAULT_AR_CONTROL_CODES = ["1130"]
 DEFAULT_AP_CONTROL_CODES = ["2115", "2110"]
-# Merchant ('2115') and partner ('3350') invoices bypass the plain AR control;
-# the AR proof must include those buckets or merchant/partner customers always
-# look like breaks.
 DEFAULT_AR_MERCHANT_BUCKETS = ["2115", "3350"]
 
-# حالات الشيك التي تعني: استُلم الشيك ولم يُصرف بعد (بلا تسوية للفاتورة).
 _PENDING_CHEQUE_STATUSES = ("pending", "under_collection", "deposited")
 
 
@@ -197,11 +190,6 @@ def _ar_debit_normal_balance(account_codes):
     return total
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# بنود التسوية المعروفة (reconciling items)
-# ═══════════════════════════════════════════════════════════════════════════
-
-
 def _reconciling_item(code, label, amount, sign, note=""):
     """بند تسوية معروف: فرق متوقّع بين الأستاذ والذمم الفرعية.
 
@@ -288,8 +276,6 @@ def _unallocated_receipts(tenant_id=None):
 class SubLedgerReconciliation:
     """Three-way sub-ledger ↔ GL control ↔ balance-column proof (AR & AP)."""
 
-    # ------------------------------------------------------------------ AR
-
     @staticmethod
     def reconcile_receivables(tenant_id=None):
         """
@@ -309,8 +295,6 @@ class SubLedgerReconciliation:
 
         codes = _ar_control_codes()
 
-        # populate_existing: model listeners mutate balances via raw SQL outside
-        # the identity map — force a fresh read so stored columns are current.
         customers = Customer.query.order_by(Customer.id).populate_existing().all()
         if tenant_id is not None:
             customers = [c for c in customers if c.tenant_id == tenant_id]
@@ -326,7 +310,6 @@ class SubLedgerReconciliation:
             expected = derive_customer_balance(customer.id, connection=connection)
 
             if not customer.is_active:
-                # خارج نطاق الذمم الفرعية (نشط فقط) — يُعرض كبند تسوية
                 inactive_sum += expected
                 continue
 
@@ -353,8 +336,6 @@ class SubLedgerReconciliation:
 
         control_balance = _ar_debit_normal_balance(codes)
 
-        # Section detail lines: one entry per control bucket so reviewers can
-        # see exactly which bucket carries (or misses) the value.
         breakdown = [
             {"account_code": code, "balance": _q2(_ar_debit_normal_balance([code]))}
             for code in codes
@@ -422,8 +403,6 @@ class SubLedgerReconciliation:
             "balanced": balanced,
         }
 
-    # ------------------------------------------------------------------ AP
-
     @staticmethod
     def reconcile_payables(tenant_id=None):
         """
@@ -442,7 +421,6 @@ class SubLedgerReconciliation:
 
         codes = _ap_control_codes()
 
-        # populate_existing: see reconcile_receivables (raw-SQL listener writes).
         suppliers = Supplier.query.order_by(Supplier.id).populate_existing().all()
         if tenant_id is not None:
             suppliers = [s for s in suppliers if s.tenant_id == tenant_id]
@@ -458,7 +436,6 @@ class SubLedgerReconciliation:
             expected = total_purchases - total_paid + opening
 
             if not supplier.is_active:
-                # خارج نطاق الذمم الفرعية (نشط فقط) — يُعرض كبند تسوية
                 inactive_sum += expected
                 continue
 
@@ -488,7 +465,6 @@ class SubLedgerReconciliation:
 
         control_balance = get_control_account_balance(codes)
 
-        # Section detail lines per AP control bucket (merchants vs AP control).
         breakdown = [
             {"account_code": code, "balance": _q2(get_control_account_balance([code]))}
             for code in codes
@@ -548,8 +524,6 @@ class SubLedgerReconciliation:
             "breaks": breaks,
             "balanced": balanced,
         }
-
-    # ----------------------------------------------------------------- All
 
     @staticmethod
     def reconcile_all(tenant_id=None):

@@ -13,10 +13,6 @@ logger = logging.getLogger(__name__)
 class RealTimeAccountingListeners:
     """مستمعات لحظية للأحداث المحاسبية"""
 
-    # Guard against import-time double registration: setup_listeners() runs
-    # at module import AND may be called explicitly (dev reloader, tests);
-    # SQLAlchemy would stack a duplicate listener set on every call because
-    # each call creates new closures, so handlers would fire N times.
     _listeners_registered = False
 
     @staticmethod
@@ -25,32 +21,26 @@ class RealTimeAccountingListeners:
         if RealTimeAccountingListeners._listeners_registered:
             return
 
-        # مستمع إنشاء القيود
         @event.listens_for(GLJournalEntry, "after_insert")
         def journal_entry_created(mapper, connection, target):
             RealTimeAccountingListeners._on_journal_entry_created(target)
 
-        # مستمع تحديث القيود
         @event.listens_for(GLJournalEntry, "after_update")
         def journal_entry_updated(mapper, connection, target):
             RealTimeAccountingListeners._on_journal_entry_updated(target)
 
-        # مستمع إنشاء سطور القيود
         @event.listens_for(GLJournalLine, "after_insert")
         def journal_line_created(mapper, connection, target):
             RealTimeAccountingListeners._on_journal_line_created(target)
 
-        # مستمع تحديث الأرصدة
         @event.listens_for(GLAccount, "after_update")
         def account_updated(mapper, connection, target):
             RealTimeAccountingListeners._on_account_updated(target)
 
-        # مستمع المصروفات المتقدمة
         @event.listens_for(AdvancedExpense, "after_insert")
         def expense_created(mapper, connection, target):
             RealTimeAccountingListeners._on_expense_created(target)
 
-        # مستمع الشيكات
         @event.listens_for(Cheque, "after_update")
         def cheque_updated(mapper, connection, target):
             RealTimeAccountingListeners._on_cheque_updated(target)
@@ -61,7 +51,6 @@ class RealTimeAccountingListeners:
     def _on_journal_entry_created(entry):
         """عند إنشاء قيد جديد"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "journal_entry_created",
                 {
@@ -74,12 +63,10 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # إشعار فوري
             RealTimeAccountingListeners._send_notification(
                 "قيد جديد", f"تم إنشاء قيد جديد رقم {entry.entry_number}", "success"
             )
 
-            # تحديث الإحصائيات
             RealTimeAccountingListeners._update_statistics()
 
         except Exception as e:
@@ -89,7 +76,6 @@ class RealTimeAccountingListeners:
     def _on_journal_entry_updated(entry):
         """عند تحديث قيد"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "journal_entry_updated",
                 {
@@ -103,7 +89,6 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # إشعار حسب نوع التحديث
             if entry.is_posted:
                 RealTimeAccountingListeners._send_notification(
                     "قيد مرحل", f"تم ترحيل القيد رقم {entry.entry_number}", "info"
@@ -120,7 +105,6 @@ class RealTimeAccountingListeners:
     def _on_journal_line_created(line):
         """عند إنشاء سطر قيد"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "journal_line_created",
                 {
@@ -134,7 +118,6 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # تحديث رصيد الحساب فورياً
             RealTimeAccountingListeners._update_account_balance(line.account_id)
 
         except Exception as e:
@@ -144,7 +127,6 @@ class RealTimeAccountingListeners:
     def _on_account_updated(account):
         """عند تحديث حساب"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "account_updated",
                 {
@@ -158,7 +140,6 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # فحص الأرصدة العالية
             balance = account.get_balance()
             if abs(balance) > 100000:  # أكثر من 100,000 درهم
                 RealTimeAccountingListeners._send_notification(
@@ -174,7 +155,6 @@ class RealTimeAccountingListeners:
     def _on_expense_created(expense):
         """عند إنشاء مصروف متقدم"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "expense_created",
                 {
@@ -188,14 +168,12 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # إشعار فوري
             RealTimeAccountingListeners._send_notification(
                 "مصروف جديد",
                 f"تم إنشاء مصروف جديد رقم {expense.expense_number} بقيمة {expense.amount_base:,.2f} درهم",
                 "info",
             )
 
-            # فحص حدود الموافقة
             if (
                 expense.requires_approval
                 and expense.amount_base > expense.category.approval_limit
@@ -213,7 +191,6 @@ class RealTimeAccountingListeners:
     def _on_cheque_updated(cheque):
         """عند تحديث شيك"""
         try:
-            # تسجيل الحدث
             RealTimeAccountingListeners._log_event(
                 "cheque_updated",
                 {
@@ -228,7 +205,6 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            # إشعار حسب الحالة
             status_messages = {
                 "received": "تم استلام شيك وارد",
                 "issued": "تم إصدار شيك صادر",
@@ -254,23 +230,17 @@ class RealTimeAccountingListeners:
     def _log_event(event_type, data):
         """تسجيل الحدث"""
         try:
-            # يمكن حفظ الأحداث في قاعدة بيانات أو ملف
             _ = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_type": event_type,
                 "data": data,
             }
 
-            # Structured log for production; print retained for console/test
-            # visibility (listeners fire inside flush where DB-backed logging
-            # could reenter the session, so print stays as the side-effect-
-            # free fallback, not the only sink).
             logger.info(
                 "Accounting event %s: %s",
                 event_type,
                 json.dumps(data, ensure_ascii=False),
             )
-            # طباعة للاختبار (يمكن استبدالها بحفظ في قاعدة البيانات)
             print(
                 f"🔔 حدث محاسبي: {event_type} - {json.dumps(data, ensure_ascii=False)}"
             )
@@ -283,7 +253,6 @@ class RealTimeAccountingListeners:
     def _send_notification(title, message, level="info"):
         """إرسال إشعار فوري"""
         try:
-            # يمكن ربط هذا بنظام إشعارات حقيقي
             icons = {"success": "✅", "info": "ℹ️", "warning": "⚠️", "error": "❌"}
 
             icon = icons.get(level, "ℹ️")
@@ -298,7 +267,6 @@ class RealTimeAccountingListeners:
     def _update_statistics():
         """تحديث الإحصائيات"""
         try:
-            # حساب إحصائيات سريعة
             total_entries = GLJournalEntry.query.count()
             posted_entries = GLJournalEntry.query.filter_by(is_posted=True).count()
             reversed_entries = GLJournalEntry.query.filter_by(is_reversed=True).count()
@@ -322,10 +290,8 @@ class RealTimeAccountingListeners:
         try:
             account = db.session.get(GLAccount, account_id)
             if account:
-                # حساب الرصيد الجديد
                 new_balance = account.get_balance()
 
-                # تسجيل التحديث
                 RealTimeAccountingListeners._log_event(
                     "account_balance_updated",
                     {
@@ -361,7 +327,6 @@ class AccountingEventStream:
 
         self.events.append(event)
 
-        # إرسال لجميع المستمعين
         for listener in self.listeners:
             try:
                 listener(event)
@@ -377,8 +342,6 @@ class AccountingEventStream:
         return [event for event in self.events if event["type"] == event_type]
 
 
-# إنشاء تيار الأحداث العام
 accounting_event_stream = AccountingEventStream()
 
-# إعداد المستمعات
 RealTimeAccountingListeners.setup_listeners()

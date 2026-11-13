@@ -180,7 +180,6 @@ class TestBidiOrdering:
 
 
 # --------------------------------------------------------------------------
-# Report page smoke renders (client + login_owner, seeded minimal data)
 # --------------------------------------------------------------------------
 @pytest.fixture
 def seeded_report_data(db, owner_user):

@@ -285,7 +285,6 @@ class TransformersBrain:
                 'entities': الكيانات المستخرجة
             }
         """
-        # 1. Tokenization (تجزئة النص)
         tokens = self._tokenize(text)
 
         # 2. Word Embeddings (تضمين الكلمات)

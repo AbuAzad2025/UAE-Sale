@@ -537,7 +537,6 @@ def _new_edge_state(client, db, sc, fixtures):
 
         r = client.get(f"/customers/{secret.id}")
         if sc.role == "owner":
-            # Documented bypass: the owner is the platform operator.
             assert r.status_code == 200, f"{sc.id}: owner view got {r.status_code}"
         else:
             assert r.status_code in (403, 404), (
@@ -1608,7 +1607,6 @@ def _run_hr(client, db, sc, fixtures):
     branch = sc.index % 4
 
     if branch == 0:
-        # No helper here on purpose: _hr_department() seeds the same `code`,
         # and departments.code is unique, so calling it first would make the
         # POST fail on the constraint instead of exercising the create path.
         before = Department.query.count()
@@ -2938,8 +2936,6 @@ def _run_vault(client, db, sc, fixtures):
         r = client.post(
             path, json={"amount": float(sc.amount), "currency": sc.currency}
         )
-        # 400/403 = signature or secret missing/rejected, 503 = the integration
-        # secret is not configured so the handler fails closed. All three are
         # refusals; anything 2xx would mean an unverified payload could mint a
         # payment, which is what this asserts against.
         assert r.status_code in (400, 403, 503), (
@@ -4401,7 +4397,6 @@ def _run_users(client, db, sc, fixtures):
             is_active=True,
             role_id=users["viewer"].role_id,
         )
-        # users.password_hash is NOT NULL, so a directly-built row still needs
         # a hash even though this user is never logged into.
         secret.set_password("Str0ng-Passw0rd!")
         db.session.add(secret)
@@ -4769,7 +4764,6 @@ def _make_sale_as_owner(client, db, sc, fixtures, login_as):
     db.session.commit()
     del Warehouse
 
-    # Logging in again does NOT switch identity: /auth/login posts credentials
     # but Flask-Login keeps the already-loaded user, and neither /auth/logout
     # nor session_transaction().clear() was enough - the current_user proxy
     # stays bound to the first identity for the lifetime of the test's app
@@ -5175,7 +5169,6 @@ def _run_dashboard(client, db, sc, fixtures):
     )
 
     if sc.state == "cross_tenant_read" or sc.edge == "cross_tenant":
-        # Seed a second tenant with a distinctive marker and prove the
         # dashboard does not render it.
         from models import Tenant, Customer as _C
 
@@ -5369,7 +5362,6 @@ def _run_security(client, db, sc, fixtures):
         r = client.get(f"/customers/{secret.id}")
 
         if sc.role == "owner":
-            # get_owned_or_404 documents an intentional bypass: the platform
             # owner is the operator of every tenant, so a global read is
             # correct behaviour, not a leak.
             assert r.status_code == 200, (
@@ -5567,7 +5559,6 @@ def _denied_request(client, db, sc, fixtures):
             },
         )
     if sc.domain == "approvals":
-        # Seed a real request so the POST has a target, then assert the
         # manage_approvals gate refuses it and leaves the level untouched.
         _wf, req = _approval_seed(
             db, fixtures["users"], sc.index, 1, tenant=fixtures.get("tenant")
@@ -5769,7 +5760,6 @@ def test_matrix_scenario(
             return
 
         if sc.domain == "approvals":
-            # _denied_request seeded the request and levels itself, so the
             # world-state comparison would flag its own fixture rows. The 403
             # and the untouched approval level are asserted inside.
             assert r.status_code == 403, (

@@ -20,8 +20,6 @@ MIN_TABLES = 30
 
 
 def _block_parse_counts(sql_text):
-    # إحصائيات pg_dump المتوافقة:
-    # CREATE TABLE "name" / COPY "name" (...) FROM stdin; ... \.
     tables = re.findall(
         r'CREATE TABLE (?:IF NOT EXISTS )?"?([a-z_][\w\.]*)"?', sql_text
     )

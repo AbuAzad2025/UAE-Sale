@@ -43,8 +43,6 @@ from utils.helpers import create_audit_log
 
 erp_bp = Blueprint("erp_modules", __name__, url_prefix="/erp")
 
-# ==================== QUOTATIONS ====================
-
 
 @erp_bp.route("/quotations")
 @login_required
@@ -58,7 +56,6 @@ def quotations():
     show_all_versions = request.args.get("all_versions", "", type=str).strip() == "1"
 
     query = Quotation.query.filter_by(is_active=True)
-    # auto-expire on access
     try:
         expired_candidates = Quotation.query.filter(
             Quotation.status.in_(["draft", "sent"]),
@@ -375,9 +372,6 @@ def convert_quotation(id):
         return redirect(url_for("erp_modules.view_quotation", id=id))
 
 
-# ==================== PURCHASE ORDERS ====================
-
-
 @erp_bp.route("/purchase-orders")
 @login_required
 @permission_required("manage_purchases")
@@ -507,15 +501,10 @@ def receive_purchase_order(id):
         return redirect(url_for("erp_modules.view_purchase_order", id=id))
 
 
-# ==================== FISCAL PERIODS ====================
-
-
 @erp_bp.route("/fiscal-periods")
 @login_required
 @permission_required("manage_ledger")
 def fiscal_periods():
-    # F10: لا تُعرض فترات مستأجر آخر — الفترة العامة (tenant_id = NULL)
-    # تظهر للجميع، والخاصة تظهر لصاحبها فقط.
     periods = FiscalPeriodService.visible_periods()
     return render_template("erp/fiscal_periods.html", periods=periods)
 
@@ -540,8 +529,6 @@ def create_fiscal_period():
 def close_fiscal_period(id):
     """Close fiscal period — admin only (owner/super_admin)"""
     try:
-        # F10: no period is closed unless it belongs to the tenant (or it is
-        # a global period closed from the platform-owner level).
         fp = FiscalPeriodService.get_owned_period(id)
         FiscalPeriodService.close_period(fp.id, current_user.id)
         create_audit_log("close", "fiscal_periods", id)
@@ -567,9 +554,6 @@ def reopen_fiscal_period(id):
         current_app.logger.exception("handler failed")
         flash(f"⚠️: {e}", "danger")
     return redirect(url_for("erp_modules.fiscal_periods"))
-
-
-# ==================== STOCK TRANSFERS ====================
 
 
 @erp_bp.route("/stock-transfers")
@@ -649,9 +633,6 @@ def receive_stock_transfer(id):
     return redirect(url_for("erp_modules.stock_transfers"))
 
 
-# ==================== STOCK TAKES ====================
-
-
 @erp_bp.route("/stock-takes")
 @login_required
 @permission_required("manage_warehouse")
@@ -723,9 +704,6 @@ def approve_stocktake(id):
     return redirect(url_for("erp_modules.view_stocktake", id=id))
 
 
-# ==================== DUNNING LETTERS ====================
-
-
 @erp_bp.route("/dunning")
 @login_required
 @permission_required("manage_payments")
@@ -757,9 +735,6 @@ def send_dunning(id):
     db.session.commit()
     flash("✅ تم تسجيل إرسال الإنذار", "success")
     return redirect(url_for("erp_modules.dunning"))
-
-
-# ==================== RECURRING EXPENSES ====================
 
 
 @erp_bp.route("/recurring-expenses")
@@ -818,9 +793,6 @@ def toggle_recurring_expense(id):
     return redirect(url_for("erp_modules.recurring_expenses"))
 
 
-# ==================== LOT TRACKING ====================
-
-
 @erp_bp.route("/lots")
 @login_required
 @permission_required("manage_warehouse")
@@ -877,9 +849,6 @@ def create_lot():
     )
 
 
-# ==================== BIN TRACKING ====================
-
-
 @erp_bp.route("/bins")
 @login_required
 @permission_required("manage_warehouse")
@@ -917,9 +886,6 @@ def create_bin():
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
     return redirect(url_for("erp_modules.bins"))
-
-
-# ==================== E-INVOICING ====================
 
 
 @erp_bp.route("/e-invoices")

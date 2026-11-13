@@ -203,7 +203,6 @@ def upgrade():
     )
     op.create_index("ix_payslip_lines_payslip", "payslip_lines", ["payslip_id"])
 
-    # Seed default leave types
     op.execute("""
         INSERT INTO leave_types (name, name_ar, code, default_days, is_paid, is_active) VALUES
         ('Annual Leave', 'إجازة سنوية', 'annual', 30, TRUE, TRUE),
@@ -215,7 +214,6 @@ def upgrade():
         ON CONFLICT (code) DO NOTHING;
     """)
 
-    # Seed manage_hr permission
     op.execute("""
         INSERT INTO permissions (code, name, name_ar, category)
         VALUES ('manage_hr', 'Manage HR', 'إدارة الموارد البشرية', 'hr')

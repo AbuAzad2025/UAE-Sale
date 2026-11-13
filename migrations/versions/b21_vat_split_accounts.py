@@ -18,7 +18,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Schema-neutral revision: the account rows are seeded at app boot by
     # GLService.ensure_core_accounts() so that both fresh and existing
     # tenants get them exactly once.
     op.execute("SELECT 1")

@@ -29,7 +29,6 @@ def get_sales():
     return jsonify(
         {
             "success": True,
-            # SECURITY: line cost_price + profit only for cost-privileged roles
             "sales": [
                 sale.to_dict(
                     include_lines=True, include_cost=current_user.can_see_costs()
@@ -125,8 +124,6 @@ def search_products():
         .all()
     )
 
-    # SECURITY: Product.to_dict() includes cost_price — strip it for roles
-    # that are not allowed to see costs (owner / super_admin / manager only).
     include_cost = current_user.can_see_costs()
     return jsonify(
         {
@@ -144,7 +141,6 @@ def get_product(product_id):
     from models import Product
 
     product = get_owned_or_404(Product, product_id, code=404)
-    # SECURITY: same cost-masking rule as the search endpoint above.
     return jsonify(
         {
             "success": True,
@@ -173,8 +169,6 @@ def sales_forecast():
 def profit_margins():
     from services.ai_service import AIService
 
-    # SECURITY: profit margins are cost-derived financial data —
-    # view_reports alone (cashier/viewer/accountant) must not see them.
     if not current_user.can_see_costs():
         abort(403)
 

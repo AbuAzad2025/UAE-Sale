@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """خدمة الإشعارات"""
 
-    # مخزن الإشعارات في الذاكرة (يمكن استخدام Redis للإنتاج)
     _notifications = []
 
     @staticmethod
@@ -98,10 +97,8 @@ class NotificationService:
 class SecurityService:
     """خدمة الأمان والتنبيهات"""
 
-    # قائمة سوداء للـ IPs المشبوهة
     _blacklist = set()
 
-    # سجل المحاولات الفاشلة
     _failed_attempts = {}
 
     @staticmethod
@@ -117,14 +114,12 @@ class SecurityService:
         Returns:
             dict: نتيجة الفحص
         """
-        # فحص القائمة السوداء
         if ip_address in SecurityService._blacklist:
             NotificationService.notify_security_alert(
                 "IP محظور", f"محاولة وصول من IP محظور: {ip_address}"
             )
             return {"suspicious": True, "reason": "blacklisted_ip"}
 
-        # فحص المحاولات الفاشلة
         if ip_address in SecurityService._failed_attempts:
             attempts = SecurityService._failed_attempts[ip_address]
             if attempts["count"] >= 5:
@@ -135,7 +130,6 @@ class SecurityService:
                 )
                 return {"suspicious": True, "reason": "too_many_failed_attempts"}
 
-        # فحص User Agent المشبوه
         suspicious_agents = ["bot", "crawler", "scraper", "scanner"]
         if any(agent in user_agent.lower() for agent in suspicious_agents):
             NotificationService.notify_security_alert(

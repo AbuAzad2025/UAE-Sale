@@ -3,11 +3,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from extensions import db
 
-# سعر الصرف يُكمَّم دائمًا إلى 6 منازل عشرية (نصف لأعلى) لضمان اتساق كل المصادر
 RATE_QUANTUM = Decimal("0.000001")
-# تنسيق المبالغ المعروضة: منزلتان عشريتان افتراضيًا
 DISPLAY_MONEY_QUANTUM = Decimal("0.01")
-# علامة الاتجاه الأيسر-إلى-اليمنى لعزل المبالغ داخل نصوص RTL
 LRM_MARK = "\u200e"
 
 try:
@@ -70,8 +67,6 @@ class CurrencyService:
             pass
         return CurrencyService.DEFAULT_BASE
 
-    # قيم احتياطية: قيمة 1 وحدة من كل عملة مقابل الشيقل — تُستخدم فقط عند فشل كل الخوادم
-    # وتُعاد معايرتها تلقائيًا نسبةً لعملة القاعدة المطلوبة في get_all_rates
     FALLBACK_RATES = {
         "ILS": Decimal("1.00"),
         "USD": Decimal("0.27"),
@@ -91,7 +86,6 @@ class CurrencyService:
         base = base or CurrencyService.get_base_currency()
         base = (base or "AED").upper()
 
-        # Check cache first
         cache_entry = CurrencyService._rates_cache.get(base)
         if (
             cache_entry
@@ -102,7 +96,6 @@ class CurrencyService:
 
         rates = {}
 
-        # Try fetching live rates via free HTTP APIs (no key required)
         free_endpoints = [
             f"https://open.er-api.com/v6/latest/{base}",
             f"https://api.exchangerate-api.com/v4/latest/{base}",
@@ -114,7 +107,6 @@ class CurrencyService:
                     resp = requests.get(url, timeout=5)
                     if resp.status_code == 200:
                         data = resp.json()
-                        # Normalize different API response formats
                         fetched = None
                         if "rates" in data:
                             fetched = data["rates"]
@@ -138,38 +130,26 @@ class CurrencyService:
                     print(f"Free API {url} failed: {e}")
                     continue
 
-        # Try forex_python as secondary source
         if FOREX_AVAILABLE:
             try:
                 c = CurrencyRates()
-                # get_rates returns a dict of rates for the base currency
-                # This is a SINGLE API call, much faster than a loop
                 fetched_rates = c.get_rates(base)
 
-                # Convert to Decimal (quantized for consistency with other sources)
                 for curr, rate in fetched_rates.items():
                     rates[curr] = Decimal(str(rate)).quantize(
                         RATE_QUANTUM, rounding=ROUND_HALF_UP
                     )
 
-                # Ensure base currency is 1.0
                 rates[base] = Decimal("1.00")
 
-                # Cache the result
                 CurrencyService._rates_cache[base] = {
                     "timestamp": time.time(),
                     "rates": rates,
                 }
                 return rates.copy()
             except Exception as e:
-                # Log error if possible, or just continue to fallback
                 print(f"Forex API failed: {e}")
 
-        # Fallback if API fails or not available
-        # Recalculate fallback rates based on the requested base
-        # Our static FALLBACK_RATES are "Value of 1 ILS in X Currency"
-
-        # Helper to get value of 1 ILS in Target Currency
         def get_ils_value(target):
             if target == "ILS":
                 return Decimal("1")
@@ -193,7 +173,6 @@ class CurrencyService:
             if curr == base:
                 rates[curr] = Decimal("1.00")
             else:
-                # Cross rate: 1 Base = (val_target / val_base) Target
                 val_target = get_ils_value(curr)
                 val_base = get_ils_value(base)
 
@@ -228,8 +207,6 @@ class CurrencyService:
         if from_currency == to_currency:
             return Decimal("1")
 
-        # CHECK CACHE FIRST (Performance Fix)
-        # We check the cache for the 'from_currency' as base
         cache_entry = CurrencyService._rates_cache.get(from_currency)
         if (
             cache_entry
@@ -242,8 +219,6 @@ class CurrencyService:
                     RATE_QUANTUM, rounding=ROUND_HALF_UP
                 )
 
-        # If not in cache, try to fetch/refresh cache for 'from_currency'
-        # This calls the optimized get_all_rates which handles API/Fallback + Caching
         all_rates = CurrencyService.get_all_rates(base=from_currency)
         return all_rates.get(to_currency, Decimal("1"))
 

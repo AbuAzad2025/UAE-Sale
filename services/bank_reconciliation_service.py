@@ -24,7 +24,6 @@ class BankReconciliationService:
 
         _ = db.get_or_404(GLAccount, bank_account_id)
 
-        # حساب رصيد الدفاتر
         from services.gl_service import GLService
 
         statement = GLService.get_account_statement(
@@ -34,7 +33,6 @@ class BankReconciliationService:
         closing_balance_per_books = Decimal(str(statement["closing_balance"]))
         opening_balance = Decimal(str(statement["opening_balance"]))
 
-        # إنشاء المطابقة
         reconciliation_number = generate_number(
             "BR", BankReconciliation, "reconciliation_number"
         )
@@ -58,10 +56,8 @@ class BankReconciliationService:
         db.session.add(reconciliation)
         db.session.flush()
 
-        # جلب العمليات المعلقة تلقائياً
         BankReconciliationService._auto_populate_items(reconciliation)
 
-        # حساب المطابقة
         reconciliation.calculate_reconciliation()
 
         db.session.flush()
@@ -72,7 +68,6 @@ class BankReconciliationService:
         """
         ملء العناصر تلقائياً (شيكات معلقة، عمليات غير مطابقة)
         """
-        # 1. الشيكات الواردة المعلقة (pending, deposited)
         outstanding_cheques_in = Cheque.query.filter(
             Cheque.cheque_type == "incoming",
             Cheque.status.in_(["pending", "deposited"]),
@@ -92,7 +87,6 @@ class BankReconciliationService:
             db.session.add(item)
             reconciliation.outstanding_deposits += cheque.amount_base
 
-        # 2. الشيكات الصادرة المعلقة
         outstanding_cheques_out = Cheque.query.filter(
             Cheque.cheque_type == "outgoing",
             Cheque.status.in_(["pending", "deposited"]),
@@ -174,18 +168,15 @@ class BankReconciliationService:
         if reconciliation.status != "draft":
             raise ValueError("المطابقة معتمدة مسبقاً")
 
-        # التحقق من التوازن
         result = reconciliation.calculate_reconciliation()
 
         if not result["is_balanced"]:
             raise ValueError(f"المطابقة غير متوازنة - الفرق: {result['difference']}")
 
-        # إنشاء قيود التسوية
         from services.gl_service import GLService
 
         lines = []
 
-        # مصاريف بنكية
         if reconciliation.bank_charges > 0:
             lines.append(
                 {
@@ -204,7 +195,6 @@ class BankReconciliationService:
                 }
             )
 
-        # فوائد بنكية
         if reconciliation.bank_interest > 0:
             lines.append(
                 {
@@ -231,7 +221,6 @@ class BankReconciliationService:
                 reference_id=reconciliation.id,
             )
 
-        # تحديث الحالة
         reconciliation.status = "completed"
 
         db.session.flush()
@@ -248,7 +237,6 @@ class BankReconciliationService:
             bank_account_id, date_from=period_start, date_to=period_end
         )
 
-        # الشيكات المعلقة
         outstanding_cheques_in = Cheque.query.filter(
             Cheque.cheque_type == "incoming",
             Cheque.status.in_(["pending", "deposited"]),

@@ -417,7 +417,6 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
         query = query.filter(Customer.tenant_id == tenant_id)
     partners = query.order_by(Customer.partner_share.desc(), Customer.id.asc()).all()
 
-    # استعلامات مجمعة (N+1 fix) — استعلام واحد لكل aggregate
     product_accrual = _product_shares_bulk(
         [p.id for p in partners], period_from, period_to
     )
@@ -511,7 +510,6 @@ def _guard_against_overlapping_periods(period_from, period_to, tid):
         if info is None:
             continue
         w_from, w_to = info
-        # نطاق التينانت في العلامة — يستبعد توزعات تينانتات أخرى إن وُجدت
         tid_part = (row.notes or "").split(":")[-1]
         if (tid is not None or tid_part != "platform") and tid_part != str(
             tid or "platform"
@@ -561,7 +559,6 @@ def post_partner_distributions(
     if existing is not None:
         return None
 
-    # حظر تداخل أي توزيعين لنفس التينانت — الربح القديم لا يُوزَّع مرتين.
     if not force:
         _guard_against_overlapping_periods(period_from, period_to, tid)
 
@@ -576,12 +573,9 @@ def post_partner_distributions(
         query = query.filter(Customer.tenant_id == tid)
     partners = query.order_by(Customer.partner_share.desc(), Customer.id.asc()).all()
 
-    # 🔒 Concurrency: lock each partner's customer row so two concurrent
-    # distributions cannot both read the same draws/sales/balance.
     for p in partners:
         Customer.query.filter_by(id=p.id).with_for_update().first()
 
-    # استعلامات مجمعة (N+1 fix)
     draws_bulk = _draws_for_partners_bulk(
         [p.id for p in partners], period_from, period_to
     )

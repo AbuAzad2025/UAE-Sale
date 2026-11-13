@@ -30,10 +30,6 @@ class Warehouse(db.Model):
         "StockMovement", back_populates="warehouse", lazy="dynamic"
     )
 
-    # ------------------------------------------------------------------
-    # F-03: enforce that warehouse.tenant_id == branch (manager) tenant_id
-    # ------------------------------------------------------------------
-
     @validates("manager_id", "tenant_id")
     def _validate_tenant_consistency(self, key, value):
         """The warehouse's tenant must match its manager (branch

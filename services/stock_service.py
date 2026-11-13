@@ -73,9 +73,6 @@ class StockService:
         from services.gl_service import GLService
 
         delta = Decimal(str(delta))
-        # التقييم على أساس المتوسط المتحرك — لا سعر آخر شراء: فالقيمة
-        # الدفترية للمخزون هي quantity × average_cost، وقيد التسوية
-        # يجب أن يحمل القيمة نفسها وإلا ظهر الفرق في التقرير.
         cost = CostingService.current_unit_cost(product)
         value = abs(delta) * cost
         if value <= 0:
@@ -158,7 +155,6 @@ class StockService:
         if not post_gl:
             return movement
 
-        # GL Integration for Adjustment
         try:
             product = get_owned_or_raise(
                 Product, product_id, missing_message="المنتج غير موجود"
@@ -169,8 +165,6 @@ class StockService:
                 movement=movement,
             )
             if entry is None and Decimal(str(quantity)) != 0:
-                # لا يوجد قيد لأن تكلفة المنتج صفر/فارغة — التحرك بلا قيمة
-                # محاسبية. يُسجَّل تحذير صريح بدل تمرير العملية صامتة.
                 current_app.logger.warning(
                     "Stock adjustment of %s for product #%s produced no GL "
                     "entry: the product has no cost price.",
@@ -178,7 +172,6 @@ class StockService:
                     product_id,
                 )
         except Exception as e:
-            # fail-closed: لا يبقى المخزون متحركاً بلا قيد في الأستاذ.
             db.session.rollback()
             current_app.logger.error(
                 f"Failed to post GL entry for stock adjustment "
@@ -222,9 +215,6 @@ class StockService:
             missing_message=f"⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة.",
             for_update=True,
         )
-        # 🔒 Concurrency hardening: lock the product row before mutating
-        # stock/cost so two concurrent sales cannot both read the same
-        # available_stock and oversell or corrupt the moving average.
         if product is not None:
             product = (
                 db.session.get(Product, product.id, with_for_update=True) or product
@@ -235,9 +225,7 @@ class StockService:
                 f"⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة."
             )
 
-        # تحديد المستودع
         if warehouse_id:
-            # استخدام المستودع المحدد
             warehouse = Warehouse.query.filter_by(
                 id=warehouse_id, is_active=True
             ).first()
@@ -246,12 +234,10 @@ class StockService:
                     f"⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id})."
                 )
         else:
-            # البحث عن المستودع الرئيسي أولاً، ثم أول مستودع نشط
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
             if not warehouse:
                 warehouse = Warehouse.query.filter_by(is_active=True).first()
 
-            # إذا لم يوجد أي مستودع، إنشاء واحد افتراضي
             if not warehouse:
                 warehouse = Warehouse(
                     name="Main Warehouse",
@@ -275,8 +261,6 @@ class StockService:
         available_stock = Decimal(str(product.current_stock or 0))
         resulting_stock = available_stock + quantity_decimal
 
-        # التحقق من المخزون الناتج قبل أي تعديل — الرسالة تعرض المتوفر الفعلي
-        # (كانت تعرض الرصيد بعد التعديل فتُربك المستخدم برقم سالب خاطئ)
         if resulting_stock < 0:
             raise ValueError(
                 f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {available_stock} | المطلوب: {abs(quantity_decimal)}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.'
@@ -295,14 +279,10 @@ class StockService:
 
         db.session.add(movement)
 
-        # Savepoint: a failed flush here must NOT poison the caller's outer
-        # transaction — only our own work is rolled back.
         nested = db.session.begin_nested()
         old_average = Decimal(str(product.average_cost or 0))
         try:
             if quantity_decimal > 0:
-                # الوارد: متوسط التكلفة المتحرك يُحدَّث قبل تغيّر الرصيد
-                # (عقد apply_inbound: الكمية المقروءة هي ما قبل الحركة).
                 in_cost = unit_cost_base
                 if in_cost is None:
                     in_cost = CostingService.current_unit_cost(product)
@@ -330,7 +310,6 @@ class StockService:
     @staticmethod
     def process_sale_lines(sale, warehouse_id=None):
         """معالجة بيوع مع خصم من مستودع محدد"""
-        # استخدام warehouse_id من sale إذا لم يُمرر
         if not warehouse_id and hasattr(sale, "warehouse_id"):
             warehouse_id = sale.warehouse_id
 
@@ -360,7 +339,6 @@ class StockService:
             warehouse_id = purchase.warehouse_id
 
         for line in purchase.lines:
-            # تكلفة الوحدة الصافية (خصم المستند موزّعاً + سعر الصرف)
             net_unit_cost = CostingService.net_unit_cost(line, purchase)
 
             StockService.add_stock(
@@ -377,9 +355,6 @@ class StockService:
                 Product, line.product_id, missing_message="المنتج غير موجود"
             )
             if product:
-                # Update cost price in base currency (AED) — مرجع آخر
-                # شراء، لا أساس التقييم (الأساس = average_cost).
-                # Ensure we use Decimal for precision
                 unit_cost_decimal = Decimal(str(line.unit_cost))
                 exchange_rate_decimal = Decimal(str(purchase.exchange_rate))
                 cost_in_aed = unit_cost_decimal * exchange_rate_decimal
@@ -394,7 +369,6 @@ class StockService:
         خرجت يجب أن تعود كما هي، فيعود متوسط التكلفة المتحرك إلى
         حالته قبل البيع.
         """
-        # استخدام نفس المستودع الذي تم البيع منه
         warehouse_id = getattr(sale, "warehouse_id", None)
 
         for line in sale.lines:
@@ -578,7 +552,6 @@ class StockService:
     def get_low_stock_products(limit=None):
         from sqlalchemy import func
 
-        # Handle NULL values safely using coalesce
         query = Product.query.filter(
             Product.is_active.is_(True),
             func.coalesce(Product.current_stock, 0)

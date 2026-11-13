@@ -168,10 +168,8 @@ class TestPostDepreciation:
 
 class TestDispose:
     def _sellable(self, db):
-        # 4500 is OTHER REVENUE and 6990 is an expense in the seeded chart.
         # Creating them with the helper's default type ('asset') made the
         # posting-direction check reject the gain, because the check trusts
-        # the seeded chart's types and these codes are part of it.
         for code, atype in (
             ("1120", "asset"),
             ("4500", "revenue"),

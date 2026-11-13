@@ -30,7 +30,6 @@ class ComplianceCredential(db.Model):
     )
     authority_key = db.Column(db.String(40), nullable=False, index=True)
 
-    # JSON: {field_name: value} مُشفّر بالكامل عند الراحة
     payload_encrypted = db.Column(db.Text)
     status = db.Column(
         db.String(20), nullable=False, default="configured"

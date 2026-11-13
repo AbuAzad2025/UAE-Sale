@@ -17,17 +17,12 @@ def set_language(lang):
             f"تم تغيير اللغة إلى {'العربية' if lang == 'ar' else 'English'}", "success"
         )
 
-    # منع open redirect: لا نثق بـ Referer (قد يشير لنطاق خارجي)
     next_url = request.args.get("next", "")
     if next_url.startswith("/") and not next_url.startswith("//"):
         return redirect(next_url)
-    # Fallback: return to the page the user came from (same host only) so
-    # switching language on a public page doesn't dump visitors at login.
     ref = request.referrer or ""
     try:
         parts = urlparse(ref)
-        # Compare hostnames without ports: browsers send absolute referrers
-        # (e.g. localhost:8001) while request.host may omit the port.
         ref_host = (parts.hostname or "").lower()
         own_host = (request.host or "").split(":")[0].lower()
         if (

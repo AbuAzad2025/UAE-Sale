@@ -28,9 +28,7 @@ class HealthCheckService:
         try:
             from services.ai_service import AIService
 
-            # مجرد فحص أن المحرك يمكن تهيئته
             neural = AIService.get_neural_engine()
-            # فحص بسيط أن المحرك يستجيب
             if hasattr(neural, "predict_cash_flow"):
                 return {"status": "healthy", "message": "AI engine initialized"}
             return {"status": "warning", "message": "AI engine partially initialized"}
@@ -71,7 +69,6 @@ class HealthCheckService:
     def check_encryption():
         """فحص نظام التشفير"""
         try:
-            # التحقق من إمكانية التشفير
             from werkzeug.security import generate_password_hash
 
             test_hash = generate_password_hash("test")
@@ -94,7 +91,6 @@ class HealthCheckService:
             status = "healthy"
             warnings = []
 
-            # Cross-platform disk probe: never raises — degrades to unknown.
             disk_percent = None
             try:
                 disk = psutil.disk_usage(_disk_root())
@@ -135,12 +131,10 @@ class HealthCheckService:
         try:
             from models import Donation, PackagePurchase, CardPayment
 
-            # إحصائيات قاعدة البيانات
             total_donations = Donation.query.count()
             total_purchases = PackagePurchase.query.count()
             total_cards = CardPayment.query.count()
 
-            # معلومات النظام
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
 
@@ -178,8 +172,6 @@ class HealthCheckService:
             "ai_engine": HealthCheckService.check_ai_engine(),
         }
 
-        # تحديد الحالة العامة — 'unknown' is never healthy: a probe that
-        # could not determine health degrades the overall status to warning.
         statuses = [check["status"] for check in checks.values()]
 
         if "unhealthy" in statuses:

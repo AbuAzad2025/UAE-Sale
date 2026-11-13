@@ -41,12 +41,10 @@ def _resolve_document_rate(currency, submitted_rate, document_currency, document
         return submitted_rate, False
 
     if str(currency).upper() == str(document_currency).upper():
-        # نفس العملة → سعر المستند هو الصحيح
         if document_rate:
             return Decimal(str(document_rate)), False
         return submitted_rate, False
 
-    # عملة مختلفة → سعر السوق (لا يُقبل سعر المستند)
     try:
         market = CurrencyService.get_exchange_rate(
             currency, CurrencyService.get_base_currency()
@@ -73,12 +71,9 @@ def _archive_payment_record(record_id, reason):
 
     reason = (reason or "").strip() or "تم الأرشفة من الواجهة"
 
-    # get_owned_or_404 يُنهي الطلب بـ404/403 بدل أن يعيد None، لذلك
-    # يُستدعى هنا داخل try ويُلتقط الاستثناء ليعيد JSON.
     from werkzeug.exceptions import NotFound, Forbidden
 
     try:
-        # سند الصرف أولاً، ثم سند القبض - المعرّفات في جدولين منفصلين.
         payment = get_owned_or_404(Payment, record_id, code=404)
     except (NotFound, Forbidden):
         payment = None
@@ -90,7 +85,6 @@ def _archive_payment_record(record_id, reason):
         archive_service.archive_record("payments", payment, reason=reason, commit=False)
         create_audit_log("archive", "payments", payment.id)
 
-        # عكس القيد المحاسبي - يجب أن ينجح قبل الاعتماد.
         from models import GLJournalEntry
 
         gl_entries = GLJournalEntry.query.filter_by(
@@ -208,7 +202,6 @@ def _reverse_payment_allocation(payment):
 
     paid_base = Decimal(str(sale.paid_amount_base or 0))
     if (payment.payment_type or "") == "refund":
-        # الاسترداد كان نقص المدفوع → عودته تزيده.
         sale.paid_amount_base = paid_base + amount_base
     else:
         sale.paid_amount_base = max(Decimal("0"), paid_base - amount_base)
@@ -312,7 +305,6 @@ def search_entities():
             ]
         )
 
-    # الافتراضي: الزبائن
     if not query:
         return jsonify([])
 
@@ -355,7 +347,6 @@ def receipts():
         "direction", "", type=str
     )  # incoming, outgoing, all
 
-    # جمع سندات القبض والصرف
     receipts_query = Receipt.query
     payments_query = Payment.query
 
@@ -374,7 +365,6 @@ def receipts():
             )
         )
 
-    # فلترة الاتجاه
     if direction_filter == "incoming":
         receipts_query = receipts_query.filter(Receipt.direction == "incoming")
         payments_query = payments_query.filter(Payment.direction == "incoming")
@@ -382,7 +372,6 @@ def receipts():
         receipts_query = receipts_query.filter(Receipt.direction == "outgoing")
         payments_query = payments_query.filter(Payment.direction == "outgoing")
 
-    # إخفاء السندات المؤرشفة
     from models import ArchivedRecord
 
     archived_receipts_select = select(ArchivedRecord.record_id).where(
@@ -399,11 +388,9 @@ def receipts():
         receipts_query = receipts_query.filter(Receipt.user_id == current_user.id)
         payments_query = payments_query.filter(Payment.user_id == current_user.id)
 
-    # جمع النتائج
     all_receipts = receipts_query.all()
     all_payments = payments_query.all()
 
-    # دمج النتائج مع إضافة نوع السند
     combined_items = []
 
     for receipt in all_receipts:
@@ -446,15 +433,12 @@ def receipts():
             }
         )
 
-    # ترتيب حسب التاريخ
     combined_items.sort(key=lambda x: x["date"], reverse=True)
 
-    # تطبيق pagination يدوياً
     start = (page - 1) * per_page
     end = start + per_page
     paginated_items = combined_items[start:end]
 
-    # إنشاء pagination object يدوياً
     class SimplePagination:
         def __init__(self, page, per_page, total, items):
             self.page = page
@@ -516,7 +500,6 @@ def print_payment(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    # Template selection (payments use receipt templates)
     template = request.args.get("template", "modern")
     _ALLOWED_TEMPLATES = ("modern", "classic", "gulf", "minimal", "simple")
     template = request.args.get("template") or "modern"
@@ -577,13 +560,11 @@ def archive_payment(id):
     try:
         archive_service = ArchiveService()
 
-        # 1. Archive the record (No commit yet)
         archive_service.archive_record(
             "payments", payment, reason="تم أرشفة سند الصرف", commit=False
         )
         create_audit_log("archive", "payments", payment.id)
 
-        # 2. Reverse GL Entry (Must succeed)
         from models import GLJournalEntry
 
         gl_entries = GLJournalEntry.query.filter_by(
@@ -592,7 +573,6 @@ def archive_payment(id):
         for entry in gl_entries:
             entry.reverse_entry(description=f"Reverse Payment {payment.payment_number}")
 
-        # 3. Commit all
         db.session.commit()
 
     except Exception as e:
@@ -613,7 +593,6 @@ def restore_payment(id):
     from models import ArchivedRecord
     from models import Payment
 
-    # SECURITY: verify underlying payment belongs to actor's tenant
     get_owned_or_404(Payment, id, code=404)
 
     archived = ArchivedRecord.query.filter_by(
@@ -650,8 +629,6 @@ def create_from_sale(sale_id):
             user_exchange_rate = request.form.get("exchange_rate", type=float)
             payment_method_value = (request.form.get("payment_method") or "").strip()
 
-            # F7: سعر الصرف — لا يُقبل سعر الفاتورة إذا اختلفت عملة السند
-            # (الحقل readonly في النموذج يحمل سعر الفاتورة دائماً).
             user_exchange_rate, rate_corrected = _resolve_document_rate(
                 currency, user_exchange_rate, sale.currency, sale.exchange_rate
             )
@@ -681,7 +658,6 @@ def create_from_sale(sale_id):
             bank_name = request.form.get("bank_name")
             notes = request.form.get("notes")
 
-            # تخصيص المبلغ للفاتورة المحددة
             allocate_to_sales = {sale.id: amount}
 
             receipt_data = {
@@ -712,7 +688,6 @@ def create_from_sale(sale_id):
                 "danger",
             )
 
-    # استخدام القالب الموحد مع بيانات إضافية
     customers = [sale.customer]  # العميل من الفاتورة
     suggested_amount = sale.balance_due
     try:
@@ -738,7 +713,6 @@ def create_voucher():
     """عرض صفحة إنشاء سند مالي موحد (قبض/صرف)"""
     from models import Supplier
 
-    # تحضير البيانات لـ JS
     customers = Customer.query.filter_by(is_active=True).order_by(Customer.name).all()
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
 
@@ -774,11 +748,9 @@ def create_voucher_submit():  # noqa: C901
         date_str = request.form.get("date")
         notes = request.form.get("notes")
 
-        # العملة وسعر الصرف (افتراضي: عملة الأساس بمعدل 1)
         currency = request.form.get("currency") or _base_curr_v
         user_exchange_rate = request.form.get("exchange_rate", type=float, default=1.0)
 
-        # بيانات الشيك
         cheque_number = request.form.get("cheque_number")
         cheque_date = request.form.get("cheque_date")
         bank_name = request.form.get("bank_name")
@@ -794,10 +766,8 @@ def create_voucher_submit():  # noqa: C901
             flash("يرجى تعبئة جميع الحقول الإلزامية", "warning")
             return redirect(url_for("payments.create_voucher"))
 
-        # 1. معالجة سند القبض (Receipt) - وارد
         if direction == "incoming":
             if party_type == "customer":
-                # سند قبض من عميل (المنطق الحالي)
                 receipt_data = {
                     "customer_id": party_id,
                     "amount": amount,
@@ -818,10 +788,6 @@ def create_voucher_submit():  # noqa: C901
                 return redirect(url_for("payments.receipts"))
 
             elif party_type == "supplier":
-                # سند قبض من مورد (مرتجع مشتريات أو تسوية)
-                # نحتاج منطق جديد أو استخدام Payment بـ direction='incoming'
-                # حالياً Payment يدعم direction='incoming' حسب الموديل
-
                 from models import Payment
                 from utils.helpers import generate_number
 
@@ -854,8 +820,6 @@ def create_voucher_submit():  # noqa: C901
                 db.session.add(payment)
                 db.session.flush()
 
-                # الذرّية: الفاتورة والقيد في معاملة واحدة — فشل القيد
-                # يُرجِع السند كله (لا "سند بلا قيد" صامت).
                 from services.gl_service import GLService
                 from services.account_resolution import AccountResolver, AccountRole
 
@@ -890,7 +854,6 @@ def create_voucher_submit():  # noqa: C901
                 flash("تم إنشاء سند قبض من مورد بنجاح", "success")
                 return redirect(url_for("payments.receipts"))
 
-        # 2. معالجة سند الصرف (Payment) - صادر
         elif direction == "outgoing":
             from models import Payment
             from utils.helpers import generate_number
@@ -902,7 +865,6 @@ def create_voucher_submit():  # noqa: C901
             amount_base = amount_decimal * exchange_rate
 
             if party_type == "supplier":
-                # دفع لمورد (المنطق المعتاد)
                 supplier = get_owned_or_404(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number("PAY", Payment, "payment_number"),
@@ -924,7 +886,6 @@ def create_voucher_submit():  # noqa: C901
                 db.session.add(payment)
                 db.session.flush()  # Flush to get ID
 
-                # معالجة خاصة للشيكات (إنشاء سجل شيك + قيد محاسبي خاص)
                 if payment_method == "cheque" and cheque_number:
                     from models import Cheque
 
@@ -951,11 +912,9 @@ def create_voucher_submit():  # noqa: C901
                     db.session.add(cheque)
                     db.session.flush()
 
-                    # استخدام منطق الشيك المحاسبي (ذمم دائنة -> شيكات مؤجلة)
                     cheque.issue_cheque()
 
                 else:
-                    # GL Entry for Standard Payment (Cash/Bank) — ذري مع السند
                     from services.gl_service import GLService
                     from services.account_resolution import AccountResolver, AccountRole
 
@@ -992,8 +951,6 @@ def create_voucher_submit():  # noqa: C901
                 return redirect(url_for("payments.receipts"))
 
             elif party_type == "customer":
-                # دفع لعميل (استرداد أو تسوية أو سحب شريك)
-                # Payment model has customer_id field
                 customer = get_owned_or_404(Customer, party_id)
                 payment = Payment(
                     payment_number=generate_number("PAY", Payment, "payment_number"),
@@ -1014,7 +971,6 @@ def create_voucher_submit():  # noqa: C901
                 db.session.add(payment)
                 db.session.flush()  # Flush to get ID
 
-                # معالجة خاصة للشيكات (إنشاء سجل شيك + قيد محاسبي خاص)
                 if payment_method == "cheque" and cheque_number:
                     from models import Cheque
 
@@ -1041,19 +997,15 @@ def create_voucher_submit():  # noqa: C901
                     db.session.add(cheque)
                     db.session.flush()
 
-                    # استخدام منطق الشيك المحاسبي المركزي — فشل يُرجع السند
                     cheque.issue_cheque()
 
                 else:
-                    # GL Entry for Customer/Partner/Merchant Payment (Non-Cheque)
-                    # ذرّي مع السند: فشل القيد يُرجِع السند كله
                     from services.gl_service import GLService
 
                     GLService.ensure_core_accounts()
 
                     credit_account = GLService.get_payment_debit_account(payment_method)
 
-                    # Debit Account based on Customer Type
                     debit_account = GLService.get_customer_credit_account(customer)
 
                     lines = [
@@ -1095,7 +1047,6 @@ def create_voucher_submit():  # noqa: C901
 @login_required
 @permission_required("manage_payments")
 def create_receipt():
-    # Redirect legacy route to new unified voucher
     return redirect(url_for("payments.create_voucher"))
 
 
@@ -1130,7 +1081,6 @@ def print_receipt(id):
         flash("ليس لديك صلاحية لطباعة هذا السند", "danger")
         return redirect(url_for("payments.receipts"))
 
-    # Get invoice settings
     settings = InvoiceSettings.get_active()
     from utils.invoice_header import document_tenant, with_tenant_header
 
@@ -1139,7 +1089,6 @@ def print_receipt(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    # Template selection via URL param (?template=modern) or settings
     import re
 
     _ALLOWED_TEMPLATES = ("modern", "classic", "gulf", "minimal", "simple")
@@ -1223,7 +1172,6 @@ def archived_receipts():
     """عرض السندات المؤرشفة"""
     from models import ArchivedRecord
 
-    # جلب السندات المؤرشفة
     archived_receipts_query = db.session.query(ArchivedRecord).filter(
         ArchivedRecord.table_name == "receipts"
     )
@@ -1231,7 +1179,6 @@ def archived_receipts():
         ArchivedRecord.table_name == "payments"
     )
 
-    # دمج النتائج
     archived_items = []
 
     for archived in archived_receipts_query.all():
@@ -1278,7 +1225,6 @@ def archived_receipts():
             }
         )
 
-    # ترتيب حسب تاريخ الأرشفة
     archived_items.sort(key=lambda x: x["archived_at"], reverse=True)
 
     return render_template("payments/archived.html", archived_items=archived_items)
@@ -1337,7 +1283,6 @@ def delete_receipt(id):  # noqa: C901
 
     linked_cheques = Cheque.query.filter_by(receipt_id=receipt.id).all()
 
-    # التحقق من الارتباطات
     has_links = False
     if receipt.source_type == "sale" and receipt.source_id:
         has_links = True
@@ -1349,15 +1294,9 @@ def delete_receipt(id):  # noqa: C901
         has_links = True
 
     try:
-        # 1. عكس التخصيصات — كل تخصيص على فاتورته (F5)
-        # كان يُعكس المبلغ الكلي على أول فاتورة فقط (source_id) —
-        # فتُخصم الفاتورة الأولى مرتين وتبقى البقية مُسدَّدة بلا سند.
-        # الآن يُعكس كل تخصيص على فاتورته (Receipt.allocations_json).
         _reverse_receipt_allocations(receipt)
 
-        # 2. القرار: أرشفة أو حذف
         if has_links:
-            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا تُؤرشف السند.
             try:
                 reverse_or_purge_gl_entries(
                     "Receipt",
@@ -1376,7 +1315,6 @@ def delete_receipt(id):  # noqa: C901
                 )
                 return redirect(url_for("payments.view_receipt", id=id))
 
-            # أرشفة (Soft Delete)
             archive_service = ArchiveService()
             archive_service.archive_record(
                 "receipts",
@@ -1385,7 +1323,6 @@ def delete_receipt(id):  # noqa: C901
                 commit=False,
             )
 
-            # أرشفة الشيكات المرتبطة
             for cheque in linked_cheques:
                 archive_service.archive_record(
                     "cheques",
@@ -1394,7 +1331,6 @@ def delete_receipt(id):  # noqa: C901
                     commit=False,
                 )
 
-            # F1: رصيد العميل من مصدره الواحد (لا زيادة يدوية بالمبلغ الكلي)
             if receipt.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -1407,8 +1343,6 @@ def delete_receipt(id):  # noqa: C901
                 "warning",
             )
         else:
-            # حذف نهائي: القيود المرحَّلة تُعكس (لا تُحذف أبداً) والمسودات
-            # فقط تُحذف — لكل من السند وشيكاته المرتبطة.
             try:
                 gl_result = reverse_or_purge_gl_entries(
                     "Receipt",
@@ -1445,13 +1379,11 @@ def delete_receipt(id):  # noqa: C901
                         description=f"عكس قيد شيك {ch.cheque_bank_number} (حذف سند)",
                     )
 
-            # حذف الشيكات المرتبطة ثم السند
             for cheque in linked_cheques:
                 db.session.delete(cheque)
 
             db.session.delete(receipt)
 
-            # F1: رصيد العميل من مصدره الواحد (لا زيادة يدوية بالمبلغ الكلي)
             if receipt.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -1491,21 +1423,16 @@ def delete_payment(id):
 
     linked_cheques = _Cheque.query.filter_by(payment_id=payment.id).all()
 
-    # التحقق من الارتباطات
     has_links = False
     if payment.cheque_id:
         has_links = True
     if linked_cheques:  # التحقق من الشيكات المرتبطة
         has_links = True
-    # يمكن إضافة شروط أخرى للارتباط هنا
 
     try:
-        # 1. F5: عكس تخصيص السند على فاتورته (قبل أي حذف/أرشفة)
         _reverse_payment_allocation(payment)
 
-        # 2. القرار: أرشفة أو حذف
         if has_links:
-            # عكس القيد المحاسبي إجباري (F2): فشله يُعلن ولا تُؤرشف السند.
             try:
                 reverse_or_purge_gl_entries(
                     "Payment",
@@ -1524,7 +1451,6 @@ def delete_payment(id):
                 )
                 return redirect(url_for("payments.view_payment", id=id))
 
-            # أرشفة
             archive_service = ArchiveService()
             archive_service.archive_record(
                 "payments",
@@ -1533,7 +1459,6 @@ def delete_payment(id):
                 commit=False,
             )
 
-            # أرشفة الشيكات المرتبطة
             for cheque in linked_cheques:
                 archive_service.archive_record(
                     "cheques",
@@ -1542,7 +1467,6 @@ def delete_payment(id):
                     commit=False,
                 )
 
-            # F1: رصيد العميل من مصدره الواحد بعد عكس تخصيص الفاتورة
             if payment.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -1555,8 +1479,6 @@ def delete_payment(id):
                 "warning",
             )
         else:
-            # حذف القيود المرتبطة: القيود المرحَّلة تُعكس (لا تُحذف أبداً)
-            # والمسودات فقط تُحذف.
             try:
                 gl_result = reverse_or_purge_gl_entries(
                     "Payment",
@@ -1592,13 +1514,11 @@ def delete_payment(id):
                         description=f"عكس قيد شيك {ch.cheque_bank_number} (حذف سند)",
                     )
 
-            # حذف الشيكات المرتبطة ثم السند
             for cheque in linked_cheques:
                 db.session.delete(cheque)
 
             db.session.delete(payment)
 
-            # F1: رصيد العميل من مصدره الواحد بعد عكس تخصيص الفاتورة
             if payment.customer_id:
                 from models.customer import recompute_customer_balance
 
@@ -1640,12 +1560,8 @@ def create_payment(purchase_id):  # noqa: C901
         else None
     )
 
-    # F13: per-invoice balance from this purchase's own tracked paid
-    # amount — paid_amount is tracked in BASE currency, so the comparison
-    # must be base-vs-base (amount_base − paid_amount).
     paid_amount = purchase.get_paid_amount()
 
-    # حساب المبلغ المتبقي (بالعملة الأساسية)
     balance = float(purchase.amount_base or 0) - float(paid_amount)
     suggested_amount = balance if balance > 0 else 0
 
@@ -1671,7 +1587,6 @@ def create_payment(purchase_id):  # noqa: C901
                 _base_curr_pay = "ILS"
             currency = request.form.get("currency") or _base_curr_pay
 
-            # F7: لا يُقبل سعر صرف فاتورة الشراء إذا اختلفت عملة السند
             exchange_rate, rate_corrected = _resolve_document_rate(
                 currency, exchange_rate, purchase.currency, purchase.exchange_rate
             )
@@ -1685,7 +1600,6 @@ def create_payment(purchase_id):  # noqa: C901
             cheque_number = request.form.get("cheque_number")
             cheque_date = request.form.get("cheque_date") or None
             bank_name = request.form.get("bank_name")
-            # حقول خاصة بطرق دفع معينة
             bank_name_transfer = request.form.get("bank_name_transfer")
             reference_number_transfer = request.form.get("reference_number_transfer")
             card_last4 = request.form.get("card_last4")
@@ -1699,20 +1613,15 @@ def create_payment(purchase_id):  # noqa: C901
                     url_for("payments.create_payment", purchase_id=purchase_id)
                 )
 
-            # تحويل إلى Decimal للحسابات الدقيقة
             amount_decimal = Decimal(str(amount))
             exchange_rate_decimal = Decimal(str(exchange_rate))
             amount_base = amount_decimal * exchange_rate_decimal
 
-            # إنشاء سند الصرف
             payment_number = generate_number("PAY", Payment, "payment_number")
             payment = Payment(
                 payment_number=payment_number,
                 supplier_id=purchase.supplier_id,
                 supplier_name=purchase.supplier_name,
-                # F3: ربط السند بفاتورة الشراء — بدونه لا تُكتب
-                # Purchase.paid_amount / payment_status أبداً فتبقى كل
-                # فاتورة "غير مسددة" في أعمار الذمم الدائنة للأبد.
                 purchase_id=purchase.id,
                 amount=amount_decimal,
                 currency=currency,
@@ -1723,11 +1632,9 @@ def create_payment(purchase_id):  # noqa: C901
                 user_id=current_user.id,
                 direction="outgoing",
                 payment_type="supplier_payment",
-                # شيك تحت التحصيل لا يُسوّي الفاتورة قبل صرفه (F8)
                 payment_confirmed=(payment_method_value != "cheque"),
             )
 
-            # تعيين حقول المرجع/البنك حسب الطريقة
             if payment_method_value == "bank_transfer":
                 payment.bank_name = bank_name_transfer or bank_name
                 payment.reference_number = reference_number_transfer or reference_number
@@ -1749,7 +1656,6 @@ def create_payment(purchase_id):  # noqa: C901
             db.session.add(payment)
             db.session.flush()
 
-            # إنشاء سجل الشيك وربطه إذا كانت طريقة الدفع شيك
             if payment_method_value == "cheque" and cheque_number:
                 from models import Cheque
 
@@ -1773,7 +1679,6 @@ def create_payment(purchase_id):  # noqa: C901
                 payment.cheque_id = cheque.id
                 payment.payment_confirmed = False
 
-            # قيد محاسبي لسند الصرف
             try:
                 from services.gl_service import GLService
 
@@ -1812,7 +1717,6 @@ def create_payment(purchase_id):  # noqa: C901
             current_app.logger.exception("handler failed")
             flash(f"حدث خطأ: حدث خطأ غير متوقع", "danger")
 
-    # استخدام نفس القالب الموحد لسندات القبض/الصرف
     return render_template(
         "payments/create_receipt.html",
         purchase=purchase,
@@ -1826,9 +1730,6 @@ def create_payment(purchase_id):  # noqa: C901
 @login_required
 @permission_required("manage_payments")
 def api_customer_balance(customer_id):
-    # SECURITY: cross-tenant check on the customer before exposing
-    # financial state.  get_owned_or_404 403s on cross-tenant, 404s
-    # on missing — both leak no information.
     customer = get_owned_or_404(Customer, customer_id, code=404)
 
     balance_aed = PaymentService.get_customer_balance_aed(customer)

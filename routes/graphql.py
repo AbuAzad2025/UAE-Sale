@@ -5,9 +5,7 @@ from utils.decorators import permission_required
 
 graphql_bp = Blueprint("graphql", __name__, url_prefix="/graphql")
 
-# SECURITY: Maximum allowed query depth to prevent DoS via deeply nested queries
 MAX_QUERY_DEPTH = 10
-# Maximum query string length
 MAX_QUERY_LENGTH = 10000
 
 
@@ -45,8 +43,6 @@ def _extract_query_types(query_str):
     import re
 
     query_str = _strip_graphql_ignored(query_str)
-    # Simple extraction of root fields (e.g., "sale", "sales", "customer", "customers", etc.)
-    # Matches patterns like "sale(id: 1) {", "sales {", "customer {", etc.
     root_fields = re.findall(r"\b(\w+)\s*\([^)]*\)\s*\{", query_str)
     root_fields += re.findall(r"\b(\w+)\s*\{", query_str)
     return set(root_fields)
@@ -122,20 +118,17 @@ def graphql_query():
     if not query:
         return jsonify({"errors": ["Query is required"]}), 400
 
-    # SECURITY: Enforce query length limit
     if len(query) > MAX_QUERY_LENGTH:
         return jsonify(
             {"errors": [f"Query too long (max {MAX_QUERY_LENGTH} chars)"]}
         ), 400
 
-    # SECURITY: Enforce query depth limit to prevent DoS
     depth = _estimate_query_depth(query)
     if depth > MAX_QUERY_DEPTH:
         return jsonify(
             {"errors": [f"Query too deep (max depth {MAX_QUERY_DEPTH}, got {depth})"]}
         ), 400
 
-    # SECURITY: Block introspection queries in production
     query_lower = query.lower().strip()
     if (
         "introspection" in query_lower
@@ -144,16 +137,9 @@ def graphql_query():
     ):
         return jsonify({"errors": ["Introspection is disabled"]}), 403
 
-    # SECURITY: Block all mutations — the GraphQL layer is read-only in
-    # production. Cash/stock-affecting writes must go through the audited,
-    # permission-checked REST routes (sales.create, payment_service, etc.),
-    # which enforce double-entry + tenant invariants. The schema's
-    # CreateSale mutation would otherwise let any view_reports user create
-    # confirmed cross-tenant sales with hardcoded seller_id=1.
     if query_lower.startswith("mutation"):
         return jsonify({"errors": ["Mutations are not allowed via GraphQL"]}), 403
 
-    # SECURITY: Check field-level permissions
     perm_error = _check_graphql_permissions(query)
     if perm_error:
         return jsonify({"errors": [perm_error]}), 403
@@ -164,7 +150,6 @@ def graphql_query():
     if result.data:
         response["data"] = result.data
     if result.errors:
-        # SECURITY: Don't leak internal error details
         response["errors"] = [
             "Query execution failed" if "internal" in str(e).lower() else str(e)
             for e in result.errors

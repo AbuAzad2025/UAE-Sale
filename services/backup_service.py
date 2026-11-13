@@ -45,7 +45,6 @@ class BackupService:
     BACKUP_PREFIX = "auto_backup_"
     MANUAL_PREFIX = "manual_backup_"
 
-    # Interval (in hours) between automatic backups per configured frequency
     FREQUENCY_INTERVAL_HOURS = {
         "hourly": 1,
         "daily": 24,
@@ -210,10 +209,8 @@ class BackupService:
         try:
             from extensions import db
 
-            # Access the URL object directly
             url = db.engine.url
 
-            # Verify it's PostgreSQL
             if "postgresql" not in url.drivername and "postgres" not in url.drivername:
                 return None
 
@@ -275,18 +272,7 @@ class BackupService:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prefix = cls.MANUAL_PREFIX if manual else cls.BACKUP_PREFIX
 
-            # Prefer Custom Format (-Fc) which is compressed by default and more flexible
-            # But let's stick to what works best. SQL plain text is safer for text editors but Custom is better for restore.
-            # User asked for "Real and Comprehensive Backup". Custom format is standard for pg_dump/pg_restore.
-            # However, previous code used SQL by default unless env var set.
-            # Let's support both but default to custom if possible, or sql.gz.
-
-            # Using custom format (.dump) is generally better for full restores
-            # But let's check what the user environment prefers.
-            # If we use SQL format, we can compress it with gzip in python.
-
             # Let's use SQL format compressed with gzip as it's universally readable and less prone to version mismatch issues than custom binary formats sometimes.  # noqa: E501
-            # AND it allows us to stream stdout -> gzip -> file easily in Python.
 
             backup_name = f"{prefix}{timestamp}.sql.gz"
             backup_path = os.path.join(cls.BACKUP_DIR, backup_name)
@@ -309,15 +295,12 @@ class BackupService:
                 "--if-exists",
                 params["dbname"],
             ]
-            # Set environment variables for authentication
-            # Update os.environ directly to ensure subprocess inherits everything correctly on Windows
             os.environ["PGPASSWORD"] = params["password"]
             os.environ["PGHOST"] = params["host"]
             os.environ["PGPORT"] = str(params["port"])
             os.environ["PGUSER"] = params["username"]
             os.environ["PGDATABASE"] = params["dbname"]
 
-            # Execute pg_dump writing to a TEMP plaintext SQL file (avoids Unicode path issues for pg_dump)
             temp_dir = tempfile.gettempdir()
             temp_sql_path = os.path.join(
                 temp_dir, f"backup_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.sql"
@@ -327,7 +310,6 @@ class BackupService:
                     cmd + ["-f", temp_sql_path],
                     capture_output=True,
                     text=True,
-                    # env=env  <-- Removed to let it inherit modified os.environ
                 )
                 if process.returncode != 0:
                     err_text = (process.stderr or "").strip()
@@ -338,7 +320,6 @@ class BackupService:
                     except Exception:
                         pass
                     return None
-                # Compress to final destination
                 with (
                     open(temp_sql_path, "rb") as f_in,
                     gzip.open(backup_path, "wb") as f_out,
@@ -364,12 +345,10 @@ class BackupService:
                 except Exception:
                     pass
 
-            # Verify file created and has size
             if not os.path.exists(backup_path) or os.path.getsize(backup_path) == 0:
                 logger.error("Backup file is empty or not created")
                 return None
 
-            # Calculate size and checksum
             file_size = os.path.getsize(backup_path)
             checksum = cls._calculate_checksum(backup_path)
 
@@ -448,7 +427,6 @@ class BackupService:
             backups = []
             backup_dir = Path(cls.BACKUP_DIR)
 
-            # Find all .sql.gz and .dump files
             candidates = []
             candidates.extend(list(backup_dir.glob("*.sql.gz")))
             candidates.extend(list(backup_dir.glob("*.dump")))
@@ -472,12 +450,9 @@ class BackupService:
                         pass
 
                 if not metadata:
-                    # Fallback if no metadata
                     name = backup_file.name
                     is_manual = cls.MANUAL_PREFIX in name
 
-                    # Extract timestamp roughly
-                    # manual_backup_20250101_120000.sql.gz
                     ts_str = (
                         name.replace(cls.MANUAL_PREFIX, "")
                         .replace(cls.BACKUP_PREFIX, "")
@@ -522,12 +497,9 @@ class BackupService:
             if not os.path.exists(backup_path):
                 return False
 
-            # 1. Check file size > 0
             if os.path.getsize(backup_path) == 0:
                 return False
 
-            # 2. Check gzip integrity if compressed — stream the WHOLE file,
-            # not just the first 1024 bytes, so truncated/corrupt tails fail.
             if filename.endswith(".gz"):
                 try:
                     with gzip.open(backup_path, "rb") as f:
@@ -536,8 +508,6 @@ class BackupService:
                 except Exception:
                     return False
 
-            # 3. Check metadata checksum if available — fail closed: a
-            # corrupt/unparseable meta file or a checksum mismatch fails.
             meta_path = backup_path + ".meta.json"
             if os.path.exists(meta_path):
                 try:
@@ -577,7 +547,6 @@ class BackupService:
             if not params:
                 return False
 
-            # Auto-backup current state before restore
             cls.create_backup(
                 manual=True, description=f"Pre-restore before {backup_filename}"
             )
@@ -588,20 +557,7 @@ class BackupService:
             env = os.environ.copy()
             dsn = f"postgresql://{params['username']}:{params['password']}@{params['host']}:{params['port']}/{params['dbname']}"
 
-            # Restore Logic
-            # 1. If .sql.gz -> gunzip -> psql
-            # 2. If .dump -> pg_restore
-
             if backup_filename.endswith(".dump"):
-                # Custom format
-                # pg_restore can read from stdin if we pipe it, avoiding path issues?
-                # pg_restore supports reading from file.
-                # If path has Arabic, we might need to copy to temp dir again OR use short paths.
-                # But let's try reading file content and piping to pg_restore if it supports it.
-                # pg_restore checks magic bytes so it needs seekable stream usually, but stdin might work.
-                # Actually pg_restore with -f or just file argument expects a file path.
-
-                # Safe bet: Copy to temp dir (usually safe path) and restore from there.
                 temp_dir = tempfile.gettempdir()
                 temp_path = os.path.join(
                     temp_dir, f"restore_{datetime.now().strftime('%f')}.dump"
@@ -636,12 +592,8 @@ class BackupService:
                         os.remove(temp_path)
 
             else:
-                # SQL format (potentially gzipped)
-                # We can stream this to psql via stdin, completely avoiding path issues for psql.
-
                 cmd = [psql, "--dbname", dsn, "--set", "ON_ERROR_STOP=on"]
 
-                # Open source file
                 if backup_filename.endswith(".gz"):
                     f_in = gzip.open(backup_path, "rb")
                 else:
@@ -682,12 +634,8 @@ class BackupService:
                 return False
             meta_path = backup_path + ".meta.json"
 
-            # Log paths for debugging
             logger.info(f"Attempting to delete backup: {backup_path}")
 
-            # Missing file is idempotent success (rm -f semantics): the
-            # end-state (file absent) already holds. Callers that need
-            # strictness pre-check existence themselves.
             if not os.path.exists(backup_path):
                 logger.warning(f"Backup file not found (noop): {backup_path}")
                 if os.path.exists(meta_path):

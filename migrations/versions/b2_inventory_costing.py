@@ -52,7 +52,6 @@ def upgrade():
             ),
         )
 
-    # Seed from the last known cost, never below zero.
     if _has_table(conn, "products") and _has_column(conn, "products", "average_cost"):
         op.execute(
             "UPDATE products SET average_cost = cost_price "

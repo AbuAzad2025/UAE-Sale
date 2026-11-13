@@ -452,10 +452,38 @@ def save_uploaded_file(file, upload_folder="uploads", allowed_extensions=None):
     name, ext = os.path.splitext(filename)
     unique_filename = f"{name}_{uuid.uuid4().hex[:8]}{ext}"
 
+    # Tenant segregation: partition uploads by tenant_id
+    tenant_id = None
+    try:
+        from flask_login import current_user
+
+        if getattr(current_user, "is_authenticated", False):
+            tenant_id = getattr(current_user, "tenant_id", None)
+    except Exception:
+        pass
+    if tenant_id is None:
+        try:
+            from flask import g as _g
+
+            tenant_id = getattr(_g, "tenant_id", None)
+        except Exception:
+            pass
+
+    if tenant_id is not None:
+        upload_folder = os.path.join(f"tenant_{tenant_id}", upload_folder)
+
     full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
+    # Path traversal protection: ensure resolved path is within static folder
+    full_upload_folder = os.path.abspath(full_upload_folder)
+    static_root = os.path.abspath(current_app.static_folder)
+    if not full_upload_folder.startswith(static_root):
+        raise ValueError("Invalid upload path")
     os.makedirs(full_upload_folder, exist_ok=True)
 
     filepath = os.path.join(full_upload_folder, unique_filename)
+    filepath = os.path.abspath(filepath)
+    if not filepath.startswith(static_root):
+        raise ValueError("Invalid file path")
     file.save(filepath)
 
     current_app.logger.info(f"File uploaded: {unique_filename} ({file_length} bytes)")

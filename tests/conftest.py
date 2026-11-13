@@ -13,6 +13,7 @@ from decimal import Decimal
 # Force test environment before importing app
 os.environ.setdefault("APP_ENV", "testing")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("MASTER_KEY_SEED", "TestSeed123")
 os.environ.setdefault("OWNER_PASSWORD", "TestOwner@1234567890123456!")
 os.environ.setdefault("DEBUG", "true")
 os.environ.setdefault("WTF_CSRF_ENABLED", "false")

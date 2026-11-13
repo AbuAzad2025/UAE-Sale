@@ -1,6 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from flask import Blueprint, render_template, current_app, redirect, url_for
+from flask import (
+    flash,
+    jsonify,
+    Blueprint,
+    render_template,
+    current_app,
+    redirect,
+    request,
+    url_for,
+)
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -297,3 +306,39 @@ def dashboard():  # noqa: C901
     except Exception as e:
         current_app.logger.error(f"Dashboard Error: {e}", exc_info=True)
         return render_template("errors/500.html", error=str(e)), 500
+
+
+@main_bp.route("/export-data", methods=["GET"])
+@login_required
+def tenant_data_export():
+    """Export current tenant's data as ZIP (CSV per table) or JSON."""
+    from services.tenant_export_service import (
+        export_tenant_zip,
+        export_tenant_json,
+        get_tenant_export_stats,
+    )
+
+    tenant_id = getattr(current_user, "tenant_id", None)
+    if not tenant_id:
+        flash("No tenant context available.", "danger")
+        return redirect(url_for("main.dashboard"))
+
+    fmt = request.args.get("format", "zip").lower()
+
+    if fmt == "json":
+        filename, data = export_tenant_json(tenant_id)
+        mimetype = "application/json"
+    elif fmt == "stats":
+        stats, total = get_tenant_export_stats(tenant_id)
+        return jsonify({"stats": stats, "total_rows": total})
+    else:
+        filename, data = export_tenant_zip(tenant_id)
+        mimetype = "application/zip"
+
+    from flask import Response
+
+    return Response(
+        data,
+        mimetype=mimetype,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

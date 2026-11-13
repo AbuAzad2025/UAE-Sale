@@ -90,8 +90,8 @@ class Cheque(TenantScopedMixin, db.Model):
     gl_journal_entry_id = db.Column(
         db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True
     )
-    gl_clearing_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
-    gl_bounce_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
+    gl_clearing_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True)
+    gl_bounce_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True)
 
     notes = db.Column(db.Text)
     bounce_reason = db.Column(db.String(500))  # سبب الإرتداد

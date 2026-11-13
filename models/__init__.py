@@ -157,6 +157,8 @@ for _model_cls in [
     AuditLog,
     JournalEntryAudit,
     ErrorLog,
+    ProductReturn,
+    ProductReturnLine,
 ]:
     register_tenant_scoped(_model_cls)
 

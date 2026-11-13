@@ -29,6 +29,7 @@ class AuditLog(TenantScopedMixin, db.Model):
         nullable=False,
         index=True,
     )
+    is_archived = db.Column(db.Boolean, default=False, nullable=False, index=True)
 
     user = db.relationship("User", back_populates="audit_logs")
 

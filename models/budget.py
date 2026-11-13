@@ -152,8 +152,8 @@ class BudgetLine(TenantScopedMixin, db.Model):
     tenant_id = db.Column(
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
     )
-    budget_id = db.Column(db.Integer, db.ForeignKey("budgets.id"), nullable=False)
-    account_id = db.Column(db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False)
+    budget_id = db.Column(db.Integer, db.ForeignKey("budgets.id"), nullable=False, index=True)
+    account_id = db.Column(db.Integer, db.ForeignKey("gl_accounts.id"), nullable=False, index=True)
 
     budgeted_amount = db.Column(db.Numeric(18, 3), nullable=False)
 

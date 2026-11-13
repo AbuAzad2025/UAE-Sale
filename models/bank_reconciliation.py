@@ -143,8 +143,8 @@ class BankReconciliationItem(TenantScopedMixin, db.Model):
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Numeric(18, 3), nullable=False)
 
-    journal_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"))
-    cheque_id = db.Column(db.Integer, db.ForeignKey("cheques.id"))
+    journal_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True)
+    cheque_id = db.Column(db.Integer, db.ForeignKey("cheques.id"), index=True)
 
     is_cleared = db.Column(db.Boolean, default=False)
     cleared_date = db.Column(db.Date)

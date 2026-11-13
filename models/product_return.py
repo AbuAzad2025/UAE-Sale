@@ -1,12 +1,14 @@
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class ProductReturn(db.Model):
+class ProductReturn(TenantScopedMixin, db.Model):
     __tablename__ = "product_returns"
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True)
     return_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
     sale_id = db.Column(
@@ -64,10 +66,11 @@ class ProductReturn(db.Model):
         )
 
 
-class ProductReturnLine(db.Model):
+class ProductReturnLine(TenantScopedMixin, db.Model):
     __tablename__ = "product_return_lines"
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True)
     return_id = db.Column(
         db.Integer, db.ForeignKey("product_returns.id"), nullable=False, index=True
     )

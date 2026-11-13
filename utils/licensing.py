@@ -20,7 +20,8 @@ import re
 from datetime import datetime, timezone
 
 # Format: seed@YYYY@MM@DD  (seed must not contain '@')
-_MASTER_KEY_PATTERN = re.compile(r"^[^@]+@\d{4}@\d{2}@\d{2}$")
+# Format: <seed>@YYYY@MM@DD  (seed may itself contain '@', so split from the right)
+_MASTER_KEY_PATTERN = re.compile(r"^.+@\d{4}@\d{2}@\d{2}$")
 
 # Development-only fallback seed (never used in production)
 _DEV_FALLBACK_SEED = "dev-master-seed-change-me"

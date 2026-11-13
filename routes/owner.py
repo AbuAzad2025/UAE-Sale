@@ -804,9 +804,9 @@ def restore_backup(filename):
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
 
-    from werkzeug.security import check_password_hash
 
-    if not check_password_hash(current_user.password_hash, password):
+
+    if not current_user.check_password(password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 
@@ -884,9 +884,9 @@ def custom_restore_backup(filename):
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
 
-    from werkzeug.security import check_password_hash
 
-    if not check_password_hash(current_user.password_hash, password):
+
+    if not current_user.check_password(password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
         return redirect(url_for("owner.list_backups"))
 

@@ -29,6 +29,10 @@ CATEGORY_BACKEND = ErrorLog.CATEGORY_BACKEND
 CATEGORY_FRONTEND = ErrorLog.CATEGORY_FRONTEND
 CATEGORY_LOGIC = ErrorLog.CATEGORY_LOGIC
 CATEGORY_PROGRAMMING = ErrorLog.CATEGORY_PROGRAMMING
+CATEGORY_SECURITY = ErrorLog.CATEGORY_SECURITY
+CATEGORY_FINANCIAL = ErrorLog.CATEGORY_FINANCIAL
+CATEGORY_DATABASE = ErrorLog.CATEGORY_DATABASE
+CATEGORY_MIGRATION = ErrorLog.CATEGORY_MIGRATION
 CATEGORIES = ErrorLog.CATEGORIES
 
 MAX_MESSAGE_LEN = 2000
@@ -218,4 +222,52 @@ def report_exception(exc=None, *, source="flask-500", **kwargs):
     kwargs.setdefault("severity", ErrorLog.SEVERITY_CRITICAL)
     return report_error(
         CATEGORY_PROGRAMMING, message, traceback_text=tb_text, source=source, **kwargs
+    )
+
+
+def report_security_event(
+    message, *, severity=ErrorLog.SEVERITY_WARNING, source="security", **kwargs
+):
+    """Security event: brute force, SQL injection attempt, XSS, CSRF violation, tenant breach, etc."""
+    extra = kwargs.pop("extra_context", None)
+    if extra is not None:
+        kwargs["extra_context"] = str(extra)
+    return report_error(
+        CATEGORY_SECURITY, message, severity=severity, source=source, **kwargs
+    )
+
+
+def report_financial_error(
+    message, *, severity=ErrorLog.SEVERITY_ERROR, source="financial", **kwargs
+):
+    """Financial/accounting error: unbalanced GL, negative stock, tax mismatch, etc."""
+    extra = kwargs.pop("extra_context", None)
+    if extra is not None:
+        kwargs["extra_context"] = str(extra)
+    return report_error(
+        CATEGORY_FINANCIAL, message, severity=severity, source=source, **kwargs
+    )
+
+
+def report_db_error(
+    message, *, severity=ErrorLog.SEVERITY_ERROR, source="database", **kwargs
+):
+    """Database error: connection failure, migration error, constraint violation, etc."""
+    extra = kwargs.pop("extra_context", None)
+    if extra is not None:
+        kwargs["extra_context"] = str(extra)
+    return report_error(
+        CATEGORY_DATABASE, message, severity=severity, source=source, **kwargs
+    )
+
+
+def report_migration_error(
+    message, *, severity=ErrorLog.SEVERITY_CRITICAL, source="migration", **kwargs
+):
+    """Migration error: schema mismatch, failed migration, etc."""
+    extra = kwargs.pop("extra_context", None)
+    if extra is not None:
+        kwargs["extra_context"] = str(extra)
+    return report_error(
+        CATEGORY_MIGRATION, message, severity=severity, source=source, **kwargs
     )

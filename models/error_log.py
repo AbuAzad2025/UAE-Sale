@@ -9,9 +9,10 @@ exactly like journal audit entries survive journal deletion.
 
 from datetime import datetime, timezone
 from extensions import db
+from models.tenant_scope import TenantScopedMixin
 
 
-class ErrorLog(db.Model):
+class ErrorLog(TenantScopedMixin, db.Model):
     """Structured error journal - backend/frontend/logic/programming/security/financial/database."""
 
     __tablename__ = "error_logs"
@@ -49,6 +50,7 @@ class ErrorLog(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True)
     created_at = db.Column(
         db.DateTime,
         default=lambda: datetime.now(timezone.utc),

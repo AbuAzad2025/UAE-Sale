@@ -1825,6 +1825,44 @@ def tenant_detail(id):
     )
 
 
+@owner_bp.route("/tenants/<int:id>/export", methods=["GET"])
+@login_required
+@owner_required
+def tenant_export(id):
+    """Export all data for a single tenant as ZIP (CSV per table) or JSON."""
+    from services.tenant_export_service import export_tenant_zip, export_tenant_json
+
+    tenant = Tenant.query.get_or_404(id)
+    fmt = request.args.get("format", "zip").lower()
+
+    if fmt == "json":
+        filename, data = export_tenant_json(id)
+        mimetype = "application/json"
+    else:
+        filename, data = export_tenant_zip(id)
+        mimetype = "application/zip"
+
+    from flask import Response
+
+    return Response(
+        data,
+        mimetype=mimetype,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@owner_bp.route("/tenants/<int:id>/export-stats", methods=["GET"])
+@login_required
+@owner_required
+def tenant_export_stats(id):
+    """Preview row counts per table for a tenant export."""
+    from services.tenant_export_service import get_tenant_export_stats
+
+    tenant = Tenant.query.get_or_404(id)
+    stats, total = get_tenant_export_stats(id)
+    return jsonify({"tenant": tenant.name, "stats": stats, "total_rows": total})
+
+
 @owner_bp.route("/tenants/<int:id>/impersonate")
 @login_required
 @owner_required

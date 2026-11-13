@@ -278,8 +278,8 @@ class IntelligentAssistant:
 
                 data["recent_sales"] = {
                     "count": len(recent_sales),
-                    "total_amount": sum(float(s.total_amount) for s in recent_sales),
-                    "avg_amount": sum(float(s.total_amount) for s in recent_sales)
+                    "total_amount": sum(float(s.amount_base) for s in recent_sales),
+                    "avg_amount": sum(float(s.amount_base) for s in recent_sales)
                     / len(recent_sales)
                     if recent_sales
                     else 0,
@@ -287,7 +287,7 @@ class IntelligentAssistant:
                         {
                             "id": s.id,
                             "date": s.sale_date.strftime("%Y-%m-%d"),
-                            "amount": float(s.total_amount),
+                            "amount": float(s.amount_base),
                             "customer": s.customer.name if s.customer else "غير محدد",
                         }
                         for s in recent_sales[-10:]  # آخر 10 فقط

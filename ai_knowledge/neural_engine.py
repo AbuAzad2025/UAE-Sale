@@ -1080,7 +1080,7 @@ class AzadNeuralEngine:
             )
 
             # الهدف: مبيعات اليوم الحالي
-            target = float(daily_sales[i].total_amount or 0)
+            target = float(daily_sales[i].amount_base or 0)
 
             X.append(features)
             y.append(target)
@@ -1154,7 +1154,7 @@ class AzadNeuralEngine:
             }
 
         # تحضير آخر 7 أيام
-        last_7_days = [float(sale.total_amount or 0) for sale in reversed(recent_sales)]
+        last_7_days = [float(sale.amount_base or 0) for sale in reversed(recent_sales)]
 
         # التوقعات
         forecast = []

@@ -115,7 +115,7 @@ class SystemIntegrator:
             # إحصائيات المبيعات
             sales = customer.sales.all()
             total_sales = len(sales)
-            total_amount = sum(float(sale.total_amount) for sale in sales)
+            total_amount = sum(float(sale.amount_base) for sale in sales)
             paid_amount = sum(float(sale.paid_amount) for sale in sales)
             balance_due = total_amount - paid_amount
 
@@ -133,9 +133,9 @@ class SystemIntegrator:
                         {
                             "id": sale.id,
                             "date": sale.created_at.strftime("%Y-%m-%d"),
-                            "amount": float(sale.total_amount),
+                            "amount": float(sale.amount_base),
                             "status": "مدفوع"
-                            if sale.paid_amount >= sale.total_amount
+                            if sale.paid_amount >= sale.amount_base
                             else "جزئي"
                             if sale.paid_amount > 0
                             else "غير مدفوع",
@@ -292,7 +292,7 @@ class SystemIntegrator:
                                 "customer": s.customer.name
                                 if s.customer
                                 else "غير محدد",
-                                "amount": float(s.total_amount),
+                                "amount": float(s.amount_base),
                                 "date": s.created_at.strftime("%Y-%m-%d %H:%M"),
                             }
                             for s in recent_sales
@@ -318,7 +318,7 @@ class SystemIntegrator:
 
             # إجمالي المبيعات
             total_sales_amount = db.session.query(
-                db.func.sum(Sale.total_amount)
+                db.func.sum(Sale.amount_base)
             ).scalar() or Decimal("0")
 
             # إجمالي المدفوعات
@@ -330,7 +330,7 @@ class SystemIntegrator:
             total_receivables = total_sales_amount - total_payments_amount
 
             # مبيعات اليوم
-            today_sales = db.session.query(db.func.sum(Sale.total_amount)).filter(
+            today_sales = db.session.query(db.func.sum(Sale.amount_base)).filter(
                 Sale.created_at >= datetime.now().date()
             ).scalar() or Decimal("0")
 
@@ -343,7 +343,7 @@ class SystemIntegrator:
             month_start = datetime.now().replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
-            monthly_sales = db.session.query(db.func.sum(Sale.total_amount)).filter(
+            monthly_sales = db.session.query(db.func.sum(Sale.amount_base)).filter(
                 Sale.created_at >= month_start
             ).scalar() or Decimal("0")
 
@@ -424,7 +424,7 @@ class SystemIntegrator:
                     {
                         "id": s.id,
                         "customer": s.customer.name if s.customer else "غير محدد",
-                        "amount": float(s.total_amount),
+                        "amount": float(s.amount_base),
                         "date": s.created_at.strftime("%Y-%m-%d"),
                     }
                     for s in sales

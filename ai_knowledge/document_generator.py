@@ -98,7 +98,7 @@ class DocumentGenerator:
             ║ الشحن: {sale.shipping_cost:,.2f} AED                        ║
             ║ الضريبة: {sale.tax_amount:,.2f} AED                        ║
             ║                                                            ║
-            ║ المجموع الكلي: {sale.total_amount:,.2f} AED                   ║
+            ║ المجموع الكلي: {sale.amount_base:,.2f} AED                   ║
             ║ المدفوع: {sale.paid_amount:,.2f} AED                        ║
             ║ المتبقي: {sale.balance_due:,.2f} AED                        ║
             ║                                                            ║
@@ -131,7 +131,7 @@ class DocumentGenerator:
 
             # حساب الإحصائيات
             _ = len(sales)
-            total_amount = sum(float(sale.total_amount) for sale in sales)
+            total_amount = sum(float(sale.amount_base) for sale in sales)
             total_paid = sum(float(sale.paid_amount) for sale in sales)
             _ = total_amount - total_paid
 
@@ -159,7 +159,7 @@ class DocumentGenerator:
             # تفاصيل الفواتير
             for sale in sales[-10:]:  # آخر 10 فواتير
                 report_content += """
-            ║ #{sale.id:06d} | {sale.customer.name[:20]:20} | {sale.total_amount:8.2f} AED | {sale.created_at.strftime('%Y-%m-%d')} ║"""
+            ║ #{sale.id:06d} | {sale.customer.name[:20]:20} | {sale.amount_base:8.2f} AED | {sale.created_at.strftime('%Y-%m-%d')} ║"""
 
             report_content += """
             ║                                                            ║
@@ -202,7 +202,7 @@ class DocumentGenerator:
                             sale.id,
                             sale.customer.name if sale.customer else "غير محدد",
                             sale.created_at.strftime("%Y-%m-%d"),
-                            float(sale.total_amount),
+                            float(sale.amount_base),
                             float(sale.paid_amount),
                             float(sale.balance_due),
                             "مدفوع"
@@ -332,9 +332,9 @@ class DocumentGenerator:
 
             balance = Decimal("0")
             for sale in sales:
-                balance += sale.total_amount
+                balance += sale.amount_base
                 statement_content += """
-            ║ {sale.created_at.strftime('%Y-%m-%d')} | فاتورة #{sale.id} | {sale.total_amount:8.2f} AED | الرصيد: {balance:8.2f} AED ║"""
+            ║ {sale.created_at.strftime('%Y-%m-%d')} | فاتورة #{sale.id} | {sale.amount_base:8.2f} AED | الرصيد: {balance:8.2f} AED ║"""
 
                 # المدفوعات
                 for payment in sale.payments:

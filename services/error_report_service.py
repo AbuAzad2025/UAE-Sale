@@ -167,9 +167,13 @@ def report_error(
     # Tenant context: distinguish errors per tenant
     tenant_id = None
     try:
-        from models.tenant_scope import get_current_tenant_id
+        from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE
 
-        tenant_id = get_current_tenant_id()
+        raw_tenant_id = get_current_tenant_id()
+        # TENANT_LESS_SCOPE (-1) means "no tenant" (platform-level);
+        # store NULL instead so the FK to tenants.id is not violated.
+        if raw_tenant_id is not None and raw_tenant_id != TENANT_LESS_SCOPE:
+            tenant_id = raw_tenant_id
     except Exception:
         pass
 

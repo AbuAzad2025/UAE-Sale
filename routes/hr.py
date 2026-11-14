@@ -99,7 +99,7 @@ def create_department():
 @login_required
 @permission_required("manage_hr")
 def edit_department(id):
-    dept = db.get_or_404(Department, id)
+    dept = get_owned_or_404(Department, id)
     if request.method == "POST":
         try:
             dept.name = request.form.get("name", dept.name)

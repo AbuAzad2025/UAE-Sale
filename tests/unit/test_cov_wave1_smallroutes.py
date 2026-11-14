@@ -408,10 +408,8 @@ class TestApprovalsRoutes:
     def test_full_request_lifecycle(
         self, client, db, owner_user, test_sale, login_owner
     ):
-        # REAL BUG (reported, not fixed): templates/approvals/view.html:184
-        # calls url_for('sales.view_sale', ...) but the sales blueprint only
-        # defines 'sales.view' (routes/sales.py::view), so GET
-        # /approvals/<id> raises BuildError -> HTTP 500 for sale requests.
+        # templates/approvals/view.html:184 calls url_for('sales.view', ...)
+        # which matches routes/sales.py::view (fixed: was 'sales.view_sale').
         from models import ApprovalWorkflow
         from extensions import db as _db
 
@@ -428,11 +426,9 @@ class TestApprovalsRoutes:
 
         req = ApprovalService.submit("sale", test_sale.id, 50.0, owner_user.id)
         assert req is not None
-        # TESTING=True propagates the exception (production serves HTTP 500).
-        from werkzeug.routing import BuildError
-
-        with pytest.raises(BuildError):
-            client.get(f"/approvals/{req.id}")
+        # GET /approvals/<id> now resolves sales.view successfully (HTTP 200).
+        resp = client.get(f"/approvals/{req.id}")
+        assert resp.status_code == 200
         resp = client.post(f"/approvals/{req.id}/approve", data={"notes": "ok"})
         assert resp.status_code == 302
         _db.session.refresh(req)

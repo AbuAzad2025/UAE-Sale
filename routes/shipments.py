@@ -20,7 +20,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models.shipment import Shipment
 from services.shipment_service import ShipmentService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 from utils.transaction import atomic_transaction
 from utils.transaction import atomic_transaction
 from utils.helpers import create_audit_log
@@ -52,7 +52,7 @@ def list_shipments():
 @login_required
 @permission_required("manage_warehouse")
 def view_shipment(id):
-    s = db.get_or_404(Shipment, id)
+    s = get_owned_or_404(Shipment, id)
     from models.sale import Sale
 
     sales = (

@@ -544,35 +544,30 @@
 
 {% block extra_js %}
 <script>
-// تأكيد الاستعادة الكاملة
 function confirmRestore(filename) {
   $('#restoreFilename').text(filename);
   $('#restoreForm').attr('action', '{{ url_for("owner.restore_backup", filename="__FILENAME__") }}'.replace('__FILENAME__', filename));
   $('#restoreModal').modal('show');
 }
 
-// فتح نافذة الاستعادة المخصصة
 function customRestore(filename) {
   $('#customRestoreFilename').text(filename);
   $('#customRestoreForm').attr('action', '{{ url_for("owner.custom_restore_backup", filename="__FILENAME__") }}'.replace('__FILENAME__', filename));
   $('#customRestoreModal').modal('show');
 }
 
-// تحديد كل الجداول
 function selectAllTables() {
   document.querySelectorAll('#tablesCheckboxList input[type="checkbox"]').forEach(cb => {
     cb.checked = true;
   });
 }
 
-// إلغاء تحديد كل الجداول
 function deselectAllTables() {
   document.querySelectorAll('#tablesCheckboxList input[type="checkbox"]').forEach(cb => {
     cb.checked = false;
   });
 }
 
-// التحقق من سلامة النسخة
 function verifyBackup(filename) {
   Swal.fire({
     title: 'جاري التحقق...',

@@ -376,12 +376,6 @@
 
 {% block extra_js %}
 <script>
-// ── F5: سعر الصرف يُحدَّث عند تغيير العملة ──────────────────────────────
-// جدول الأسعار المرسل من الخادم (إن وُجد): 1 وحدة من عملة الأساس = X من
-// العملة. وسعر السند المطلوب هو «وحدات الأساس لكل وحدة من عملة السند»
-// أي مقلوب الجدول. وإن لم يتوفّر الجدول في هذه الصفحة يُستدعى نفس حساب
-// الخادم (/api/currency-rate) الذي يستعمله الخادم في تثبيت السعر، وإن فشل
-// ذلك يبقى الحقل قابلاً للتعديل (لا يُقفل readonly أبداً).
 var RECEIPT_BASE_CURRENCY = '{{ base_currency }}';
 var RECEIPT_EXCHANGE_RATES = {{ (exchange_rates or {}) | tojson }};
 var RECEIPT_DOCUMENT_CURRENCY = '{{ purchase.currency if purchase else (sale.currency if sale else "") }}';
@@ -418,7 +412,6 @@ function refreshExchangeRate() {
     return;
   }
 
-  // لا يوجد جدول أسعار في هذه الصفحة → نفس حساب الخادم
   $.ajax({
     url: '/api/currency-rate/' + encodeURIComponent(currency) + '/' +
          encodeURIComponent(RECEIPT_BASE_CURRENCY),
@@ -440,31 +433,25 @@ function refreshExchangeRate() {
 }
 
 $(document).ready(function() {
-  // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
   
-  // تهيئة حقول الدفع الديناميكية
   if (window.PaymentFieldsManager) {
     PaymentFieldsManager.initSelector('#payment_method', '#paymentFieldsContainer');
   }
   
-  // ملء المبلغ المقترح من السيرفر
   var suggestedAmount = $('#amount').data('suggested-amount');
   if (suggestedAmount) {
     $('#amount').val(suggestedAmount);
   }
   
-  // إدارة الحقول الديناميكية حسب طريقة الدفع
   $('#payment_method').on('change', function() {
     var method = $(this).val();
     
-    // إخفاء جميع الحقول الديناميكية أولاً
     $('#cheque_fields, #card_fields, #bank_transfer_fields, #ewallet_fields').slideUp();
     
-    // إظهار الحقول المناسبة
     switch(method) {
       case 'cheque':
         $('#cheque_fields').slideDown();
@@ -479,29 +466,23 @@ $(document).ready(function() {
         $('#ewallet_fields').slideDown();
         break;
       default:
-        // نقد - لا حقول إضافية
         break;
     }
   });
   
-  // تفعيل الحقول عند التحميل إذا كانت طريقة الدفع محددة
   if ($('#payment_method').val()) {
     $('#payment_method').trigger('change');
   }
   
-  // F5: تحديث سعر الصرف عند تغيير العملة (لا يبقى سعر الفاتورة)
   $('#currency').on('change select2:select', function() {
     refreshExchangeRate();
   });
 
-  // F5: إذا اختلفت عملة السند عن عملة المستند (إعادة عرض بعد خطأ مثلاً)
-  // فالحقل محمَّل بسعر المستند — يُصحَّح فوراً.
   if (RECEIPT_DOCUMENT_CURRENCY &&
       String($('#currency').val()).toUpperCase() !== String(RECEIPT_DOCUMENT_CURRENCY).toUpperCase()) {
     refreshExchangeRate();
   }
 
-  // تحميل بيانات العميل عند الاختيار
   $('#customer_id').on('select2:select change', function() {
     var customerId = $(this).val();
     if (customerId) {
@@ -511,7 +492,6 @@ $(document).ready(function() {
     }
   });
   
-  // تحميل بيانات العميل المحدد مسبقاً
   var hasPreselectedCustomer = $('#customer_id option:selected').val() !== '';
   if (hasPreselectedCustomer) {
     setTimeout(function() {
@@ -519,7 +499,6 @@ $(document).ready(function() {
     }, 1000);
   }
   
-  // توليد رقم المرجع تلقائياً
   var now = new Date();
   var refNumber = 'REF-' + now.getFullYear() + 
                   String(now.getMonth() + 1).padStart(2, '0') + 
@@ -530,7 +509,6 @@ $(document).ready(function() {
   $('#reference_number').val(refNumber);
 });
 
-// دالة تحميل بيانات العميل
 function loadCustomerBalance() {
   var customerId = $('#customer_id').val();
   if (!customerId) {
@@ -542,7 +520,6 @@ function loadCustomerBalance() {
       .removeClass('text-danger text-success').addClass(balanceClass);
     $('#customerInfo').slideDown();
     
-    // ملء المبلغ تلقائياً من الفواتير غير المدفوعة
     if (data.unpaid_sales && data.unpaid_sales.length > 0) {
       var totalUnpaid = data.unpaid_sales.reduce(function(sum, sale) {
         return sum + parseFloat(sale.balance_due || 0);
@@ -553,7 +530,6 @@ function loadCustomerBalance() {
         $('#amount').val(totalUnpaid.toFixed(2));
       }
       
-      // عرض الفواتير غير المدفوعة
       var html = '<strong>فواتير غير مدفوعة:</strong><ul class="mb-0">';
       data.unpaid_sales.forEach(function(sale) {
         var saleUrl = "{{ url_for('sales.view', id=0) }}".replace('0', sale.id);

@@ -42,7 +42,6 @@
   50% { opacity: 0.6; transform: scale(1.1); }
 }
 
-/* حماية البطاقة من الإخفاء - لا يمكن إخفاؤها بأي طريقة */
 .owner-warning-permanent {
   display: flex !important;
   opacity: 1 !important;
@@ -304,15 +303,11 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  // إبقاء يافطة التحذير الرئيسية ثابتة دائماً
-  // لا يتم إخفاء alert-danger أبداً
   
-  // زيادة عمر التحذيرات الأخرى إلى الضعف (10 ثواني بدلاً من 5)
   setTimeout(function() {
     $('.alert:not(.alert-danger)').fadeOut('slow');
   }, 10000);
   
-  // منع إغلاق يافطة التحذير الرئيسية
   $('.alert-danger .close').remove();
 });
 </script>

@@ -122,23 +122,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script>
-        // Refresh payment status every 30 seconds while pending
         {% if status == 'pending' and payment_id %}
         function checkPaymentStatus() {
             fetch(`/auth/payment/status/{{ payment_id }}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data.payment_status === 'finished') {
-                        // Reload the page to show the new status
                         window.location.href = window.location.href.replace('status=pending', 'status=completed');
                     }
                 })
                 .catch(error => {
-                    // Error while checking payment status
                 });
         }
         
-        // Check status every 30 seconds
         setInterval(checkPaymentStatus, 30000);
         {% endif %}
     </script>

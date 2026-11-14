@@ -452,13 +452,11 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
   
-  // التحقق من النموذج
   $('form').on('submit', function(e) {
     const name = $('input[name="name"]').val().trim();
     const phone = $('input[name="phone"]').val().trim();

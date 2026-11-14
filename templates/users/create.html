@@ -18,7 +18,6 @@
 
 {% block extra_css %}
 <style>
-/* Visual distinction for required and optional fields */
 .required-field {
   position: relative;
 }
@@ -310,13 +309,11 @@
 {% block extra_js %}
 <script>
 $(function () {
-  // Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
   
-  // Password strength indicator
   $('#password').on('input', function() {
     const password = $(this).val();
     const strength = getPasswordStrength(password);
@@ -336,7 +333,6 @@ $(function () {
     messageDiv.html('<div class="password-req small mt-1">' + req.join(' &bull; ') + '</div>');
   });
   
-  // Password match validation
   function validatePasswordMatch() {
     const password = $('#password').val();
     const confirm = $('#confirm_password').val();
@@ -359,7 +355,6 @@ $(function () {
   $('#confirm_password').on('input', validatePasswordMatch);
   $('#password').on('input', validatePasswordMatch);
   
-  // Form submission validation
   $('#createUserForm').on('submit', function(e) {
     const password = $('#password').val();
     const confirm = $('#confirm_password').val();
@@ -400,7 +395,6 @@ $(function () {
   }
   
   function showPasswordStrength(strength) {
-    // Optional: Add visual password strength indicator
   }
 });
 </script>

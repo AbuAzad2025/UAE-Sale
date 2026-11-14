@@ -267,7 +267,6 @@
 {% block extra_js %}
 <script>
 $(function() {
-  // تغيير الحقول حسب نوع الشيك
   $('#cheque_type').on('change', function() {
     const type = $(this).val();
     
@@ -283,7 +282,6 @@ $(function() {
     }
   }).trigger('change');
   
-  // Select2 للعملاء والموردين (تأكد من تحميل الإضافة)
   if (window.jQuery && $.fn && $.fn.select2) {
     $('.customer-select, .supplier-select').select2({
       theme: 'bootstrap4',
@@ -295,7 +293,6 @@ $(function() {
     console.warn('Select2 لم يتم تحميله، سيتم استخدام القائمة العادية.');
   }
   
-  // تحديث سعر الصرف ديناميكياً
   $('#currency').on('change', function() {
     const currency = $(this).val();
     
@@ -326,7 +323,6 @@ $(function() {
     });
   }).trigger('change');
   
-  // تاريخ افتراضي للاستحقاق (30 يوم من اليوم)
   $('input[name="issue_date"]').on('change', function() {
     const raw = $(this).val();
     if (!raw) {
@@ -346,7 +342,6 @@ $(function() {
     $('input[name="due_date"]').val(dueDate.toISOString().split('T')[0]);
   });
   
-  // ضبط تاريخ الإصدار افتراضياً إلى اليوم إذا كان فارغاً، ثم حدّث الاستحقاق
   (function ensureIssueDateDefault() {
     const $issue = $('input[name="issue_date"]');
     if (!$issue.val()) {

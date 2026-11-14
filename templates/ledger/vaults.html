@@ -154,7 +154,6 @@
 <script>
 function unlockVault(vaultId) {
   if (confirm('هل أنت متأكد من فتح المحفظة؟')) {
-    // إرسال طلب فتح المحفظة
     fetch(`/payment-vault/unlock/${vaultId}`, {
       method: 'POST',
       headers: {
@@ -177,7 +176,6 @@ function unlockVault(vaultId) {
 
 function lockVault(vaultId) {
   if (confirm('هل أنت متأكد من قفل المحفظة؟')) {
-    // إرسال طلب قفل المحفظة
     fetch(`/payment-vault/lock/${vaultId}`, {
       method: 'POST',
       headers: {

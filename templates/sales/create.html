@@ -106,7 +106,6 @@
   text-align: right;
 }
 
-/* أزرار العنوان */
 a.btn.btn-secondary,
 .btn.btn-secondary {
   color: #ffffff !important;
@@ -401,12 +400,7 @@ a.btn.btn-outline-secondary span {
 <script src="{{ url_for('static', filename='js/barcode-unified.js') }}"></script>
 <script>
 $(document).ready(function() {
-  // تهيئة حقول الدفع الديناميكية
-  // تتم إدارة الحقول عبر sales-enhanced.js باستخدام API موحدة
-  // لا حاجة لتهيئة PaymentFieldsManager هنا
   
-  // Initialize customer select - الفلتر الذكي سيعمل تلقائياً
-  // لكن نحتفظ بالكود القديم كـ fallback
   if (!$('#customer_id').hasClass('select2-hidden-accessible')) {
     $('#customer_id').select2({
       ajax: {
@@ -444,7 +438,6 @@ function validateForm() {
     return false;
   }
   
-  // Check if at least one line has a product
   let hasProduct = false;
   for (let i = 0; i < lineCount; i++) {
     const productId = $(`select[name="lines[${i}][product_id]"]`).val();

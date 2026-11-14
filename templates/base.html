@@ -112,12 +112,10 @@
   </script>
   
   <style>
-    /* تحسينات سريعة للأداء */
     * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     img { will-change: transform; }
     .content-wrapper { min-height: calc(100vh - 120px); }
     
-    /* Custom Scrollbar للسايدبار */
     .sidebar::-webkit-scrollbar {
       width: 8px;
     }
@@ -137,7 +135,6 @@
       background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
     }
     
-    /* Smooth scroll */
     .sidebar {
       scroll-behavior: smooth;
     }
@@ -1142,7 +1139,6 @@
 <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
 <script>
-  // Unified system lookups for JS (single source of truth: LookupService).
   window.SYSTEM_LOOKUPS = {
     card_types: {{ lookups.get('card_types', [])|tojson }},
     cheque_statuses: {{ lookups.get('cheque_statuses', [])|tojson }},
@@ -1219,7 +1215,6 @@ document.addEventListener('keydown', function(e){
 </script>
 
 <script>
-// CSRF: attach token to all jQuery AJAX requests
 $(function() {
   try {
     const csrfToken = $('meta[name="csrf-token"]').attr('content');
@@ -1237,30 +1232,20 @@ $(function() {
   }
 });
 
-// Global Performance Enhancements
 (function() {
   'use strict';
 
-  // Inline hover prefetch has been REMOVED permanently (see the sibling
-  // comment block at the top of static/js/performance.js for why).
-  // Leaving this IIFE here because other enhancements (flash auto-hide,
-  // below) live inside it.
-  // -- v20260911 fingerprint: ensure the browser loaded this FIXED base.html.
 
-  // Auto-hide flash messages with progress bar (إلا التحذيرات الدائمة)
   document.querySelectorAll('.flash-message').forEach((alert, index) => {
-    // لا تخفي التحذيرات الدائمة أو alert-danger
     if (!alert.classList.contains('alert-permanent') && !alert.classList.contains('alert-danger')) {
       const progressBar = alert.querySelector('.flash-timer');
       
-      // Start timer animation
       setTimeout(() => {
         if (progressBar) {
           progressBar.style.width = '0%';
         }
       }, 100);
       
-      // Auto-hide after 40 seconds (ضعف المدة السابقة)
       setTimeout(() => {
         alert.style.transition = 'all 0.5s ease-out';
         alert.style.transform = 'translateX(100%)';
@@ -1270,11 +1255,9 @@ $(function() {
     }
   });
   
-  // تحديث الساعة والتاريخ وسعر الصرف
   function updateDateTime() {
     const now = new Date();
     
-    // تحديث الساعة
     const timeString = now.toLocaleTimeString('ar-SA', {
       hour: '2-digit',
       minute: '2-digit',
@@ -1282,14 +1265,12 @@ $(function() {
       hour12: false
     });
     
-    // تحديث التاريخ
     const dateString = now.toLocaleDateString('ar-SA', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
     });
     
-    // تحديث العرض
     const timeDisplay = document.getElementById('time-display');
     const dateDisplay = document.getElementById('date-display');
     
@@ -1297,12 +1278,10 @@ $(function() {
     if (dateDisplay) dateDisplay.textContent = dateString;
   }
   
-  // تحديث سعر الصرف - جلب حقيقي من الخادم (خوادم مجانية بدون مفتاح)
   async function updateExchangeRate() {
     const rateDisplay = document.getElementById('rate-display');
     if (!rateDisplay) return;
     try {
-      // نحاول API الداخلي أولاً (يستخدم خوادم مجانية open.er-api + exchangerate-api + fawazahmed)
       const res = await fetch(`/api/currency-rate/USD/{{ base_currency }}`, { headers: { 'Accept': 'application/json' }});
       if (res.ok) {
         const data = await res.json();
@@ -1317,7 +1296,6 @@ $(function() {
       }
       throw new Error('API failed');
     } catch (e) {
-      // محاولة مباشرة لخادم مجاني كخطة بديلة (بدون المرور بالخادم)
       try {
         const r2 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
         if (r2.ok) {
@@ -1329,24 +1307,19 @@ $(function() {
           }
         }
       } catch (e2) {}
-      // يبقى السعر الحالي كما هو في حال فشل كل المحاولات
       console.warn('Exchange rate fetch failed', e);
     }
   }
   
-  // تشغيل التحديثات
   updateDateTime();
   updateExchangeRate();
   
-  // تحديث الساعة كل ثانية
   setInterval(updateDateTime, 1000);
   
-  // تحديث سعر الصرف كل 30 ثانية
   setInterval(updateExchangeRate, 30000);
   
 })();
 
-// تبديل اتجاه الـ Sidebar بين اليمين والشمال
 function toggleSidebarDirection() {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const sidebar = document.querySelector('.main-sidebar');
@@ -1355,7 +1328,6 @@ function toggleSidebarDirection() {
   const savedLayout = localStorage.getItem('sidebarLayout') || 'left';
   
   if (savedLayout === 'left') {
-    // نقل الـ sidebar من اليسار لليمين
     if (sidebar) {
       sidebar.style.left = 'auto';
       sidebar.style.right = '0';
@@ -1382,7 +1354,6 @@ function toggleSidebarDirection() {
       timer: 1500
     });
   } else {
-    // إرجاع الـ sidebar من اليمين لليسار
     if (sidebar) {
       sidebar.style.left = '0';
       sidebar.style.right = 'auto';
@@ -1411,7 +1382,6 @@ function toggleSidebarDirection() {
   }
 }
 
-// تطبيق الإعدادات المحفوظة عند تحميل الصفحة
 (function() {
   const savedLayout = localStorage.getItem('sidebarLayout');
   const sidebar = document.querySelector('.main-sidebar');

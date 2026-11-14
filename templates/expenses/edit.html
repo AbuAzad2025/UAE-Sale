@@ -217,13 +217,11 @@
 {% block extra_js %}
 <script>
 $(function () {
-  // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
   
-  // حفظ فئة المصروفات الجديدة
   $('#saveExpenseCategoryBtn').click(function() {
     const name = $('#expense_category_name').val().trim();
     const name_ar = $('#expense_category_name_ar').val().trim();
@@ -233,7 +231,6 @@ $(function () {
       return;
     }
     
-    // الحصول على CSRF token
   const csrfToken = $('input[name="csrf_token"]').val();
   
   $.ajax({
@@ -249,19 +246,16 @@ $(function () {
       }),
       success: function(response) {
         if (response.success) {
-          // إضافة الفئة الجديدة للقائمة
           const displayName = response.category.name_ar ? 
             response.category.name_ar + ' - ' + response.category.name : 
             response.category.name;
           const newOption = new Option(displayName, response.category.id, true, true);
           $('#expense_category').append(newOption).trigger('change');
           
-          // إغلاق النافذة وتنظيف الحقول
           $('#addExpenseCategoryModal').modal('hide');
           $('#expense_category_name').val('');
           $('#expense_category_name_ar').val('');
           
-          // رسالة نجاح
           if (typeof UI !== 'undefined') {
             UI.success('تم إضافة الفئة بنجاح!');
           } else {

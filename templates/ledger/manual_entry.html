@@ -219,7 +219,6 @@
 </div>
 
 <script>
-// قائمة الحسابات (من Backend)
 const accounts = [
   {% for account in accounts %}
   {
@@ -232,7 +231,6 @@ const accounts = [
   {% endfor %}
 ];
 
-// شركاء العملاء (من Backend) — لربط سطر القيد بمحاضر الشريك
 const partners = [
   {% for partner in partners | default([]) %}
   {
@@ -244,7 +242,6 @@ const partners = [
 
 let lineCounter = 0;
 
-// إضافة سطر جديد
 function addLine() {
   const tbody = document.getElementById('linesTableBody');
   const row = document.createElement('tr');
@@ -281,7 +278,6 @@ function addLine() {
   document.getElementById('lineCountHidden').value = lineCounter;
 }
 
-// عند تغيير المدين، صفّر الدائن
 function handleDebitChange(input) {
   const value = parseFloat(input.value) || 0;
   if (value > 0) {
@@ -292,7 +288,6 @@ function handleDebitChange(input) {
   calculateJournalTotals();
 }
 
-// عند تغيير الدائن، صفّر المدين
 function handleCreditChange(input) {
   const value = parseFloat(input.value) || 0;
   if (value > 0) {
@@ -303,7 +298,6 @@ function handleCreditChange(input) {
   calculateJournalTotals();
 }
 
-// حساب الإجماليات والتوازن للقيد اليدوي - CLIENT SIDE
 function calculateJournalTotals() {
   const debitInputs = document.querySelectorAll('.debit-input');
   const creditInputs = document.querySelectorAll('.credit-input');
@@ -332,7 +326,6 @@ function calculateJournalTotals() {
   differenceSpan.textContent = difference.toFixed(2);
   
   if (difference < 0.01 && totalDebit > 0 && totalCredit > 0) {
-    // متوازن ✅
     differenceSpan.className = 'badge badge-success';
     differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
     if (balanceStatus) {
@@ -343,7 +336,6 @@ function calculateJournalTotals() {
     submitBtn.removeAttribute('disabled');
     submitBtn.className = 'btn btn-success btn-lg';
   } else {
-    // غير متوازن ❌
     differenceSpan.className = 'badge badge-danger';
     if (balanceStatus) {
       balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
@@ -355,26 +347,21 @@ function calculateJournalTotals() {
   }
 }
 
-// إعادة تعيين النموذج
 function resetForm() {
   if (confirm('هل أنت متأكد من إعادة تعيين النموذج؟ سيتم مسح جميع البيانات.')) {
     document.getElementById('journalEntryForm').reset();
     document.getElementById('linesTableBody').innerHTML = '';
     lineCounter = 0;
-    // إضافة سطرين افتراضيين
     addLine();
     addLine();
     calculateJournalTotals();
   }
 }
 
-// قوالب سريعة
 function loadTemplate(templateType) {
-  // مسح السطور الحالية
   document.getElementById('linesTableBody').innerHTML = '';
   lineCounter = 0;
   
-  // تعيين الوصف
   const descriptionInput = document.querySelector('input[name="description"]');
   
   switch(templateType) {
@@ -403,12 +390,10 @@ function loadTemplate(templateType) {
       break;
   }
   
-  // حساب الإجماليات فوراً + احتياطي
   calculateJournalTotals();
   setTimeout(() => calculateJournalTotals(), 100);
 }
 
-// إضافة سطر مع بيانات محددة
 function addLineWithData(accountCode, accountName, debit, credit) {
   const tbody = document.getElementById('linesTableBody');
   const row = document.createElement('tr');
@@ -442,7 +427,6 @@ function addLineWithData(accountCode, accountName, debit, credit) {
   `;
   tbody.appendChild(row);
   
-  // تعيين القيم بعد إضافة الصف للـ DOM (مهم جداً!)
   const debitInput = row.querySelector('.debit-input');
   const creditInput = row.querySelector('.credit-input');
   if (debitInput) debitInput.value = debit;
@@ -452,7 +436,6 @@ function addLineWithData(accountCode, accountName, debit, credit) {
   document.getElementById('lineCountHidden').value = lineCounter;
 }
 
-// دالة لإظهار/إخفاء البطاقات
 function toggleCard(cardName) {
   const body = document.getElementById(cardName + 'Body');
   const icon = document.getElementById(cardName + 'Icon');
@@ -468,18 +451,14 @@ function toggleCard(cardName) {
   }
 }
 
-// عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-  // تعيين التاريخ الحالي
   const today = new Date().toISOString().split('T')[0];
   document.querySelector('input[name="entry_date"]').value = today;
   
-  // إضافة سطرين افتراضيين
   addLine();
   addLine();
   calculateJournalTotals();
   
-  // التأكد من أن البطاقات مرئية
   document.getElementById('quickSummaryBody').style.display = 'block';
   document.getElementById('quickTemplatesBody').style.display = 'block';
 });
@@ -529,7 +508,6 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 0.75rem 1rem;
   }
 
-/* تنسيق البطاقات الثابتة */
 #quickSummaryCard, #quickTemplatesCard {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border-width: 2px !important;
@@ -554,7 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
   animation: slideIn 0.3s ease-out;
 }
 
-/* تنسيق الأزرار */
 #quickTemplatesBody .btn {
   font-weight: bold;
   transition: all 0.3s ease;
@@ -566,7 +543,6 @@ document.addEventListener('DOMContentLoaded', function() {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* تنسيق الحسابات */
 .account-select {
   font-size: 0.9rem;
 }
@@ -579,7 +555,6 @@ document.addEventListener('DOMContentLoaded', function() {
   border-radius: 0.25rem;
 }
 
-/* رسوم متحركة */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -602,7 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 }
 
-/* منع الاختفاء */
 .card-body {
   display: block !important;
   visibility: visible !important;

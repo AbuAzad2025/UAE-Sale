@@ -200,7 +200,6 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Revenue Chart
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
     new Chart(revenueCtx, {
         type: 'line',
@@ -226,7 +225,6 @@
         }
     });
     
-    // Revenue Distribution
     const distCtx = document.getElementById('revenueDistChart').getContext('2d');
     new Chart(distCtx, {
         type: 'pie',
@@ -239,7 +237,6 @@
         }
     });
     
-    // Package Sales
     const pkgCtx = document.getElementById('packageSalesChart').getContext('2d');
     new Chart(pkgCtx, {
         type: 'doughnut',

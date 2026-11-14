@@ -3,7 +3,6 @@
 
 {% block styles %}
 <style>
-/* تصميم احترافي للتقارير المالية */
 .report-dashboard {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 30px;
@@ -364,13 +363,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
 <script>
-// بيانات الرسوم البيانية
 const months = {{ months|tojson }};
 const revenueData = {{ revenue_data|tojson }};
 const expenseData = {{ expense_data|tojson }};
 const profitData = {{ profit_data|tojson }};
 
-// رسم بياني للإيرادات والمصروفات
 const revenueExpenseCtx = document.getElementById('revenueExpenseChart').getContext('2d');
 const revenueExpenseChart = new Chart(revenueExpenseCtx, {
   type: 'bar',
@@ -414,7 +411,6 @@ const revenueExpenseChart = new Chart(revenueExpenseCtx, {
   }
 });
 
-// رسم بياني دائري لتوزيع المصروفات
 const expenseDistributionCtx = document.getElementById('expenseDistributionChart').getContext('2d');
 const expenseDistributionChart = new Chart(expenseDistributionCtx, {
   type: 'doughnut',
@@ -445,7 +441,6 @@ const expenseDistributionChart = new Chart(expenseDistributionCtx, {
   }
 });
 
-// رسم بياني خطي للأرباح
 const profitTrendCtx = document.getElementById('profitTrendChart').getContext('2d');
 const profitTrendChart = new Chart(profitTrendCtx, {
   type: 'line',
@@ -484,7 +479,6 @@ const profitTrendChart = new Chart(profitTrendCtx, {
   }
 });
 
-// رسوم بيانية صغيرة للتحليلات
 const growthRateCtx = document.getElementById('growthRateChart').getContext('2d');
 new Chart(growthRateCtx, {
   type: 'line',
@@ -542,15 +536,12 @@ new Chart(roiCtx, {
   }
 });
 
-// دوال التصدير
 function exportPDF() {
   alert('سيتم تصدير التقرير كملف PDF');
-  // يمكن إضافة كود jsPDF هنا
 }
 
 function exportExcel() {
   alert('سيتم تصدير التقرير كملف Excel');
-  // يمكن إضافة كود XLSX هنا
 }
 </script>
 {% endblock %}

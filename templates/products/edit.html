@@ -357,17 +357,14 @@
 {% block extra_js %}
 <script>
 $(function () {
-  // تفعيل Tooltips
   $('[data-toggle="tooltip"]').tooltip({
     placement: 'top',
     trigger: 'hover'
   });
 
-  // إدارة جدول الشركاء
   const partnersList = $('#partnersList');
   const addPartnerBtn = $('#addPartnerBtn');
   
-  // قائمة الشركاء المتاحين
   let partnerOptions = '<option value="">اختر الشريك...</option>';
   {% for partner in partners %}
   partnerOptions += `<option value="{{ partner.id }}">{{ partner.name }}</option>`;
@@ -399,7 +396,6 @@ $(function () {
     `;
     partnersList.append(html);
     
-    // تحديد القيمة المختارة إذا وجدت
     if (partnerId) {
       $(`#row-${rowId} select`).val(partnerId);
     }
@@ -414,14 +410,12 @@ $(function () {
     $('#' + rowId).remove();
   });
 
-  // تحميل الشركاء الحاليين
   {% if product.partner_shares %}
     {% for share in product.partner_shares %}
       addPartnerRow('{{ share.partner_customer_id }}', '{{ share.percentage }}');
     {% endfor %}
   {% endif %}
   
-  // حفظ الفئة الجديدة
   $('#saveCategoryBtn').click(function() {
     const name = $('#category_name').val().trim();
     const description = $('#category_description').val().trim();
@@ -431,7 +425,6 @@ $(function () {
       return;
     }
     
-    // الحصول على CSRF token
   const csrfToken = $('input[name="csrf_token"]').val();
   
   $.ajax({
@@ -447,16 +440,13 @@ $(function () {
       }),
       success: function(response) {
         if (response.success) {
-          // إضافة الفئة الجديدة للقائمة
           const newOption = new Option(response.category.name, response.category.id, true, true);
           $('#product_category').append(newOption).trigger('change');
           
-          // إغلاق النافذة وتنظيف الحقول
           $('#addCategoryModal').modal('hide');
           $('#category_name').val('');
           $('#category_description').val('');
           
-          // رسالة نجاح
           if (typeof UI !== 'undefined') {
             UI.success('تم إضافة الفئة بنجاح!');
           } else {
@@ -473,7 +463,6 @@ $(function () {
     });
   });
 
-  // Toggle merchant share field
   $('#merchant_customer_id').change(function() {
     if ($(this).val()) {
       $('#merchantShareContainer').slideDown();

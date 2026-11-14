@@ -322,7 +322,6 @@ $(document).ready(function() {
     $tableEl.data('smartPrintInit', true);
   }
 
-  // Smart filtering
   $('#filterAll').off('click.smartPrint').on('click.smartPrint', function() {
     table.search('').column(5).search('').draw();
     $('.btn-group .btn').removeClass('active');

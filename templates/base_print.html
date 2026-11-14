@@ -90,7 +90,6 @@
       .page-wrapper { background: white !important; }
     }
     
-    /* Template Selector Styles */
     .template-selector {
       display: flex;
       gap: 8px;
@@ -189,25 +188,21 @@
   </div>
 
   <script>
-    // Get base URL for template switching
     const BASE_URL = "{{ request.script_root }}";
     const DOCUMENT_TYPE = "{{ document_type }}"; // 'invoice', 'receipt', 'purchase', 'expense', 'voucher'
     const DOCUMENT_ID = "{{ document_id }}";
     const CURRENT_TEMPLATE = "{{ current_template }}";
     
     function switchTemplate(templateKey) {
-      // Update active button
       document.querySelectorAll('.template-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.template === templateKey);
       });
       
-      // Reload page with new template parameter
       const url = new URL(window.location.href);
       url.searchParams.set('template', templateKey);
       window.location.href = url.toString();
     }
     
-    // Initialize active button on load
     document.addEventListener('DOMContentLoaded', function() {
       const activeBtn = document.querySelector('.template-btn.active');
       if (activeBtn) {
@@ -215,7 +210,6 @@
       }
     });
     
-    // Keyboard shortcut for print
     document.addEventListener('keydown', function(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();

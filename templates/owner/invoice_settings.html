@@ -798,9 +798,7 @@
 </style>
 
 <script>
-// Live preview update
 $(document).ready(function() {
-  // Update colors in real-time
   $('input[name="header_color"], input[name="accent_color"]').on('change', function() {
     const headerColor = $('input[name="header_color"]').val();
     const accentColor = $('input[name="accent_color"]').val();
@@ -809,22 +807,18 @@ $(document).ready(function() {
     document.documentElement.style.setProperty('--accent-color', accentColor);
   });
   
-  // Update company name
   $('input[name="company_name_ar"]').on('keyup', function() {
     $('#live-preview h4').text($(this).val() || 'اسم الشركة');
   });
   
-  // Toggle logo
   $('input[name="show_logo"]').on('change', function() {
     $('#live-preview img').toggle($(this).is(':checked'));
   });
   
-  // Toggle QR
   $('input[name="enable_qr_code"]').on('change', function() {
     $('#live-preview .qr-code').toggle($(this).is(':checked'));
   });
   
-  // Toggle watermark fields
   $('input[name="enable_watermark"]').on('change', function() {
     const isChecked = $(this).is(':checked');
     $('#watermark-text-group').toggle(isChecked);
@@ -833,10 +827,8 @@ $(document).ready(function() {
 });
 
 function applyTemplate(templateName) {
-  // تحديث القالب النشط
   $('select[name="active_template"]').val(templateName);
   
-  // إظهار رسالة تأكيد
   const templateNames = {
     'modern': 'عصري',
     'classic': 'كلاسيكي',
@@ -851,7 +843,6 @@ function applyTemplate(templateName) {
     alert(`تم اختيار القالب ${templateNames[templateName]}. اضغط "حفظ الإعدادات" لتطبيق التغيير.`);
   }
   
-  // تمييز القالب المحدد
   $('select[name="active_template"]').css('background-color', '#d4edda').css('color', '#155724');
   setTimeout(function() {
     $('select[name="active_template"]').css('background-color', '').css('color', '');

@@ -483,9 +483,7 @@
 
 {% block extra_js %}
 <script>
-// Global function - must be outside document.ready
 function addMessage(sender, text, isBot = false) {
-  // حفظ في السجل
   if (typeof chatHistory !== 'undefined') {
     chatHistory.push({
       role: isBot ? 'bot' : 'user',
@@ -506,7 +504,6 @@ function addMessage(sender, text, isBot = false) {
     
     const senderName = isBot ? 'أزاد 🤖' : '{{ current_user.username }}' || 'أنت';
     
-    // إضافة الرسالة للـ chatBox
     chatBox.append(`
       <div class="${messageClass}">
         <div class="d-flex align-items-start">
@@ -520,7 +517,6 @@ function addMessage(sender, text, isBot = false) {
       </div>
     `);
     
-    // تمرير تلقائي للأسفل لآخر رسالة
     setTimeout(() => {
       chatBox.scrollTop(chatBox[0].scrollHeight);
     }, 100);
@@ -607,18 +603,14 @@ $(document).ready(function() {
     }
   });
   
-  // Focus on input
   userMessage.focus();
   
-  // Load business insights
   loadBusinessInsights();
   
-  // Global Variables
   let currentDialect = 'palestinian';
   let beginnersMode = false;
   let chatHistory = [];
   
-  // Clear Chat
   window.clearChat = function() {
     if (confirm('هل تريد مسح المحادثة؟')) {
       $('#chatBox').empty();
@@ -629,7 +621,6 @@ $(document).ready(function() {
     }
   };
   
-  // Get Summary
   window.getSummary = function() {
     if (chatHistory.length === 0) {
       addMessage('bot', '📝 لا توجد محادثة لتلخيصها بعد!', true);
@@ -642,7 +633,6 @@ $(document).ready(function() {
     addMessage('bot', summary, true);
   };
   
-  // Toggle Beginners Mode
   window.toggleBeginnersMode = function() {
     beginnersMode = !beginnersMode;
     const btn = $('#beginnersBtn');
@@ -656,11 +646,9 @@ $(document).ready(function() {
     }
   };
   
-  // Set Dialect
   window.setDialect = function(dialect) {
     currentDialect = dialect;
     
-    // Update buttons
     $('.btn-group .btn').removeClass('active');
     $(`#${dialect}Btn`).addClass('active');
     
@@ -673,7 +661,6 @@ $(document).ready(function() {
     addMessage('bot', dialectMessages[dialect], true);
   };
   
-  // Quick Analysis function - MUST be inside ready
   window.quickAnalysis = function(type) {
     const questions = {
       'sales': 'حلل المبيعات',
@@ -686,43 +673,36 @@ $(document).ready(function() {
     $('#sendBtn').click();
   };
   
-  // Show Self Improvement
   window.showSelfImprovement = function() {
     $('#userMessage').val('تحسين ذاتي');
     $('#sendBtn').click();
   };
   
-  // Show Learning Status
   window.showLearningStatus = function() {
     $('#userMessage').val('حالة التعلم');
     $('#sendBtn').click();
   };
   
-  // Show System Summary
   window.showSystemSummary = function() {
     $('#userMessage').val('ملخص النظام');
     $('#sendBtn').click();
   };
   
-  // Show Knowledge Manager
   window.showKnowledgeManager = function() {
     $('#userMessage').val('مصادر كل');
     $('#sendBtn').click();
   };
   
-  // Show Neural Networks Status - جديد!
   window.showNeuralStatus = function() {
     $('#userMessage').val('حالة الشبكات العصبية');
     $('#sendBtn').click();
   };
   
-  // Show Automotive Knowledge - جديد!
   window.showAutomotiveKnowledge = function() {
     $('#userMessage').val('أخبرني عن كمبيوترات السيارات');
     $('#sendBtn').click();
   };
   
-  // Switch AI Mode
   window.switchAIMode = function(mode) {
     localStorage.setItem('ai_mode', mode);
     
@@ -762,14 +742,8 @@ $(document).ready(function() {
 
 });  // نهاية document.ready
 
-// ============================================
-// Global Variables (Outside ready)
-// ============================================
 let chatHistoryGlobal = [];
 
-// ============================================
-// Load Business Insights - Outside ready
-// ============================================
 
 function loadBusinessInsights() {
   $.ajax({
@@ -861,12 +835,9 @@ $('#excelUploadForm').on('submit', function(e) {
   });
 });
 
-// دالة فتح ملف Excel للتعديل
 function openExcelTemplate() {
-  // فتح ملف Excel مباشرة في التطبيق الافتراضي (Excel)
   const filePath = '/static/template_products.xlsx';
   
-  // إنشاء رابط لفتح الملف في Excel
   const link = document.createElement('a');
   link.href = filePath;
   link.target = '_blank';
@@ -875,7 +846,6 @@ function openExcelTemplate() {
   link.click();
   document.body.removeChild(link);
   
-  // إظهار رسالة للمستخدم
   addMessage('bot', `📗 تم فتح ملف Excel في التطبيق!
   
   💡 تعليمات:

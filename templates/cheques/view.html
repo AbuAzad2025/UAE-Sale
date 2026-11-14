@@ -493,10 +493,8 @@ function clearCheque() {
   $('#clearModal').modal('show');
   
   {% if cheque.currency != base_currency %}
-  // جلب سعر الصرف الحالي عند فتح النافذة
   fetchCurrentExchangeRate();
   
-  // حساب المبلغ الفعلي عند تغيير السعر
   $('#clearance_exchange_rate').on('input', calculateActualAmount);
   {% endif %}
 }
@@ -511,7 +509,6 @@ function cancelCheque() {
 
 {% if cheque.currency != base_currency %}
 function fetchCurrentExchangeRate() {
-  // جلب سعر الصرف الحالي من API
   $.ajax({
     url: '/api/currency-rate/{{ cheque.currency }}/{{ base_currency }}',
     method: 'GET',
@@ -534,10 +531,8 @@ function calculateActualAmount() {
   const actualAmount = amount * newRate;
   const difference = actualAmount - originalAmount;
   
-  // عرض المبلغ الفعلي
   $('#actual_amount_preview').val(actualAmount.toFixed(2) + ' ' + base_currency);
   
-  // عرض الفرق
   if (Math.abs(difference) > 0.01) {
     const $gainLoss = $('#gain_loss_preview');
     const $amount = $('#gain_loss_amount');

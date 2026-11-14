@@ -412,9 +412,6 @@
 <script>
 let lineIndex = 0;
 
-// =====================================
-// إضافة سطر منتج جديد
-// =====================================
 function addLine() {
   const html = `
     <div class="product-line mb-3 p-3" id="line_${lineIndex}" 
@@ -491,14 +488,11 @@ function addLine() {
   
   $('#linesContainer').append(html);
   
-  // تفعيل Select2 للمنتج باستخدام الفلتر الذكي
   const $productSelect = $(`select[name="lines[${lineIndex}][product_id]"]`);
   
-  // استخدام نفس التكوين من customer-select.js
   if (window.SmartSelectors) {
     window.SmartSelectors.initProducts($productSelect[0]);
   } else {
-    // Fallback: تكوين يدوي
     $productSelect.select2({
       ajax: {
         url: "{{ url_for('api.api_search') }}",
@@ -561,7 +555,6 @@ function addLine() {
     });
   }
   
-  // حساب الإجمالي عند التغيير - استخدام setTimeout للتأكد من التحميل
   setTimeout(function() {
     $(`.line-quantity[data-line="${lineIndex}"], .line-cost[data-line="${lineIndex}"], .line-discount[data-line="${lineIndex}"]`)
       .on('input change keyup', function() {        calculateLineTotal(lineIndex);
@@ -569,7 +562,6 @@ function addLine() {
       });
   }, 100);
   
-  // تعبئة السعر عند اختيار المنتج
   $productSelect.on('select2:select', function(e) {
     const data = e.params.data;
     if (data && data.cost_price) {
@@ -583,17 +575,11 @@ function addLine() {
   $('#line_count').val(lineIndex);
 }
 
-// =====================================
-// حذف سطر
-// =====================================
 function removeLine(index) {
   $(`#line_${index}`).remove();
   calculateTotals();
 }
 
-// =====================================
-// حساب إجمالي السطر
-// =====================================
 function calculateLineTotal(index) {
   const qty = parseFloat($(`.line-quantity[data-line="${index}"]`).val()) || 0;
   const cost = parseFloat($(`.line-cost[data-line="${index}"]`).val()) || 0;
@@ -606,12 +592,8 @@ function calculateLineTotal(index) {
   $(`#line_total_${index}`).val(total.toFixed(2));
 }
 
-// =====================================
-// حساب إجمالي الفاتورة - Backend Calculation
-// =====================================
 async function calculateTotals() {
   try {
-    // جمع البيانات من الفورم
     const lines = [];
     $('.product-line').each(function() {
       const lineId = $(this).attr('id');
@@ -636,7 +618,6 @@ async function calculateTotals() {
     const tax_treatment = $('#tax_treatment').val() || 'standard';
     const tax_inclusive = $('#tax_inclusive').is(':checked');
     
-    // إرسال للـ backend
     const response = await fetch('{{ url_for("purchases.api_calculate_purchase_totals") }}', {
       method: 'POST',
       headers: {
@@ -653,7 +634,6 @@ async function calculateTotals() {
     const result = await response.json();
     
     if (result.success) {
-      // تحديث الواجهة
       $('#summary_subtotal').text(result.subtotal.toFixed(2) + ' ' + base_currency);
       $('#summary_tax').text(result.tax_amount.toFixed(2) + ' ' + base_currency);
       $('#summary_total').text(result.total.toFixed(2) + ' ' + base_currency);    } else {      // Fallback to client-side
@@ -664,7 +644,6 @@ async function calculateTotals() {
   }
 }
 
-// تقدير محلي فقط — الباكند يحسب فعليًا ويعاد كتابته عند الحفظ.
 function _purchaseTaxParts() {
   const invTreatment = $('#tax_treatment').val() || 'standard';
   const inclusive = $('#tax_inclusive').is(':checked');
@@ -685,7 +664,6 @@ function _purchaseTaxParts() {
   if (invTreatment !== 'standard' || subtotal <= 0) {
     return { tax: 0, total: subtotal, subtotal };
   }
-  // لا خصم على مستوى المستند في شاشة المشتريات — يُطبَّق خصم البند فقط
   const stdBase = std;
   let tax, total;
   if (inclusive) {
@@ -699,7 +677,6 @@ function _purchaseTaxParts() {
   return { tax, total, subtotal };
 }
 
-// Fallback: حساب محلي
 function calculateTotalsClientSide() {
   $('.product-line').each(function() {
     const lineId = $(this).attr('id');
@@ -725,9 +702,6 @@ function calculateTotalsClientSide() {
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + base_currency);
   $('#summary_total').text(total.toFixed(2) + ' ' + base_currency);}
 
-// =====================================
-// Debug function
-// =====================================
 function debugTotals() {  
   $('.product-line').each(function(index) {
     const lineId = $(this).attr('id');
@@ -740,9 +714,6 @@ function debugTotals() {
   calculateTotals();
 }
 
-// =====================================
-// Force Calculate - حساب فوري قوي
-// =====================================
 function forceCalculate() {
   $('.product-line').each(function() {
     const lineId = $(this).attr('id');
@@ -767,7 +738,6 @@ function forceCalculate() {
   $('#summary_subtotal').text(subtotal.toFixed(2) + ' ' + currency);
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + currency);
   $('#summary_total').text(total.toFixed(2) + ' ' + currency);  
-  // إظهار رسالة للمستخدم
   if (subtotal > 0) {
     alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} ${currency}\nالإجمالي: ${total.toFixed(2)} ${currency}`);
   } else {
@@ -775,9 +745,6 @@ function forceCalculate() {
   }
 }
 
-// =====================================
-// تحديث أسعار التكلفة عند تغيير العملة
-// =====================================
 function updateLineCosts() {
     const currency = $('#currency').val();
     const rate = parseFloat($('#exchange_rate').val()) || 1;
@@ -791,7 +758,6 @@ function updateLineCosts() {
             }
             $(this).val(finalCost.toFixed(2));
             
-            // Recalculate line total
             const lineId = $(this).data('line');
             calculateLineTotal(lineId);
         }
@@ -799,9 +765,6 @@ function updateLineCosts() {
     calculateTotals();
 }
 
-// =====================================
-// تغيير العملة - جلب سعر الصرف
-// =====================================
 $('#currency').on('change', function() {
   const currency = $(this).val();
   
@@ -830,9 +793,6 @@ $('#exchange_rate').on('input change', function() {
     updateLineCosts();
 });
 
-// =====================================
-// اختيار المورد - تعبئة البيانات
-// =====================================
 $('#supplier_id').on('change', function() {
   const selectedData = $(this).select2('data')[0];
   
@@ -840,16 +800,12 @@ $('#supplier_id').on('change', function() {
     $('#supplier_phone').val(selectedData.phone || '');
     $('#supplier_email').val(selectedData.email || '');
     
-    // عرض معلومات المورد
     if (selectedData.is_verified) {
       toastr.success(`✅ مورد موثوق: ${selectedData.name}`);
     }
   }
 });
 
-// =====================================
-// Event Delegation - للتعامل مع العناصر المضافة ديناميكياً
-// =====================================
 $(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount', function() {  const lineNumber = $(this).data('line');
   if (lineNumber !== undefined) {
     calculateLineTotal(lineNumber);
@@ -857,20 +813,14 @@ $(document).on('input change keyup', '.line-quantity, .line-cost, .line-discount
   }
 });
 
-// =====================================
-// التهيئة عند تحميل الصفحة
-// =====================================
 $(document).ready(function() {  
-  // إضافة أول سطر
   addLine();
   
-  // حساب عند تغيير الضريبة
   $('#tax_rate').on('input change', function() {    calculateTotals();
   });
   $('#tax_treatment, #tax_inclusive').on('change', function() {    calculateTotals();
   });
   
-  // التحقق قبل الإرسال
   $('#purchaseForm').on('submit', function(e) {    
     const lineCount = $('.product-line').length;    
     if (lineCount === 0) {
@@ -879,15 +829,12 @@ $(document).ready(function() {
       return false;
     }
     
-    // التحقق من اختيار المورد
     if (!$('#supplier_id').val()) {
       e.preventDefault();
       toastr.error('يجب اختيار المورد');
       return false;
     }
     
-    // طباعة جميع البيانات قبل الإرسال    
-    // طباعة بيانات كل سطر
     $('.product-line').each(function(index) {
       const lineId = $(this).attr('id');
       const lineNumber = lineId.split('_')[1];

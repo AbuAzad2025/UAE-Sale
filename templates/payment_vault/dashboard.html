@@ -388,7 +388,6 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Revenue Chart
     const ctx = document.getElementById('revenueChart').getContext('2d');
     new Chart(ctx, {
         type: 'line',
@@ -446,7 +445,6 @@
         });
     }
     
-    // تحديث الإحصائيات المباشرة كل 30 ثانية
     setInterval(async function() {
         try {
             const response = await fetch('{{ url_for("payment_vault.api_live_stats") }}');
@@ -459,7 +457,6 @@
         } catch (error) {        }
     }, 30000); // كل 30 ثانية
     
-    // جلب الإشعارات الجديدة
     async function fetchNotifications() {
         try {
             const response = await fetch('{{ url_for("payment_vault.api_notifications") }}?limit=5');
@@ -474,7 +471,6 @@
         } catch (error) {        }
     }
     
-    // عرض إشعار
     function showNotification(title, message, type = 'info') {
         const icon = type === 'danger' ? 'error' : type === 'success' ? 'success' : 'info';
         
@@ -490,10 +486,8 @@
         });
     }
     
-    // فحص الإشعارات كل دقيقة
     setInterval(fetchNotifications, 60000);
     
-    // تأثير لطيف عند تحميل الصفحة
     document.addEventListener('DOMContentLoaded', function() {
         const cards = document.querySelectorAll('.stat-card, .quick-action');
         cards.forEach((card, index) => {

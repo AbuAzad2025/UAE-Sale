@@ -350,7 +350,6 @@
 <script>
 function createBackup() {
   if (confirm('هل تريد إنشاء نسخة احتياطية الآن؟')) {
-    // إرسال طلب إنشاء نسخة احتياطية
     fetch('{{ url_for("owner.backup_now") }}', {
       method: 'POST',
       headers: {

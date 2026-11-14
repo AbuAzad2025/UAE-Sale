@@ -187,7 +187,6 @@ function toggleChequeFields() {
   }
 }
 
-// Parse data
 var customers = JSON.parse(document.getElementById('customers-data').textContent || '[]');
 var suppliers = JSON.parse(document.getElementById('suppliers-data').textContent || '[]');
 
@@ -207,8 +206,6 @@ function updatePartyList() {
     select.append('<option value="' + item.id + '">' + item.name + typeLabel + '</option>');
   });
   
-  // Refresh Select2
-  // Assuming select2 is initialized globally or we trigger it
   if ($.fn.select2) {
       select.trigger('change');
   }

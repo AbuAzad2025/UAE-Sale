@@ -118,13 +118,11 @@
     size: A4 {{ 'landscape' if request.args.get('orientation') == 'landscape' else 'portrait' }};
     margin: 15mm;
   }
-  /* إخفاء عناصر UI */
   .main-sidebar, .main-header, .main-footer, 
   .content-header, .no-print, button, .btn,
   .breadcrumb, .navbar, .sidebar {
     display: none !important;
   }
-  /* تحسين المحتوى للطباعة */
   .content-wrapper {
     margin: 0 !important;
     padding: 0 !important;
@@ -137,7 +135,6 @@
   body {
     background: white !important;
   }
-  /* تحسين الجداول */
   table {
     page-break-inside: auto;
   }

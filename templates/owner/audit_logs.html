@@ -363,7 +363,6 @@
 
 <script>
 function exportLogs() {
-    // تصدير السجلات إلى CSV
     Swal.fire({
         title: 'تصدير السجلات',
         text: 'هل تريد تصدير السجلات إلى ملف CSV؟',
@@ -374,7 +373,6 @@ function exportLogs() {
         confirmButtonColor: '#28a745'
     }).then((result) => {
         if (result.isConfirmed) {
-            // هنا يمكن إضافة الكود الفعلي للتصدير
             Swal.fire({
                 title: 'جاري التصدير...',
                 text: 'يتم تجهيز الملف',

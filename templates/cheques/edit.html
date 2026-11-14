@@ -217,7 +217,6 @@
 
 {% block extra_js %}
 <script>
-// تغيير الحقول حسب نوع الشيك
 $('#cheque_type').change(function() {
   const type = $(this).val();
   
@@ -230,7 +229,6 @@ $('#cheque_type').change(function() {
   }
 });
 
-// Select2 للعملاء والموردين
 $('.customer-select, .supplier-select').select2({
   theme: 'bootstrap4',
   language: 'ar',

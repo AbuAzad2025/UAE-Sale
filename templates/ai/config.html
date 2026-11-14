@@ -203,7 +203,6 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-  // إظهار/إخفاء المفتاح
   $('.toggle-key').click(function() {
     const target = $(this).data('target');
     const input = $('#' + target);
@@ -218,7 +217,6 @@ $(document).ready(function() {
     }
   });
   
-  // حفظ النماذج
   $('.api-key-form').submit(function(e) {
     e.preventDefault();
     
@@ -226,7 +224,6 @@ $(document).ready(function() {
     const submitBtn = $(this).find('button[type="submit"]');
     const originalText = submitBtn.html();
     
-    // تعطيل الزر
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...');
     
     $.ajax({

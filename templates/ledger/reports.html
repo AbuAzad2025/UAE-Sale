@@ -230,7 +230,6 @@
 
 {% block scripts %}
 <script>
-// ملء قائمة الحسابات
 document.addEventListener('DOMContentLoaded', function() {
   const select = document.querySelector('select[name="account_id"]');
   if (!select) {
@@ -258,7 +257,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// تحديث رابط كشف الحساب
 document.getElementById('accountStatementForm').addEventListener('submit', function(e) {
   const accountId = document.querySelector('select[name="account_id"]').value;
   if (accountId) {

@@ -194,7 +194,6 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
-// رسم بياني للمصروفات
 const expenseData = {{ expense_breakdown.items|tojson }};
 const expenseLabels = expenseData.slice(0, 5).map(item => item.account_name);
 const expenseValues = expenseData.slice(0, 5).map(item => item.amount);
@@ -214,7 +213,6 @@ new Chart(document.getElementById('expenseChart'), {
   }
 });
 
-// رسم بياني للإيرادات
 const revenueData = {{ revenue_breakdown.items|tojson }};
 const revenueLabels = revenueData.slice(0, 5).map(item => item.account_name);
 const revenueValues = revenueData.slice(0, 5).map(item => item.amount);
@@ -234,7 +232,6 @@ new Chart(document.getElementById('revenueChart'), {
   }
 });
 
-// رسم بياني للتوقعات
 const forecastData = {{ forecast|tojson }};
 const forecastLabels = forecastData.map(item => item.month);
 const forecastRevenue = forecastData.map(item => item.revenue);

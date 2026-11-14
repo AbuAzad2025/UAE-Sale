@@ -336,7 +336,6 @@
 
 {% block extra_js %}
 <script>
-// Initialize DataTable for recent sales
 $(document).ready(function() {
   {% if stats.recent_sales and stats.recent_sales|length > 0 %}
   $('#recentSalesTable').DataTable({

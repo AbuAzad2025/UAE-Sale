@@ -566,7 +566,6 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <script>
-        // Server-driven constants (owner panel -> support route -> template).
         const DONATION_MIN = {{ pay_config.min_amount|tojson }};
         const DONATION_MIN_DISPLAY = {{ pay_config.min_display|tojson }};
         const WA_NUMBER = {{ config.COMPANY_WHATSAPP|tojson }};
@@ -597,13 +596,11 @@
         let selectedPackage = '';
         let currentTab = 'purchase';
 
-        // Check URL parameters on page load
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
 
             if (tabParam === 'donation') {
-                // Switch to donation tab
                 document.querySelectorAll('.tab-btn').forEach(btn => {
                     btn.classList.remove('active');
                 });
@@ -614,7 +611,6 @@
                 });
                 document.getElementById('donation-tab').classList.add('active');
 
-                // Update hero icon
                 const heroIcon = document.querySelector('.hero-section .mb-4 i');
                 heroIcon.className = 'fas fa-heart';
                 heroIcon.style.color = '#e74c3c';
@@ -623,18 +619,15 @@
             }
         });
 
-        // Switch between tabs
         function switchTab(tab, event) {
             currentTab = tab;
 
-            // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             if (event && event.target) {
                 event.target.classList.add('active');
             } else {
-                // fallback
                 document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
                     if ((tab === 'purchase' && idx === 0) || (tab === 'donation' && idx === 1)) {
                         btn.classList.add('active');
@@ -642,19 +635,16 @@
                 });
             }
 
-            // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             document.getElementById(tab + '-tab').classList.add('active');
 
-            // Hide purchase payment methods when switching tabs
             const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
             if (purchasePaymentMethods && tab !== 'purchase') {
                 purchasePaymentMethods.style.display = 'none';
             }
 
-            // Reset selected package when switching to donation
             if (tab === 'donation') {
                 document.querySelectorAll('.package-card').forEach(card => {
                     card.classList.remove('active');
@@ -663,7 +653,6 @@
                 selectedAmount = 0;
             }
 
-            // Update hero icon
             const heroIcon = document.querySelector('.hero-section .mb-4 i');
             if (tab === 'purchase') {
                 heroIcon.className = 'fas fa-shopping-cart';
@@ -674,12 +663,10 @@
             }
         }
 
-        // Select package
         function selectPackage(packageName, price, event) {
             selectedPackage = packageName;
             selectedAmount = price;
 
-            // Update UI
             document.querySelectorAll('.package-card').forEach(card => {
                 card.classList.remove('active');
             });
@@ -687,17 +674,14 @@
                 event.currentTarget.classList.add('active');
             }
 
-            // Update progress
             updateProgress('step-package', 'completed');
             updateProgress('step-payment', 'active');
             updateProgress('step-complete', '');
 
-            // Show payment methods for purchase
             const purchasePaymentMethods = document.getElementById('purchase-payment-methods');
             if (purchasePaymentMethods) {
                 purchasePaymentMethods.style.display = 'grid';
 
-                // Scroll to payment methods
                 setTimeout(() => {
                     purchasePaymentMethods.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }, 100);
@@ -715,22 +699,18 @@
         }
 
         function selectMethod(method, event) {
-            // Hide all forms
             document.querySelectorAll('.donation-form').forEach(form => {
                 form.classList.remove('active');
             });
 
-            // Remove active class from all cards
             document.querySelectorAll('.payment-card').forEach(card => {
                 card.classList.remove('active');
             });
 
-            // Show selected form
             const selectedForm = document.getElementById(method + '-form');
             if (selectedForm) {
                 selectedForm.classList.add('active');
 
-                // Pre-fill amount ONLY if in purchase tab and package was selected
                 if (currentTab === 'purchase' && selectedAmount > 0) {
                     if (method === 'card') {
                         const cardAmountInput = document.getElementById('cardAmount');
@@ -744,7 +724,6 @@
                         }
                     }
                 } else {
-                    // Clear amount fields for donation
                     if (method === 'card') {
                         const cardAmountInput = document.getElementById('cardAmount');
                         if (cardAmountInput) {
@@ -758,11 +737,9 @@
                     }
                 }
 
-                // Scroll to form
                 selectedForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
-            // Add active class to selected card
             if (event && event.currentTarget) {
                 event.currentTarget.classList.add('active');
             }
@@ -773,20 +750,16 @@
         function selectAmount(amount) {
             selectedAmount = amount;
 
-            // Remove active class from all buttons
             document.querySelectorAll('.amount-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
 
-            // Add active class to selected button
             event.currentTarget.classList.add('active');
 
-            // Clear custom amount
             document.getElementById('customAmount').value = '';
         }
 
         function generateCryptoPayment() {
-            // Get amount
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount;
 
@@ -802,7 +775,6 @@
 
             const cryptoType = document.getElementById('cryptoType').value;
 
-            // Show loading
             Swal.fire({
                 title: 'جاري إنشاء عنوان الدفع...',
                 html: '<i class="fas fa-spinner fa-spin fa-3x"></i>',
@@ -810,11 +782,9 @@
                 allowOutsideClick: false
             });
 
-            // تحديد نوع المعاملة والبيانات
             let apiEndpoint = '';
             let requestData = {};
 
-            // إضافة بيانات المشترية إذا كان شراء
             if (currentTab === 'purchase') {
                 if (!selectedPackage) {
                     Swal.fire({
@@ -826,7 +796,6 @@
                     return;
                 }
 
-                // جلب package_id من البطاقة المحددة
                 const packageCard = document.querySelector('.package-card.active');
                 const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
 
@@ -872,7 +841,6 @@
                     }
                 };
             } else {
-                // بيانات التبرع (اختيارية)
                 const donorName = prompt('اسمك (اختياري):');
                 const donorEmail = prompt('بريدك الإلكتروني (اختياري):');
                 const donorMessage = prompt('رسالة قصيرة (اختياري):');
@@ -889,7 +857,6 @@
                 };
             }
 
-            // Create payment via API
             fetch(apiEndpoint, {
                 method: 'POST',
                 headers: {
@@ -988,12 +955,10 @@
             })
             .catch(error => {
                 Swal.close();
-                // فشل الاتصال بالخادم: تواصل واتساب مباشر بدل عنوان وهمي
                 whatsappFallbackSwal('خطأ في الاتصال', '');
             });
         }
 
-        // تسجيل تحويل بنكي: ينشئ سجلاً معلقاً ليعتمده المالك (لا ينشئ حوالة)
         async function submitBankTransfer() {
             const amountEl = document.getElementById('bankAmount');
             const nameEl = document.getElementById('bankName');
@@ -1066,7 +1031,6 @@
             });
         }
 
-        // Handle PayPal payment
         async function handlePayPalPayment() {
             const customAmount = document.getElementById('customAmount').value;
             const paymentAmount = customAmount || selectedAmount || 0;
@@ -1081,7 +1045,6 @@
                 return;
             }
 
-            // طلب بيانات العميل
             const { value: formValues } = await Swal.fire({
                 title: 'بيانات الدفع - PayPal',
                 html:
@@ -1107,7 +1070,6 @@
                 return;
             }
 
-            // حفظ في DB
             const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
             let requestData = {};
 
@@ -1151,7 +1113,6 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // إذا كان هناك عنوان دفع (تحويل تلقائي لـ Bitcoin)
                     if (data.payment_address) {
                         Swal.fire({
                             icon: 'success',
@@ -1186,7 +1147,6 @@
                             width: 600
                         });
                     } else {
-                        // Fallback: WhatsApp
                         Swal.fire({
                             icon: 'success',
                             title: 'تم الحفظ!',
@@ -1214,11 +1174,9 @@
             }
         }
 
-        // Handle card payment form
         document.getElementById('cardPaymentForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            // Get form data
             const cardAmountInput = document.getElementById('cardAmount');
             const paymentAmount = parseFloat(cardAmountInput.value) || selectedAmount || 0;
 
@@ -1232,7 +1190,6 @@
                 return;
             }
 
-            // طلب بيانات العميل
             const { value: formValues } = await Swal.fire({
                 title: 'بيانات الدفع',
                 html:
@@ -1258,7 +1215,6 @@
                 return;
             }
 
-            // إنشاء السجل
             const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
             let requestData = {};
 
@@ -1292,7 +1248,6 @@
                 };
             }
 
-            // حفظ في DB
             try {
                 const response = await fetch(apiEndpoint, {
                     method: 'POST',
@@ -1303,7 +1258,6 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // إذا كان هناك عنوان دفع (من NOWPayments)
                     if (data.payment_address) {
                         Swal.fire({
                             icon: 'success',
@@ -1340,7 +1294,6 @@
                             allowOutsideClick: false
                         });
                     } else {
-                        // إذا لم يكن هناك عنوان (Card/PayPal) → توجيه لـ WhatsApp
                         Swal.fire({
                             icon: 'success',
                             title: 'تم الحفظ!',

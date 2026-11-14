@@ -3,7 +3,6 @@
 
 {% block styles %}
 <style>
-/* تصميم خليجي فاخر للطباعة */
 @media print {
   body {
     font-family: 'Arial', 'Tahoma', sans-serif;
@@ -89,7 +88,6 @@
     color: #495057;
   }
   
-  /* جداول فاخرة */
   .luxury-table {
     width: 100%;
     border-collapse: collapse;
@@ -149,7 +147,6 @@
     border-bottom: none;
   }
   
-  /* ألوان خاصة للأرقام */
   .amount-positive {
     color: #28a745;
     font-weight: bold;
@@ -164,7 +161,6 @@
     color: #6c757d;
   }
   
-  /* تذييل فاخر */
   .print-footer {
     margin-top: 50px;
     padding: 30px;
@@ -191,19 +187,16 @@
     height: 40px;
   }
   
-  /* إخفاء العناصر غير المرغوبة */
   .no-print {
     display: none !important;
   }
   
-  /* تحسين الخطوط */
   * {
     -webkit-print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
 }
 
-/* تصميم الشاشة */
 .print-controls {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
@@ -403,15 +396,12 @@
 {% block scripts %}
 <script>
 function printReport() {
-  // إخفاء عناصر التحكم
   document.querySelectorAll('.no-print').forEach(el => {
     el.style.display = 'none';
   });
   
-  // طباعة
   window.print();
   
-  // إعادة إظهار عناصر التحكم
   setTimeout(() => {
     document.querySelectorAll('.no-print').forEach(el => {
       el.style.display = '';
@@ -420,16 +410,13 @@ function printReport() {
 }
 
 function printPDF() {
-  // استخدام jsPDF لإنشاء PDF
   if (typeof jsPDF !== 'undefined') {
     const doc = new jsPDF('p', 'mm', 'a4');
     const element = document.getElementById('printContent');
     
-    // إضافة النص
     doc.setFontSize(20);
     doc.text('تقرير ميزان المراجعة', 105, 20, { align: 'center' });
     
-    // حفظ الملف
     doc.save('trial_balance_' + new Date().toISOString().split('T')[0] + '.pdf');
   } else {
     alert('مكتبة jsPDF غير متوفرة');
@@ -437,10 +424,8 @@ function printPDF() {
 }
 
 function printExcel() {
-  // إنشاء ملف Excel
   const data = [];
   
-  // إضافة البيانات
   {% for item in trial_balance_data %}
   data.push([
     '{{ item.account.code }}',
@@ -452,7 +437,6 @@ function printExcel() {
   ]);
   {% endfor %}
   
-  // تصدير Excel
   const ws = XLSX.utils.aoa_to_sheet([
     ['كود الحساب', 'اسم الحساب', 'نوع الحساب', 'مدين', 'دائن', 'رصيد صافي'],
     ...data
@@ -464,7 +448,6 @@ function printExcel() {
   XLSX.writeFile(wb, 'trial_balance_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
-// تحسين الطباعة
 window.addEventListener('beforeprint', function() {
   document.body.style.fontSize = '12px';
 });

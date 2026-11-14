@@ -335,22 +335,17 @@
 {% block extra_js %}
 <script>
     $(document).ready(function() {
-        // Force tab switching for mixed Bootstrap environments
         $('#reportTabs button').on('click', function (e) {
             e.preventDefault();
-            // Remove active class from all contents
             $('.tab-pane').removeClass('show active');
             $('.nav-link').removeClass('active');
             
-            // Add active to clicked tab
             $(this).addClass('active');
             
-            // Show target content
             var targetId = $(this).data('target');
             $(targetId).addClass('show active');
         });
 
-        // --- Entity Search Logic ---
         let searchTimeout;
         const searchInput = $('#searchInput');
         const searchType = $('#searchType');
@@ -372,22 +367,12 @@
                     searchResults.empty();
                     if (data.length > 0) {
                         data.forEach(item => {
-                            // Backend returns specific type (e.g. partner, merchant, regular)
-                            // We need to map it nicely
                             let typeLabel = item.type;
                             if (item.type === 'supplier') typeLabel = 'مورد';
                             else if (item.type === 'partner') typeLabel = 'شريك';
                             else if (item.type === 'merchant') typeLabel = 'تاجر';
                             else if (item.type === 'regular' || item.type === 'customer') typeLabel = 'زبون';
                             
-                            // For the loadEntityDetails call, if it's not supplier, we can pass the specific type 
-                            // or just 'customer' since the ID is unique per table usually? 
-                            // No, IDs can overlap between tables. 
-                            // But Supplier is one table, Customer is another (containing partner/merchant/regular).
-                            // So we need to know if it's Supplier or Customer-based.
-                            // The backend 'api_entity_search' returns 'type': 'supplier' OR 'partner'/'merchant'/'regular'.
-                            // The backend 'entity_report_fragment' logic is: if type == 'supplier' ... else ... (treat as Customer).
-                            // So passing the specific type is fine.
                             
                             searchResults.append(`
                                 <a href="#" class="list-group-item list-group-item-action" 
@@ -409,7 +394,6 @@
             }, 300);
         });
 
-        // Hide results on click outside
         $(document).on('click', function(e) {
             if (!$(e.target).closest('.position-relative').length) {
                 searchResults.hide();

@@ -122,23 +122,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script>
-        // تحديث حالة الدفع كل 30 ثانية إذا كانت في الانتظار
         {% if status == 'pending' and payment_id %}
         function checkPaymentStatus() {
             fetch(`/auth/payment/status/{{ payment_id }}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data.payment_status === 'finished') {
-                        // تحديث الصفحة لإظهار الحالة الجديدة
                         window.location.href = window.location.href.replace('status=pending', 'status=completed');
                     }
                 })
                 .catch(error => {
-                    // خطأ في التحقق من حالة الدفع
                 });
         }
         
-        // التحقق من الحالة كل 30 ثانية
         setInterval(checkPaymentStatus, 30000);
         {% endif %}
     </script>

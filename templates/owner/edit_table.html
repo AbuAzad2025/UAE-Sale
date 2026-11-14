@@ -128,7 +128,6 @@ function saveRow(btn) {
   const rowId = row.dataset.rowId;
   const inputs = row.querySelectorAll('input.row-input');
   
-  // جمع البيانات المعدلة
   const updates = {};
   let hasChanges = false;
   
@@ -167,7 +166,6 @@ function saveRow(btn) {
     cancelButtonText: 'إلغاء'
   }).then((result) => {
     if (result.isConfirmed) {
-      // إرسال البيانات للخادم
       fetch('/owner/update-row/{{ table_name }}/' + rowId, {
         method: 'POST',
         headers: {
@@ -180,12 +178,10 @@ function saveRow(btn) {
         if (data.success) {
           Swal.fire('نجح!', 'تم حفظ التعديلات بنجاح', 'success');
           
-          // تحديث القيم الأصلية
           inputs.forEach(input => {
             input.dataset.original = input.value;
           });
           
-          // إلغاء وضع التعديل
           cancelEdit(btn);
         } else {
           Swal.fire('خطأ!', data.error || 'فشل الحفظ', 'error');

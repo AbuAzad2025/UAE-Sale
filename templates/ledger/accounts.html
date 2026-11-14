@@ -131,14 +131,12 @@
 
 {% block scripts %}
 <script>
-// حذف الحساب
 function deleteAccount(accountId, accountName) {
   document.getElementById('accountName').textContent = accountName;
   document.getElementById('deleteForm').action = "{{ url_for('ledger.delete_account', id=0) }}".replace('0', accountId);
   $('#deleteModal').modal('show');
 }
 
-// البحث في الجدول
 $(document).ready(function() {
   $('#accountsTable').DataTable({
     "language": {

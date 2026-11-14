@@ -3372,7 +3372,7 @@ def fx_revaluation():
         elif result.get("posted"):
             entry_number = ""
             try:
-                entry = db.session.get(GLJournalEntry, result.get("journal_entry_id"))
+                entry = get_owned_or_404(GLJournalEntry, result.get("journal_entry_id"))
                 entry_number = f" — رقم القيد {entry.entry_number}" if entry else ""
             except Exception:
                 entry_number = ""
@@ -3834,10 +3834,7 @@ def support_ticket_status(ticket_id):
     from models import SupportTicket
     from datetime import datetime, timezone
 
-    ticket = db.session.get(SupportTicket, ticket_id)
-    if ticket is None:
-        flash("التذكرة غير موجودة", "danger")
-        return redirect(url_for("owner.support_inbox"))
+    ticket = get_owned_or_404(SupportTicket, ticket_id)
     status = (request.form.get("status") or "").strip()
     if status not in SUPPORT_STATUSES:
         flash("حالة غير صالحة", "danger")

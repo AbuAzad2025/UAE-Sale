@@ -181,7 +181,7 @@
       <div class="card-body">
         <h6>العمليات المرتبطة:</h6>
         {% if req.entity_type == 'sale' %}
-          <a href="{{ url_for('sales.view_sale', sale_id=req.entity_id) }}" class="btn btn-outline-primary btn-sm btn-block">
+          <a href="{{ url_for('sales.view', sale_id=req.entity_id) }}" class="btn btn-outline-primary btn-sm btn-block">
             <i class="fas fa-file-invoice mr-1"></i>عرض الفاتورة
           </a>
         {% elif req.entity_type == 'payment' %}

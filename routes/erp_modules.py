@@ -36,7 +36,7 @@ from services.erp_modules_service import (
     DunningService,
     EInvoiceService,
 )
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required, admin_required, get_owned_or_404
 from utils.errors import ValidationError
 
 from utils.helpers import create_audit_log
@@ -196,7 +196,7 @@ def create_quotation():
 @login_required
 @permission_required("manage_sales")
 def view_quotation(id):
-    q = db.get_or_404(Quotation, id)
+    q = get_owned_or_404(Quotation, id)
     QuotationService._auto_expire(q)
     db.session.commit()
     return render_template("erp/view_quotation.html", quotation=q)
@@ -293,7 +293,7 @@ def version_quotation(id):
 @login_required
 @permission_required("manage_sales")
 def delete_quotation(id):
-    q = db.get_or_404(Quotation, id)
+    q = get_owned_or_404(Quotation, id)
     if q.status != "draft":
         flash("⚠️ لا يمكن حذف عرض أسعار غير مسودة", "danger")
         return redirect(url_for("erp_modules.view_quotation", id=id))
@@ -314,7 +314,7 @@ def delete_quotation(id):
 @login_required
 @permission_required("manage_sales")
 def update_quotation_status(id):
-    q = db.get_or_404(Quotation, id)
+    q = get_owned_or_404(Quotation, id)
     new_status = request.form.get("status")
     try:
         if new_status == "sent":
@@ -337,7 +337,7 @@ def update_quotation_status(id):
 @login_required
 @permission_required("manage_sales")
 def print_quotation(id):
-    q = db.get_or_404(Quotation, id)
+    q = get_owned_or_404(Quotation, id)
     QuotationService._auto_expire(q)
     db.session.commit()
     from models.invoice_settings import InvoiceSettings
@@ -456,7 +456,7 @@ def create_purchase_order():
 @login_required
 @permission_required("manage_purchases")
 def view_purchase_order(id):
-    po = db.get_or_404(PurchaseOrder, id)
+    po = get_owned_or_404(PurchaseOrder, id)
     return render_template("erp/view_purchase_order.html", order=po)
 
 
@@ -464,7 +464,7 @@ def view_purchase_order(id):
 @login_required
 @permission_required("manage_purchases")
 def submit_purchase_order(id):
-    po = db.get_or_404(PurchaseOrder, id)
+    po = get_owned_or_404(PurchaseOrder, id)
     if po.status == "draft":
         po.status = "submitted"
         db.session.commit()
@@ -612,7 +612,7 @@ def create_stock_transfer():
 @login_required
 @permission_required("manage_warehouse")
 def send_stock_transfer(id):
-    t = db.get_or_404(StockTransfer, id)
+    t = get_owned_or_404(StockTransfer, id)
     if t.status == "pending":
         t.status = "in_transit"
         db.session.commit()
@@ -668,7 +668,7 @@ def create_stocktake():
 @login_required
 @permission_required("manage_warehouse")
 def update_stocktake_count(id):
-    st = db.get_or_404(StockTake, id)
+    st = get_owned_or_404(StockTake, id)
     for item in st.items:
         counted = request.form.get(f"counted_{item.id}", type=float)
         if counted is not None:
@@ -685,7 +685,7 @@ def update_stocktake_count(id):
 @login_required
 @permission_required("manage_warehouse")
 def view_stocktake(id):
-    st = db.get_or_404(StockTake, id)
+    st = get_owned_or_404(StockTake, id)
     return render_template("erp/view_stocktake.html", stocktake=st)
 
 
@@ -729,7 +729,7 @@ def generate_dunning():
 @login_required
 @permission_required("manage_payments")
 def send_dunning(id):
-    letter = db.get_or_404(DunningLetter, id)
+    letter = get_owned_or_404(DunningLetter, id)
     letter.status = "sent"
     letter.sent_at = datetime.now(timezone.utc)
     db.session.commit()
@@ -786,7 +786,7 @@ def create_recurring_expense():
 @login_required
 @permission_required("manage_expenses")
 def toggle_recurring_expense(id):
-    re = db.get_or_404(RecurringExpense, id)
+    re = get_owned_or_404(RecurringExpense, id)
     re.is_active = not re.is_active
     db.session.commit()
     flash(f"✅ تم {'تفعيل' if re.is_active else 'إيقاف'} المصروف الدوري", "success")
@@ -914,5 +914,5 @@ def generate_einvoice(sale_id):
 @login_required
 @permission_required("manage_sales")
 def view_einvoice(id):
-    einv = db.get_or_404(EInvoice, id)
+    einv = get_owned_or_404(EInvoice, id)
     return render_template("erp/view_einvoice.html", einvoice=einv)

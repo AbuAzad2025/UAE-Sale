@@ -15,7 +15,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models.inbound_shipment import InboundShipment
 from services.inbound_shipment_service import InboundShipmentService
-from utils.decorators import permission_required
+from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from utils.transaction import atomic_transaction
 from models.tenant_scope import get_current_tenant_id
@@ -46,7 +46,7 @@ def list_inbound():
 @login_required
 @permission_required("manage_warehouse")
 def view_inbound(id):
-    s = db.get_or_404(InboundShipment, id)
+    s = get_owned_or_404(InboundShipment, id)
     return render_template("inbound_shipments/view.html", shipment=s)
 
 

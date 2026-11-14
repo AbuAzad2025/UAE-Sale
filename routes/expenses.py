@@ -370,7 +370,7 @@ def _repost_expense_gl(expense):
 @permission_required("manage_expenses")
 def edit(id):  # noqa: C901
     """تعديل مصروف"""
-    expense = db.get_or_404(Expense, id)
+    expense = get_owned_or_404(Expense, id)
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
 
     if request.method == "POST":
@@ -511,7 +511,7 @@ def delete(id):
     from models import Cheque
     from services.archive_service import ArchiveService
 
-    expense = db.get_or_404(Expense, id)
+    expense = get_owned_or_404(Expense, id)
 
     has_links = False
 
@@ -740,7 +740,7 @@ def archive(id):
     """أرشفة مصروف"""
     from services.archive_service import ArchiveService
 
-    expense = db.get_or_404(Expense, id)
+    expense = get_owned_or_404(Expense, id)
 
     try:
         archive_service = ArchiveService()

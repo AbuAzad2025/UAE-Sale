@@ -124,7 +124,7 @@ def new_workflow():
 @login_required
 @permission_required("manage_settings")
 def edit_workflow(wf_id):
-    wf = db.get_or_404(ApprovalWorkflow, wf_id)
+    wf = get_owned_or_404(ApprovalWorkflow, wf_id)
     if request.method == "POST":
         wf.name = request.form.get("name", "").strip()
         wf.name_ar = request.form.get("name_ar", "").strip() or None

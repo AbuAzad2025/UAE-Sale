@@ -17,6 +17,7 @@ redis==5.0.1
 Flask-Login==0.6.3
 Flask-WTF==1.2.1
 WTForms==3.1.1
+email-validator>=2.1.0.post1
 Flask-Cors>=4.0.2
 Flask-Limiter==3.5.0
 cryptography>=42.0.0

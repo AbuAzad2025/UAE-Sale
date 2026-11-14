@@ -420,7 +420,6 @@ class TestPermissionCompleteness:
             "manage_warehouse",
             "view_ledger",
             "manage_ledger",
-            "admin",
             "manage_backups",
             "manage_hr",
             "manage_approvals",

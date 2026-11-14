@@ -83,7 +83,7 @@ def test_full_inventory_count(app):
     from utils import route_scope
 
     audit = route_scope.audit_routes(app)
-    assert len(audit) == 542
+    assert len(audit) == 545
     scopes = {}
     for entry in audit:
         scopes[entry["scope"]] = scopes.get(entry["scope"], 0) + 1

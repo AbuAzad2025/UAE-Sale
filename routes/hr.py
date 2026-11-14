@@ -592,6 +592,7 @@ def generate_payroll():
                 working_days=working_days,
                 created_by=current_user.id,
             )
+            db.session.commit()
 
             if result["success_count"] > 0:
                 flash(
@@ -629,7 +630,11 @@ def view_payslip(id):
 @permission_required("manage_hr")
 def approve_payslip(id):
     try:
-        payslip = get_owned_or_404(Payslip, id)
+        payslip = Payslip.query.get(id)
+        if payslip is None:
+            abort(404)
+        from utils.decorators import assert_same_tenant
+        assert_same_tenant(payslip)
         payslip.approve(current_user.id)
         db.session.commit()
         create_audit_log("approve", "payslips", payslip.id)

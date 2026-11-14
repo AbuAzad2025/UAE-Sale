@@ -1013,7 +1013,6 @@ def reverse_entry(id):
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))
     except Exception as e:
-        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))
@@ -1036,7 +1035,6 @@ def approve_entry(id):
         flash("✅ تم الموافقة على القيد وترحيله بنجاح", "success")
 
     except Exception as e:
-        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
@@ -1061,7 +1059,6 @@ def delete_entry(id):
         return redirect(url_for("ledger.journal_entries"))
 
     except Exception as e:
-        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 
@@ -1473,7 +1470,6 @@ def delete_account(id):
         current_app.logger.info("GL account delete rejected: %s", e)
         flash(f"❌ {e}", "danger")
     except Exception as e:
-        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
 

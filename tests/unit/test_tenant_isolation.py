@@ -343,7 +343,6 @@ class TestTenantScopedRegistered:
             "shipment_lines",
             "inbound_shipments",
             "inbound_shipment_lines",
-            "users",
             "write_offs",
             # الدفع من الدفعة b11+ — اكتمل عزل تينانت في نموذج المصروفات:
             "expenses",
@@ -384,7 +383,10 @@ class TestTenantScopedRegistered:
             "fixed_assets",
             "depreciation_schedules",
             "archived_records",
+            "product_returns",
+            "product_return_lines",
             "audit_logs",
             "journal_entry_audits",
+            "error_logs",
         }
         assert expected == _tenant_scoped_tables

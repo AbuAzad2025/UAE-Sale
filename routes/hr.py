@@ -12,6 +12,7 @@ from flask import (
     request,
     jsonify,
     current_app,
+    abort,
 )
 from flask_login import login_required, current_user
 from extensions import db

@@ -344,6 +344,7 @@ class TestTenantScopedRegistered:
             "inbound_shipments",
             "inbound_shipment_lines",
             "write_offs",
+            "users",
             # الدفع من الدفعة b11+ — اكتمل عزل تينانت في نموذج المصروفات:
             "expenses",
             # HR — الرواتب وكشوفات الحضور:

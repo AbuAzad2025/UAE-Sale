@@ -472,17 +472,21 @@ def save_uploaded_file(file, upload_folder="uploads", allowed_extensions=None):
     if tenant_id is not None:
         upload_folder = os.path.join(f"tenant_{tenant_id}", upload_folder)
 
-    full_upload_folder = os.path.join(current_app.static_folder, upload_folder)
-    # Path traversal protection: ensure resolved path is within static folder
-    full_upload_folder = os.path.abspath(full_upload_folder)
-    static_root = os.path.abspath(current_app.static_folder)
-    if not full_upload_folder.startswith(static_root):
+    # The upload tree lives on the persistent root when one is configured
+    # (config.UPLOAD_ROOT) - on an ephemeral application image every uploaded
+    # file used to vanish on the next redeploy. The relative layout is
+    # unchanged, so the stored path and the /static/... URL stay the same.
+    upload_root = os.path.abspath(
+        current_app.config.get("UPLOAD_ROOT") or current_app.static_folder
+    )
+    full_upload_folder = os.path.abspath(os.path.join(upload_root, upload_folder))
+    # Path traversal protection: ensure resolved path is within the root
+    if not full_upload_folder.startswith(upload_root):
         raise ValueError("Invalid upload path")
     os.makedirs(full_upload_folder, exist_ok=True)
 
-    filepath = os.path.join(full_upload_folder, unique_filename)
-    filepath = os.path.abspath(filepath)
-    if not filepath.startswith(static_root):
+    filepath = os.path.abspath(os.path.join(full_upload_folder, unique_filename))
+    if not filepath.startswith(upload_root):
         raise ValueError("Invalid file path")
     file.save(filepath)
 

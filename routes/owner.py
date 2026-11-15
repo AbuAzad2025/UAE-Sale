@@ -2296,7 +2296,14 @@ def invoice_settings():
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             filename = f"logo_{timestamp}_{filename}"
 
-                            upload_folder = os.path.join("static", "uploads", "logos")
+                            # The upload tree lives on the persistent root when
+                            # one is configured (config.UPLOAD_ROOT), so the
+                            # logo survives a redeploy. The stored path is
+                            # unchanged, so the /static/... URL stays the same.
+                            upload_root = current_app.config.get(
+                                "UPLOAD_ROOT"
+                            ) or current_app.static_folder
+                            upload_folder = os.path.join(upload_root, "uploads", "logos")
                             os.makedirs(upload_folder, exist_ok=True)
 
                             filepath = os.path.join(upload_folder, filename)
@@ -2314,7 +2321,10 @@ def invoice_settings():
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"watermark_{timestamp}_{filename}"
 
-                    upload_folder = os.path.join("static", "uploads", "watermarks")
+                    upload_root = current_app.config.get(
+                        "UPLOAD_ROOT"
+                    ) or current_app.static_folder
+                    upload_folder = os.path.join(upload_root, "uploads", "watermarks")
                     os.makedirs(upload_folder, exist_ok=True)
 
                     filepath = os.path.join(upload_folder, filename)

@@ -112,6 +112,55 @@ def _get_current_tenant():
         return None
 
 
+def _is_upload_path(filename: str) -> bool:
+    """True when a static-relative path belongs to the upload tree.
+
+    The upload tree is "uploads/..." (logos, watermarks) and
+    "tenant_<id>/uploads/..." (per-tenant product images), so the test is
+    "does the path contain an 'uploads' segment".
+    """
+    parts = str(filename or "").replace("\\", "/").split("/")
+    return "uploads" in parts
+
+
+def _install_persistent_upload_serving(app):
+    """Serve uploaded files from the persistent root when one is configured.
+
+    Uploaded files are written to config.UPLOAD_ROOT, which on a container
+    platform is the attached disk. The URLs stay exactly the same
+    (/static/uploads/..., /static/tenant_7/uploads/...) because the upload
+    tree mirrors the static layout - so no stored path and no template has
+    to change, and the files survive a redeploy.
+
+    Without a persistent root the upload root IS the static folder and this
+    hook changes nothing.
+    """
+    upload_root = app.config.get("UPLOAD_ROOT")
+    static_folder = app.static_folder
+    if not upload_root or os.path.abspath(upload_root) == os.path.abspath(
+        static_folder
+    ):
+        return
+
+    original_send_static_file = app.send_static_file
+
+    def _send_static_file(filename):
+        if _is_upload_path(filename):
+            try:
+                if os.path.isfile(os.path.join(upload_root, filename)):
+                    from flask import send_from_directory
+
+                    return send_from_directory(upload_root, filename)
+            except OSError:
+                app.logger.warning("Upload not readable: %s", filename)
+        return original_send_static_file(filename)
+
+    # Assigned, not decorated: ``app.send_static_file`` is a bound method,
+    # and using it as a decorator would CALL the original implementation with
+    # the function as its filename argument.
+    app.send_static_file = _send_static_file
+
+
 def create_app(config_class=Config):  # noqa: C901
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -119,6 +168,8 @@ def create_app(config_class=Config):  # noqa: C901
     ensure_runtime_dirs(config_class)
 
     assert_production_sanity(config_class)
+
+    _install_persistent_upload_serving(app)
 
     setup_logging(app)
     init_extensions(app)

@@ -30,6 +30,12 @@ services:
         value: "8001"
       - key: HOST
         value: "0.0.0.0"
+      # The application directory is ephemeral on Render: the daily backups
+      # and every uploaded file (customer logos, watermarks, product images)
+      # would be wiped on each redeploy. DATA_DIR points them at the disk
+      # mounted below.
+      - key: DATA_DIR
+        value: /data
     disk:
       name: uae-sale-disk
       mountPath: /data

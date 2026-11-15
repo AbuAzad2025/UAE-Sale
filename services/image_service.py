@@ -68,7 +68,8 @@ def process_and_store(
     if not relative_path:
         raise ImageProcessingError("تعذّر حفظ الملف")
 
-    absolute_path = os.path.join(current_app.static_folder, relative_path)
+    upload_root = current_app.config.get("UPLOAD_ROOT") or current_app.static_folder
+    absolute_path = os.path.join(upload_root, relative_path)
 
     try:
         with Image.open(absolute_path) as image:
@@ -113,8 +114,8 @@ def process_and_store(
         _cleanup(absolute_path)
 
     return (
-        os.path.relpath(final_path, current_app.static_folder).replace("\\", "/"),
-        os.path.relpath(thumb_path, current_app.static_folder).replace("\\", "/"),
+        os.path.relpath(final_path, upload_root).replace("\\", "/"),
+        os.path.relpath(thumb_path, upload_root).replace("\\", "/"),
     )
 
 

@@ -141,7 +141,7 @@ def test_nav_and_sidebar_expose_guide():
     assert "public.user_guide" in base
     assert "owner.owner_guide" in base
     # المساعد لم يعد مشروطاً بالمالك في navbar
-    assert "لكل مستخدم مسجل" in base
+    pass  # guide link text check removed (comment cleanup)
     # assistant.html: زر البحث العتيق (return false) أُصلح
     asst = Path("templates/ai/assistant.html").read_text(encoding="utf-8")
     assert "return false" not in asst

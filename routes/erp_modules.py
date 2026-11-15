@@ -227,6 +227,10 @@ def email_quotation(id):
     try:
         recipient = request.form.get("recipient_email", "").strip() or None
         QuotationService.send_quotation_email(id, recipient_email=recipient)
+        # The service is flush-only: without this commit the "emailed at" and
+        # "emailed to" stamps it wrote are rolled back when the request ends,
+        # and the quotation never records that it was sent.
+        db.session.commit()
         flash("✅ تم إرسال عرض السعر بالبريد الإلكتروني", "success")
     except Exception as e:
         db.session.rollback()
@@ -325,6 +329,12 @@ def update_quotation_status(id):
             QuotationService.reject_quotation(id)
         else:
             raise ValueError("حالة غير معروفة")
+        # The services are flush-only, so the transition is still pending here.
+        # Without this commit it lives in the open transaction only, and the
+        # NEXT request on this session - an unsupported status, whose handler
+        # rolls back - silently undid the transition: the quotation jumped
+        # back to draft instead of keeping the status it was given.
+        db.session.commit()
         flash(f"✅ تم تحديث الحالة إلى {q.status_ar}", "success")
     except (ValueError, Exception) as e:
         db.session.rollback()

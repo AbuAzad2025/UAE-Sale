@@ -336,7 +336,12 @@ def _revalue_fx_for_current_period():
             "period_key": result.get("period_key"),
         }
 
-    db.session.flush()
+    # COMMIT, not flush: the task owns the transaction. A flush leaves the
+    # revaluation entry pending in this session, and the app context that
+    # wraps the task is popped right after - which ROLLS the entry back. The
+    # daily IAS 21 revaluation was therefore never written to the books,
+    # while the task still reported "posted".
+    db.session.commit()
     return {
         "posted": True,
         "period_key": result.get("period_key"),

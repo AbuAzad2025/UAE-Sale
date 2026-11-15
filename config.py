@@ -294,8 +294,8 @@ class Config:
 
     # The persistent root (see the module-level DATA_DIR): on a platform with
     # an attached disk this is that disk, so the backups survive a redeploy.
-    DATA_DIR = DATA_DIR
-    BACKUP_DIR = BACKUP_DIR
+    DATA_DIR = resolve_data_dir()
+    BACKUP_DIR = os.path.join(resolve_data_dir(), "backups")
     try:
         os.makedirs(BACKUP_DIR, exist_ok=True)
     except OSError:
@@ -304,7 +304,7 @@ class Config:
     BACKUP_SCHEDULE = "0 2 * * *"
 
     # Where uploaded files are written and served from.
-    UPLOAD_ROOT = UPLOAD_ROOT
+    UPLOAD_ROOT = resolve_upload_root()
 
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
     LOG_FILE = os.path.join(instance_dir, "app.log")

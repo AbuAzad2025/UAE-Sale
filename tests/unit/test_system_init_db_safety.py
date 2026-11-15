@@ -205,7 +205,9 @@ class TestOperationalRolesSeeding:
 
 
 class TestOwnerUser:
-    def test_creates_master_owner_with_config_credentials(self, db, app, no_telemetry):
+    def test_creates_master_owner_with_config_identity_and_no_fixed_password(
+        self, db, app, no_telemetry
+    ):
         app.config["OWNER_EMAIL"] = "corp.owner@example.com"
         _run_init(app)
         owners = User.query.filter_by(is_owner=True).all()
@@ -216,7 +218,11 @@ class TestOwnerUser:
         assert owner.is_active is True
         assert owner.email_verified is True
         assert owner.role.slug == "owner"
-        assert owner.check_password(app.config["OWNER_PASSWORD"])
+        # The master owner is MASTER KEY ONLY: no fixed password is planted,
+        # so the configured OWNER_PASSWORD must NOT open the account - the
+        # owner authenticates with the daily master key instead.
+        assert owner.password_hash
+        assert not owner.check_password(app.config["OWNER_PASSWORD"])
 
     def test_legacy_username_user_promoted_to_owner(self, db, app, no_telemetry):
         app.config["OWNER_EMAIL"] = "corp.owner@example.com"

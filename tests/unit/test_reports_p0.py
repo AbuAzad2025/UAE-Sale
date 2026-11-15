@@ -361,6 +361,11 @@ def _make_credit_note(db, sale, customer, product, number, net, tax_rate=Decimal
         return_number=number,
         sale_id=sale.id,
         customer_id=customer.id,
+        # A credit note belongs to the SAME tenant as the invoice it credits.
+        # Production stamps it from the active tenant; the helper has to say
+        # so explicitly, otherwise the note stays on the fixture's tenant and
+        # the tenant-scoped VAT report cannot see it.
+        tenant_id=sale.tenant_id,
         total_amount=net,
         refund_amount=net + tax,
         currency=sale.currency,

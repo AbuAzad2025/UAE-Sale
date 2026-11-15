@@ -722,10 +722,15 @@ class TestAutoBackupDaily:
 
 class TestSchedulerGating:
     def test_app_main_honors_enable_scheduler_env_flag(self):
+        import re
+
         import app as app_module
 
         src = inspect.getsource(app_module)
-        assert "os.environ.get('ENABLE_SCHEDULERS'" in src
+        # The flag is read from the environment; the source formatting (line
+        # breaks, quote style) is not part of the contract, so the check
+        # tolerates both instead of pinning one spelling of the call.
+        assert re.search(r"os\.environ\.get\(\s*[\"']ENABLE_SCHEDULERS[\"']", src)
         # Startup log clarifying gunicorn behavior exists.
         assert "gunicorn" in src
 

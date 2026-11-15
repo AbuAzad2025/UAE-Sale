@@ -88,6 +88,13 @@ class TestCancelPaidGuard:
     ):
         sale = _make_sale(db, owner_user, test_customer, test_product, warehouse)
         _pay_in_full(sale)
+        # The services are flush-only, so the sale and its payment are still
+        # pending here. The guard below must refuse the cancellation WITHOUT
+        # touching the books - but a rollback in the test would also undo the
+        # pending sale and the chart of accounts that was provisioned with
+        # it. Committing first is what a route does when it owns the
+        # transaction.
+        db.session.commit()
         assert sale.payment_status == "paid"
         ar_before = _net("1130")
         with pytest.raises(ValueError, match="مدفوعة"):
@@ -258,6 +265,12 @@ class TestPaymentFailClosed:
         self, db, owner_user, test_customer, test_product, warehouse, monkeypatch
     ):
         sale = _make_sale(db, owner_user, test_customer, test_product, warehouse)
+        # The sale service is flush-only: the sale and the customer balance it
+        # produced are still pending here. The rollback below must undo the
+        # FAILED PAYMENT only - the sale has to be on the books already, or
+        # the rollback takes the invoice and the customer's balance with it
+        # and the assertion below measures the wrong thing.
+        db.session.commit()
         bal_before = test_customer.balance
         count_before = Payment.query.count()
 

@@ -3203,8 +3203,6 @@ def data_cleanup():
             ).update({"is_archived": True}, synchronize_session=False)
         elif cleanup_type == "archived":
             # Hard-delete only archived records older than 7-year retention
-            from datetime import timedelta
-
             retention_cutoff = cutoff_date - timedelta(days=365 * 7)
             deleted_count = ArchivedRecord.query.filter(
                 ArchivedRecord.archived_at < retention_cutoff

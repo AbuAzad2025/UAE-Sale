@@ -31,10 +31,17 @@ _seed_cache: dict = {"value": None}
 
 
 def _instance_dir() -> str:
-    try:
-        from config import instance_dir
+    """Where the master seed is persisted.
 
-        return instance_dir
+    The seed decides the daily owner key, so it has to survive a redeploy:
+    on a container platform the application directory is ephemeral, and a
+    regenerated seed would invalidate the key the operator already has. The
+    persistent root (config.DATA_DIR) is used when one is configured.
+    """
+    try:
+        from config import DATA_DIR, instance_dir
+
+        return DATA_DIR or instance_dir
     except Exception:
         return os.path.join(os.path.dirname(os.path.dirname(__file__)), "instance")
 

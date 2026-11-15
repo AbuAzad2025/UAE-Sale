@@ -405,8 +405,23 @@ def db(app, _schema):
             # into a year nobody opened is refused until an operator opens
             # it, which is the point of the guard.
             ensure_periods_for_years(range(this_year - 15, this_year + 2))
+            # ensure_periods_for_years() only FLUSHES the new periods, so the
+            # write transaction is still open on THIS connection when the
+            # fixture yields. The test client's own app context then checks
+            # out a second connection and every write it attempts is refused
+            # by SQLite with "database is locked" - which is how 286 of the
+            # 305 vertical scenarios errored out with
+            # "sqlite3.OperationalError: database is locked" on
+            # "INSERT INTO tenants". The unit fixture (tests/conftest.py)
+            # already commits here for the same reason.
+            _db.session.commit()
         except Exception:
-            pass
+            # A half-open transaction is exactly what locks the database -
+            # never leave one behind.
+            try:
+                _db.session.rollback()
+            except Exception:
+                pass
         try:
             yield _db
         finally:

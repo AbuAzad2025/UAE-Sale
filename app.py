@@ -606,7 +606,20 @@ def create_app(config_class=Config):  # noqa: C901
         with app.app_context():
             from services.fiscal_period_guard import ensure_current_period
 
-            ensure_current_period()
+            try:
+                ensure_current_period()
+                # ensure_current_period() only FLUSHES the new period - the
+                # service stays flush-only and the transaction belongs to the
+                # caller. Without this commit the write is still open when
+                # this app context pops, the session is removed with a
+                # ROLLBACK, and the period the boot just "provisioned" never
+                # reaches the database: a freshly deployed tenant would have
+                # no open fiscal period at all and every posting would be
+                # refused with "no fiscal period for this date".
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                raise
             app.logger.info("[OK] Fiscal period available for the current year.")
     except Exception as e:  # never block boot on this
         app.logger.warning("Could not auto-provision the current fiscal period: %s", e)

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import logging
 
+from config import BACKUP_DIR as _CONFIG_BACKUP_DIR
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +42,10 @@ class BackupService:
     """خدمة النسخ الاحتياطي الاحترافية"""
 
     _BASEDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-    BACKUP_DIR = os.path.join(_BASEDIR, "instance", "backups")
+    # The same directory the application config uses (config.DATA_DIR), so the
+    # backups land on the attached disk in a container deployment instead of
+    # on the ephemeral application image, where every redeploy wiped them.
+    BACKUP_DIR = _CONFIG_BACKUP_DIR
     MAX_BACKUPS = 5  # آخر 5 نسخ فقط
     BACKUP_PREFIX = "auto_backup_"
     MANUAL_PREFIX = "manual_backup_"

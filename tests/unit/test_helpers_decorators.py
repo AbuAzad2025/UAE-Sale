@@ -398,6 +398,10 @@ class TestSaveUploadedFile:
     def test_successful_upload_saves_unique_file(self, app, tmp_path, monkeypatch):
         with app.app_context():
             monkeypatch.setattr(app, "static_folder", str(tmp_path))
+            # The upload tree is written under the configured root (the
+            # persistent disk in a container deployment), not under the
+            # application's static folder.
+            monkeypatch.setitem(app.config, "UPLOAD_ROOT", str(tmp_path))
             payload = b"\x89PNG\r\n\x1a\n" + b"x" * 64
             upload = FakeUpload("invoice copy.png", content=payload)
             result = save_uploaded_file(upload, "uploads_test", {".png"})

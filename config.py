@@ -8,6 +8,46 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 instance_dir = os.path.join(basedir, "instance")
 os.makedirs(instance_dir, exist_ok=True)
 
+# The persistent root.
+#
+# On a platform that deploys the application from an image (Render, Docker,
+# a container) the application directory is EPHEMERAL: every file written
+# there is gone on the next redeploy and on every restart. That used to take
+# the daily backups (instance/backups) and every uploaded file - customer
+# logos, watermarks, product images - with it. Point DATA_DIR at an attached
+# disk (Render mounts it at /data) and those live on the disk instead.
+
+
+def resolve_data_dir(env=None, default=None):
+    """The persistent root: DATA_DIR when set, the instance dir otherwise."""
+    env = os.environ if env is None else env
+    return (env.get("DATA_DIR") or "").strip() or (default or instance_dir)
+
+
+def resolve_upload_root(env=None):
+    """Where uploaded files live.
+
+    UPLOAD_FOLDER wins when it is set. Otherwise the tree follows the
+    persistent root when there is one, and stays in the static folder when
+    there is not. The layout mirrors the static folder ("uploads/logos/...",
+    "tenant_<id>/uploads/..."), so the path stored in the database and the
+    /static/... URL that serves it stay the same either way.
+    """
+    env = os.environ if env is None else env
+    configured = (env.get("UPLOAD_FOLDER") or "").strip()
+    if configured:
+        return configured
+    if (env.get("DATA_DIR") or "").strip():
+        return resolve_data_dir(env)
+    return os.path.join(basedir, "static")
+
+
+DATA_DIR = resolve_data_dir()
+UPLOAD_ROOT = resolve_upload_root()
+
+# The backups live on the persistent root as well.
+BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+
 load_dotenv(os.path.join(basedir, ".env"))
 
 
@@ -252,10 +292,19 @@ class Config:
 
     DEFAULT_PRODUCT_IMAGE = "img/product-placeholder.png"
 
-    BACKUP_DIR = os.path.join(instance_dir, "backups")
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+    # The persistent root (see the module-level DATA_DIR): on a platform with
+    # an attached disk this is that disk, so the backups survive a redeploy.
+    DATA_DIR = DATA_DIR
+    BACKUP_DIR = BACKUP_DIR
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+    except OSError:
+        logging.warning("Cannot create backup directory %s", BACKUP_DIR)
     BACKUP_KEEP_LAST = _int("BACKUP_KEEP_LAST", 10)
     BACKUP_SCHEDULE = "0 2 * * *"
+
+    # Where uploaded files are written and served from.
+    UPLOAD_ROOT = UPLOAD_ROOT
 
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
     LOG_FILE = os.path.join(instance_dir, "app.log")
@@ -290,7 +339,9 @@ def ensure_runtime_dirs(cfg=None) -> None:
 
     dirs = [
         instance_dir,
+        DATA_DIR,
         getattr(cfg, "BACKUP_DIR", None),
+        getattr(cfg, "UPLOAD_ROOT", None),
         os.path.join(basedir, "static", "uploads"),
         os.path.join(basedir, "static", "img"),
     ]
@@ -301,6 +352,15 @@ def ensure_runtime_dirs(cfg=None) -> None:
                 os.makedirs(d, exist_ok=True)
             except Exception as e:
                 logging.warning(f"Cannot create directory {d}: {e}")
+
+    # The upload tree the routes write into directly.
+    upload_root = getattr(cfg, "UPLOAD_ROOT", None)
+    if upload_root:
+        for sub in ("uploads", "uploads/logos", "uploads/watermarks"):
+            try:
+                os.makedirs(os.path.join(upload_root, sub), exist_ok=True)
+            except Exception as e:
+                logging.warning(f"Cannot create upload directory {sub}: {e}")
 
 
 def assert_production_sanity(cfg=None) -> None:

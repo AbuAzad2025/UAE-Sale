@@ -52,6 +52,9 @@ class TestCliCommands:
         assert "refusing to run init-db" in result.output
 
 
+import pytest
+
+@pytest.mark.skip(reason="init_dev.py deleted as part of production cleanup")
 class TestInitDevStatic:
     """Static-only coverage of init_dev.py (never imported, never executed)."""
 

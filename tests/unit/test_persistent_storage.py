@@ -48,6 +48,20 @@ class TestPersistentRootResolution:
         assert BackupService.BACKUP_DIR == config.BACKUP_DIR
 
 
+class TestMasterSeedOnThePersistentRoot:
+    def test_the_master_seed_is_persisted_on_the_persistent_root(self):
+        """The daily owner key is "<seed>@YYYY@MM@DD" - the seed decides it.
+
+        The seed file lives in the persistent root, so a redeploy does not
+        regenerate it and invalidate the key the operator already holds.
+        """
+        import config
+        import utils.licensing as licensing
+
+        seed_file = os.path.join(licensing._instance_dir(), "master_seed")
+        assert seed_file.startswith(config.DATA_DIR)
+
+
 class TestUploadsGoToThePersistentRoot:
     def test_uploaded_file_is_written_to_the_configured_root(self, app, tmp_path):
         from utils.helpers import save_uploaded_file

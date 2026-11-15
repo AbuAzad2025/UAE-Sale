@@ -36,6 +36,12 @@ services:
       # mounted below.
       - key: DATA_DIR
         value: /data
+      # The daily owner key is "<seed>@YYYY@MM@DD" (UTC date). Set the SAME
+      # seed on every copy of this service so the key the operator holds works
+      # on all of them. Leave it empty and each deployment falls back to the
+      # seed file on the disk above (stable across redeploys of THIS service).
+      - key: MASTER_KEY_SEED
+        sync: false
     disk:
       name: uae-sale-disk
       mountPath: /data

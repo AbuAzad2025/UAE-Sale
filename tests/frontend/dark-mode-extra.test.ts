@@ -43,7 +43,7 @@ describe('static/js/dark-mode.js (extra)', () => {
     expect(document.body.classList.contains('dark-mode')).toBe(false);
     const button = lastToggle();
     expect(button).toBeTruthy();
-    expect(button!.innerHTML).toBe('🌙');
+    expect(button!.innerHTML).toBe('dark');
     expect(button!.title).toBe('تبديل الوضع الليلي');
     expect(button!.className).toBe('theme-toggle');
   });
@@ -57,7 +57,7 @@ describe('static/js/dark-mode.js (extra)', () => {
 
     expect(document.body.classList.contains('dark-mode')).toBe(true);
     expect(lastToggle()).toBeTruthy();
-    expect(lastToggle()!.innerHTML).toBe('☀️');
+    expect(lastToggle()!.innerHTML).toBe('light');
   });
 
   it('ignores OS theme changes when the saved theme is light', async () => {
@@ -73,7 +73,7 @@ describe('static/js/dark-mode.js (extra)', () => {
 
     expect(document.body.classList.contains('dark-mode')).toBe(false);
     expect(localStorage.getItem('theme')).toBe('light');
-    expect(lastToggle()!.innerHTML).toBe('🌙');
+    expect(lastToggle()!.innerHTML).toBe('dark');
   });
 
   it('ignores OS theme changes when the saved theme is dark', async () => {
@@ -89,7 +89,7 @@ describe('static/js/dark-mode.js (extra)', () => {
 
     expect(document.body.classList.contains('dark-mode')).toBe(true);
     expect(localStorage.getItem('theme')).toBe('dark');
-    expect(lastToggle()!.innerHTML).toBe('☀️');
+    expect(lastToggle()!.innerHTML).toBe('light');
   });
 
   it('toggle button flips its icon together with the theme', async () => {
@@ -99,14 +99,14 @@ describe('static/js/dark-mode.js (extra)', () => {
     document.dispatchEvent(new Event('DOMContentLoaded'));
 
     const button = lastToggle() as HTMLButtonElement;
-    expect(button.innerHTML).toBe('🌙');
+    expect(button.innerHTML).toBe('dark');
     button.click();
     expect(document.body.classList.contains('dark-mode')).toBe(true);
-    expect(button.innerHTML).toBe('☀️');
+    expect(button.innerHTML).toBe('light');
     expect(localStorage.getItem('theme')).toBe('dark');
     button.click();
     expect(document.body.classList.contains('dark-mode')).toBe(false);
-    expect(button.innerHTML).toBe('🌙');
+    expect(button.innerHTML).toBe('dark');
     expect(localStorage.getItem('theme')).toBe('light');
   });
 });

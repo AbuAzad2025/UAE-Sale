@@ -13,7 +13,9 @@ def test_public_sections_loaded():
     # Force fresh load
     loader._cache.clear()
     pub = loader.public_sections()
-    assert len(pub) > 20
+    # The concise, source-accurate public guide has ~11 sections; assert a
+    # meaningful minimum instead of the old verbose guide's 20+.
+    assert len(pub) >= 8
     titles = [s.title for s in pub]
     assert any(
         "المبيعات" in t or "البدء" in t or "نظرة" in t or "Sales" in t for t in titles

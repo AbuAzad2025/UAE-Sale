@@ -23,12 +23,29 @@ def generate_number(
     Uses Redis-based distributed lock to prevent duplicate numbers
     in multi-worker deployments. Falls back to retry+UUID if Redis
     is unavailable.
+
+    Tenant scope is suspended for the duration of the sequence lookup:
+    business numbers (sale_number, payment_number, cheque_number, ...) carry
+    a table-wide UNIQUE constraint, and the automatic tenant filter would
+    otherwise make two tenants compute the same "max + 1" and collide. This
+    mirrors next_global_entry_number() for GL entry numbers.
     """
     import time
     import uuid
+    from models.tenant_scope import get_current_tenant_id, set_current_tenant_id
+
+    _saved_tenant = get_current_tenant_id()
+    if _saved_tenant is not None:
+        set_current_tenant_id(None)
 
     year = datetime.now().strftime(date_format)
     lock_name = f"gen_number:{prefix}:{year}"
+
+    def _ret(value):
+        """Restore the caller's tenant scope before returning a number."""
+        if _saved_tenant is not None:
+            set_current_tenant_id(_saved_tenant)
+        return value
 
     try:
         from utils.distributed_lock import distributed_lock
@@ -57,7 +74,7 @@ def generate_number(
             )
 
             if not existing:
-                return candidate
+                return _ret(candidate)
 
             next_number += 1
             candidate = f"{prefix}-{year}-{next_number:04d}"
@@ -68,7 +85,7 @@ def generate_number(
             )
 
             if not existing:
-                return candidate
+                return _ret(candidate)
     except ImportError:
         pass  # distributed_lock not available — use fallback below
     except Exception as e:
@@ -102,11 +119,11 @@ def generate_number(
         )
 
         if not existing:
-            return candidate
+            return _ret(candidate)
 
         time.sleep(0.01 * (attempt + 1))
 
-    return f"{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}"
+    return _ret(f"{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}")
 
 
 def get_next_number(prefix, model_class, number_field="number"):

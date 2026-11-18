@@ -3,6 +3,7 @@
 {% block page_title %}<i class="fas fa-plus mr-2"></i>طلب نقل مخزون{% endblock %}
 {% block content %}
 <form method="POST">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card"><div class="card-body">
     <div class="row">
       <div class="col-md-4"><div class="form-group"><label>من مستودع <span class="text-danger">*</span></label><select name="from_warehouse_id" class="form-control" required><option value="">— اختر —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>

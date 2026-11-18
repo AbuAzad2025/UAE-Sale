@@ -631,7 +631,7 @@ def view_payslip(id):
 @permission_required("manage_hr")
 def approve_payslip(id):
     try:
-        payslip = Payslip.query.get(id)
+        payslip = get_owned_or_404(Payslip, id)
         if payslip is None:
             abort(404)
         from utils.decorators import assert_same_tenant

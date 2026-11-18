@@ -266,10 +266,13 @@ class MaintenanceOrder(TenantScopedMixin, db.Model):
         self.selling_price_total = self.total_amount
 
 
-class MaintenanceOrderItem(db.Model):
+class MaintenanceOrderItem(TenantScopedMixin, db.Model):
     """بند قطعة غيار في أمر الصيانة"""
 
     __tablename__ = "maintenance_order_items"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -347,10 +350,13 @@ class MaintenanceOrderItem(db.Model):
         self.line_total = (net + tax).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
-class MaintenanceOrderService(db.Model):
+class MaintenanceOrderService(TenantScopedMixin, db.Model):
     """بند خدمة في أمر الصيانة"""
 
     __tablename__ = "maintenance_order_services"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -409,10 +415,13 @@ class MaintenanceOrderService(db.Model):
         self.line_total = (net + tax).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
-class MaintenanceOrderStatusLog(db.Model):
+class MaintenanceOrderStatusLog(TenantScopedMixin, db.Model):
     """سجل تغيير حالات أمر الصيانة"""
 
     __tablename__ = "maintenance_order_status_log"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -428,10 +437,13 @@ class MaintenanceOrderStatusLog(db.Model):
     user = db.relationship("User")
 
 
-class MaintenanceReceipt(db.Model):
+class MaintenanceReceipt(TenantScopedMixin, db.Model):
     """سند قبض لأمر الصيانة"""
 
     __tablename__ = "maintenance_receipts"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -458,10 +470,13 @@ class MaintenanceReceipt(db.Model):
     cashier = db.relationship("User")
 
 
-class MaintenanceInvoice(db.Model):
+class MaintenanceInvoice(TenantScopedMixin, db.Model):
     """فاتورة صيانة — مستقلة عن فواتير المبيعات العادية"""
 
     __tablename__ = "maintenance_invoices"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -496,10 +511,13 @@ class MaintenanceInvoice(db.Model):
     order = db.relationship("MaintenanceOrder", back_populates="invoice")
 
 
-class MaintenanceReturn(db.Model):
+class MaintenanceReturn(TenantScopedMixin, db.Model):
     """مرتجع صيانة"""
 
     __tablename__ = "maintenance_returns"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(
@@ -523,10 +541,13 @@ class MaintenanceReturn(db.Model):
     user = db.relationship("User")
 
 
-class MaintenanceReturnLine(db.Model):
+class MaintenanceReturnLine(TenantScopedMixin, db.Model):
     """بند مرتجع صيانة"""
 
     __tablename__ = "maintenance_return_lines"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     return_id = db.Column(
@@ -666,10 +687,13 @@ class MaintenanceSupplierPayment(db.Model):
     user = db.relationship("User")
 
 
-class MaintenanceCreditNote(db.Model):
+class MaintenanceCreditNote(TenantScopedMixin, db.Model):
     """إشعار دائن لصيانة — لعكس الفاتورة والسماح بالمرتجع بعدها."""
 
     __tablename__ = "maintenance_credit_notes"
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     maintenance_order_id = db.Column(

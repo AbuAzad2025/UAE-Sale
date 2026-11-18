@@ -1726,11 +1726,18 @@ class TestCostDataSeparation:
     # -- GraphQL -------------------------------------------------------------
 
     def test_graphql_masks_product_cost_from_low_privilege_user(
-        self, client, db, viewer_user, owner_user
+        self, client, db, viewer_user, owner_user, all_permissions
     ):
-        """view_reports is the base gate for /graphql — a viewer passes the
-        endpoint gate but must still get costPrice masked (owner sees it)."""
+        """A non-owner with just enough field permission may query products,
+        but must still get costPrice masked (owner sees it).
+
+        The GraphQL field-level guard (a security fix) requires manage_products
+        for the allProducts field, so grant it here; the point of this test is
+        cost masking, not the field-permission gate itself.
+        """
         self._seed_cost_product(db)
+        viewer_user.role.permissions.append(all_permissions["manage_products"])
+        db.session.commit()
         _login(client, viewer_user)
         resp = client.post(
             "/graphql",

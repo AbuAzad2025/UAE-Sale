@@ -132,16 +132,33 @@ class Tenant(db.Model):
             db.session.commit()
         return tenant
 
+    @staticmethod
+    def _as_naive(value):
+        """Normalize a possibly tz-aware datetime to naive UTC for comparison.
+
+        subscription_end is a plain DateTime column; when set from an aware
+        value PostgreSQL strips the tzinfo on read, which otherwise makes the
+        comparisons below raise TypeError (naive vs aware) and silently
+        disable subscription enforcement.
+        """
+        if value is None:
+            return None
+        if getattr(value, "tzinfo", None) is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
     def is_subscription_active(self):
         """Check if subscription is active"""
         if self.subscription_end:
-            return datetime.now(timezone.utc) < self.subscription_end
+            end = self._as_naive(self.subscription_end)
+            return datetime.now(timezone.utc).replace(tzinfo=None) < end
         return True
 
     def get_remaining_days(self):
         """Get remaining subscription days"""
         if self.subscription_end:
-            delta = self.subscription_end - datetime.now(timezone.utc)
+            end = self._as_naive(self.subscription_end)
+            delta = end - datetime.now(timezone.utc).replace(tzinfo=None)
             return max(0, delta.days)
         return 9999
 

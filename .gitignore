@@ -135,3 +135,7 @@ ai_knowledge/expanded_knowledge/*.json
 
 # Credentials file (do not commit)
 credentials.txt
+
+# Generated coverage-upload test artifacts
+static/cov_up/
+

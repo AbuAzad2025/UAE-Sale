@@ -923,20 +923,52 @@ class RecurringExpenseService:
         ).all()
 
         created = []
+        # Resolve the rate for the recurring template currency so amount_base
+        # and the GL entry use the correct base-currency value.
+        from decimal import Decimal as _Decimal
+        from services.currency_service import CurrencyService as _CS
+        _base = _CS.get_base_currency()
         for re in due:
+            _currency = re.currency or _base
+            try:
+                _rate = _CS.get_exchange_rate(_currency, _base)
+            except Exception:
+                _rate = None
+            _rate = _Decimal(str(_rate or 1))
+            if _rate <= 0:
+                _rate = _Decimal("1")
+            _amount = _Decimal(str(re.amount or 0))
+            _amount_base = (_amount * _rate).quantize(_Decimal("0.01"))
+        
             expense = Expense(
                 expense_number=generate_number("EXP", Expense, "expense_number"),
                 category_id=re.category_id,
-                description=f"[دوري] {re.name}",
-                amount=re.amount,
-                currency=re.currency,
-                amount_base=re.amount,
+                description=f"[????] {re.name}",
+                amount=_amount,
+                currency=_currency,
+                exchange_rate=_rate,
+                amount_base=_amount_base,
                 payment_method=re.payment_method,
                 supplier_name=re.supplier_name,
                 expense_date=datetime.now(timezone.utc),
                 user_id=actor_id,
             )
             db.session.add(expense)
+            db.session.flush()
+        
+            # Every generated expense MUST reach the ledger (manual expenses do).
+            from services.gl_service import GLService
+            from services.expense_gl import build_expense_gl_lines
+            GLService.ensure_core_accounts()
+            GLService.post_entry(
+                build_expense_gl_lines(expense),
+                description=f"Expense {expense.expense_number}",
+                reference_type="Expense",
+                reference_id=expense.id,
+                currency=expense.currency,
+                exchange_rate=expense.exchange_rate,
+            )
+        
             re.last_generated_date = date.today()
             re.next_due_date = re.get_next_due()
             created.append(expense)

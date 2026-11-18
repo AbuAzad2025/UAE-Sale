@@ -72,6 +72,6 @@ def api_create_return():
 @login_required
 @permission_required("manage_sales")
 def view(id):
-    product_return = db.get_or_404(ProductReturn, id)
+    product_return = get_owned_or_404(ProductReturn, id)
     get_owned_or_404(Sale, product_return.sale_id)
     return render_template("returns/view.html", product_return=product_return)

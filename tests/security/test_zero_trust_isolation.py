@@ -88,10 +88,15 @@ def _create_two_tenant_env(db):
     perm_map = _make_permissions(db)
 
     tenant_a = Tenant(
-        name="Tenant A", name_ar="مستأجر A", slug="tenant-a", is_active=True
+        name="Tenant A", name_ar="مستأجر A", slug="tenant-a", is_active=True,
+        # These tests exercise API authorization/isolation, so the API feature
+        # must be enabled; otherwise the feature gate returns 403 before the
+        # permission / cross-tenant checks under test are reached.
+        enable_api=True,
     )
     tenant_b = Tenant(
-        name="Tenant B", name_ar="مستأجر B", slug="tenant-b", is_active=True
+        name="Tenant B", name_ar="مستأجر B", slug="tenant-b", is_active=True,
+        enable_api=True,
     )
     db.session.add_all([tenant_a, tenant_b])
     db.session.flush()

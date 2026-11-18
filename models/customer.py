@@ -175,6 +175,21 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in woff_rows:
         total -= _dec(row.amount_base)
 
+    # Maintenance invoices (posted)
+    from models.maintenance import MaintenanceInvoice, MaintenanceOrder
+    from sqlalchemy import select as _sel
+    maint_rows = connection.execute(
+        _sel(MaintenanceInvoice.__table__.c.total_amount_base).join(
+            MaintenanceOrder.__table__,
+            MaintenanceInvoice.__table__.c.maintenance_order_id == MaintenanceOrder.__table__.c.id,
+        ).where(
+            MaintenanceOrder.__table__.c.customer_id == customer_id,
+            MaintenanceInvoice.__table__.c.posted.is_(True),
+        )
+    ).fetchall()
+    for row in maint_rows:
+        total += _dec(row.total_amount_base)
+
     return total.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
 

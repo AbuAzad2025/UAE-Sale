@@ -37,6 +37,7 @@ EXPECTED_PERMS = {
     "manage_hr",
     "manage_approvals",
     "manage_settings",
+    "manage_budget",
     "view_products",
     "view_costs",
     # Maintenance module

@@ -10,7 +10,14 @@ from logging.handlers import RotatingFileHandler
 
 
 def _ensure_utf8_stream(stream):
-    """تغليف المجرى لضمان UTF-8"""
+    """تغليف المجرى لضمان UTF-8 (once — avoid stacked wrappers)."""
+    if getattr(stream, "_erp_utf8_wrapped", False):
+        return stream
+    # Under pytest the streams are swapped/closed per test — wrapping them
+    # closes the capture buffer and breaks later logging. Dynamic handlers
+    # resolve the live stream, so skip wrapping entirely in tests.
+    if "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
+        return stream
     if hasattr(stream, "reconfigure"):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -19,10 +26,31 @@ def _ensure_utf8_stream(stream):
             pass
     if hasattr(stream, "buffer"):
         try:
-            return io.TextIOWrapper(stream.buffer, encoding="utf-8", errors="replace")
+            wrapped = io.TextIOWrapper(
+                stream.buffer, encoding="utf-8", errors="replace"
+            )
+            setattr(wrapped, "_erp_utf8_wrapped", True)
+            return wrapped
         except Exception:
             pass
     return stream
+
+
+class _CurrentStreamHandler(logging.StreamHandler):
+    """Resolve the stream at emit time so a replaced/closed stderr under a
+    test runner cannot leave a stale handler writing to a closed file."""
+
+    def __init__(self, stream_name="stderr"):
+        self._stream_name = stream_name
+        super().__init__(stream=getattr(sys, stream_name))
+
+    @property
+    def stream(self):
+        return getattr(sys, self._stream_name)
+
+    @stream.setter
+    def stream(self, value):
+        pass
 
 
 def setup_enhanced_logging(app):
@@ -106,16 +134,18 @@ def setup_enhanced_logging(app):
         ):
             app.logger.removeHandler(handler)
 
-    console_handler = logging.StreamHandler(utf8_stdout)
+    console_handler = _CurrentStreamHandler("stdout")
     console_handler.setLevel(logging.DEBUG if app.debug else logging.INFO)
     console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
     app.logger.addHandler(console_handler)
 
     werkzeug_logger = logging.getLogger("werkzeug")
+    # Idempotent: drop only our own prior dynamic handler, never handlers
+    # installed by the test runner or the embedding runtime.
     for handler in list(werkzeug_logger.handlers):
-        if isinstance(handler, logging.StreamHandler):
+        if isinstance(handler, _CurrentStreamHandler):
             werkzeug_logger.removeHandler(handler)
-    werkzeug_logger.addHandler(logging.StreamHandler(utf8_stderr))
+    werkzeug_logger.addHandler(_CurrentStreamHandler("stderr"))
 
     app.logger.info("=" * 60)
     app.logger.info("[OK] Enhanced Logging System initialized")

@@ -21,12 +21,21 @@ def _cache_scope_token():
 
         if not getattr(current_user, "is_authenticated", False):
             return "anon"
-        if getattr(current_user, "is_owner", False):
-            return "owner"
+        # Use the EFFECTIVE tenant (impersonation-aware), not the user's own
+        # tenant. Otherwise an owner impersonating tenant A then tenant B
+        # reuses the same cache key and sees A's data while in B.
+        from flask import session as _session
+        from models.tenant_scope import get_current_tenant_id
+
+        effective_tenant = get_current_tenant_id()
+        if effective_tenant is None:
+            effective_tenant = _session.get("impersonate_tenant_id")
+        if effective_tenant is None:
+            effective_tenant = getattr(current_user, "tenant_id", None)
         role_slug = (
             getattr(getattr(current_user, "role", None), "slug", None) or "norole"
         )
-        tenant = getattr(current_user, "tenant_id", None) or "0"
+        tenant = effective_tenant or "0"
         try:
             costs = "c1" if current_user.can_see_costs() else "c0"
         except Exception:
@@ -41,10 +50,17 @@ def cached_query(timeout=300, key_prefix=None):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             scope = _cache_scope_token()
+            # Include the request query string: two calls to the same endpoint
+            # with different ?page/?limit must not share a cache entry.
+            from flask import request as _request
+
+            qs = _request.query_string.decode("utf-8", "replace") if _request else ""
+            key_material = str(args) + str(kwargs) + "|" + qs
+            key_hash = hashlib.md5(key_material.encode(), usedforsecurity=False).hexdigest()
             if key_prefix:
-                cache_key = f"{key_prefix}:{scope}:{hashlib.md5(json.dumps(str(args) + str(kwargs)).encode(), usedforsecurity=False).hexdigest()}"
+                cache_key = f"{key_prefix}:{scope}:{key_hash}"
             else:
-                cache_key = f"{f.__name__}:{scope}:{hashlib.md5(json.dumps(str(args) + str(kwargs)).encode(), usedforsecurity=False).hexdigest()}"
+                cache_key = f"{f.__name__}:{scope}:{key_hash}"
 
             try:
                 result = cache.get(cache_key)

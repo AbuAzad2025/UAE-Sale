@@ -247,7 +247,7 @@ def whatsapp_quotation(id):
         from services.whatsapp_service import WhatsAppService
         from models.erp_modules import Quotation
 
-        q = Quotation.query.get(id)
+        q = get_owned_or_404(Quotation, id)
         if not q or not q.customer or not q.customer.phone:
             flash("❌ لا يوجد رقم هاتف للعميل", "danger")
             return redirect(url_for("erp_modules.view_quotation", id=id))

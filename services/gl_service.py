@@ -91,6 +91,22 @@ def _quantize_3(value: Decimal) -> Decimal:
     return value.quantize(_THREE_DP, rounding=ROUND_HALF_UP)
 
 
+def _normalize_rate(exchange_rate) -> Decimal:
+    """Return a strictly-positive FX rate.
+
+    ``None``/empty means "base currency" and defaults to 1. A supplied rate
+    of 0 (or negative) is a data error - silently coercing it to 1 would
+    misstate amount_base. Reject it loudly instead (F-auth: fail closed).
+    """
+    if exchange_rate is None or (isinstance(exchange_rate, str) and not exchange_rate.strip()):
+        return Decimal("1")
+    rate = _to_decimal(exchange_rate)
+    if rate <= 0:
+        from sqlalchemy.exc import IntegrityError  # noqa: F401  (kept for parity)
+        raise ValueError(f"exchange_rate must be > 0, got {exchange_rate!r}")
+    return rate
+
+
 def _unique_entry_number() -> str:
     """Year-scoped JE-YYYY-NNNN with distributed-lock atomicity.
 
@@ -654,7 +670,7 @@ class GLService:
             is_posted: F9 — True (ترحيل فوري) أو False (مسودة تُرحَّل لاحقاً).
         """
         currency = currency or _base_currency()
-        rate = _to_decimal(exchange_rate) or Decimal("1")
+        rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
@@ -748,7 +764,7 @@ class GLService:
             is_posted: F9 — True (ترحيل فوري) أو False (مسودة).
         """
         currency = currency or _base_currency()
-        rate = _to_decimal(exchange_rate) or Decimal("1")
+        rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
 
         GLService.ensure_core_accounts()
@@ -834,7 +850,7 @@ class GLService:
         from flask_login import current_user
 
         currency = currency or _base_currency()
-        rate = _to_decimal(exchange_rate) or Decimal("1")
+        rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
 
         try:
@@ -950,6 +966,13 @@ class GLService:
             for ent in entries:
                 if getattr(ent, "is_reversed", False):
                     continue
+                # A reversing entry keeps the same reference_type/id but has
+                # entry_type="reversing". Reversing it again would reinstate
+                # the original economic effect (original + rev1 + rev2).
+                if getattr(ent, "entry_type", None) == "reversing":
+                    continue
+                if getattr(ent, "reversed_entry_id", None) is not None:
+                    continue
                 rev = ent.reverse_entry(
                     description=description or f"Reversal of {ent.entry_number}",
                     entry_date=entry_date,
@@ -996,8 +1019,11 @@ class GLService:
         from sqlalchemy import func
 
         account = db.get_or_404(GLAccount, account_id)
-        query = GLJournalLine.query.filter_by(account_id=account_id).join(
-            GLJournalEntry
+        # Only posted entries appear in a financial account statement.
+        query = (
+            GLJournalLine.query.filter_by(account_id=account_id)
+            .join(GLJournalEntry)
+            .filter(GLJournalEntry.is_posted.is_(True))
         )
         if date_from:
             query = query.filter(func.date(GLJournalEntry.entry_date) >= date_from)
@@ -1005,44 +1031,36 @@ class GLService:
             query = query.filter(func.date(GLJournalEntry.entry_date) <= date_to)
         lines = query.order_by(GLJournalEntry.entry_date).all()
 
-        opening_debit_q = (
-            db.session.query(func.sum(GLJournalLine.debit))
+        # amount_base is the authoritative signed BASE-currency amount
+        # ((debit - credit) * rate). All balances are derived from it so the
+        # statement agrees with GLAccount.get_balance(), which also uses
+        # amount_base. Transaction-currency debit/credit remain display-only.
+        _debit_nature = account.type in ("asset", "expense")
+
+        opening_base_q = (
+            db.session.query(func.sum(GLJournalLine.amount_base))
             .filter(GLJournalLine.account_id == account_id)
             .join(GLJournalEntry)
-        )
-        opening_credit_q = (
-            db.session.query(func.sum(GLJournalLine.credit))
-            .filter(GLJournalLine.account_id == account_id)
-            .join(GLJournalEntry)
+            .filter(GLJournalEntry.is_posted.is_(True))
         )
         if date_from:
-            opening_debit_q = opening_debit_q.filter(
-                func.date(GLJournalEntry.entry_date) < date_from
-            )
-            opening_credit_q = opening_credit_q.filter(
+            opening_base_q = opening_base_q.filter(
                 func.date(GLJournalEntry.entry_date) < date_from
             )
         else:
-            opening_debit_q = opening_debit_q.filter(db.false())
-            opening_credit_q = opening_credit_q.filter(db.false())
-        opening_debit = _to_decimal(opening_debit_q.scalar())
-        opening_credit = _to_decimal(opening_credit_q.scalar())
-        opening_balance = (
-            opening_debit - opening_credit
-            if account.type in ("asset", "expense")
-            else opening_credit - opening_debit
-        )
+            opening_base_q = opening_base_q.filter(db.false())
+        opening_base = _to_decimal(opening_base_q.scalar())
+        opening_balance = opening_base if _debit_nature else -opening_base
         running = opening_balance
         txns: list[dict] = []
         total_debit = Decimal("0")
         total_credit = Decimal("0")
         for ln in lines:
-            if account.type in ("asset", "expense"):
-                running += (ln.debit or Decimal("0")) - (ln.credit or Decimal("0"))
-            else:
-                running += (ln.credit or Decimal("0")) - (ln.debit or Decimal("0"))
-            total_debit += ln.debit or Decimal("0")
-            total_credit += ln.credit or Decimal("0")
+            line_base = _to_decimal(ln.amount_base)
+            delta = line_base if _debit_nature else -line_base
+            running += delta
+            total_debit += _to_decimal(ln.debit)
+            total_credit += _to_decimal(ln.credit)
             txns.append(
                 {
                     "date": ln.entry.entry_date,

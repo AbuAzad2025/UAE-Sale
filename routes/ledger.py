@@ -1,3 +1,4 @@
+from utils.feature_guards import install_feature_gate
 from flask import (
     Blueprint,
     render_template,
@@ -22,6 +23,7 @@ from datetime import datetime, date, timedelta
 from services.aging_analysis_service import AGING_BUCKETS, OVERDUE_BUCKETS
 
 ledger_bp = Blueprint("ledger", __name__, url_prefix="/ledger")
+install_feature_gate(ledger_bp, "gl")
 
 
 def _dec(value):
@@ -1410,7 +1412,10 @@ def edit_account(id):
             )
             account.is_header = bool(request.form.get("is_header"))
             account.description = request.form.get("description")
-            account.is_active = bool(request.form.get("is_active"))
+            # Only change is_active when the form actually submits it; an edit
+            # form with no is_active control must not silently deactivate the account.
+            if "is_active" in request.form:
+                account.is_active = request.form.get("is_active") in ("on", "1", "true", "True")
 
             if account.parent_id:
                 parent = db.session.get(GLAccount, account.parent_id)

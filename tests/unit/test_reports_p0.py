@@ -757,15 +757,35 @@ class TestTrialBalanceScope:
         )
         db.session.commit()
 
-        # سطر يتيم: قيد حُذف بالقوة من قاعدة البيانات
-        orphan = GLJournalLine(
-            entry_id=987654,
-            account_id=cash.id,
-            debit=Decimal("777"),
-            credit=Decimal("0"),
-            amount_base=Decimal("777"),
+        # سطر يتيم: قيد حُذف بالقوة من قاعدة البيانات.
+        # Create a real entry+line, then hard-delete the entry row via raw SQL
+        # (with FK checks bypassed) so the line becomes an orphan, matching the
+        # defensive scenario the test asserts.
+        from sqlalchemy import text as _text
+        orphan_entry = GLJournalEntry(
+            entry_number="JE-P0-ORPHAN-SRC",
+            description="orphan source",
+            entry_type="manual",
+            is_posted=True,
+            is_reversed=False,
+            created_by=owner_user.id,
         )
-        db.session.add(orphan)
+        db.session.add(orphan_entry)
+        db.session.flush()
+        db.session.add(
+            GLJournalLine(
+                entry_id=orphan_entry.id,
+                account_id=cash.id,
+                debit=Decimal("777"),
+                credit=Decimal("0"),
+                amount_base=Decimal("777"),
+            )
+        )
+        db.session.commit()
+        _oeid = orphan_entry.id
+        db.session.execute(_text("SET session_replication_role = replica"))
+        db.session.execute(_text("DELETE FROM gl_journal_entries WHERE id = :eid"), {"eid": _oeid})
+        db.session.execute(_text("SET session_replication_role = origin"))
         db.session.commit()
 
         resp = client.get("/ledger/trial-balance")

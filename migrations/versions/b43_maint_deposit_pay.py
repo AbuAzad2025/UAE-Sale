@@ -1,13 +1,13 @@
 """Add deposit_payment_method column to maintenance_orders.
 
-Revision ID: b43_maintenance_deposit_payment_method
+Revision ID: b43_maint_deposit_pay
 Revises: b42_role_tenant_unique
 Create Date: 2026-11-13
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "b43_maintenance_deposit_payment_method"
+revision = "b43_maint_deposit_pay"
 down_revision = "b42_role_tenant_unique"
 branch_labels = None
 depends_on = None

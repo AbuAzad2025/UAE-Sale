@@ -16,22 +16,28 @@
   </div>
   <div class="mb-3">
     {% if shipment.status == 'in_transit' %}
-      <form method="POST" action="{{ url_for('inbound_shipments.arrive_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-info">تأكيد الوصول</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.arrive_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-info">تأكيد الوصول</button></form>
     {% endif %}
     {% if shipment.status == 'arrived' %}
-      <form method="POST" action="{{ url_for('inbound_shipments.inspect_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-warning">فحص (قبول الكل)</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.inspect_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-warning">فحص (قبول الكل)</button></form>
     {% endif %}
     {% if shipment.status == 'inspected' %}
-      <form method="POST" action="{{ url_for('inbound_shipments.put_away_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-success">إدخال للمستودعات</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.put_away_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-success">إدخال للمستودعات</button></form>
     {% endif %}
     {% if shipment.status == 'put_away' %}
-      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-secondary">إغلاق</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">إغلاق</button></form>
     {% endif %}
     {% if shipment.status not in ['closed','cancelled','put_away'] %}
-      <form method="POST" action="{{ url_for('inbound_shipments.cancel_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-danger">إلغاء</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.cancel_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">إلغاء</button></form>
     {% endif %}
     {% if shipment.status == 'put_away' %}
-      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline"><button class="btn btn-secondary">إغلاق</button></form>
+      <form method="POST" action="{{ url_for('inbound_shipments.close_inbound', id=shipment.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">إغلاق</button></form>
     {% endif %}
   </div>
 </div>

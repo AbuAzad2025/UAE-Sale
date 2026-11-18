@@ -399,21 +399,72 @@ def statement(id):
 
     purchases = (
         supplier.purchases.filter_by(status="confirmed")
-        .order_by(Purchase.purchase_date.desc())
+        .order_by(Purchase.purchase_date.asc())
         .all()
     )
 
     payments = (
         Payment.query.filter_by(supplier_id=id)
-        .order_by(Payment.payment_date.desc())
+        .order_by(Payment.payment_date.asc())
         .all()
     )
+
+    # Build unified transaction list with running balance
+    transactions = []
+    for purchase in purchases:
+        transactions.append({
+            "date": purchase.purchase_date,
+            "type": "purchase",
+            "reference": purchase.purchase_number,
+            "debit": 0,
+            "credit": float(purchase.amount_base or purchase.total_amount or 0),
+            "description": "شراء",
+            "currency": purchase.currency or "AED",
+            "exchange_rate": float(purchase.exchange_rate or 1),
+            "status": purchase.status,
+        })
+
+    for payment in payments:
+        credit_amount = (
+            float(payment.amount_base or 0) if payment.direction == "outgoing" else 0.0
+        )
+        debit_amount = (
+            float(payment.amount_base or 0) if payment.direction != "outgoing" else 0.0
+        )
+        transactions.append({
+            "date": payment.payment_date,
+            "type": "payment",
+            "reference": payment.payment_number or f"PMT-{payment.id}",
+            "debit": debit_amount,
+            "credit": credit_amount,
+            "description": f"دفعة - {payment.payment_method}",
+            "currency": payment.currency or "AED",
+            "exchange_rate": float(payment.exchange_rate or 1),
+            "status": "confirmed" if payment.payment_confirmed else "pending",
+        })
+
+    def _date_key(t):
+        d = t["date"]
+        if d is None:
+            return datetime.min
+        return d.replace(tzinfo=None) if d.tzinfo else d
+
+    transactions.sort(key=_date_key)
+
+    running_balance = 0.0
+    for t in transactions:
+        running_balance += t["debit"] - t["credit"]
+        t["balance"] = running_balance
+
+    final_balance = running_balance
 
     return render_template(
         "suppliers/statement.html",
         supplier=supplier,
         purchases=purchases,
         payments=payments,
+        transactions=transactions,
+        final_balance=final_balance,
         now=datetime.now,
     )
 

@@ -17,6 +17,7 @@
         <h3 class="card-title"><i class="fas fa-bolt"></i> Groq API (مجاني - تحديث يومي)</h3>
       </div>
       <form id="groqForm" method="POST" class="api-key-form" action="">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
           {% if groq_key_exists %}
           <div class="alert alert-success">
@@ -62,6 +63,7 @@
         <h3 class="card-title"><i class="fas fa-robot"></i> مفاتيح أخرى (اختياري)</h3>
       </div>
       <form id="otherForm" method="POST" class="api-key-form" action="">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
           {% if openai_key_exists %}
           <div class="alert alert-primary">

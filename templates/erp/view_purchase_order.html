@@ -23,13 +23,16 @@
     </table>
     <div class="mt-3">
       {% if order.status == 'draft' %}
-      <form method="POST" action="{{ url_for('erp_modules.submit_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-info" onclick="return confirm('تقديم أمر الشراء؟')"><i class="fas fa-paper-plane mr-1"></i>تقديم</button></form>
+      <form method="POST" action="{{ url_for('erp_modules.submit_purchase_order', id=order.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-info" onclick="return confirm('تقديم أمر الشراء؟')"><i class="fas fa-paper-plane mr-1"></i>تقديم</button></form>
       {% endif %}
       {% if order.status == 'submitted' %}
-      <form method="POST" action="{{ url_for('erp_modules.approve_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-success" onclick="return confirm('اعتماد أمر الشراء؟')"><i class="fas fa-check mr-1"></i>اعتماد</button></form>
+      <form method="POST" action="{{ url_for('erp_modules.approve_purchase_order', id=order.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-success" onclick="return confirm('اعتماد أمر الشراء؟')"><i class="fas fa-check mr-1"></i>اعتماد</button></form>
       {% endif %}
       {% if order.status in ('approved', 'partially_received') %}
-      <form method="POST" action="{{ url_for('erp_modules.receive_purchase_order', id=order.id) }}" style="display:inline"><button type="submit" class="btn btn-primary" onclick="return confirm('استلام البضاعة وإنشاء فاتورة شراء؟')"><i class="fas fa-truck mr-1"></i>استلام البضاعة</button></form>
+      <form method="POST" action="{{ url_for('erp_modules.receive_purchase_order', id=order.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-primary" onclick="return confirm('استلام البضاعة وإنشاء فاتورة شراء؟')"><i class="fas fa-truck mr-1"></i>استلام البضاعة</button></form>
       {% endif %}
       <a href="{{ url_for('erp_modules.purchase_orders') }}" class="btn btn-secondary mr-2">العودة</a>
     </div>

@@ -10,7 +10,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models import GLAccount, Cheque
 from models.advanced_accounting import CustomsTax, AdvancedExpense
@@ -19,7 +19,7 @@ from models.expense import ExpenseCategory
 from services.cheque_accounting_integration import ChequeAccountingIntegration
 from services.real_time_listeners import accounting_event_stream
 from services.advanced_analytics import AdvancedFinancialAnalytics
-from utils.decorators import permission_required, admin_required
+from utils.decorators import permission_required, admin_required, get_owned_or_404
 
 from utils.helpers import create_audit_log
 
@@ -244,20 +244,28 @@ def add_advanced_expense():
                 description=request.form.get("description"),
                 description_ar=request.form.get("description_ar"),
                 category_id=int(request.form.get("category_id")),
-                supplier_id=int(request.form.get("supplier_id"))
-                if request.form.get("supplier_id")
-                else None,
+                supplier_id=(
+                    get_owned_or_404(Supplier, int(request.form.get("supplier_id"))).id
+                    if request.form.get("supplier_id")
+                    else None
+                ),
                 amount=Decimal(request.form.get("amount", 0)),
                 currency=request.form.get("currency") or "ILS",
                 exchange_rate=Decimal(request.form.get("exchange_rate", 1)),
-                amount_base=Decimal(request.form.get("amount_base", 0)),
+                # amount_base is ALWAYS computed server-side; never trust a
+                # client-supplied value (a forged 0 would understate the whole
+                # expense, its tax/customs and the GL entry).
+                amount_base=(
+                    Decimal(str(request.form.get("amount", 0) or 0))
+                    * Decimal(str(request.form.get("exchange_rate", 1) or 1))
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                 taxable_amount=Decimal(request.form.get("taxable_amount", 0)),
                 tax_amount=Decimal(request.form.get("tax_amount", 0)),
                 tax_rate=Decimal(request.form.get("tax_rate", 0)),
-                tax_exempt=bool(request.form.get("tax_exempt")),
+                tax_exempt=request.form.get("tax_exempt") in ("on", "1", "true", "True"),
                 customs_amount=Decimal(request.form.get("customs_amount", 0)),
                 customs_rate=Decimal(request.form.get("customs_rate", 0)),
-                customs_exempt=bool(request.form.get("customs_exempt")),
+                customs_exempt=request.form.get("customs_exempt") in ("on", "1", "true", "True"),
                 payment_method=request.form.get("payment_method"),
                 payment_status=request.form.get("payment_status", "pending"),
                 due_date=datetime.strptime(
@@ -265,9 +273,9 @@ def add_advanced_expense():
                 ).date()
                 if request.form.get("due_date")
                 else None,
-                requires_approval=bool(request.form.get("requires_approval")),
+                requires_approval=request.form.get("requires_approval") in ("on", "1", "true", "True"),
                 approval_status=request.form.get("approval_status", "pending"),
-                has_receipt=bool(request.form.get("has_receipt")),
+                has_receipt=request.form.get("has_receipt") in ("on", "1", "true", "True"),
                 receipt_number=request.form.get("receipt_number"),
                 created_by=current_user.id,
             )

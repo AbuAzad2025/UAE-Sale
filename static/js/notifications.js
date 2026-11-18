@@ -224,11 +224,16 @@ class NotificationManager {
         progress.className = 'toast-progress';
         progress.style.animationDuration = `${duration}ms`;
 
-        toast.innerHTML = `
+                // Escape untrusted text before interpolating into innerHTML (DOM XSS).
+        const _esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+toast.innerHTML = `
             <div class="toast-icon">${icons[type]}</div>
             <div class="toast-content">
-                ${title ? `<div class="toast-title">${title}</div>` : ''}
-                <div class="toast-message">${message}</div>
+                ${title ? `<div class="toast-title">${_esc(title)}</div>` : ''}
+                <div class="toast-message">${_esc(message)}</div>
             </div>
             <button class="toast-close" onclick="this.closest('.toast').remove()">×</button>
         `;

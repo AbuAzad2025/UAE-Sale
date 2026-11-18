@@ -1,6 +1,6 @@
 """Maintenance returns: returned quantities on items and services.
 
-Revision ID: b35_maintenance_return_quantities
+Revision ID: b35_maint_return_qty
 Revises: b34_maintenance_warranty_expense
 """
 
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "b35_maintenance_return_quantities"
+revision = "b35_maint_return_qty"
 down_revision = "b34_maintenance_warranty_expense"
 branch_labels = None
 depends_on = None

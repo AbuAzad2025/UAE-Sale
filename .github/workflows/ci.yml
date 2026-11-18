@@ -424,3 +424,18 @@ jobs:
           fi
           echo "=== Migration applied successfully ==="
           flask db current
+      - name: Verify migrations match model metadata (schema parity)
+        env:
+          DATABASE_URL: "postgresql://azad_test:azad_test@localhost:5432/azad_test"
+          SECRET_KEY: "test-secret-key-not-for-production"
+          OWNER_PASSWORD: "TestOwner1234567890123456"
+          MASTER_KEY_SEED: "TestSeed123"
+          APP_ENV: testing
+          DEBUG: "true"
+          ALLOW_DESTRUCTIVE_POSTGRES_TESTS: "1"
+          DISABLE_TELEMETRY: "1"
+        run: |
+          # Fails if any model column/table is missing from the migrations,
+          # preventing the "model changed but no migration" class of drift
+          # from reaching production unnoticed.
+          python -m pytest tests/unit/test_schema_parity.py tests/unit/test_feature_gates.py tests/unit/test_financial_seed_integrity.py tests/unit/test_financial_domains_integrity.py tests/unit/test_financial_gaps_integrity.py -q --tb=short -p no:cacheprovider -o addopts=

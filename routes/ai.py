@@ -32,8 +32,10 @@ from utils.decorators import (
 )
 from utils.errors import ValidationError
 from datetime import datetime, timezone
+from utils.feature_guards import install_feature_gate
 
 ai_bp = Blueprint("ai", __name__, url_prefix="/ai")
+install_feature_gate(ai_bp, "ai")
 
 
 @ai_bp.errorhandler(AIServiceError)

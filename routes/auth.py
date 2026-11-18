@@ -90,7 +90,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        remember = request.form.get("remember", False)
+        remember = request.form.get("remember") in ("on", "1", "true", "True", "yes")
 
         if not username or not password:
             flash(
@@ -179,17 +179,22 @@ def login():
                             "danger",
                         )
                         return render_template("auth/login.html")
-                    if (
-                        hasattr(_tenant, "is_subscription_active")
-                        and not _tenant.is_subscription_active()
-                    ):
+                    # Fail closed: if subscription status cannot be positively
+                    # verified, deny access (don't rely on a swallowed error).
+                    try:
+                        _sub_ok = _tenant.is_subscription_active()
+                    except Exception:
+                        _sub_ok = False
+                    if not _sub_ok:
                         flash(
                             "⚠️ انتهى اشتراك شركتك. تواصل مع مالك المنصة للتجديد.",
                             "danger",
                         )
                         return render_template("auth/login.html")
         except Exception:
-            pass
+            current_app.logger.exception("Tenant status check failed at login")
+            flash("\u062a\u0639\u0630\u0631 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0624\u0633\u0633\u0629. \u062d\u0627\u0648\u0644 \u0644\u0627\u062d\u0642\u0627\u064b.", "danger")
+            return render_template("auth/login.html")
 
         session.clear()
         login_user(user, remember=remember)
@@ -238,7 +243,7 @@ def logout():
     if current_user.is_authenticated:
         create_audit_log("logout", "users", current_user.id)
         logout_user()
-        session.pop("last_activity", None)
+        session.clear()
         flash("✅ تم تسجيل الخروج بنجاح. نراك قريباً!", "success")
 
     return redirect(url_for("public.landing"))

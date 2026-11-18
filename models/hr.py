@@ -220,9 +220,9 @@ class LeaveType(TenantScopedMixin, db.Model):
     tenant_id = db.Column(
         db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
     )
-    name = db.Column(db.String(50), nullable=False, unique=True)
+    name = db.Column(db.String(50), nullable=False)
     name_ar = db.Column(db.String(50))
-    code = db.Column(db.String(20), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False)
     default_days = db.Column(db.Integer, default=0)
     is_paid = db.Column(db.Boolean, default=True)
     is_active = db.Column(db.Boolean, default=True)

@@ -4,6 +4,7 @@
 {% block content %}
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_bin') }}" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
       <div class="col-md-2"><select name="warehouse_id" class="form-control" required><option value="">المستودع</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div>
       <div class="col-md-1"><input type="text" name="code" class="form-control" placeholder="كود" required></div>

@@ -449,6 +449,23 @@ def create_app(config_class=Config):  # noqa: C901
         g.lang_code = "ar"
         g.rtl = True
 
+        # Global first-login password-change enforcement. A one-time redirect
+        # at login is insufficient: a user provisioned with a known default
+        # password could otherwise navigate directly to any endpoint.
+        from flask import request as _req, redirect as _redir, url_for as _url_for
+        from flask_login import current_user as _cu
+
+        _pwd_exempt = {
+            "users.change_password", "auth.logout", "static",
+            "auth.login", "auth.support", "language.set_language",
+        }
+        if (
+            _cu.is_authenticated
+            and getattr(_cu, "must_change_password", False)
+            and _req.endpoint not in _pwd_exempt
+        ):
+            return _redir(_url_for("users.change_password"))
+
         from models import set_current_tenant_id
         from models.tenant_scope import TENANT_LESS_SCOPE
         from flask_login import current_user  # noqa: F811  (local import intentional)
@@ -599,59 +616,60 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:
         app.logger.warning(f"Enhanced CLI commands not registered: {e}")
 
-    try:
-        from sqlalchemy import text
+    if os.environ.get("ALEMBIC_RUNNING") != "1":
+        try:
+            from sqlalchemy import text
 
-        with app.app_context():
-            if db.engine.dialect.name == "sqlite":
-                db.create_all()
-                app.logger.info(
-                    "[OK] SQLite schema synchronized via model metadata "
-                    "(Alembic file migrations skipped: SQLite-incompatible DDL)."
-                )
-            else:
-                with db.engine.begin() as _widen_conn:
-                    _widen_conn.execute(
-                        text("""
-                        CREATE TABLE IF NOT EXISTS alembic_version (
-                            version_num VARCHAR(64) NOT NULL PRIMARY KEY
-                        );
-                    """)
+            with app.app_context():
+                if db.engine.dialect.name == "sqlite":
+                    db.create_all()
+                    app.logger.info(
+                        "[OK] SQLite schema synchronized via model metadata "
+                        "(Alembic file migrations skipped: SQLite-incompatible DDL)."
                     )
-                    _widen_conn.execute(
-                        text("""
-                        DO $$
-                        BEGIN
-                            IF EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name = 'alembic_version'
-                                  AND column_name = 'version_num'
-                                  AND (character_maximum_length IS NULL
-                                       OR character_maximum_length < 64)
-                            ) THEN
-                                ALTER TABLE alembic_version
-                                    ALTER COLUMN version_num TYPE VARCHAR(64);
-                            END IF;
-                        END $$;
-                    """)
+                else:
+                    with db.engine.begin() as _widen_conn:
+                        _widen_conn.execute(
+                            text("""
+                            CREATE TABLE IF NOT EXISTS alembic_version (
+                                version_num VARCHAR(64) NOT NULL PRIMARY KEY
+                            );
+                        """)
+                        )
+                        _widen_conn.execute(
+                            text("""
+                            DO $$
+                            BEGIN
+                                IF EXISTS (
+                                    SELECT 1 FROM information_schema.columns
+                                    WHERE table_name = 'alembic_version'
+                                      AND column_name = 'version_num'
+                                      AND (character_maximum_length IS NULL
+                                           OR character_maximum_length < 64)
+                                ) THEN
+                                    ALTER TABLE alembic_version
+                                        ALTER COLUMN version_num TYPE VARCHAR(64);
+                                END IF;
+                            END $$;
+                        """)
+                        )
+
+                    from alembic.command import upgrade as _upgrade
+                    from alembic.config import Config
+
+                    cfg = Config("migrations/alembic.ini")
+                    _upgrade(cfg, "head")
+                    app.logger.info(
+                        "[OK] Alembic migrations applied — database synchronized."
                     )
-
-                from alembic.command import upgrade as _upgrade
-                from alembic.config import Config
-
-                cfg = Config("migrations/alembic.ini")
-                _upgrade(cfg, "head")
-                app.logger.info(
-                    "[OK] Alembic migrations applied — database synchronized."
-                )
-    except Exception as e:
-        app.logger.critical(
-            "FATAL: Schema synchronization failed during startup — "
-            "database tables are missing or out of sync. "
-            "Application cannot run in a degraded state. Error: %s",
-            e,
-        )
-        raise
+        except Exception as e:
+            app.logger.critical(
+                "FATAL: Schema synchronization failed during startup — "
+                "database tables are missing or out of sync. "
+                "Application cannot run in a degraded state. Error: %s",
+                e,
+            )
+            raise
 
     try:
         with app.app_context():
@@ -675,55 +693,56 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:  # never block boot on this
         app.logger.warning("Could not auto-provision the current fiscal period: %s", e)
 
-    try:
-        from sqlalchemy import inspect
+    if os.environ.get("ALEMBIC_RUNNING") != "1":
+        try:
+            from sqlalchemy import inspect
 
-        with app.app_context():
-            inspector = inspect(db.engine)
-            existing_tables = set(inspector.get_table_names())
+            with app.app_context():
+                inspector = inspect(db.engine)
+                existing_tables = set(inspector.get_table_names())
 
-            critical_tables = {
-                "users",
-                "roles",
-                "permissions",
-                "products",
-                "customers",
-                "sales",
-                "tenants",
-                "system_settings",
-                "gl_accounts",
-                "gl_journal_entries",
-                "gl_journal_lines",
-                "expenses",
-                "integration_settings",
-                "audit_logs",
-            }
+                critical_tables = {
+                    "users",
+                    "roles",
+                    "permissions",
+                    "products",
+                    "customers",
+                    "sales",
+                    "tenants",
+                    "system_settings",
+                    "gl_accounts",
+                    "gl_journal_entries",
+                    "gl_journal_lines",
+                    "expenses",
+                    "integration_settings",
+                    "audit_logs",
+                }
 
-            missing = critical_tables - existing_tables
-            if missing:
-                app.logger.critical(
-                    "FATAL: Missing critical tables after migration: %s. "
-                    "Application cannot start without a complete schema. "
-                    "Manual intervention required.",
-                    sorted(missing),
+                missing = critical_tables - existing_tables
+                if missing:
+                    app.logger.critical(
+                        "FATAL: Missing critical tables after migration: %s. "
+                        "Application cannot start without a complete schema. "
+                        "Manual intervention required.",
+                        sorted(missing),
+                    )
+                    raise RuntimeError(
+                        f"Missing critical tables after migration: {sorted(missing)}"
+                    )
+
+                app.logger.info(
+                    "[OK] Schema verification passed: %d tables present",
+                    len(existing_tables),
                 )
-                raise RuntimeError(
-                    f"Missing critical tables after migration: {sorted(missing)}"
-                )
-
-            app.logger.info(
-                "[OK] Schema verification passed: %d tables present",
-                len(existing_tables),
+        except RuntimeError:
+            raise
+        except Exception as e:
+            app.logger.critical(
+                "FATAL: Schema verification failed during startup. "
+                "Cannot proceed. Error: %s",
+                e,
             )
-    except RuntimeError:
-        raise
-    except Exception as e:
-        app.logger.critical(
-            "FATAL: Schema verification failed during startup. "
-            "Cannot proceed. Error: %s",
-            e,
-        )
-        raise
+            raise
 
     app.logger.info("[OK] Application initialized successfully")
 

@@ -120,22 +120,57 @@ class ColorFormatter(logging.Formatter):
         return message
 
 
+class _CurrentStreamHandler(logging.StreamHandler):
+    """StreamHandler that resolves sys.stdout/stderr at emit time.
+
+    A plain StreamHandler captures the stream object at construction. When an
+    application is created more than once in the same process (Flask test
+    suites, workers), pytest replaces sys.stdout between tests and the stale
+    handler writes to a closed stream -> "I/O operation on closed file".
+    Resolving the stream on every write also keeps the handler correct when
+    the runtime swaps stdout/stderr for UTF-8 wrappers.
+    """
+
+    def __init__(self, stream_name="stdout"):
+        self._stream_name = stream_name
+        super().__init__(stream=getattr(sys, stream_name))
+
+    @property
+    def stream(self):
+        return getattr(sys, self._stream_name)
+
+    @stream.setter
+    def stream(self, value):
+        # Ignore StreamHandler's one-time assignment; the property is dynamic.
+        pass
+
+
 def setup_logging(app):
     """Configure application logging with UTF-8 support"""
     level_name = app.config.get("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
 
-    if sys.platform == "win32":
+    # Never wrap sys.stdout/stderr under pytest: pytest swaps these streams
+    # per test and closes the capture buffers, which closes any TextIOWrapper
+    # layered on top and produces "I/O operation on closed file". The dynamic
+    # _CurrentStreamHandler below resolves the live stream at emit time, so no
+    # wrapping is needed in tests.
+    _under_pytest = "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
+    if sys.platform == "win32" and not _under_pytest:
         import io
 
-        if hasattr(sys.stdout, "buffer"):
-            sys.stdout = io.TextIOWrapper(
-                sys.stdout.buffer, encoding="utf-8", errors="replace"
-            )
-        if hasattr(sys.stderr, "buffer"):
-            sys.stderr = io.TextIOWrapper(
-                sys.stderr.buffer, encoding="utf-8", errors="replace"
-            )
+        # Wrap ONCE. Re-wrapping an already-wrapped stream builds stacked
+        # TextIOWrappers over the same buffer; closing one closes them all.
+        for _name in ("stdout", "stderr"):
+            _stream = getattr(sys, _name)
+            if not getattr(_stream, "_erp_utf8_wrapped", False) and hasattr(
+                _stream, "buffer"
+            ):
+                _wrapped = io.TextIOWrapper(
+                    _stream.buffer, encoding="utf-8", errors="replace"
+                )
+                setattr(_wrapped, "_erp_utf8_wrapped", True)
+                setattr(sys, _name, _wrapped)
 
     try:
         from utils.log_sanitizer import SanitizeFilter
@@ -144,26 +179,28 @@ def setup_logging(app):
     except ImportError:
         _sanitize = None
 
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = _CurrentStreamHandler("stdout")
     console_handler.setLevel(level)
     console_handler.addFilter(RequestIdFilter())
     if _sanitize:
         console_handler.addFilter(_sanitize)
     console_handler.setFormatter(ColorFormatter())
 
-    error_handler = logging.StreamHandler(sys.stderr)
+    error_handler = _CurrentStreamHandler("stderr")
     error_handler.setLevel(logging.ERROR)
     error_handler.addFilter(RequestIdFilter())
     if _sanitize:
         error_handler.addFilter(_sanitize)
     error_handler.setFormatter(ColorFormatter())
 
-    for logger in (app.logger, logging.getLogger()):
-        logger.handlers.clear()
-        logger.setLevel(level)
-        logger.addHandler(console_handler)
-        logger.addHandler(error_handler)
-        logger.propagate = False
+    # Configure the app logger only. Clearing/replacing the ROOT logger's
+    # handlers removes pytest's capture handlers (caplog) and any handler
+    # owned by the embedding runtime — the source of closed-stream errors.
+    app.logger.handlers.clear()
+    app.logger.setLevel(level)
+    app.logger.addHandler(console_handler)
+    app.logger.addHandler(error_handler)
+    app.logger.propagate = False
 
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     logging.getLogger("werkzeug").setLevel(logging.WARNING)

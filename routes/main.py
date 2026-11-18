@@ -238,13 +238,10 @@ def dashboard():  # noqa: C901
                 ]:
                     acc = GLAccount.query.filter_by(code=code).first()
                     if acc:
-                        debit = db.session.query(
-                            func.sum(GLJournalLine.debit)
-                        ).filter_by(account_id=acc.id).scalar() or Decimal("0")
-                        credit = db.session.query(
-                            func.sum(GLJournalLine.credit)
-                        ).filter_by(account_id=acc.id).scalar() or Decimal("0")
-                        result[key] = float(debit - credit)
+                        # Use the account's authoritative posted, base-currency
+                        # balance instead of raw debit-credit (which included
+                        # drafts and mixed transaction currencies).
+                        result[key] = float(acc.get_balance())
                 return result
 
             gl_balances = _cached("gl_balances", _gl_balances)

@@ -272,10 +272,12 @@
 
 <script>
 function sendEmailToCustomer() {
-    const email = '{{ purchase.customer_email }}';
-    const subject = 'تأكيد شراء الباقة - Azad Systems';
-    const body = `مرحباً {{ purchase.customer_name }},\n\nشكراً لشرائك ${purchase.package.name_ar if purchase.package else ''}\nرقم الطلب: #{{ purchase.id }}\nالمبلغ: ${{ purchase.amount_paid }}\n\nسنتواصل معك قريباً لإكمال التفعيل.`;
-    
+    const email = {{ purchase.customer_email | tojson }};
+    const subject = {{ ('????? ???? ?????? - Azad Systems') | tojson }};
+    const pkgName = {{ (purchase.package.name_ar if purchase.package else '') | tojson }};
+    const custName = {{ purchase.customer_name | tojson }};
+    const amount = {{ (purchase.amount_paid | string) | tojson }};
+    const body = `${custName},\n\n${pkgName}\n#{{ purchase.id }}\n${amount}`;
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 </script>

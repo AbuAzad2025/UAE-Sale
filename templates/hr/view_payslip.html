@@ -82,12 +82,14 @@
         <div class="mt-4">
           {% if payslip.status == 'draft' %}
           <form method="POST" action="{{ url_for('hr.approve_payslip', id=payslip.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-success" onclick="return confirm('هل تؤكد اعتماد كشف الرواتب؟')">
               <i class="fas fa-check mr-2"></i>اعتماد الكشف
             </button>
           </form>
           {% elif payslip.status == 'approved' %}
           <form method="POST" action="{{ url_for('hr.mark_payslip_paid', id=payslip.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary" onclick="return confirm('هل تؤكد تسجيل الدفع؟')">
               <i class="fas fa-money-bill-wave mr-2"></i>تسجيل الدفع
             </button>

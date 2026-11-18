@@ -219,7 +219,7 @@ def _gl_inventory_lines(codes, tenant_id=None, as_of=None):
         )
         .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
         .join(GLAccount, GLJournalLine.account_id == GLAccount.id)
-        .filter(GLAccount.code.in_(codes))
+        .filter(GLAccount.code.in_(codes), GLJournalEntry.is_posted.is_(True))
     )
     if tenant_id is not None:
         query = query.filter(GLJournalLine.tenant_id == tenant_id)

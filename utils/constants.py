@@ -367,6 +367,11 @@ STATEMENT_FILTERS = [
     ("all", {"ar": "كل الحركات", "en": "All"}),
     ("sale", {"ar": "الفواتير فقط", "en": "Sales only"}),
     ("payment", {"ar": "الدفعات فقط", "en": "Payments only"}),
+    ("return", {"ar": "مرتجعات", "en": "Returns only"}),
+    ("maintenance_invoice", {"ar": "فاتورة صيانة", "en": "Maintenance Invoice"}),
+    ("cheque", {"ar": "شيك", "en": "Cheque"}),
+    ("receipt", {"ar": "إشعار", "en": "Receipt"}),
+    ("write_off", {"ar": "إطفاء", "en": "Write-off"}),
 ]
 
 PARTY_TYPES = [

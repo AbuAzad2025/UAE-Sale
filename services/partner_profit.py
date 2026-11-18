@@ -289,9 +289,15 @@ def compute_net_income(period_from=None, period_to=None):
     from sqlalchemy import func
     from models import GLAccount, GLJournalEntry as _Entry
 
+    # amount_base is the signed BASE-currency amount: (debit - credit) * rate.
+    # Revenue accounts are credit-nature, so a credit produces a negative
+    # amount_base; negate the sum to express revenue as a positive figure.
+    # Expense accounts are debit-nature, so sum(amount_base) is already positive.
+    # Using the transaction-currency debit/credit columns here would corrupt
+    # profit for any FX period (finding: partner profit on wrong currency base).
     revenue_q = (
         db.session.query(
-            func.coalesce(func.sum(GLJournalLine.credit - GLJournalLine.debit), 0)
+            func.coalesce(func.sum(-GLJournalLine.amount_base), 0)
         )
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
@@ -299,7 +305,7 @@ def compute_net_income(period_from=None, period_to=None):
     )
     expense_q = (
         db.session.query(
-            func.coalesce(func.sum(GLJournalLine.debit - GLJournalLine.credit), 0)
+            func.coalesce(func.sum(GLJournalLine.amount_base), 0)
         )
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
@@ -328,13 +334,17 @@ def _draws_for_partner(partner_id, period_from=None, period_to=None):
     from sqlalchemy import func, or_
     from models import GLAccount, GLJournalEntry as _Entry
 
+    # amount_base is the authoritative BASE-currency signed amount
+    # ((debit - credit) * rate); summing transaction-currency `debit` would
+    # misstate draws whenever the posting carried an FX rate != 1.
     q = (
-        db.session.query(func.coalesce(func.sum(GLJournalLine.debit), 0))
+        db.session.query(func.coalesce(func.sum(GLJournalLine.amount_base), 0))
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
             _Entry.is_posted.is_(True),
             _Entry.is_reversed.is_(False),
+            GLJournalLine.debit > 0,
             GLAccount.code.in_(("3300", "3350")),
             GLJournalLine.party_id == partner_id,
             or_(
@@ -835,13 +845,15 @@ def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None):
 
     q = (
         db.session.query(
-            GLJournalLine.party_id, func.coalesce(func.sum(GLJournalLine.debit), 0)
+            GLJournalLine.party_id,
+            func.coalesce(func.sum(GLJournalLine.amount_base), 0),
         )
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
             _Entry.is_posted.is_(True),
             _Entry.is_reversed.is_(False),
+            GLJournalLine.debit > 0,
             GLAccount.code.in_(("3300", "3350")),
             GLJournalLine.party_id.in_(list(partner_ids)),
             or_(

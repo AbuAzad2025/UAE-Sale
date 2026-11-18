@@ -1078,15 +1078,16 @@ class TestPartnerProfitEdges:
         assert "Distributed" in out
 
     def test_post_partner_shares_for_return_missing_sale_lines(
-        self, db, test_customer, test_product, gl_accounts
+        self, db, test_customer, test_product, gl_accounts, test_sale
     ):
         from services import partner_profit as pp
         from models import ProductReturn
 
-        # مرتجع بلا أسطر — لا شيء للعكس
+        # مرتجع بلا أسطر — لا شيء للعكس. Use the real sale fixture so the
+        # sale_id foreign key is satisfied.
         product_return = ProductReturn(
             return_number="R-EDGE-1",
-            sale_id=1,
+            sale_id=test_sale.id,
             customer_id=test_customer.id,
             exchange_rate=Decimal("1"),
             currency="AED",

@@ -497,6 +497,9 @@ def e2e_tenant(db):
     test rather than an accidental blocker everywhere else.
     """
     tenant = Tenant.query.filter_by(slug="e2e-tenant").first()
+    if tenant is not None and not tenant.enable_api:
+        tenant.enable_api = True
+        db.session.commit()
     if tenant is None:
         tenant = Tenant(
             name="E2E Tenant",
@@ -505,6 +508,10 @@ def e2e_tenant(db):
             country="UAE",
             is_active=True,
             max_users=100,
+            # The /api/v2 blueprint is gated on enable_api (default False);
+            # the RBAC scenarios below assume an API-enabled tenant so the
+            # permission check, not the package gate, is what they exercise.
+            enable_api=True,
         )
         db.session.add(tenant)
         db.session.commit()

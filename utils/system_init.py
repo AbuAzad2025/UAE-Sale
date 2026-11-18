@@ -35,7 +35,21 @@ def ensure_system_integrity(app):
         and _os.environ.get("SYSTEM_INTEGRITY_FORCE") != "1"
     ):
         return
-    if _os.environ.get("ALEMBIC_RUNNING") == "1":
+    # Only skip when a migration is ACTUALLY executing on this call stack.
+    # migrations/env.py sets ALEMBIC_RUNNING=1 permanently at import time, so
+    # checking the env var alone disables seeding for the whole process after
+    # the first app creation that touched Alembic. Detect the live alembic
+    # runtime from the call stack instead (app.py's schema-sync guard still
+    # relies on the env var, which is correct there).
+    def _in_alembic_run():
+        import traceback
+        for fr in traceback.extract_stack():
+            fn = fr.filename.replace("\\", "/")
+            if "alembic/runtime/migration" in fn or "alembic/command" in fn:
+                return True
+        return False
+
+    if _os.environ.get("ALEMBIC_RUNNING") == "1" and _in_alembic_run():
         return
 
     with app.app_context():
@@ -231,6 +245,12 @@ def _ensure_permissions():
             "name_ar": "إعدادات الصيانة",
             "category": "maintenance",
         },
+        {
+            "code": "manage_budget",
+            "name": "Manage Budgets",
+            "name_ar": "إدارة الموازنات",
+            "category": "finance",
+        },
     ]
 
     added = 0
@@ -348,6 +368,7 @@ OPERATIONAL_ROLES = {
             "view_costs",
             "manage_settings",
             "manage_approvals",
+            "manage_budget",
             "maintenance_view",
             "maintenance_receive",
             "maintenance_work",
@@ -444,28 +465,6 @@ def _ensure_operational_roles():
         role.permissions = [perms[c] for c in codes if c in perms]
         db.session.add(role)
         current_app.logger.info(f"SystemInit: Created operational role '{slug}'.")
-    db.session.commit()
-
-
-def _ensure_operational_roles_for_tenant(tenant_id):
-    """Create operational roles for a new tenant."""
-    perms = {p.code: p for p in Permission.query.all()}
-    for slug, (name, name_ar, codes) in OPERATIONAL_ROLES.items():
-        if Role.query.filter_by(slug=slug, tenant_id=tenant_id).first() is not None:
-            continue
-        role = Role(
-            name=name,
-            name_ar=name_ar,
-            slug=slug,
-            tenant_id=tenant_id,
-            description=f"Tenant operational role ({slug})",
-            is_active=True,
-        )
-        role.permissions = [perms[c] for c in codes if c in perms]
-        db.session.add(role)
-        current_app.logger.info(
-            f"SystemInit: Created operational role '{slug}' for tenant {tenant_id}."
-        )
     db.session.commit()
 
 

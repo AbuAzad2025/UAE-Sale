@@ -8,6 +8,16 @@ from extensions import db
 logger = logging.getLogger(__name__)
 
 
+# Infrastructure endpoints that must stay available regardless of a tenant's
+# package: health probes, version info, CSRF token and browser error reports.
+# Blocking these would break monitoring and error reporting for every tenant
+# that hasn't purchased the gated feature.
+_GATE_EXEMPT_ENDPOINTS = frozenset({
+    "api.health", "api.healthz", "api.version", "api.client_errors",
+    "api.csrf_token", "monitoring.health", "monitoring.metrics",
+})
+
+
 def install_feature_gate(blueprint, feature_name):
     """
     تركيب Feature Gate على بلوبرينت.
@@ -15,14 +25,22 @@ def install_feature_gate(blueprint, feature_name):
     """
 
     def _check(feature):
-        from flask import abort
+        from flask import abort, request
         from werkzeug.exceptions import HTTPException
+
+        # Never gate shared infrastructure endpoints.
+        if request.endpoint in _GATE_EXEMPT_ENDPOINTS:
+            return
 
         try:
             from models.tenant_scope import get_current_tenant_id
 
+            from models.tenant_scope import TENANT_LESS_SCOPE
             tenant_id = get_current_tenant_id()
-            if tenant_id is None:
+            # None = platform/owner; TENANT_LESS_SCOPE (-1) = a tenant-less
+            # context. Neither maps to a real tenant, so package flags cannot
+            # be enforced against them — let the permission layer decide.
+            if tenant_id is None or tenant_id == TENANT_LESS_SCOPE:
                 return
             from models import Tenant
 
@@ -52,9 +70,10 @@ def is_feature_enabled(feature_name):
     try:
         from models.tenant_scope import get_current_tenant_id
 
+        from models.tenant_scope import TENANT_LESS_SCOPE
         tenant_id = get_current_tenant_id()
-        if tenant_id is None:
-            return True  # Platform-level
+        if tenant_id is None or tenant_id == TENANT_LESS_SCOPE:
+            return True  # Platform-level / tenant-less context
         from models import Tenant
 
         tenant = db.session.get(Tenant, tenant_id)

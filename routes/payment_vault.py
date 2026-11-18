@@ -1080,7 +1080,9 @@ def api_create_purchase():  # noqa: C901
         origin = request.headers.get("Origin", "")
         allowed_origins = current_app.config.get("CORS_ORIGINS", [])
         _ = request.headers.get("Referer", "")
-        if origin and not any(origin.startswith(o) for o in allowed_origins):
+        from utils.origin_check import origin_allowed
+
+        if origin and not origin_allowed(origin, allowed_origins):
             return jsonify({"success": False, "error": "Invalid origin"}), 403
 
         data = request.get_json()
@@ -1251,7 +1253,9 @@ def api_create_donation():  # noqa: C901
             ), 400
         origin = request.headers.get("Origin", "")
         allowed_origins = current_app.config.get("CORS_ORIGINS", [])
-        if origin and not any(origin.startswith(o) for o in allowed_origins):
+        from utils.origin_check import origin_allowed
+
+        if origin and not origin_allowed(origin, allowed_origins):
             return jsonify({"success": False, "error": "Invalid origin"}), 403
 
         data = request.get_json()

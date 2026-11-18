@@ -10,6 +10,7 @@
   <div class="card-body">
     {% if stocktake.status == 'in_progress' %}
     <form method="POST" action="{{ url_for('erp_modules.update_stocktake_count', id=stocktake.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <table class="table table-bordered">
         <thead><tr><th>المنتج</th><th>الكمية بالنظام</th><th>العدد الفعلي</th><th>الفرق</th></tr></thead>
         <tbody>
@@ -35,6 +36,7 @@
       </tbody>
     </table>
     <form method="POST" action="{{ url_for('erp_modules.approve_stocktake', id=stocktake.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-success" onclick="return confirm('اعتماد الجرد وتحديث المخزون؟')"><i class="fas fa-check mr-2"></i>اعتماد الجرد</button>
     </form>
     {% else %}

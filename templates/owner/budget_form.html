@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ 'تعديل موازنة' if budget else 'إنشاء موازنة' }} - Owner{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <h3>{{ 'تعديل موازنة' if budget else 'إنشاء موازنة جديدة' }}</h3>
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>اسم الموازنة (عربي) *</label>
+          <input type="text" name="name_ar" class="form-control" value="{{ budget.name_ar if budget else '' }}" required>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>اسم الموازنة (إنجليزي)</label>
+          <input type="text" name="name_en" class="form-control" value="{{ budget.name_en if budget else '' }}">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="form-group">
+          <label>السنة المالية</label>
+          <input type="number" name="fiscal_year" class="form-control" value="{{ budget.fiscal_year if budget else 2026 }}">
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-group">
+          <label>نوع الفترة</label>
+          <select name="period_type" class="form-control">
+            <option value="annual" {% if budget and budget.period_type == 'annual' %}selected{% endif %}>سنوية</option>
+            <option value="quarterly" {% if budget and budget.period_type == 'quarterly' %}selected{% endif %}>ربع سنوية</option>
+            <option value="monthly" {% if budget and budget.period_type == 'monthly' %}selected{% endif %}>شهرية</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="form-group">
+          <label>التينانت</label>
+          <select name="tenant_id" class="form-control">
+            {% for t in tenants %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>تاريخ البداية</label>
+          <input type="date" name="period_start" class="form-control" value="{{ budget.period_start if budget else '' }}">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>تاريخ النهاية</label>
+          <input type="date" name="period_end" class="form-control" value="{{ budget.period_end if budget else '' }}">
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ملاحظات</label>
+      <textarea name="notes" class="form-control">{{ budget.notes if budget else '' }}</textarea>
+    </div>
+
+    {% if not budget %}
+    <h5>بنود الموازنة</h5>
+    <table class="table table-bordered" id="budgetLines">
+      <thead>
+        <tr>
+          <th>الحساب</th>
+          <th>المبلغ المقدر</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for acc in accounts %}
+        <tr>
+          <td>{{ acc.code }} - {{ acc.name }}</td>
+          <td><input type="number" name="budgeted_amount" class="form-control" step="0.01" value="0"></td>
+          <td><input type="hidden" name="account_id" value="{{ acc.id }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if budget %}
+    <div class="form-group">
+      <label>الحالة</label>
+      <select name="status" class="form-control">
+        <option value="draft" {% if budget.status == 'draft' %}selected{% endif %}>مسودة</option>
+        <option value="active" {% if budget.status == 'active' %}selected{% endif %}>نشط</option>
+        <option value="closed" {% if budget.status == 'closed' %}selected{% endif %}>مغلق</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">حفظ</button>
+    <a href="{{ url_for('owner.budgets_list') }}" class="btn btn-secondary">إلغاء</a>
+  </form>
+</div>
+{% endblock %}

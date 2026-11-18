@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}كشف حساب شريك - {{ partner.name }}{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <h3>كشف حساب شريك: {{ partner.name }}</h3>
+  
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>إجمالي الحصص</h6>
+          <p class="text-success font-weight-bold">{{ "{:,.2f}".format(total_share) }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>مستلم من الشريك</h6>
+          <p class="text-primary font-weight-bold">{{ "{:,.2f}".format(total_received) }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>مدفوع للشريك</h6>
+          <p class="text-danger font-weight-bold">{{ "{:,.2f}".format(total_paid) }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>الرصيد الصافي</h6>
+          <p class="font-weight-bold {{ 'text-danger' if net_balance < 0 else 'text-success' }}">{{ "{:,.2f}".format(net_balance) }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="GET" class="mb-3">
+    <div class="row">
+      <div class="col-md-3">
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" placeholder="من تاريخ">
+      </div>
+      <div class="col-md-3">
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" placeholder="إلى تاريخ">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">فلترة</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-body">
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>النوع</th>
+            <th>المرجع</th>
+            <th>الوصف</th>
+            <th>مدين</th>
+            <th>دائن</th>
+            <th>الرصيد</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '-' }}</td>
+            <td>{{ 'حصة بيع' if t.type == 'sale_share' else 'دفعة' }}</td>
+            <td>{{ t.reference }}</td>
+            <td>{{ t.description }}</td>
+            <td class="text-danger">{{ "{:,.2f}".format(t.debit) if t.debit else '0.00' }}</td>
+            <td class="text-success">{{ "{:,.2f}".format(t.credit) if t.credit else '0.00' }}</td>
+            <td class="font-weight-bold">{{ "{:,.2f}".format(t.balance) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="font-weight-bold">
+            <td colspan="4">الإجمالي</td>
+            <td class="text-danger">{{ "{:,.2f}".format(total_paid) }}</td>
+            <td class="text-success">{{ "{:,.2f}".format(total_share + total_received) }}</td>
+            <td>{{ "{:,.2f}".format(final_balance) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

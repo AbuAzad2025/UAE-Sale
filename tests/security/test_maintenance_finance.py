@@ -679,7 +679,7 @@ def test_credit_note_reverses_invoice_and_allows_return(client, db, env):
     assert len(db.session.get(MaintenanceOrder, order.id).returns) == 1
 
 
-def test_every_posting_of_the_order_is_balanced(client, env):
+def test_discount_cap_enforced_and_totals_recalculated(client, env):
     order = _create_order(client, env)
     _add_part(client, env, order)
     db.session.expire_all()
@@ -727,6 +727,9 @@ def test_another_tenant_cannot_reach_the_order_or_its_documents(client, env):
         },
     )
     assert response.status_code in (302, 404)
+    # Return to the owning tenant before inspecting its child rows; while
+    # authenticated as the other tenant, loader criteria correctly hides them.
+    _login(client, env["admin"])
     db.session.expire_all()
     assert len(db.session.get(MaintenanceOrder, order.id).items) == 1
     assert db.session.get(MaintenanceOrder, order.id).items[0].quantity == D("2.000")

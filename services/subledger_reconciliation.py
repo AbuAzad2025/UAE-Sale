@@ -166,12 +166,27 @@ def _ar_debit_normal_balance(account_codes):
     if not wanted:
         return Decimal("0")
 
+    from models import GLJournalEntry
+    from sqlalchemy import and_
+
+    # Join posted entries only so drafts cannot distort the control balance;
+    # the outer join is kept so a missing CoA account is still reported.
     rows = (
         db.session.query(
             GLAccount.code,
             func.coalesce(func.sum(GLJournalLine.amount_base), 0),
         )
-        .outerjoin(GLJournalLine, GLJournalLine.account_id == GLAccount.id)
+        .outerjoin(
+            GLJournalLine,
+            and_(
+                GLJournalLine.account_id == GLAccount.id,
+                GLJournalLine.entry_id.in_(
+                    db.session.query(GLJournalEntry.id).filter(
+                        GLJournalEntry.is_posted.is_(True)
+                    )
+                ),
+            ),
+        )
         .filter(GLAccount.code.in_(wanted))
         .group_by(GLAccount.code)
         .all()

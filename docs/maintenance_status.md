@@ -80,12 +80,6 @@
 - `tests/unit/test_maintenance_pricing.py`: محرك التسعير والضريبة.
 - `tests/security/test_test_database_guard.py`: تجهيز الاختبارات لا يحذف مخطط
   قاعدة تطوير.
-- **فحص مسار المتصفح** (خادم عامل حقيقي + CSRF + كوكيز):
-  `tests/manual/maint_ui_seed.py` يبني قاعدة SQLite مؤقتة، ثم شغّل الخادم
-  عليها (`DATABASE_URL=sqlite:///<file> python app.py`)، ثم
-  `tests/manual/maint_ui_smoke.py` (المتغير `MAINT_UI_BASE` و`MAINT_UI_DB`)
-  يمشي على: استقبال ← قطعة ← خدمة ← حالات ← فاتورة ← قبض ← تسليم ← طباعة،
-  ويفحص دفتر الأستاذ خلفه. القاعدة المؤقتة تُحذف بعد الفحص.
 
 ```powershell
 $env:DATABASE_URL = 'sqlite:///:memory:'
@@ -101,11 +95,6 @@ python -m pytest tests/security/test_maintenance_safety.py tests/security/test_m
 
 `b31` تكاليف البنود، `b32` عمود الملاحظات الناقص، `b33` حماية سجلات التدقيق،
 `b34` حساب مصروف الضمان، `b35` كميات المرتجع، `b36` مدفوعات الموردين،
-`b37` سندات الائتمان. مطبَّقة على `ERP-lite` بعد اختبار كل هجرة على جداول
-مؤقتة في `tests/manual/`. هذه الاختبارات لا تغطي بقية سلسلة الهجرات ولا
-تراجع قاعدة المستخدم الحقيقية.
-
-## الهجرات المطبقة على ERP-lite
-
-الRevision الحالي: `b37_maintenance_credit_notes`. تم التطبيق على PostgreSQL
-الحديث مع جداول مؤقتة (롤백).
+`b37` سندات الائتمان. تُغطَّى الهجرات الآن باختبارات CI الدائمة
+(`tests/unit/test_schema_parity.py`) التي تمنع انحراف المخطط، بدل
+السكربتات اليدوية المؤقتة.

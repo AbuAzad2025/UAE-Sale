@@ -1,9 +1,11 @@
+from utils.feature_guards import install_feature_gate
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from extensions import db, csrf, limiter
 from models import Customer, Supplier, Product, User
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
+install_feature_gate(api_bp, "api")
 
 
 @api_bp.route("/inline-edit/<entity_type>/<int:entity_id>", methods=["PATCH"])
@@ -627,8 +629,10 @@ def client_errors():
             origin_host = origin.split("://", 1)[1].split("/")[0].split(":")[0].lower()
         except Exception:
             origin_host = ""
+        from utils.origin_check import origin_allowed
+
         allowed = current_app.config.get("CORS_ORIGINS", [])
-        if origin_host != own_host and not any(origin.startswith(o) for o in allowed):
+        if origin_host != own_host and not origin_allowed(origin, allowed):
             return jsonify({"success": False, "error": "Invalid origin"}), 403
 
     data = request.get_json(silent=True) or {}

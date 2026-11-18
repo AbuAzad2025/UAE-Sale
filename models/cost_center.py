@@ -76,10 +76,12 @@ class CostCenter(TenantScopedMixin, db.Model):
         from models import GLJournalLine, GLJournalEntry
 
         revenue_query = (
-            db.session.query(func.sum(GLJournalLine.credit))
+            db.session.query(func.sum(GLJournalLine.amount_base))
             .join(GLJournalEntry)
             .filter(
                 GLJournalLine.cost_center_id == self.id,
+                GLJournalLine.credit > 0,
+                GLJournalEntry.is_posted.is_(True),
                 GLJournalLine.account.has(type="revenue"),
             )
         )
@@ -92,10 +94,12 @@ class CostCenter(TenantScopedMixin, db.Model):
         revenues = revenue_query.scalar() or 0
 
         expense_query = (
-            db.session.query(func.sum(GLJournalLine.debit))
+            db.session.query(func.sum(GLJournalLine.amount_base))
             .join(GLJournalEntry)
             .filter(
                 GLJournalLine.cost_center_id == self.id,
+                GLJournalLine.debit > 0,
+                GLJournalEntry.is_posted.is_(True),
                 GLJournalLine.account.has(type="expense"),
             )
         )

@@ -92,6 +92,8 @@ from .maintenance import (
     MaintenanceService,
     MaintenanceWarrantyAudit,
     MaintenanceDeviceRegistry,
+    MaintenanceSupplierPayment,
+    MaintenanceCreditNote,
 )
 from .validators import (
     single_parent_validator,
@@ -159,6 +161,31 @@ for _model_cls in [
     ErrorLog,
     ProductReturn,
     ProductReturnLine,
+    # Tenant-scoped models that were missing from registration (data-leak fix).
+    # Role/TaxRuleset/FiscalPeriod carry global (tenant_id=NULL) rows that
+    # must stay visible to every tenant; tenant_scope handles those with a
+    # (tenant_id == current OR IS NULL) load criterion.
+    SupportTicket,
+    ComplianceCredential,
+    TaxRuleset,
+    FiscalPeriod,
+    Role,
+    # Maintenance tables that carry an explicit tenant_id.
+    MaintenanceOrder,
+    MaintenanceSetting,
+    MaintenanceService,
+    MaintenanceWarrantyAudit,
+    MaintenanceSupplierPayment,
+    MaintenanceDeviceRegistry,
+    # Maintenance child tables (now carry tenant_id backfilled from order).
+    MaintenanceOrderItem,
+    MaintenanceOrderService,
+    MaintenanceOrderStatusLog,
+    MaintenanceReceipt,
+    MaintenanceInvoice,
+    MaintenanceReturn,
+    MaintenanceReturnLine,
+    MaintenanceCreditNote,
 ]:
     register_tenant_scoped(_model_cls)
 

@@ -13,7 +13,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from extensions import db, limiter
-from models import Customer, Sale, SaleLine
+from models import Customer, Sale, SaleLine, Receipt
 from utils.decorators import permission_required, get_owned_or_404
 
 from utils.helpers import create_audit_log
@@ -309,13 +309,20 @@ def edit(id):
                 flash(f"⚠️ {_msg}", "warning")
 
             customer.name = name
-            customer.name_ar = request.form.get("name_ar")
+            # Preserve optional fields when the form does not submit them,
+            # otherwise a plain edit silently erases the Arabic name/currency.
+            if request.form.get("name_ar") is not None:
+                customer.name_ar = request.form.get("name_ar")
             customer.customer_type = customer_type
             customer.phone = request.form.get("phone")
             customer.email = request.form.get("email")
             customer.address = request.form.get("address")
             customer.tax_number = request.form.get("tax_number")
-            customer.preferred_currency = preferred_currency or None
+            # The edit form submits default_currency; accept either name and
+            # preserve the current value if neither is present.
+            _cur = (request.form.get("preferred_currency") or request.form.get("default_currency") or "").strip()
+            if _cur:
+                customer.preferred_currency = _cur
             customer.payment_terms_days = payment_terms_days
             customer.notes = request.form.get("notes")
 
@@ -408,15 +415,54 @@ def statement(id):
     transaction_type = request.args.get("transaction_type", "all")
 
     from sqlalchemy import func
-    from models import Payment
+    from models import Payment, ProductReturn
+    from models.maintenance import MaintenanceInvoice, MaintenanceOrder
+    from models.cheque import Cheque
+    from models.write_off import WriteOff
 
     sales_query = Sale.query.filter_by(customer_id=id, status="confirmed")
     payments_query = Payment.query.filter_by(customer_id=id)
+    returns_query = ProductReturn.query.filter_by(customer_id=id, status='approved')
+    maint_invoices_query = (
+        MaintenanceInvoice.query.join(MaintenanceOrder)
+        .filter(MaintenanceOrder.customer_id == id, MaintenanceInvoice.posted.is_(True))
+    )
+    cheques_query = Cheque.query.filter(
+        Cheque.customer_id == id,
+    )
+    receipts_query = Receipt.query.filter(
+        Receipt.customer_id == id,
+        Receipt.sale_id.is_(None),
+        Receipt.purchase_id.is_(None),
+    ) if False else None
+    # Receipt model import
+    from models.payment import Receipt
+    receipts_query = Receipt.query.filter(
+        Receipt.customer_id == id,
+        Receipt.sale_id.is_(None),
+        Receipt.purchase_id.is_(None),
+    )
+    writeoffs_query = WriteOff.query.filter(
+        WriteOff.customer_id == id,
+        WriteOff.status == "posted",
+    )
 
     if date_from:
         sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
         payments_query = payments_query.filter(
             func.date(Payment.payment_date) >= date_from
+        )
+        returns_query = returns_query.filter(
+            func.date(ProductReturn.return_date) >= date_from
+        )
+        maint_invoices_query = maint_invoices_query.filter(
+            func.coalesce(MaintenanceInvoice.posted_at, MaintenanceInvoice.created_at) >= date_from
+        )
+        receipts_query = receipts_query.filter(
+            func.date(Receipt.receipt_date) >= date_from
+        )
+        writeoffs_query = writeoffs_query.filter(
+            func.coalesce(WriteOff.posted_at, WriteOff.created_at) >= date_from
         )
 
     if date_to:
@@ -424,9 +470,31 @@ def statement(id):
         payments_query = payments_query.filter(
             func.date(Payment.payment_date) <= date_to
         )
+        returns_query = returns_query.filter(
+            func.date(ProductReturn.return_date) <= date_to
+        )
+        maint_invoices_query = maint_invoices_query.filter(
+            func.coalesce(MaintenanceInvoice.posted_at, MaintenanceInvoice.created_at) <= date_to
+        )
+        cheques_query = cheques_query.filter(
+            func.coalesce(Cheque.issue_date, Cheque.created_at) <= date_to
+        ) if hasattr(Cheque, 'created_at') else cheques_query
+        receipts_query = receipts_query.filter(
+            func.date(Receipt.receipt_date) <= date_to
+        )
+        writeoffs_query = writeoffs_query.filter(
+            func.coalesce(WriteOff.posted_at, WriteOff.created_at) <= date_to
+        )
 
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
+    returns = returns_query.order_by(ProductReturn.return_date).all()
+    maint_invoices = maint_invoices_query.order_by(
+        func.coalesce(MaintenanceInvoice.posted_at, MaintenanceInvoice.created_at)
+    ).all()
+    cheques = cheques_query.all()
+    receipts = receipts_query.order_by(Receipt.receipt_date).all()
+    writeoffs = writeoffs_query.all()
 
     sales_ids = [s.id for s in sales]
     from sqlalchemy.orm import joinedload
@@ -558,6 +626,243 @@ def statement(id):
             }
         )
 
+    # Product returns (credit to customer)
+    for prod_return in returns:
+        transactions.append(
+            {
+                "date": prod_return.return_date,
+                "type": "return",
+                "reference": prod_return.return_number,
+                "debit": 0,
+                "credit": float(prod_return.amount_base or 0),
+                "balance": 0,
+                "description": "مرتجع بضاعة",
+                "currency": prod_return.currency or "AED",
+                "exchange_rate": float(prod_return.exchange_rate or 1),
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": prod_return.status,
+                "return": {
+                    "id": prod_return.id,
+                    "return_number": prod_return.return_number,
+                    "return_date": prod_return.return_date,
+                    "total_amount": float(prod_return.total_amount or 0),
+                    "amount_base": float(prod_return.amount_base or 0),
+                    "currency": prod_return.currency or "AED",
+                    "exchange_rate": float(prod_return.exchange_rate or 1),
+                    "return_reason": prod_return.return_reason or "",
+                    "status": prod_return.status,
+                    "notes": prod_return.notes or "",
+                },
+            }
+        )
+
+    # Maintenance invoices (debit to customer)
+    for maint_inv in maint_invoices:
+        inv_date = maint_inv.posted_at or maint_inv.created_at
+        transactions.append(
+            {
+                "date": inv_date,
+                "type": "maintenance_invoice",
+                "reference": maint_inv.invoice_no,
+                "debit": float(maint_inv.total_amount_base or maint_inv.total_amount or 0),
+                "credit": 0,
+                "balance": 0,
+                "description": "فاتورة صيانة",
+                "currency": maint_inv.currency or "AED",
+                "exchange_rate": float(maint_inv.exchange_rate or 1),
+                "paid_amount": float(maint_inv.paid_amount_base or 0),
+                "balance_due": float(maint_inv.balance_due_base or 0),
+                "status": "posted" if maint_inv.posted else "draft",
+                "maintenance_invoice": {
+                    "id": maint_inv.id,
+                    "invoice_no": maint_inv.invoice_no,
+                    "total_amount": float(maint_inv.total_amount or 0),
+                    "total_amount_base": float(maint_inv.total_amount_base or 0),
+                    "paid_amount": float(maint_inv.paid_amount or 0),
+                    "balance_due": float(maint_inv.balance_due or 0),
+                    "currency": maint_inv.currency or "AED",
+                    "exchange_rate": float(maint_inv.exchange_rate or 1),
+                },
+            }
+        )
+
+    # Cheques (all cheques for this customer - standalone and linked)
+    for cheque in cheques:
+        amount = float(cheque.amount_base or 0)
+        status = cheque.status
+        is_active = cheque.is_active if hasattr(cheque, 'is_active') else True
+        is_linked = bool(cheque.receipt_id or cheque.payment_id or cheque.sale_id)
+        linked_ref = ""
+        if cheque.receipt_id:
+            linked_ref = f" (مرتبط بإشعار #{cheque.receipt_id})"
+        elif cheque.payment_id:
+            linked_ref = f" (مرتبط بدفع #{cheque.payment_id})"
+        elif cheque.sale_id:
+            linked_ref = f" (مرتبط ببيع #{cheque.sale_id})"
+
+        if status == "bounced":
+            if is_linked:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": f"شيك مرتد (ارتد){linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+            else:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": amount,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": "شيك مرتد (ارتد)",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+        elif status == "cancelled":
+            if is_linked:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": f"شيك ملغى{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+            else:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": amount,
+                    "balance": 0,
+                    "description": "شيك ملغى",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+        elif not is_active and status in ("pending", "deposited", "under_collection"):
+            if is_linked:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": f"شيك غير نشط{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+            else:
+                transactions.append({
+                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": amount,
+                    "balance": 0,
+                    "description": "شيك غير نشط",
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                })
+        else:
+            # Show all other cheques (pending, deposited, under_collection, cleared) as informational
+            transactions.append({
+                "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                "type": "cheque",
+                "reference": cheque.cheque_number,
+                "debit": 0,
+                "credit": 0,
+                "balance": 0,
+                "description": f"شيك ({status}){linked_ref}",
+                "currency": cheque.currency or "AED",
+                "exchange_rate": float(cheque.exchange_rate or 1),
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": status,
+            })
+
+    # Receipts (standalone, not linked to sale/purchase)
+    for receipt in receipts:
+        amount = float(receipt.amount_base or 0)
+        if receipt.rejection_reason:
+            transactions.append({
+                "date": receipt.receipt_date,
+                "type": "receipt",
+                "reference": receipt.receipt_number,
+                "debit": amount,
+                "credit": 0,
+                "balance": 0,
+                "description": "إشعار مرفوض",
+                "currency": receipt.currency or "AED",
+                "exchange_rate": float(receipt.exchange_rate or 1),
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": "rejected",
+            })
+        elif receipt.payment_confirmed:
+            transactions.append({
+                "date": receipt.receipt_date,
+                "type": "receipt",
+                "reference": receipt.receipt_number,
+                "debit": 0,
+                "credit": amount,
+                "balance": 0,
+                "description": "إشعار مؤكد",
+                "currency": receipt.currency or "AED",
+                "exchange_rate": float(receipt.exchange_rate or 1),
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": "confirmed",
+            })
+
+    # Write-offs (posted)
+    for woff in writeoffs:
+        amount = float(woff.amount_base or 0)
+        transactions.append({
+            "date": woff.posted_at or woff.created_at,
+            "type": "write_off",
+            "reference": f"WO-{woff.id}",
+            "debit": 0,
+            "credit": amount,
+            "balance": 0,
+            "description": "إطفاء دين (شطب)",
+            "currency": woff.currency or "AED",
+            "exchange_rate": 1,
+            "paid_amount": 0,
+            "balance_due": 0,
+            "status": woff.status,
+        })
+
     for payment in payments:
         credit_amount = (
             float(payment.amount_base or 0) if payment.direction == "incoming" else 0.0
@@ -628,7 +933,7 @@ def statement(id):
 
     transactions.sort(key=_transaction_date_key)
 
-    if transaction_type in {"sale", "payment"}:
+    if transaction_type in {"sale", "payment", "return", "maintenance_invoice", "cheque", "receipt", "write_off"}:
         transactions = [
             trans for trans in transactions if trans["type"] == transaction_type
         ]
@@ -638,11 +943,16 @@ def statement(id):
         running_balance += trans["debit"] - trans["credit"]
         trans["balance"] = running_balance
 
+    from models.customer import derive_customer_balance
+
+    system_balance = derive_customer_balance(id)
+
     return render_template(
         "customers/statement.html",
         customer=customer,
         transactions=transactions,
         final_balance=running_balance,
+        system_balance=system_balance,
         filters={
             "date_from": date_from or "",
             "date_to": date_to or "",
@@ -759,3 +1069,118 @@ def customer_sales(id):
             )
 
     return jsonify({"sales": sales_data})
+
+
+@customers_bp.route("/<int:id>/statement/export")
+@login_required
+@permission_required("manage_customers")
+def statement_export(id):
+    """تصدير كشف حساب العميل إلى Excel"""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from flask import send_file
+
+    customer = get_owned_or_404(Customer, id)
+
+    # Reuse statement logic
+    date_from = request.args.get("date_from", type=str)
+    date_to = request.args.get("date_to", type=str)
+
+    from sqlalchemy import func
+    from models import Payment, ProductReturn, Sale
+    from models.maintenance import MaintenanceInvoice, MaintenanceOrder
+
+    sales_query = Sale.query.filter_by(customer_id=id, status="confirmed")
+    payments_query = Payment.query.filter_by(customer_id=id)
+    returns_query = ProductReturn.query.filter_by(customer_id=id, status='approved')
+    maint_invoices_query = (
+        MaintenanceInvoice.query.join(MaintenanceOrder)
+        .filter(MaintenanceOrder.customer_id == id, MaintenanceInvoice.posted.is_(True))
+    )
+
+    if date_from:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
+        payments_query = payments_query.filter(func.date(Payment.payment_date) >= date_from)
+        returns_query = returns_query.filter(func.date(ProductReturn.return_date) >= date_from)
+        maint_invoices_query = maint_invoices_query.filter(
+            func.coalesce(MaintenanceInvoice.posted_at, MaintenanceInvoice.created_at) >= date_from
+        )
+    if date_to:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
+        payments_query = payments_query.filter(func.date(Payment.payment_date) <= date_to)
+        returns_query = returns_query.filter(func.date(ProductReturn.return_date) <= date_to)
+        maint_invoices_query = maint_invoices_query.filter(
+            func.coalesce(MaintenanceInvoice.posted_at, MaintenanceInvoice.created_at) <= date_to
+        )
+
+    sales = sales_query.order_by(Sale.sale_date).all()
+    payments = payments_query.order_by(Payment.payment_date).all()
+    returns = returns_query.order_by(ProductReturn.return_date).all()
+    maint_invoices = maint_invoices_query.all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"كشف {customer.name}"[:31]
+
+    # Header
+    ws.append(["كشف حساب العميل: " + customer.name])
+    ws.append(["العميل:", customer.name, "ID:", customer.id])
+    ws.append(["التاريخ:", datetime.now().strftime("%Y-%m-%d")])
+    ws.append([])
+    ws.append(["التاريخ", "النوع", "المرجع", "الوصف", "مدين", "دائن", "الرصيد"])
+
+    running_balance = 0.0
+    rows = []
+
+    for sale in sales:
+        amount = float(sale.amount_base or 0)
+        running_balance += amount
+        rows.append((sale.sale_date.strftime("%Y-%m-%d") if sale.sale_date else "-", "مبيعة", sale.sale_number, "فاتورة بيع", amount, 0, running_balance))
+
+    for ret in returns:
+        amount = float(ret.amount_base or 0)
+        running_balance -= amount
+        rows.append((ret.return_date.strftime("%Y-%m-%d") if ret.return_date else "-", "مرتجع", ret.return_number, "مرتجع بضاعة", 0, amount, running_balance))
+
+    for inv in maint_invoices:
+        inv_date = inv.posted_at or inv.created_at
+        amount = float(inv.total_amount_base or inv.total_amount or 0)
+        running_balance += amount
+        rows.append((inv_date.strftime("%Y-%m-%d") if inv_date else "-", "صيانة", inv.invoice_no, "فاتورة صيانة", amount, 0, running_balance))
+
+    for pay in payments:
+        amount = float(pay.amount_base or 0)
+        if pay.direction == "incoming":
+            running_balance -= amount
+            rows.append((pay.payment_date.strftime("%Y-%m-%d") if pay.payment_date else "-", "دفعة", pay.payment_number or f"PMT-{pay.id}", "دفعة واردة", 0, amount, running_balance))
+        else:
+            running_balance += amount
+            rows.append((pay.payment_date.strftime("%Y-%m-%d") if pay.payment_date else "-", "دفعة", pay.payment_number or f"PMT-{pay.id}", "دفعة صادرة", amount, 0, running_balance))
+
+    rows.sort(key=lambda r: r[0])
+    for row in rows:
+        ws.append(list(row))
+
+    # Style
+    for cell in ws[5]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+
+    # Column widths
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 12
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 25
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 12
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    from datetime import datetime as _dt
+    filename = f"statement_{customer.name}_{_dt.now().strftime('%Y%m%d')}.xlsx"
+    return send_file(output, download_name=filename, as_attachment=True,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

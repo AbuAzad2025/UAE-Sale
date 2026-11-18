@@ -16,10 +16,12 @@
       <td><span class="badge badge-{{ 'success' if t.status=='received' else ('info' if t.status=='in_transit' else 'warning') }}">{{ t.status_ar }}</span></td>
       <td>
         {% if t.status == 'pending' %}
-        <form method="POST" action="{{ url_for('erp_modules.send_stock_transfer', id=t.id) }}" style="display:inline"><button class="btn btn-sm btn-info" onclick="return confirm('إرسال الشحنة؟')"><i class="fas fa-truck"></i></button></form>
+        <form method="POST" action="{{ url_for('erp_modules.send_stock_transfer', id=t.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-info" onclick="return confirm('إرسال الشحنة؟')"><i class="fas fa-truck"></i></button></form>
         {% endif %}
         {% if t.status == 'in_transit' %}
-        <form method="POST" action="{{ url_for('erp_modules.receive_stock_transfer', id=t.id) }}" style="display:inline"><button class="btn btn-sm btn-success" onclick="return confirm('استلام الشحنة وتحديث المخزون؟')"><i class="fas fa-check"></i></button></form>
+        <form method="POST" action="{{ url_for('erp_modules.receive_stock_transfer', id=t.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-success" onclick="return confirm('استلام الشحنة وتحديث المخزون؟')"><i class="fas fa-check"></i></button></form>
         {% endif %}
       </td>
     </tr>

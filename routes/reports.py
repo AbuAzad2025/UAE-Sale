@@ -1,3 +1,4 @@
+from utils.feature_guards import install_feature_gate
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 from flask import (
@@ -27,6 +28,7 @@ from utils.helpers import create_audit_log
 from services.costing_service import CostingService
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
+install_feature_gate(reports_bp, "reports")
 
 from routes.ledger import (  # noqa: E402  (استيراد بعد تعريف Blueprint)
     _REPORT_BUCKET_KEYS,
@@ -264,6 +266,108 @@ def quotation_pipeline():
         top_customers=top_customers,
         monthly=monthly,
         expiring=expiring,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+@reports_bp.route("/partner-statement/<int:partner_id>")
+@login_required
+@permission_required("view_reports")
+def partner_statement(partner_id):
+    """كشف حساب تفصيلي للشريك"""
+    from models.product import ProductPartner
+    from datetime import datetime
+
+    partner = get_owned_or_404(Customer, partner_id)
+
+    date_from = request.args.get("date_from", "", type=str)
+    date_to = request.args.get("date_to", "", type=str)
+
+    # Find products this partner has shares in
+    partner_shares = ProductPartner.query.filter_by(partner_customer_id=partner_id).all()
+    share_map = {ps.product_id: float(ps.percentage) for ps in partner_shares}
+    product_ids = list(share_map.keys())
+
+    # Find sales of those products
+    sales_query = (
+        Sale.query.join(SaleLine)
+        .filter(Sale.status == "confirmed", SaleLine.product_id.in_(product_ids or [0]))
+        .distinct()
+    )
+    if date_from:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
+    if date_to:
+        sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
+
+    sales = sales_query.order_by(Sale.sale_date).all()
+
+    # Build transactions
+    transactions = []
+    for sale in sales:
+        for line in sale.lines:
+            if line.product_id in share_map:
+                percentage = share_map[line.product_id]
+                share_amount = float(line.line_total or 0) * (percentage / 100.0)
+                transactions.append({
+                    "date": sale.sale_date,
+                    "type": "sale_share",
+                    "reference": sale.sale_number,
+                    "product_name": line.product.name if line.product else "-",
+                    "quantity": float(line.quantity or 0),
+                    "revenue": float(line.line_total or 0),
+                    "percentage": percentage,
+                    "share_amount": share_amount,
+                    "debit": 0,
+                    "credit": share_amount,
+                    "description": "حصة من بيع",
+                })
+
+    # Find payments to/from partner
+    from models import Payment
+    payments = Payment.query.filter_by(customer_id=partner_id).order_by(Payment.payment_date).all()
+    for payment in payments:
+        credit_amount = float(payment.amount_base or 0) if payment.direction == "incoming" else 0.0
+        debit_amount = float(payment.amount_base or 0) if payment.direction != "incoming" else 0.0
+        transactions.append({
+            "date": payment.payment_date,
+            "type": "payment",
+            "reference": payment.payment_number or f"PMT-{payment.id}",
+            "debit": debit_amount,
+            "credit": credit_amount,
+            "description": f"دفعة - {payment.payment_method}",
+            "share_amount": 0,
+        })
+
+    # Sort by date
+    def _date_key(t):
+        d = t["date"]
+        if d is None:
+            return datetime.min
+        return d.replace(tzinfo=None) if d.tzinfo else d
+
+    transactions.sort(key=_date_key)
+
+    # Running balance
+    running_balance = 0.0
+    for t in transactions:
+        running_balance += t["debit"] - t["credit"]
+        t["balance"] = running_balance
+
+    total_share = sum(t.get("share_amount", 0) for t in transactions)
+    total_received = sum(t["credit"] for t in transactions if t["type"] == "payment")
+    total_paid = sum(t["debit"] for t in transactions if t["type"] == "payment")
+    net_balance = total_share - total_received + total_paid
+
+    return render_template(
+        "reports/partner_statement.html",
+        partner=partner,
+        transactions=transactions,
+        total_share=total_share,
+        total_received=total_received,
+        total_paid=total_paid,
+        net_balance=net_balance,
+        final_balance=running_balance,
         date_from=date_from,
         date_to=date_to,
     )

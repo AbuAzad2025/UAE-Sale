@@ -59,6 +59,10 @@ class ReturnService:
             total_return_amount = Decimal("0")
             return_line_specs = []
             gl_lines = []
+            # Cost/COGS reversal is already in BASE currency (SaleLine.cost_price is base).
+            # It must be posted at exchange_rate=1 in a separate entry, never mixed into
+            # the transaction-currency revenue/VAT entry.
+            cost_gl_lines = []
             review_flags = []
 
             routing = TaxEngine.liability_routing()
@@ -171,7 +175,7 @@ class ReturnService:
                 )
 
                 if cost_value > 0:
-                    gl_lines.append(
+                    cost_gl_lines.append(
                         {
                             "account": routing["inventory"],
                             "debit": cost_value,
@@ -179,7 +183,7 @@ class ReturnService:
                             "description": f"Inventory Restock - {product.name}",
                         }
                     )
-                    gl_lines.append(
+                    cost_gl_lines.append(
                         {
                             "account": routing["cogs"],
                             "debit": 0,
@@ -268,6 +272,20 @@ class ReturnService:
                     reference_id=product_return.id,
                     currency=sale.currency,
                     exchange_rate=sale.exchange_rate,
+                )
+
+            # Post the COGS/inventory reversal at BASE currency (rate=1) in its
+            # own balanced entry. Using the sale's FX rate here would multiply
+            # an already-base-valued cost by the rate (3.65x overstatement).
+            if cost_gl_lines:
+                from services.currency_service import CurrencyService as _CS
+                GLService.post_entry(
+                    lines=cost_gl_lines,
+                    description=f"Sales Return Cost Reversal {product_return.return_number} for Sale {sale.sale_number}",
+                    reference_type="ProductReturnCost",
+                    reference_id=product_return.id,
+                    currency=_CS.get_base_currency(),
+                    exchange_rate=1,
                 )
 
             from services.currency_service import CurrencyService

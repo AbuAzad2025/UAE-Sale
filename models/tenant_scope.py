@@ -419,7 +419,12 @@ def _apply_query_loader_criteria(query, tenant_id):
         return query
 
     for entity in present:
-        criterion = _tenant_predicate(entity, tenant_id)
+        # Use the same global-row-aware predicate as the loader criteria so
+        # platform rows (tenant_id NULL) on Role/TaxRuleset/FiscalPeriod stay
+        # visible inside a tenant context.
+        criterion = _tenant_load_criterion_factory(entity, tenant_id)(
+            _entity_alias_or_class(entity, query)
+        )
         try:
             existing = tuple(query._where_criteria)
             kept = [c for c in existing if not _constrains_tenant_column(c, entity)]
@@ -427,6 +432,16 @@ def _apply_query_loader_criteria(query, tenant_id):
         except Exception:  # noqa: BLE001 - never break a query
             continue
     return query
+
+
+def _entity_alias_or_class(entity, query):
+    """Return the entity class to build a tenant criterion for.
+
+    Aliased entities are already covered by with_loader_criteria(include_aliases);
+    the before_compile hook only ever sees plain mapped classes here, so the
+    class itself is the correct subject.
+    """
+    return entity
 
 
 def _constrains_tenant_column(criterion, entity):
@@ -456,33 +471,90 @@ def _constrains_tenant_column(criterion, entity):
     return False
 
 
-def install_tenant_loader_criteria():
-    """Constrain every tenant-scoped entity at LOAD time.
+# Tables that legitimately carry GLOBAL rows with tenant_id = NULL which must
+# remain visible inside every tenant context (platform roles, platform tax
+# rulesets, global fiscal periods, tenant-less error logs). For these the
+# load-time predicate is (tenant_id == current OR tenant_id IS NULL).
+_TENANT_TABLES_WITH_GLOBAL_ROWS = frozenset({
+    "roles",
+    "tax_rulesets",
+    "fiscal_periods",
+})
 
-    ``with_loader_criteria`` attaches the tenant predicate to the ENTITY
-    itself, so SQLAlchemy applies it wherever that entity appears in a
-    statement - a plain query, a join, a ``paginate()`` subquery, a
-    ``joinedload``, or ``session.get``.
 
-    This is the PRIMARY enforcement. The Query ``before_compile`` hook
-    (install_tenant_filter_events) cannot be on its own: it inspects
-    ``column_descriptions[0].entity``, and derived queries - notably the
-    subquery flask-sqlalchemy builds inside ``paginate()`` - have no entity
-    there, so the filter was silently dropped and tenant B's rows appeared in
-    tenant A's paginated customer list. The hook is kept because it also
-    covers column-only queries that never load an entity, but the loader
-    criteria are what actually guarantee isolation.
+def _tenant_load_criterion_factory(entity, tenant_id):
+    """Build a with_loader_criteria lambda for *entity* at the current tenant.
 
-    The option is applied from inside the before_compile hook, which runs on
-    every compile, so it is always present and always built from the live
-    tenant. There is no session-level variant: SQLAlchemy 2.0 has no
-    ``Session.enable_loader_criteria``, and the query option is the mechanism
-    that survives LIMIT/OFFSET.
-
-    Owner/super_admin requests run with tenant None, in which case no criteria
-    are applied at all, so cross-tenant administration keeps working.
+    The tenant id is captured in the function closure so each statement built
+    under a different tenant gets a different criterion; the execution option
+    set in install_tenant_loader_criteria forces SQLAlchemy's compiled-statement
+    cache key to vary with the tenant as well.
     """
+    tablename = getattr(entity, "__tablename__", None)
+    if tenant_id == TENANT_LESS_SCOPE:
+        def _criterion(cls):
+            return cls.tenant_id.is_(None)
+    elif tablename in _TENANT_TABLES_WITH_GLOBAL_ROWS:
+        from sqlalchemy import or_
+        def _criterion(cls):
+            return or_(cls.tenant_id == tenant_id, cls.tenant_id.is_(None))
+    else:
+        def _criterion(cls):
+            return cls.tenant_id == tenant_id
+    return _criterion
+
+
+def install_tenant_loader_criteria():
+    """Install REAL load-time tenant isolation via ``do_orm_execute``.
+
+    This is the primary tenant-isolation guarantee. It attaches
+    ``with_loader_criteria`` to every registered tenant-scoped entity, which
+    SQLAlchemy applies wherever the entity appears: plain ORM queries,
+    column-only queries, ``session.get()`` / ``db.get_or_404()`` primary-key
+    lookups, ``paginate()`` subqueries, and relationship loads
+    (``joinedload``/``selectinload``/lazy loads). The previous implementation
+    was a no-op, leaving all of those paths unfiltered.
+    """
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session, with_loader_criteria
+
+    if getattr(install_tenant_loader_criteria, "_attached", False):
+        return True
     install_tenant_loader_criteria._attached = True
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _apply_tenant_load_criteria(execute_state):
+        # Only SELECT statements read rows; writes are handled by the
+        # before_flush guard. Platform-level work sets tenant None explicitly
+        # and must remain unfiltered.
+        if not execute_state.is_select:
+            return
+        if execute_state.execution_options.get("skip_tenant_filter", False):
+            return
+        tenant_id = get_current_tenant_id()
+        if tenant_id is None:
+            return
+
+        entities = _scoped_model_classes()
+        if not entities:
+            return
+
+        options = [
+            with_loader_criteria(
+                entity,
+                _tenant_load_criterion_factory(entity, tenant_id),
+                include_aliases=True,
+                propagate_to_loaders=True,
+            )
+            for entity in entities
+        ]
+        execute_state.statement = execute_state.statement.options(*options)
+        # Make the compiled-statement cache key tenant-specific so a statement
+        # compiled for tenant A is never reused with tenant B's criteria.
+        execute_state.statement = execute_state.statement.execution_options(
+            _tenant_filter_id=tenant_id
+        )
+
     return True
 
 

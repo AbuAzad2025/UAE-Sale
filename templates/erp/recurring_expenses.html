@@ -17,6 +17,7 @@
       <td><span class="badge badge-{{ 'success' if re.is_active else 'secondary' }}">{{ 'نشط' if re.is_active else 'متوقف' }}</span></td>
       <td>
         <form method="POST" action="{{ url_for('erp_modules.toggle_recurring_expense', id=re.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-{{ 'warning' if re.is_active else 'success' }}">{{ 'إيقاف' if re.is_active else 'تفعيل' }}</button>
         </form>
       </td>

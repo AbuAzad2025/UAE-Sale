@@ -1148,6 +1148,54 @@ def browse_table(table_name):
         return redirect(url_for("owner.database_tools"))
 
 
+@owner_bp.route("/update-row/<table_name>/<int:row_id>", methods=["POST"])
+@login_required
+@owner_required
+def update_row(table_name, row_id):
+    """Securely update one row of an allow-listed table (visual table editor).
+
+    Only the table name is validated via validate_table_name(); column names
+    are restricted to the table's real columns and values are bound as
+    parameters. Owner-only. Returns JSON for the fetch() in edit_table.html.
+    """
+    from sqlalchemy import inspect as _inspect
+
+    try:
+        validate_table_name(table_name)
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict) or not data:
+        return jsonify({"success": False, "error": "No updates provided"}), 400
+
+    try:
+        inspector = _inspect(db.engine)
+        real_cols = {col["name"] for col in inspector.get_columns(table_name)}
+        pk_cols = inspector.get_pk_constraint(table_name).get("constrained_columns", [])
+        if not pk_cols:
+            return jsonify({"success": False, "error": "Table has no primary key"}), 400
+        pk_col = pk_cols[0]
+        # Never allow changing the primary key itself.
+        updates = {k: v for k, v in data.items() if k in real_cols and k != pk_col}
+        if not updates:
+            return jsonify({"success": False, "error": "No valid columns to update"}), 400
+        set_clause = ", ".join(f"{col} = :v_{i}" for i, col in enumerate(updates))
+        params = {f"v_{i}": v for i, v in enumerate(updates.values())}
+        params["pk"] = row_id
+        db.session.execute(
+            text(f"UPDATE {table_name} SET {set_clause} WHERE {pk_col} = :pk"),  # nosec B608 - validated names
+            params,
+        )
+        db.session.commit()
+        create_audit_log("update", table_name, row_id)
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("update_row failed")
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
 @owner_bp.route("/edit-table-data/<table_name>")
 @login_required
 @owner_required
@@ -1291,7 +1339,7 @@ def convert_database():
 
         except Exception as e:
             current_app.logger.error(f"Database convert error: {e}")
-        flash("❌ خطأ في تحويل قاعدة البيانات.", "danger")
+            flash("❌ خطأ في تحويل قاعدة البيانات.", "danger")
 
     return render_template("owner/convert_database.html")
 
@@ -3556,6 +3604,180 @@ def tax_rulesets():
     )
 
 
+
+# ── Budget management ──────────────────────────────────────────────────────
+def _assert_budget_tenant_access(requested_tenant_id):
+    """Ensure the current user may access budgets for *requested_tenant_id*.
+
+    Platform roles (owner / super_admin / developer) may access any tenant;
+    tenant users are confined to their own tenant. Returns the effective
+    tenant id (None means "all tenants", only for platform roles).
+    """
+    from flask import abort
+    u = current_user
+    is_platform = bool(
+        getattr(u, "is_owner", False)
+        or (getattr(u, "role", None) and u.role.slug in ("super_admin", "developer"))
+    )
+    own_tid = getattr(u, "tenant_id", None)
+    if requested_tenant_id is None:
+        return None if is_platform else own_tid
+    if is_platform:
+        return requested_tenant_id
+    if requested_tenant_id != own_tid:
+        abort(403)
+    return requested_tenant_id
+
+
+@owner_bp.route("/budgets", methods=["GET"])
+@login_required
+@permission_required("manage_budget")
+def budgets_list():
+    from models.budget import Budget
+
+    tenant_id = _assert_budget_tenant_access(request.args.get("tenant_id", type=int))
+
+    query = Budget.query
+    if tenant_id:
+        query = query.filter_by(tenant_id=tenant_id)
+
+    budgets = query.order_by(Budget.created_at.desc()).all()
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+
+    return render_template(
+        "owner/budgets.html",
+        budgets=budgets,
+        tenants=tenants,
+        selected_tenant_id=tenant_id,
+    )
+
+
+@owner_bp.route("/budgets/create", methods=["GET", "POST"])
+@login_required
+@permission_required("manage_budget")
+def budget_create():
+    from models.budget import Budget, BudgetLine
+    from models import GLAccount
+    from datetime import date as _date
+    from decimal import Decimal
+
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+    accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
+
+    if request.method == "POST":
+        tenant_id = _assert_budget_tenant_access(request.form.get("tenant_id", type=int))
+
+        name_ar = request.form.get("name_ar", "").strip()
+        name_en = request.form.get("name_en", "").strip()
+        fiscal_year = request.form.get("fiscal_year", type=int) or _date.today().year
+        period_type = request.form.get("period_type", "annual")
+        period_start = request.form.get("period_start")
+        period_end = request.form.get("period_end")
+        notes = request.form.get("notes", "").strip()
+
+        if not name_ar:
+            flash("اسم الموازنة (عربي) مطلوب", "danger")
+            return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+
+        try:
+            ps = _date.fromisoformat(period_start) if period_start else _date.today().replace(month=1, day=1)
+            pe = _date.fromisoformat(period_end) if period_end else _date.today().replace(month=12, day=31)
+        except ValueError:
+            flash("تاريخ غير صالح", "danger")
+            return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+
+        import secrets
+        budget_number = f"BDG-{fiscal_year}-{secrets.token_hex(3).upper()}"
+
+        budget = Budget(
+            budget_number=budget_number,
+            name_ar=name_ar,
+            name_en=name_en or None,
+            fiscal_year=fiscal_year,
+            period_type=period_type,
+            period_start=ps,
+            period_end=pe,
+            notes=notes or None,
+            tenant_id=tenant_id,
+            status="draft",
+            created_by=current_user.id,
+        )
+        db.session.add(budget)
+        db.session.flush()
+
+        account_ids = request.form.getlist("account_id")
+        amounts = request.form.getlist("budgeted_amount")
+        for aid, amt in zip(account_ids, amounts):
+            if aid and amt:
+                try:
+                    line = BudgetLine(
+                        budget_id=budget.id,
+                        account_id=int(aid),
+                        budgeted_amount=Decimal(str(amt)),
+                        tenant_id=tenant_id,
+                    )
+                    db.session.add(line)
+                except (ValueError, Exception):
+                    pass
+
+        db.session.commit()
+        flash(f"تم إنشاء الموازنة: {budget_number}", "success")
+        return redirect(url_for("owner.budgets_list"))
+
+    return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+
+
+@owner_bp.route("/budgets/<int:budget_id>", methods=["GET"])
+@login_required
+@permission_required("manage_budget")
+def budget_view(budget_id):
+    from models.budget import Budget
+
+    budget = get_owned_or_404(Budget, budget_id)
+    _assert_budget_tenant_access(budget.tenant_id)
+    return render_template("owner/budget_view.html", budget=budget)
+
+
+@owner_bp.route("/budgets/<int:budget_id>/edit", methods=["GET", "POST"])
+@login_required
+@permission_required("manage_budget")
+def budget_edit(budget_id):
+    from models.budget import Budget
+    from models import GLAccount
+    from datetime import date as _date
+
+    budget = get_owned_or_404(Budget, budget_id)
+    _assert_budget_tenant_access(budget.tenant_id)
+    tenants = Tenant.query.filter_by(is_active=True).order_by(Tenant.name).all()
+    accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
+
+    if request.method == "POST":
+        budget.name_ar = request.form.get("name_ar", "").strip() or budget.name_ar
+        budget.name_en = request.form.get("name_en", "").strip() or budget.name_en
+        budget.notes = request.form.get("notes", "").strip() or None
+        budget.status = request.form.get("status", budget.status)
+
+        db.session.commit()
+        flash("تم تحديث الموازنة", "success")
+        return redirect(url_for("owner.budget_view", budget_id=budget.id))
+
+    return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=budget)
+
+
+@owner_bp.route("/budgets/<int:budget_id>/delete", methods=["POST"])
+@login_required
+@permission_required("manage_budget")
+def budget_delete(budget_id):
+    from models.budget import Budget
+
+    budget = get_owned_or_404(Budget, budget_id)
+    _assert_budget_tenant_access(budget.tenant_id)
+    db.session.delete(budget)
+    db.session.commit()
+    flash("تم حذف الموازنة", "success")
+    return redirect(url_for("owner.budgets_list"))
+
+
 @owner_bp.route("/compliance-credentials", methods=["GET", "POST"])
 @login_required
 @owner_required
@@ -4010,7 +4232,7 @@ def partners():
         try:
             if action == "set_scope":
                 cid = request.form.get("customer_id", type=int)
-                customer = Customer.query.get(cid) if cid else None
+                customer = get_owned_or_404(Customer, cid) if cid else None
                 if customer is None:
                     raise ValueError("العميل غير موجود")
                 scope = (request.form.get("scope") or "").strip()
@@ -4053,7 +4275,7 @@ def partners():
                 pid = request.form.get("partner_id", type=int)
                 amount_raw = (request.form.get("amount") or "").strip()
                 source = (request.form.get("source") or "cash").strip().lower()
-                partner = Customer.query.get(pid) if pid else None
+                partner = get_owned_or_404(Customer, pid) if pid else None
                 if partner is None or not partner.is_active:
                     raise ValueError("الشريك غير موجود")
                 amount = Decimal(amount_raw)

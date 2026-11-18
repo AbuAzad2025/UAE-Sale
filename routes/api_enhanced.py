@@ -1,3 +1,4 @@
+from utils.feature_guards import install_feature_gate
 from flask import Blueprint, request, jsonify, abort
 from flask_login import login_required, current_user
 from extensions import limiter
@@ -6,6 +7,7 @@ from utils.query_optimizer import optimize_query, paginate_optimized
 from utils.decorators import permission_required, get_owned_or_404
 
 api_enhanced_bp = Blueprint("api_enhanced", __name__, url_prefix="/api/v2")
+install_feature_gate(api_enhanced_bp, "api")
 
 
 @api_enhanced_bp.route("/sales", methods=["GET"])

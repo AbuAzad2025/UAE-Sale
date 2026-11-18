@@ -4,6 +4,7 @@
 {% block content %}
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_stocktake') }}" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <select name="warehouse_id" class="form-control d-inline-block" style="width:200px" required><option value="">— اختر المستودع —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select>
     <button type="submit" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>بدء جرد جديد</button>
   </form>

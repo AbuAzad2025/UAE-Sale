@@ -6,10 +6,11 @@ Accounting policy (approved by the operator, see docs/maintenance_status.md):
   when they are issued to an order: debit maintenance cost, credit inventory.
   The inventory ledger therefore always matches the stock card, and the
   inventory account is only credited by a real issue or a real return.
-* **Labour** cost is tracked analytically on the order (``cost_price_total``)
-  and is NOT posted to the GL: payroll in this system expenses wages at
-  payment time and has no accrual clearing path, so an accrual here would
-  leave a permanent liability.
+* **Labour** cost is accrued when the maintenance invoice is posted:
+  debit maintenance expense (6400) / credit salaries payable (2140), per the
+  operator-approved policy in docs/maintenance_status.md. The payable is
+  settled when payroll is disbursed. (Labour is also tracked analytically on
+  the order via ``cost_price_total``.)
 * **Revenue and VAT** are recognised when the maintenance invoice is posted:
   debit the receivable, credit the revenue net of VAT, credit the VAT
   liability. Discounts reduce the revenue (they are not a separate posting).
@@ -630,14 +631,3 @@ def post_supplier_payment(payment, *, created_by=None, entry_date=None):
         entry_date=entry_date,
     )
 
-
-def reverse_order_entries(order, *, reason, created_by=None):
-    entries = GLService.reverse_entry(
-        reference_type=REFERENCE_ORDER,
-        reference_id=order.id,
-        description=reason,
-        created_by=created_by,
-    )
-    if isinstance(entries, list):
-        return entries
-    return [entries] if entries else []

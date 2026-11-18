@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}عرض موازنة - Owner{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <h3>الموازنة: {{ budget.name_ar }} ({{ budget.budget_number }})</h3>
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>السنة المالية</h6>
+          <p>{{ budget.fiscal_year }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>نوع الفترة</h6>
+          <p>{{ budget.period_type }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>الميزانية الإجمالية</h6>
+          <p>{{ budget.total_budgeted }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6>الحالة</h6>
+          <p>{{ budget.status }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h5>بنود الموازنة</h5>
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>الحساب</th>
+            <th>المبلغ المقدر</th>
+            <th>الفعلي</th>
+            <th>الانحراف</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in budget.lines %}
+          <tr>
+            <td>{{ line.account.code }} - {{ line.account.name }}</td>
+            <td>{{ line.budgeted_amount }}</td>
+            <td>{{ line.actual_amount }}</td>
+            <td>{{ line.variance }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3">
+    <a href="{{ url_for('owner.budget_edit', budget_id=budget.id) }}" class="btn btn-warning">تعديل</a>
+    <a href="{{ url_for('owner.budgets_list') }}" class="btn btn-secondary">رجوع</a>
+  </div>
+</div>
+{% endblock %}

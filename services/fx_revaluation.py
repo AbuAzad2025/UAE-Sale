@@ -378,6 +378,9 @@ class FXRevaluationService:
             rate = _dec(purchase.exchange_rate)
             if rate <= 0:
                 continue
+            # paid_amount is stored in the TRANSACTION (foreign) currency here
+            # (see Purchase model / test contract), so convert to base with the
+            # historical rate before netting against the base carrying amount.
             paid_base = _dec(purchase.paid_amount or 0) * rate
             carrying = _dec(purchase.amount_base or 0) - paid_base
             carrying = _clamp_non_negative(carrying)

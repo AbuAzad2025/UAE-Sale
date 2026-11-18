@@ -1,14 +1,14 @@
 """Add tenant_id column to product_returns and product_return_lines.
 
 Revision ID: b44_product_return_tenant_id
-Revises: b43_maintenance_deposit_payment_method
+Revises: b43_maint_deposit_pay
 Create Date: 2026-11-13
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "b44_product_return_tenant_id"
-down_revision = "b43_maintenance_deposit_payment_method"
+down_revision = "b43_maint_deposit_pay"
 branch_labels = None
 depends_on = None
 

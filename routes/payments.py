@@ -1,5 +1,5 @@
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from flask import (
     Blueprint,
@@ -1605,17 +1605,19 @@ def create_payment(purchase_id):  # noqa: C901
             card_last4 = request.form.get("card_last4")
             reference_number_card = request.form.get("reference_number_card")
 
-            if amount <= 0 or amount > balance:
+            amount_decimal = Decimal(str(amount))
+            exchange_rate_decimal = Decimal(str(exchange_rate))
+            amount_base = (amount_decimal * exchange_rate_decimal).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            # balance is BASE currency; validate the BASE amount against it.
+            if amount_base <= 0 or amount_base > Decimal(str(balance)):
                 flash(
-                    "المبلغ غير صحيح.\nتحقق من الصيغة الصحيحة وحاول مرة أخرى.", "danger"
+                    "المبلغ غير صحيح. تأكد من إدخال مبلغ ضمن الرصيد المتبقي.", "danger"
                 )
                 return redirect(
                     url_for("payments.create_payment", purchase_id=purchase_id)
                 )
-
-            amount_decimal = Decimal(str(amount))
-            exchange_rate_decimal = Decimal(str(exchange_rate))
-            amount_base = amount_decimal * exchange_rate_decimal
 
             payment_number = generate_number("PAY", Payment, "payment_number")
             payment = Payment(
@@ -1705,7 +1707,16 @@ def create_payment(purchase_id):  # noqa: C901
                     exchange_rate=payment.exchange_rate,
                 )
             except Exception:
-                pass
+                # Never record a payment without a balanced GL entry.
+                db.session.rollback()
+                current_app.logger.exception("GL posting failed for purchase payment")
+                flash(
+                    "تعذر تسجيل الدفع لعدم اكتمال القيد المحاسبي. لم يُحفظ أي تغيير.",
+                    "danger",
+                )
+                return redirect(
+                    url_for("payments.create_payment", purchase_id=purchase_id)
+                )
 
             db.session.commit()
 

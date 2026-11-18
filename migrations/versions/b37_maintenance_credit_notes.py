@@ -1,7 +1,7 @@
 """Maintenance credit notes — reverse invoice and allow returns after billing.
 
 Revision ID: b37_maintenance_credit_notes
-Revises: b36_maintenance_supplier_payments
+Revises: b36_maint_supplier_pay
 """
 
 from alembic import op
@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 
 revision = "b37_maintenance_credit_notes"
-down_revision = "b36_maintenance_supplier_payments"
+down_revision = "b36_maint_supplier_pay"
 branch_labels = None
 depends_on = None
 

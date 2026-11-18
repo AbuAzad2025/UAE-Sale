@@ -136,6 +136,7 @@
       <div class="card-body">
         
         <form method="POST" action="{{ url_for('approvals.approve', request_id=req.id) }}" class="mb-3">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
             <textarea name="notes" class="form-control form-control-sm" placeholder="ملاحظات (اختياري)" rows="2"></textarea>
           </div>
@@ -146,6 +147,7 @@
 
         
         <form method="POST" action="{{ url_for('approvals.reject', request_id=req.id) }}" class="mb-3">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
             <textarea name="notes" class="form-control form-control-sm" placeholder="سبب الرفض (مطلوب)" rows="2" required></textarea>
           </div>
@@ -158,6 +160,7 @@
 
         
         <form method="POST" action="{{ url_for('approvals.cancel', request_id=req.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline-secondary btn-block btn-sm">
             <i class="fas fa-ban mr-1"></i>إلغاء الطلب
           </button>

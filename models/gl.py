@@ -313,7 +313,12 @@ class GLAccount(db.Model):
         q = (
             db.session.query(func.sum(GLJournalLine.amount_base))
             .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
-            .filter(GLJournalLine.account_id == self.id)
+            .filter(
+                GLJournalLine.account_id == self.id,
+                # Only posted entries affect posted balances. Drafts must not
+                # inflate account balances or disagree with the financials.
+                GLJournalEntry.is_posted.is_(True),
+            )
         )
 
         lower = self._as_bound_datetime(date_from, end_of_day=False)
@@ -398,7 +403,11 @@ class GLAccount(db.Model):
             db.session.query(GLAccount.type, func.sum(GLJournalLine.amount_base))
             .join(GLJournalLine, GLJournalLine.account_id == GLAccount.id)
             .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
-            .filter(GLAccount.id.in_(ids))
+            .filter(
+                GLAccount.id.in_(ids),
+                # Posted entries only — drafts must not affect the account tree.
+                GLJournalEntry.is_posted.is_(True),
+            )
         )
 
         lower = self._as_bound_datetime(date_from, end_of_day=False)

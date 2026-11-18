@@ -1,15 +1,15 @@
 """Maintenance supplier payments (settlement of maintenance payables).
 
-Revision ID: b36_maintenance_supplier_payments
-Revises: b35_maintenance_return_quantities
+Revision ID: b36_maint_supplier_pay
+Revises: b35_maint_return_qty
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 
-revision = "b36_maintenance_supplier_payments"
-down_revision = "b35_maintenance_return_quantities"
+revision = "b36_maint_supplier_pay"
+down_revision = "b35_maint_return_qty"
 branch_labels = None
 depends_on = None
 

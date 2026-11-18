@@ -170,6 +170,7 @@
         <div class="row mt-4">
           <div class="col-md-4">
             <form action="{{ url_for('owner.export_database') }}" method="POST" style="display: inline;">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="format" value="json">
               <button type="submit" class="btn btn-success btn-block btn-lg">
                 <i class="fas fa-file-export"></i> تصدير JSON
@@ -188,6 +189,7 @@
 </div>
 
 <form id="truncateForm" method="POST" action="{{ url_for('owner.truncate_table') }}" style="display: none;">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="table_name" id="truncateTableName">
   <input type="hidden" name="confirm" id="truncateConfirm">
 </form>

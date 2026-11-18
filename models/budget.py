@@ -83,9 +83,13 @@ class Budget(TenantScopedMixin, db.Model):
         total_variance = Decimal("0")
 
         for line in self.lines:
+            # Only POSTED, non-reversed entries count as actuals. Drafts and
+            # reversal pairs must never inflate the budget variance.
             debit_sum = db.session.query(func.sum(GLJournalLine.debit)).filter(
                 GLJournalLine.account_id == line.account_id
             ).join(GLJournalEntry).filter(
+                GLJournalEntry.is_posted.is_(True),
+                GLJournalEntry.is_reversed.is_(False),
                 func.date(GLJournalEntry.entry_date).between(
                     self.period_start, self.period_end
                 )
@@ -94,6 +98,8 @@ class Budget(TenantScopedMixin, db.Model):
             credit_sum = db.session.query(func.sum(GLJournalLine.credit)).filter(
                 GLJournalLine.account_id == line.account_id
             ).join(GLJournalEntry).filter(
+                GLJournalEntry.is_posted.is_(True),
+                GLJournalEntry.is_reversed.is_(False),
                 func.date(GLJournalEntry.entry_date).between(
                     self.period_start, self.period_end
                 )
@@ -119,6 +125,8 @@ class Budget(TenantScopedMixin, db.Model):
 
         if self.total_budgeted != 0:
             self.variance_percentage = (self.total_variance / self.total_budgeted) * 100
+        else:
+            self.variance_percentage = 0
 
         db.session.commit()
 

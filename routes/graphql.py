@@ -1,9 +1,11 @@
+from utils.feature_guards import install_feature_gate
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from services.graphql_service import schema
 from utils.decorators import permission_required
 
 graphql_bp = Blueprint("graphql", __name__, url_prefix="/graphql")
+install_feature_gate(graphql_bp, "api")
 
 MAX_QUERY_DEPTH = 10
 MAX_QUERY_LENGTH = 10000
@@ -81,6 +83,21 @@ _GRAPHQL_PERMISSION_MAP = {
     "ledger": "view_ledger",
     "journalEntry": "view_ledger",
     "journalEntries": "view_ledger",
+    # CamelCase root fields from the Graphene schema (all_sales -> allSales).
+    # Without these an allSales query demands no specific permission.
+    "allsales": "manage_sales",
+    "allcustomers": "manage_customers",
+    "allproducts": "manage_products",
+    "allsuppliers": "manage_suppliers",
+    "allpurchases": "manage_purchases",
+    "allpayments": "manage_payments",
+    "allreceipts": "manage_payments",
+    "allcheques": "manage_payments",
+    "allexpenses": "manage_expenses",
+    "allusers": "manage_users",
+    "createsale": "manage_sales",
+    "createcustomer": "manage_customers",
+    "createproduct": "manage_products",
 }
 
 
@@ -137,7 +154,24 @@ def graphql_query():
     ):
         return jsonify({"errors": ["Introspection is disabled"]}), 403
 
-    if query_lower.startswith("mutation"):
+    # Robust mutation detection: a leading comment ("# x\nmutation {...}")
+    # defeats a plain startswith check. Parse with graphql-core and inspect
+    # every operation definition; fail closed on parse errors.
+    try:
+        from graphql import parse, OperationType
+
+        _doc = parse(query)
+        _has_mutation = any(
+            getattr(getattr(node, "operation", None), "value", None) == "mutation"
+            or node.operation == OperationType.MUTATION
+            for node in _doc.definitions
+            if getattr(node, "operation", None) is not None
+        )
+    except Exception:
+        # If we cannot parse, reject rather than execute an unverified query.
+        return jsonify({"errors": ["Invalid GraphQL query"]}), 400
+
+    if _has_mutation or query_lower.startswith("mutation"):
         return jsonify({"errors": ["Mutations are not allowed via GraphQL"]}), 403
 
     perm_error = _check_graphql_permissions(query)

@@ -4,6 +4,7 @@
 {% block content %}
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_fiscal_period') }}" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="input-group" style="width:250px"><input type="number" name="year" class="form-control" placeholder="السنة" value="{{ now.year }}" required><div class="input-group-append"><button type="submit" class="btn btn-primary">إنشاء</button></div></div>
   </form>
 </div>
@@ -18,9 +19,11 @@
       <td><span class="badge badge-{{ 'danger' if p.is_closed else 'success' }}">{{ p.status_ar }}</span></td>
       <td>
         {% if p.is_closed %}
-        <form method="POST" action="{{ url_for('erp_modules.reopen_fiscal_period', id=p.id) }}" style="display:inline"><button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('إعادة فتح الفترة؟')"><i class="fas fa-unlock mr-1"></i>فتح</button></form>
+        <form method="POST" action="{{ url_for('erp_modules.reopen_fiscal_period', id=p.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('إعادة فتح الفترة؟')"><i class="fas fa-unlock mr-1"></i>فتح</button></form>
         {% else %}
-        <form method="POST" action="{{ url_for('erp_modules.close_fiscal_period', id=p.id) }}" style="display:inline"><button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('إغلاق الفترة المالية؟ لن تتمكن من إضافة قيود تاريخية بعد الآن!')"><i class="fas fa-lock mr-1"></i>إغلاق</button></form>
+        <form method="POST" action="{{ url_for('erp_modules.close_fiscal_period', id=p.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('إغلاق الفترة المالية؟ لن تتمكن من إضافة قيود تاريخية بعد الآن!')"><i class="fas fa-lock mr-1"></i>إغلاق</button></form>
         {% endif %}
       </td>
     </tr>

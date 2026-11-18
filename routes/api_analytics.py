@@ -1,3 +1,4 @@
+from utils.feature_guards import install_feature_gate
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from extensions import limiter
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 api_analytics_bp = Blueprint("api_analytics", __name__, url_prefix="/api/analytics")
+install_feature_gate(api_analytics_bp, "reports")
 
 
 @api_analytics_bp.route("/overdue-payments")

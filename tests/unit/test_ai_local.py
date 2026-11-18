@@ -34,6 +34,9 @@ def _make_user(username, slug, perm_codes=(), is_owner=False):
         role_id=role.id,
     )
     user.set_password("Pass123!")
+    # Avoid the platform-wide must_change_password redirect so these tests
+    # exercise the AI endpoints/permissions, not the password-change gate.
+    user.must_change_password = False
     _db.session.add(user)
     _db.session.commit()
     return user

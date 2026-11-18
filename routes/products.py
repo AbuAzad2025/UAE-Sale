@@ -577,9 +577,12 @@ def edit(id):  # noqa: C901
             unit_value = request.form.get("unit")
             if "unit" in request.form:
                 product.unit = unit_value or None
-            product.location = request.form.get("location")
+            # Preserve optional fields not submitted by a minimal edit form.
+            if "location" in request.form:
+                product.location = request.form.get("location")
             product.description = request.form.get("description")
-            product.notes = request.form.get("notes")
+            if "notes" in request.form:
+                product.notes = request.form.get("notes")
             if "tax_treatment" in request.form:
                 _tt = (request.form.get("tax_treatment") or "standard").strip().lower()
                 product.tax_treatment = (

@@ -116,8 +116,12 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            version_table_column_length=64,
             **conf,
+            # Must come AFTER **conf: Flask-Migrate's configure_args may carry
+            # the legacy 32-char default, which is too short for our revision
+            # ids (e.g. b48_maintenance_child_tenant_id) and breaks a bare
+            # `alembic upgrade head` on a fresh database.
+            version_table_column_length=64,
         )
 
         with context.begin_transaction():

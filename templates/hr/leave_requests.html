@@ -65,11 +65,13 @@
           <td>
             {% if req.status == 'pending' %}
             <form method="POST" action="{{ url_for('hr.approve_leave', id=req.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-success" title="موافقة" onclick="return confirm('هل تؤكد الموافقة على طلب الإجازة؟')">
                 <i class="fas fa-check"></i>
               </button>
             </form>
             <form method="POST" action="{{ url_for('hr.reject_leave', id=req.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="rejection_reason" value="تم الرفض من الإدارة">
               <button type="submit" class="btn btn-sm btn-danger" title="رفض" onclick="return confirm('هل تؤكد رفض طلب الإجازة؟')">
                 <i class="fas fa-times"></i>
@@ -77,6 +79,7 @@
             </form>
             {% elif req.status == 'approved' %}
             <form method="POST" action="{{ url_for('hr.cancel_leave', id=req.id) }}" style="display:inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-secondary" title="إلغاء" onclick="return confirm('هل تؤكد إلغاء طلب الإجازة المعتمد؟')">
                 <i class="fas fa-ban"></i>
               </button>

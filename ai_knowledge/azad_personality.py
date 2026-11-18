@@ -173,3 +173,7 @@ class AzadPersonality:
         if message_type == "silly":
             return AzadPersonality.get_silly_response()
         return response
+
+
+# Global instance imported by ai_knowledge.azad_responses and other modules.
+azad_personality = AzadPersonality()

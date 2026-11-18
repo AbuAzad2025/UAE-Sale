@@ -227,14 +227,17 @@ Expected response (five checks — `nowpayments` may be a warning before the vau
 
 | Document | Description |
 |----------|-------------|
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | **Complete user guide** (Arabic + English) — all modules |
 | [docs/TECHNICAL_STATUS.md](docs/TECHNICAL_STATUS.md) | **Authoritative current-state report** — architecture, isolation, security, finance, CI, deployment |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment guide (Render + local dev) |
 | [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Migration chain & golden rules |
 | [CHANGELOG.md](CHANGELOG.md) | Version history & current-state notes |
 | [.env.example](.env.example) | Environment variables reference |
 
-> Older per-topic audit reports and unused user guides were consolidated into
-> `docs/TECHNICAL_STATUS.md` or removed (2026-11-18).
+> `FULL_USER_GUIDE.md` and `OWNER_USER_GUIDE.md` at the repo root are the
+> machine-readable guides consumed by the AI assistant (`ai_knowledge/guide_loader.py`);
+> the human-facing guide is `docs/USER_GUIDE.md`. Older per-topic audit reports were
+> consolidated into `docs/TECHNICAL_STATUS.md` (2026-11-18).
 
 ### Key Directories
 

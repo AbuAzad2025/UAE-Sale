@@ -943,7 +943,7 @@ class RecurringExpenseService:
             expense = Expense(
                 expense_number=generate_number("EXP", Expense, "expense_number"),
                 category_id=re.category_id,
-                description=f"[????] {re.name}",
+                description=f"[دوري] {re.name}",
                 amount=_amount,
                 currency=_currency,
                 exchange_rate=_rate,

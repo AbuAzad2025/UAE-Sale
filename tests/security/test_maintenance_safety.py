@@ -158,6 +158,9 @@ def test_disabled_feature_denies_reads_and_writes(client, db, maintenance_env):
     response = client.get("/maintenance/")
     assert response.status_code == 403, response.location
     assert client.post("/maintenance/create", data={}).status_code == 403
+    # Count across all tenants: clear the request's tenant scope, which
+    # correctly filters queries to the signed-in tenant.
+    clear_current_tenant_id()
     assert MaintenanceOrder.query.count() == 2
 
 
@@ -208,7 +211,10 @@ def test_reception_lists_only_own_customers_and_rejects_foreign_ids(
         "/maintenance/create", data={"customer_id": env["customers"][1].id}
     )
     assert response.status_code == 200
+    clear_current_tenant_id()
     assert MaintenanceOrder.query.count() == 2
+    # Re-login for the next request-scoped action, then count across tenants.
+    _login(client, env["users"]["reception"])
     response = client.post(
         "/maintenance/create",
         data={
@@ -217,6 +223,7 @@ def test_reception_lists_only_own_customers_and_rejects_foreign_ids(
         },
     )
     assert response.status_code == 200
+    clear_current_tenant_id()
     assert MaintenanceOrder.query.count() == 2
 
 
@@ -292,6 +299,7 @@ def test_intake_rejects_oversized_identifier(client, maintenance_env):
         },
     )
     assert response.status_code == 200
+    clear_current_tenant_id()
     assert MaintenanceOrder.query.count() == 2
 
 
@@ -622,12 +630,14 @@ def test_status_history_is_scoped_and_escapes_notes(client, db, maintenance_env)
         [
             MaintenanceOrderStatusLog(
                 maintenance_order_id=order_a.id,
+                tenant_id=env["tenants"][0].id,
                 to_status="ready",
                 changed_by=env["users"]["other"].id,
                 note="<script>own history</script>",
             ),
             MaintenanceOrderStatusLog(
                 maintenance_order_id=order_b.id,
+                tenant_id=env["tenants"][1].id,
                 to_status="ready",
                 changed_by=env["users"]["other"].id,
                 note="FOREIGN-HISTORY-SECRET",
@@ -675,6 +685,7 @@ def test_receipt_printing_selects_only_receipts_of_the_order(
         [
             MaintenanceReceipt(
                 maintenance_order_id=order_a.id,
+                tenant_id=env["tenants"][0].id,
                 receipt_no="TEST-RECEIPT-A1",
                 amount=10,
                 payment_method="cash",
@@ -682,6 +693,7 @@ def test_receipt_printing_selects_only_receipts_of_the_order(
             ),
             MaintenanceReceipt(
                 maintenance_order_id=order_a.id,
+                tenant_id=env["tenants"][0].id,
                 receipt_no="TEST-RECEIPT-A2",
                 amount=20,
                 payment_method="cash",
@@ -689,6 +701,7 @@ def test_receipt_printing_selects_only_receipts_of_the_order(
             ),
             MaintenanceReceipt(
                 maintenance_order_id=order_b.id,
+                tenant_id=env["tenants"][1].id,
                 receipt_no="TEST-RECEIPT-B",
                 amount=30,
                 payment_method="cash",
@@ -731,13 +744,16 @@ def test_legacy_cross_tenant_product_is_not_disclosed(client, db, maintenance_en
         [
             MaintenanceOrderItem(
                 maintenance_order_id=order.id,
+                tenant_id=env["tenants"][0].id,
                 product_id=product.id,
                 quantity=1,
                 unit_price=10,
                 line_total=10,
             ),
             MaintenanceInvoice(
-                maintenance_order_id=order.id, invoice_no="LEGACY-TEST-INVOICE"
+                maintenance_order_id=order.id,
+                tenant_id=env["tenants"][0].id,
+                invoice_no="LEGACY-TEST-INVOICE",
             ),
         ]
     )

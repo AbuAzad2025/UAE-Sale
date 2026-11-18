@@ -134,9 +134,20 @@ def setup_enhanced_logging(app):
         ):
             app.logger.removeHandler(handler)
 
+    # Keep secrets out of the console stream. The root logger is no longer
+    # configured here (pytest owns it), so the app logger must carry the
+    # redaction filter itself.
+    try:
+        from utils.log_sanitizer import SanitizeFilter
+        _sanitize = SanitizeFilter()
+    except Exception:
+        _sanitize = None
+
     console_handler = _CurrentStreamHandler("stdout")
     console_handler.setLevel(logging.DEBUG if app.debug else logging.INFO)
     console_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    if _sanitize:
+        console_handler.addFilter(_sanitize)
     app.logger.addHandler(console_handler)
 
     werkzeug_logger = logging.getLogger("werkzeug")

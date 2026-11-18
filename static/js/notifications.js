@@ -213,9 +213,9 @@ class NotificationManager {
 
         // Icon
         const icons = {
-            success: '✓',
-            error: '✕',
-            warning: '⚠',
+            success: '',
+            error: '',
+            warning: '',
             info: 'ℹ'
         };
 

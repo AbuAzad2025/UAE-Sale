@@ -73,7 +73,7 @@
         <h2 class="mb-3">
           <i class="fas fa-truck mr-2"></i>{{ supplier.name }}
           {% if supplier.is_verified %}
-            <span class="badge badge-success">✓ موثوق</span>
+            <span class="badge badge-success"> موثوق</span>
           {% endif %}
         </h2>
         {% if supplier.company_name %}
@@ -214,7 +214,7 @@
             {% set is_cheque = (p.payment_method == 'cheque') %}
             {% set method_display = (p.get_method_display('ar') if p.get_method_display else p.payment_method) %}
             {% set status_badge = ('badge-success' if p.payment_confirmed else 'badge-warning') %}
-            {% set status_text = ('مؤكدة ✅' if p.payment_confirmed else 'معلقة ⏳') %}
+            {% set status_text = ('مؤكدة ' if p.payment_confirmed else 'معلقة ⏳') %}
             {% set due_date = (p.cheque.due_date if p.cheque else p.cheque_date) %}
             {% set clearance_date = (p.cheque.clearance_date if p.cheque else None) %}
             <tr>

@@ -463,14 +463,14 @@ $(document).ready(function() {
     
     if (!name) {
       e.preventDefault();
-      toastr.error('❌ يجب إدخال اسم المورد');
+      toastr.error(' يجب إدخال اسم المورد');
       $('input[name="name"]').focus();
       return false;
     }
     
     if (!phone) {
       e.preventDefault();
-      toastr.error('❌ يجب إدخال رقم الهاتف');
+      toastr.error(' يجب إدخال رقم الهاتف');
       $('input[name="phone"]').focus();
       return false;
     }

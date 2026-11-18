@@ -224,8 +224,8 @@
           <div class="company-name">{{ settings.company_name_ar or '' }}</div>
           <div class="company-details">
             {{ settings.address_ar or '' }}<br>
-            📞 {{ settings.phone_1 or '' }} | 📧 {{ settings.email or '' }}<br>
-            {% if settings and settings.website and settings.website != 'None' %}🌐 {{ settings.website }}{% endif %}
+             {{ settings.phone_1 or '' }} |  {{ settings.email or '' }}<br>
+            {% if settings and settings.website and settings.website != 'None' %} {{ settings.website }}{% endif %}
           </div>
         </div>
         <div class="receipt-info-right">
@@ -268,11 +268,11 @@
         <div style="margin-bottom: 10px;">
           <span style="font-size: 8px; color: #7f8c8d;">طريقة الدفع:</span>
           <span class="payment-method-badge">
-            {% if receipt.payment_method == 'cash' %}💵 نقدي
-            {% elif receipt.payment_method == 'card' %}💳 بطاقة
-            {% elif receipt.payment_method == 'bank_transfer' %}🏦 تحويل
-            {% elif receipt.payment_method == 'cheque' %}📝 شيك
-            {% else %}💰 محفظة{% endif %}
+            {% if receipt.payment_method == 'cash' %} نقدي
+            {% elif receipt.payment_method == 'card' %} بطاقة
+            {% elif receipt.payment_method == 'bank_transfer' %} تحويل
+            {% elif receipt.payment_method == 'cheque' %} شيك
+            {% else %} محفظة{% endif %}
           </span>
         </div>
 
@@ -303,7 +303,7 @@
       {% if source_info %}
       <div class="allocations-list">
         <div style="font-size: 9px; font-weight: 700; color: #1565c0; margin-bottom: 8px;">
-          📋 تفاصيل الفاتورة
+           تفاصيل الفاتورة
         </div>
         <div class="allocation-item">
           <div>
@@ -320,7 +320,7 @@
 
       {% if receipt.notes %}
       <div class="notes-box">
-        <div class="notes-title">📝 ملاحظات وسبب الدفع</div>
+        <div class="notes-title"> ملاحظات وسبب الدفع</div>
         <div class="notes-text">{{ receipt.notes }}</div>
       </div>
       {% endif %}
@@ -341,7 +341,7 @@
       
       {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
       <div style="margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 3px solid {{ settings.header_color or '#2c3e50' }};">
-        <div style="font-weight: 700; font-size: 8px; margin-bottom: 5px; color: {{ settings.header_color or '#2c3e50' }};">🏦 Bank Details</div>
+        <div style="font-weight: 700; font-size: 8px; margin-bottom: 5px; color: {{ settings.header_color or '#2c3e50' }};"> Bank Details</div>
         <div style="font-size: 8px; line-height: 1.5; color: #555;">
           {% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% if settings.iban and settings.iban != 'None' %} • {% endif %}{% endif %}
           {% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}
@@ -362,12 +362,12 @@
       
       {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
       <div style="background: #fff3cd; border-left: 2px solid #ffc107; padding: 6px; margin-bottom: 10px; border-radius: 3px;">
-        <div style="font-size: 9px; color: #856404;">💬 {{ settings.default_receipt_note_ar }}</div>
+        <div style="font-size: 9px; color: #856404;"> {{ settings.default_receipt_note_ar }}</div>
       </div>
       {% endif %}
       
       <div>{{ settings.footer_text_ar if settings and settings.footer_text_ar else 'شكراً لثقتكم' }}</div>
-      {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px;">🌐 {{ settings.website }}</div>{% endif %}
+      {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px;"> {{ settings.website }}</div>{% endif %}
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}

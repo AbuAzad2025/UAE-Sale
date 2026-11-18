@@ -512,7 +512,7 @@ window.initAutoSave = function() {
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(() => {
                 sessionStorage.setItem('autosave_' + $form.attr('id'), $form.serialize());
-                if (window.Swal) Swal.fire({toast:true, position:'top-end', icon:'success', title:'💾 محفوظ', timer:1000, showConfirmButton:false});
+                if (window.Swal) Swal.fire({toast:true, position:'top-end', icon:'success', title:' محفوظ', timer:1000, showConfirmButton:false});
             }, 30000);
         });
     });

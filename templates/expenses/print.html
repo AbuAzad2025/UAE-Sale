@@ -89,27 +89,27 @@
       <div class="company-name">{{ settings.company_name_ar or '' }}</div>
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
-        <div>📞 {{ settings.phone_1 or '' }}{% if settings.email %} | 📧 {{ settings.email }}{% endif %}{% if settings.website %} | 🌐 {{ settings.website }}{% endif %}</div>
+        <div> {{ settings.phone_1 or '' }}{% if settings.email %} |  {{ settings.email }}{% endif %}{% if settings.website %} |  {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 
     <div class="expense-title">
-      <h2>💰 سند مصروف</h2>
+      <h2> سند مصروف</h2>
       <div class="expense-number">{{ expense.expense_number }}</div>
     </div>
 
     <div class="content">
       <div class="info-grid">
         <div class="info-box">
-          <h3>📋 تفاصيل المصروف</h3>
+          <h3> تفاصيل المصروف</h3>
           <p><strong>التاريخ:</strong> {{ expense.expense_date.strftime('%Y-%m-%d') if expense.expense_date else '' }}</p>
           <p><strong>الفئة:</strong> {{ expense.category.name if expense.category else 'غير محدد' }}</p>
           <p><strong>الوصف:</strong> {{ expense.description }}</p>
           {% if expense.description_ar %}<p><strong>الوصف بالعربية:</strong> {{ expense.description_ar }}</p>{% endif %}
         </div>
         <div class="info-box">
-          <h3>💰 المبالغ</h3>
+          <h3> المبالغ</h3>
           <p><strong>المبلغ:</strong> {{ "%.2f"|format(expense.amount) }} {{ expense.currency }}</p>
           <p><strong>سعر الصرف:</strong> {{ "%.6f"|format(expense.exchange_rate) }}</p>
           {% if expense.tax_amount and expense.tax_amount > 0 %}<p><strong>الضريبة ({{ '%g'|format(expense.tax_rate) }}% — {{ expense.tax_treatment }}):</strong> {{ "%.2f"|format(expense.tax_amount) }} {{ expense.currency }}</p>{% endif %}
@@ -134,17 +134,17 @@
       </div>
 
       <div class="payment-method">
-        <h4>💳 طريقة الدفع</h4>
+        <h4> طريقة الدفع</h4>
         <div style="font-size: 8px; font-weight: 700; color: #4c1d95;">
-          {% if expense.payment_method == 'cash' %}💵 نقدي
-          {% elif expense.payment_method == 'card' %}💳 بطاقة ائتمانية
-          {% elif expense.payment_method == 'bank_transfer' %}🏦 تحويل بنكي
-          {% elif expense.payment_method == 'cheque' %}📝 شيك بنكي
-          {% else %}💰 محفظة إلكترونية{% endif %}
+          {% if expense.payment_method == 'cash' %} نقدي
+          {% elif expense.payment_method == 'card' %} بطاقة ائتمانية
+          {% elif expense.payment_method == 'bank_transfer' %} تحويل بنكي
+          {% elif expense.payment_method == 'cheque' %} شيك بنكي
+          {% else %} محفظة إلكترونية{% endif %}
         </div>
         {% if expense.payment_method == 'cheque' and expense.cheque_number %}
         <div class="cheque-box">
-          <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 9px;">📝 معلومات الشيك</div>
+          <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 9px;"> معلومات الشيك</div>
           <div class="cheque-grid">
             <div class="cheque-item"><label>رقم الشيك</label><value>{{ expense.cheque_number }}</value></div>
             <div class="cheque-item"><label>تاريخ الشيك</label><value>{{ expense.cheque_date.strftime('%Y-%m-%d') if expense.cheque_date else '-' }}</value></div>
@@ -158,13 +158,13 @@
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
         <div class="info-box">
-          <h3>📋 معلومات إضافية</h3>
+          <h3> معلومات إضافية</h3>
           <p><strong>اسم المورد/الجهة:</strong> {{ expense.supplier_name or '-' }}</p>
           <p><strong>رقم المرجع:</strong> {{ expense.reference_number or '-' }}</p>
           <p><strong>رقم الشيك:</strong> {{ expense.cheque_number or '-' }}</p>
         </div>
         <div class="info-box">
-          <h3>🏦 تفاصيل البنك</h3>
+          <h3> تفاصيل البنك</h3>
           <p><strong>اسم البنك:</strong> {{ expense.bank_name or '-' }}</p>
           <p><strong>تاريخ الشيك:</strong> {{ expense.cheque_date.strftime('%Y-%m-%d') if expense.cheque_date else '-' }}</p>
           <p><strong>المستخدم:</strong> {{ expense.user.username if expense.user else 'غير محدد' }}</p>
@@ -173,7 +173,7 @@
 
       {% if expense.notes %}
       <div class="notes-section">
-        <h4>📝 ملاحظات</h4>
+        <h4> ملاحظات</h4>
         <p class="notes">{{ expense.notes }}</p>
       </div>
       {% endif %}

@@ -7,7 +7,7 @@
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap">
     <h3 class="mb-0">
       <i class="fas fa-list mr-2"></i>{{ meta.title_ar }}
-      {% if meta.locked_codes %}<span class="badge badge-secondary">🔒 مقفلة منطقياً (التسميات فقط)</span>{% endif %}
+      {% if meta.locked_codes %}<span class="badge badge-secondary"> مقفلة منطقياً (التسميات فقط)</span>{% endif %}
     </h3>
     <a href="{{ url_for('owner.constants_index') }}" class="btn btn-secondary btn-sm">رجوع للمجموعات</a>
   </div>
@@ -55,7 +55,7 @@
           <td dir="ltr" class="text-left">{{ r.en }}</td>
           <td>
             {% if r.custom %}<span class="badge badge-info">مضافة</span>
-            {% elif r.locked %}<span class="badge badge-secondary">🔒 نظام</span>
+            {% elif r.locked %}<span class="badge badge-secondary"> نظام</span>
             {% else %}<span class="badge badge-primary">نظام</span>{% endif %}
           </td>
           <td>{% if r.disabled %}<span class="badge badge-warning">مخفية</span>{% else %}<span class="badge badge-success">ظاهرة</span>{% endif %}</td>

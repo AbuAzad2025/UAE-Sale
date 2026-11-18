@@ -48,7 +48,7 @@
       position: relative;
     }
     .header::before {
-      content: '☪';
+      content: '';
       position: absolute;
       top: 15px;
       right: 25px;
@@ -126,7 +126,7 @@
       position: relative;
     }
     .amount-showcase::before {
-      content: '☪';
+      content: '';
       position: absolute;
       top: 50%;
       left: 20px;
@@ -135,7 +135,7 @@
       opacity: 0.1;
     }
     .amount-showcase::after {
-      content: '☪';
+      content: '';
       position: absolute;
       top: 50%;
       right: 20px;
@@ -311,7 +311,7 @@
 <body class="receipt-print gulf-receipt">
   <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
     <button onclick="window.print()" style="background: linear-gradient(135deg, #c9a961 0%, #8b7355 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 9px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-      🖨️ طباعة السند
+       طباعة السند
     </button>
   </div>
 
@@ -323,27 +323,27 @@
       <div class="company-name">{{ settings.company_name_ar or '' }}</div>
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
-        <div>📞 {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-        <div>📧 {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}| 🌐 {{ settings.website }}{% endif %}</div>
+        <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
+        <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 
     <div class="receipt-banner">
-      <h2>☪ سند قبض ☪</h2>
+      <h2> سند قبض </h2>
       <div class="receipt-number-display">{{ receipt.receipt_number }}</div>
     </div>
 
     <div class="content">
       <div class="info-cards">
         <div class="info-card">
-          <h3>🏢 معلومات العميل</h3>
+          <h3> معلومات العميل</h3>
           <p><strong>الاسم:</strong> {{ receipt.customer.name }}</p>
           {% if receipt.customer.phone %}<p><strong>الهاتف:</strong> {{ receipt.customer.phone }}</p>{% endif %}
           {% if receipt.customer.email %}<p><strong>البريد:</strong> {{ receipt.customer.email }}</p>{% endif %}
         </div>
         <div class="info-card">
-          <h3>📅 معلومات السند</h3>
+          <h3> معلومات السند</h3>
           <p><strong>التاريخ:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d') }}</p>
           <p><strong>الوقت:</strong> {{ receipt.receipt_date.strftime('%H:%M') }}</p>
           <p><strong>المحصل:</strong> {{ receipt.user.full_name if receipt.user else 'النظام' }}</p>
@@ -366,18 +366,18 @@
       </div>
 
       <div class="payment-section">
-        <h4>💳 طريقة الدفع</h4>
+        <h4> طريقة الدفع</h4>
         <div class="payment-type">
-          {% if receipt.payment_method == 'cash' %}💵 دفع نقدي
-          {% elif receipt.payment_method == 'card' %}💳 بطاقة ائتمانية
-          {% elif receipt.payment_method == 'bank_transfer' %}🏦 تحويل بنكي
-          {% elif receipt.payment_method == 'cheque' %}📝 شيك بنكي
-          {% else %}💰 محفظة إلكترونية{% endif %}
+          {% if receipt.payment_method == 'cash' %} دفع نقدي
+          {% elif receipt.payment_method == 'card' %} بطاقة ائتمانية
+          {% elif receipt.payment_method == 'bank_transfer' %} تحويل بنكي
+          {% elif receipt.payment_method == 'cheque' %} شيك بنكي
+          {% else %} محفظة إلكترونية{% endif %}
         </div>
 
         {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
         <div class="cheque-details-gulf">
-          <div class="cheque-header">📝 تفاصيل الشيك البنكي</div>
+          <div class="cheque-header"> تفاصيل الشيك البنكي</div>
           <div class="cheque-details-grid">
             <div class="cheque-detail-box">
               <div class="cheque-detail-label">رقم الشيك</div>
@@ -403,7 +403,7 @@
       {% set source_info = receipt.get_source_info() %}
       {% if source_info %}
       <div class="allocations-gulf">
-        <h4>📋 تفاصيل الفاتورة</h4>
+        <h4> تفاصيل الفاتورة</h4>
         <div class="allocation-card">
           <div>
             <strong style="color: #0d47a1; font-size: 9px;">{{ source_info.number }}</strong>
@@ -419,7 +419,7 @@
 
       {% if receipt.notes %}
       <div class="notes-gulf">
-        <h4>📝 ملاحظات وسبب الدفع</h4>
+        <h4> ملاحظات وسبب الدفع</h4>
         <p>{{ receipt.notes }}</p>
       </div>
       {% endif %}
@@ -440,7 +440,7 @@
       
       {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
       <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);">
-        <div style="font-weight: 700; font-size: 9px; margin-bottom: 8px; text-align: center;">🏦 معلومات التحويل البنكي</div>
+        <div style="font-weight: 700; font-size: 9px; margin-bottom: 8px; text-align: center;"> معلومات التحويل البنكي</div>
         <div style="font-size: 8px; line-height: 1.8; text-align: center;">
           {% if settings.bank_name and settings.bank_name != 'None' %}<div><strong>البنك:</strong> {{ settings.bank_name }}</div>{% endif %}
           {% if settings.iban and settings.iban != 'None' %}<div><strong>IBAN:</strong> {{ settings.iban }}</div>{% endif %}
@@ -453,7 +453,7 @@
       {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
       <div style="font-size: 9px; opacity: 0.8; margin-bottom: 10px; text-align: center;">
         {% if settings.commercial_register and settings.commercial_register != 'None' %}<span>السجل التجاري: {{ settings.commercial_register }}</span>{% endif %}
-        {% if settings.commercial_register and settings.license_number %} ☪ {% endif %}
+        {% if settings.commercial_register and settings.license_number %}  {% endif %}
         {% if settings.license_number and settings.license_number != 'None' %}<span>الرخصة: {{ settings.license_number }}</span>{% endif %}
       </div>
       {% endif %}
@@ -461,24 +461,24 @@
       
       {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
       <div style="background: rgba(255,243,205,0.3); border-right: 3px solid #ffc107; padding: 10px; margin-bottom: 12px; border-radius: 5px;">
-        <div style="font-size: 8px;">💬 {{ settings.default_receipt_note_ar }}</div>
+        <div style="font-size: 8px;"> {{ settings.default_receipt_note_ar }}</div>
       </div>
       {% endif %}
       
       <div style="font-size: 9px; margin-bottom: 8px; font-weight: 700;">
         {{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}
       </div>
-      <div style="font-size: 8px;">☪ شكراً لتعاملكم الكريم معنا ☪</div>
+      <div style="font-size: 8px;"> شكراً لتعاملكم الكريم معنا </div>
       {% if settings and settings.website and settings.website != 'None' %}
-      <div style="margin-top: 8px; font-size: 9px;">🌐 {{ settings.website }}</div>
+      <div style="margin-top: 8px; font-size: 9px;"> {{ settings.website }}</div>
       {% endif %}
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
       <div style="margin-top: 10px; font-size: 8px;">
-        {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📘 Facebook</a>{% endif %}
-        {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">📷 Instagram</a>{% endif %}
-        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;">💬 WhatsApp</a>{% endif %}
+        {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Facebook</a>{% endif %}
+        {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Instagram</a>{% endif %}
+        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> WhatsApp</a>{% endif %}
       </div>
       {% endif %}
     </div>
@@ -491,7 +491,7 @@
         </div>
       {% elif settings.watermark_text %}
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
-          ☪ {{ settings.watermark_text }} ☪
+           {{ settings.watermark_text }} 
         </div>
       {% endif %}
     {% endif %}

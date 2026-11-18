@@ -1,11 +1,11 @@
-// 🔥 Checks Module - External JS File v5.0
+
 (function() {
     'use strict';
     
-    console.clear();
-    console.log('%c🔥 CHECKS MODULE v5.0 LOADED (External File)!', 'background: #667eea; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;');
-    console.log('✅ jQuery:', typeof jQuery !== 'undefined' ? 'موجود ✓' : 'غير موجود ✗');
-    console.log('✅ $:', typeof $ !== 'undefined' ? 'موجود ✓' : 'غير موجود ✗');
+    /* diagnostics cleared */
+    if (false) console.log('%c ', 'background: #667eea; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;');
+    if (false) console.log(' jQuery:', typeof jQuery !== 'undefined' ? 'موجود ' : 'غير موجود ');
+    if (false) console.log(' $:', typeof $ !== 'undefined' ? 'موجود ' : 'غير موجود ');
     
     // دوال مساعدة
     window.formatCurrency = function(number) {
@@ -27,7 +27,7 @@
 
     // جلب وتصنيف الشيكات
     window.loadAndCategorizeChecks = function() {
-        console.log('%c🔄 جلب الشيكات...', 'color: #667eea; font-weight: bold;');
+        if (false) console.log('%c جلب الشيكات...', 'color: #667eea; font-weight: bold;');
         
         $.ajax({
             url: '/cheques/api/stats',
@@ -37,12 +37,12 @@
                 withCredentials: true
             },
             success: function(response) {
-                console.log('%c✅ تم استلام الرد!', 'color: green; font-weight: bold;');
-                console.log('Response:', response);
+                if (false) console.log('%c تم استلام الرد!', 'color: green; font-weight: bold;');
+                if (false) console.log('Response:', response);
                 
                 if (response.success && response.checks) {
                     const checks = response.checks;
-                    console.log('%c📊 عدد الشيكات: ' + checks.length, 'color: blue; font-weight: bold;');
+                    if (false) console.log('%c عدد الشيكات: ' + checks.length, 'color: blue; font-weight: bold;');
                     
                     // تصنيف
                     const categorized = {
@@ -90,7 +90,7 @@
                         }
                     });
                     
-                    console.log('📊 التصنيف:', {
+                    if (false) console.log(' التصنيف:', {
                         pending: categorized.pending.length,
                         overdue: categorized.overdue.length,
                         cashed: categorized.cashed.length,
@@ -109,7 +109,7 @@
                     $('#badge-all').text(checks.length);
                     
                     // ملء الجداول
-                    console.log('%c📋 ملء الجداول...', 'color: purple; font-weight: bold;');
+                    if (false) console.log('%c ملء الجداول...', 'color: purple; font-weight: bold;');
                     
                     fillTable('pending', categorized.pending);
                     fillTable('overdue', categorized.overdue);
@@ -119,9 +119,9 @@
                     fillTable('archived', categorized.archived);
                     fillTable('all', checks);
                     
-                    // 🔥 فرض إظهار .tab-content والجداول (الحل النهائي!)
+                    //  فرض إظهار .tab-content والجداول (الحل النهائي!)
                     setTimeout(function() {
-                        console.log('🔥 فرض إظهار .tab-content والجداول...');
+                        if (false) console.log(' فرض إظهار .tab-content والجداول...');
                         
                         // فرض إظهار جميع .tab-content بـ !important
                         document.querySelectorAll('.tab-content').forEach(function(el) {
@@ -136,20 +136,20 @@
                             table.style.setProperty('visibility', 'visible', 'important');
                         });
                         
-                        console.log('✅ تم فرض إظهار .tab-content وجميع الجداول');
+                        if (false) console.log(' تم فرض إظهار .tab-content وجميع الجداول');
                         
                     }, 250);
                     
                     // تحديث الإحصائيات
                     updateStats(categorized);
                     
-                    console.log('%c✅ تم عرض جميع الشيكات!', 'color: green; font-weight: bold; font-size: 14px;');
+                    if (false) console.log('%c تم عرض جميع الشيكات!', 'color: green; font-weight: bold; font-size: 14px;');
                 } else {
-                    console.error('❌ Response لا يحتوي على checks!');
+                    console.error(' Response لا يحتوي على checks!');
                 }
             },
             error: function(xhr, status, error) {
-                console.error('%c❌ فشل جلب الشيكات!', 'color: red; font-weight: bold;');
+                console.error('%c فشل جلب الشيكات!', 'color: red; font-weight: bold;');
                 console.error('Status:', xhr.status, 'Error:', error);
             }
         });
@@ -160,11 +160,11 @@
         const tbody = document.querySelector('#table-' + tableId + ' tbody');
         
         if (!tbody) {
-            console.error('❌ الجدول غير موجود: table-' + tableId);
+            console.error(' الجدول غير موجود: table-' + tableId);
             return;
         }
         
-        console.log('📋 ملء جدول ' + tableId + ' بـ ' + checks.length + ' شيك');
+        if (false) console.log(' ملء جدول ' + tableId + ' بـ ' + checks.length + ' شيك');
         
         if (checks.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" class="text-center"><div class="empty-state"><i class="fas fa-inbox"></i><p>لا توجد شيكات</p></div></td></tr>';
@@ -236,12 +236,12 @@
         // استخدام insertAdjacentHTML لضمان العرض حتى في التبويبات المخفية
         tbody.insertAdjacentHTML('beforeend', allRows);
         
-        console.log('✅ تم إضافة ' + checks.length + ' صف لجدول ' + tableId + ' (عدد الصفوف الفعلي: ' + tbody.querySelectorAll('tr').length + ')');
+        if (false) console.log(' تم إضافة ' + checks.length + ' صف لجدول ' + tableId + ' (عدد الصفوف الفعلي: ' + tbody.querySelectorAll('tr').length + ')');
     };
     
     // تحديث الإحصائيات
     window.updateStats = function(categorized) {
-        console.log('📊 تحديث إحصائيات الكاردات...');
+        if (false) console.log(' تحديث إحصائيات الكاردات...');
         
         const calcTotal = function(arr) {
             return arr.reduce(function(sum, c) { return sum + (parseFloat(c.amount) || 0); }, 0);
@@ -259,32 +259,32 @@
         $('#stat-overdue-count').text(categorized.overdue.length);
         $('#stat-overdue-amount').text(formatCurrency(calcTotal(categorized.overdue)) + ' ' + (window.BASE_CURRENCY || 'ILS'));
         
-        console.log('✅ تم تحديث الإحصائيات!');
+        if (false) console.log(' تم تحديث الإحصائيات!');
     };
     
     // تحميل الإحصائيات
     window.loadStatistics = function() {
-        console.log('📊 جلب إحصائيات API...');
+        if (false) console.log(' جلب إحصائيات API...');
         $.get('/cheques/api/stats', function(response) {
             if (response.success) {
-                console.log('✅ إحصائيات API:', response.statistics);
+                if (false) console.log(' إحصائيات API:', response.statistics);
             }
         });
     };
     
     // تحميل التنبيهات
     window.loadAlerts = function() {
-        console.log('📢 جلب التنبيهات...');
+        if (false) console.log(' جلب التنبيهات...');
         $.get('/cheques/api/alerts', function(response) {
             if (response.success) {
-                console.log('✅ التنبيهات:', response.alerts ? response.alerts.length : 0);
+                if (false) console.log(' التنبيهات:', response.alerts ? response.alerts.length : 0);
             }
         });
     };
     
     // تحديث الكل
     window.refreshAll = function() {
-        console.log('%c🔄 تحديث جميع البيانات...', 'color: orange; font-weight: bold;');
+        if (false) console.log('%c تحديث جميع البيانات...', 'color: orange; font-weight: bold;');
         loadAndCategorizeChecks();
         loadStatistics();
         loadAlerts();
@@ -292,7 +292,7 @@
     
     // عرض تفاصيل الشيك
     window.viewCheckDetails = function(checkId) {
-        console.log('👁️ عرض تفاصيل الشيك:', checkId);
+        if (false) console.log(' عرض تفاصيل الشيك:', checkId);
         
         // استدعاء API للحصول على التفاصيل  
         $.get('/cheques/api/stats', function(response) {
@@ -374,7 +374,7 @@
     
     // تحديث حالة الشيك إلى مسحوب
     window.markAsCashed = function(checkId) {
-        console.log('💰 تحديث الشيك إلى مسحوب:', checkId);
+        if (false) console.log(' تحديث الشيك إلى مسحوب:', checkId);
         
         Swal.fire({
             title: 'تأكيد السحب',
@@ -422,31 +422,31 @@
     
     // تحديث حالة الشيك إلى مرتجع
     window.markAsReturned = function(checkId) {
-        console.log('↩️ تحديث الشيك إلى مرتجع:', checkId);
+        if (false) console.log(' تحديث الشيك إلى مرتجع:', checkId);
         updateCheckStatus(checkId, 'RETURNED', 'تم إرجاع الشيك من البنك');
     };
     
     // تحديث حالة الشيك إلى ملغي
     window.markAsCancelled = function(checkId) {
-        console.log('⛔ تحديث الشيك إلى ملغي:', checkId);
+        if (false) console.log(' تحديث الشيك إلى ملغي:', checkId);
         updateCheckStatus(checkId, 'CANCELLED', 'تم إلغاء الشيك');
     };
     
     // إعادة تقديم الشيك للبنك (للشيكات المرتجعة)
     window.resubmitCheck = function(checkId) {
-        console.log('🔁 إعادة تقديم الشيك للبنك:', checkId);
+        if (false) console.log(' إعادة تقديم الشيك للبنك:', checkId);
         updateCheckStatus(checkId, 'RESUBMITTED', 'تم إعادة تقديم الشيك للبنك');
     };
     
     // أرشفة الشيك
     window.archiveCheck = function(checkId) {
-        console.log('📦 أرشفة الشيك:', checkId);
+        if (false) console.log(' أرشفة الشيك:', checkId);
         updateCheckStatus(checkId, 'ARCHIVED', 'تم أرشفة الشيك');
     };
     
     // استعادة الشيك من الأرشيف
     window.restoreCheck = function(checkId) {
-        console.log('♻️ استعادة الشيك:', checkId);
+        if (false) console.log(' استعادة الشيك:', checkId);
         updateCheckStatus(checkId, 'PENDING', 'تم استعادة الشيك من الأرشيف');
     };
     
@@ -454,45 +454,45 @@
     function updateCheckStatus(checkId, newStatus, message) {
         const statusInfo = {
             'CASHED': {
-                title: '✅ تأكيد سحب الشيك', 
+                title: ' تأكيد سحب الشيك', 
                 text: 'هل تم صرف هذا الشيك من البنك فعلاً؟\n\nسيتم تسجيل قيد محاسبي تلقائي:\n• مدين: البنك\n• دائن: شيكات تحت التحصيل', 
                 icon: 'question', 
-                confirmText: '✅ نعم، تم السحب', 
+                confirmText: ' نعم، تم السحب', 
                 successText: 'تم تحديث حالة الشيك إلى "مسحوب" بنجاح!\n\nتم تسجيل القيد المحاسبي في دفتر الأستاذ.'
             },
             'RETURNED': {
-                title: '⚠️ تأكيد إرجاع الشيك', 
+                title: ' تأكيد إرجاع الشيك', 
                 text: 'هل تم إرجاع هذا الشيك من البنك؟\n\nسيتم تسجيل قيد محاسبي عكسي:\n• مدين: العملاء/الموردين\n• دائن: شيكات تحت التحصيل/الدفع', 
                 icon: 'warning', 
-                confirmText: '🔄 نعم، تم الإرجاع', 
+                confirmText: ' نعم، تم الإرجاع', 
                 successText: 'تم تحديث حالة الشيك إلى "مرتجع" بنجاح!\n\nتم تسجيل القيد العكسي في دفتر الأستاذ.'
             },
             'CANCELLED': {
-                title: '⛔ تأكيد إلغاء/إتلاف الشيك', 
+                title: ' تأكيد إلغاء/إتلاف الشيك', 
                 text: 'هل تريد إلغاء أو إتلاف هذا الشيك نهائياً؟\n\nسيتم:\n• عكس القيد المحاسبي\n• إرجاع الدين للجهة\n• نقل الشيك لتبويب "ملغاة/تالفة"', 
                 icon: 'warning', 
-                confirmText: '⛔ نعم، إلغاء/إتلاف', 
+                confirmText: ' نعم، إلغاء/إتلاف', 
                 successText: 'تم إلغاء الشيك بنجاح!\n\nتم عكس القيد المحاسبي وإرجاع الدين.'
             },
             'RESUBMITTED': {
-                title: '🔁 إعادة تقديم الشيك للبنك', 
+                title: ' إعادة تقديم الشيك للبنك', 
                 text: 'هل تريد إعادة تقديم هذا الشيك للبنك مرة أخرى؟\n\nسيعود الشيك إلى حالة "معلق".', 
                 icon: 'info', 
-                confirmText: '🔁 نعم، إعادة تقديم', 
+                confirmText: ' نعم، إعادة تقديم', 
                 successText: 'تم إعادة الشيك للبنك بنجاح!\n\nأصبح الشيك في حالة "معلق" الآن.'
             },
             'ARCHIVED': {
-                title: '📦 أرشفة الشيك', 
+                title: ' أرشفة الشيك', 
                 text: 'هل تريد نقل هذا الشيك إلى الأرشيف؟\n\nيمكنك استعادته لاحقاً.', 
                 icon: 'info', 
-                confirmText: '📦 نعم، أرشفة', 
+                confirmText: ' نعم، أرشفة', 
                 successText: 'تم أرشفة الشيك بنجاح!'
             },
             'PENDING': {
-                title: '♻️ استعادة الشيك', 
+                title: ' استعادة الشيك', 
                 text: 'هل تريد استعادة هذا الشيك من الأرشيف؟\n\nسيعود إلى حالة "معلق".', 
                 icon: 'info', 
-                confirmText: '♻️ نعم، استعادة', 
+                confirmText: ' نعم، استعادة', 
                 successText: 'تم استعادة الشيك من الأرشيف بنجاح!'
             }
         };
@@ -545,11 +545,11 @@
     
     // عند تحميل الصفحة
     $(document).ready(function() {
-        console.log('%c🔥 صفحة الشيكات v5.0 جاهزة!', 'background: #28a745; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;');
+        if (false) console.log('%c ', 'background: #28a745; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;');
         
         // تحميل فوري
         setTimeout(function() {
-            console.log('%c📊 بدء التحميل التلقائي...', 'color: #667eea; font-weight: bold; font-size: 12px;');
+            if (false) console.log('%c بدء التحميل التلقائي...', 'color: #667eea; font-weight: bold; font-size: 12px;');
             loadAndCategorizeChecks();
             loadStatistics();
             loadAlerts();
@@ -563,5 +563,5 @@
         }, 60000);
     });
     
-    console.log('%c✅ جميع الدوال محملة ومتاحة!', 'color: green; font-weight: bold;');
+    if (false) console.log('%c جميع الدوال محملة ومتاحة!', 'color: green; font-weight: bold;');
 })();

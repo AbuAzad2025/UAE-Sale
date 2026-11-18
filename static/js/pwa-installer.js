@@ -11,7 +11,7 @@ function showInstallPromotion() {
     const promptDiv = document.createElement('div');
     promptDiv.className = 'pwa-install-prompt show';
     promptDiv.innerHTML = `
-        <h5 style="margin-bottom: 10px;">📱 ثبّت التطبيق</h5>
+        <h5 style="margin-bottom: 10px;"> ثبّت التطبيق</h5>
         <p style="margin-bottom: 15px; font-size: 14px;">
             ثبّت UAE-Sale على جهازك للوصول الأسرع
         </p>

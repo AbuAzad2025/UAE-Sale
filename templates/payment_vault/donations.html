@@ -158,11 +158,11 @@
                                     </td>
                                     <td>
                                         {% if donation.status == 'completed' %}
-                                            <span class="badge badge-success">✓ مكتملة</span>
+                                            <span class="badge badge-success"> مكتملة</span>
                                         {% elif donation.status == 'pending' %}
                                             <span class="badge badge-warning">⏳ قيد الانتظار</span>
                                         {% elif donation.status == 'failed' %}
-                                            <span class="badge badge-danger">✗ فاشلة</span>
+                                            <span class="badge badge-danger"> فاشلة</span>
                                         {% else %}
                                             <span class="badge badge-secondary">{{ donation.status }}</span>
                                         {% endif %}

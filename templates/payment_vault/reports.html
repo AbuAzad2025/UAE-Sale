@@ -6,7 +6,7 @@
 <div class="d-flex align-items-center">
     <i class="fas fa-chart-line text-info mr-3" style="font-size: 2rem;"></i>
     <div>
-        <h1 class="mb-0">📊 التقارير المالية</h1>
+        <h1 class="mb-0"> التقارير المالية</h1>
         <p class="text-muted mb-0">تقارير شاملة للمشتريات والتبرعات</p>
     </div>
 </div>
@@ -160,9 +160,9 @@
                                 <td>{{ trans.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td>
                                     {% if trans.transaction_type == 'purchase' %}
-                                        <span class="badge badge-primary">🛒 مشترية</span>
+                                        <span class="badge badge-primary"> مشترية</span>
                                     {% else %}
-                                        <span class="badge badge-danger">💝 تبرع</span>
+                                        <span class="badge badge-danger"> تبرع</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -176,7 +176,7 @@
                                 <td>{{ trans.crypto_type|upper }}</td>
                                 <td>
                                     {% if trans.status == 'completed' %}
-                                        <span class="badge badge-success">✓</span>
+                                        <span class="badge badge-success"></span>
                                     {% else %}
                                         <span class="badge badge-warning">⏳</span>
                                     {% endif %}

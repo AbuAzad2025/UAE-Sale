@@ -1,5 +1,5 @@
 /**
- * 💳 Payment Fields Manager - Dynamic Payment Method Fields
+ *  Payment Fields Manager - Dynamic Payment Method Fields
  * إدارة ديناميكية لحقول طرق الدفع في كل الوحدات
  */
 

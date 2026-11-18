@@ -46,8 +46,8 @@
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
-      <div>📞 {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-      <div>📧 {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}| 🌐 {{ settings.website }}{% endif %}</div>
+      <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
+      <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div>الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
@@ -57,14 +57,14 @@
 
   <div class="info-section">
     <div class="info-box">
-      <h3>🏢 بيانات العميل</h3>
+      <h3> بيانات العميل</h3>
       <p><strong>الاسم:</strong> {{ sale.customer.name }}</p>
       {% if sale.customer.phone %}<p><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>{% endif %}
       {% if sale.customer.email %}<p><strong>البريد:</strong> {{ sale.customer.email }}</p>{% endif %}
       {% if sale.customer.tax_number %}<p><strong>الرقم الضريبي:</strong> {{ sale.customer.tax_number }}</p>{% endif %}
     </div>
     <div class="info-box">
-      <h3>📅 بيانات الفاتورة</h3>
+      <h3> بيانات الفاتورة</h3>
       <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
       <p><strong>الوقت:</strong> {{ sale.sale_date.strftime('%H:%M') }}</p>
       <p><strong>البائع:</strong> {{ sale.seller.full_name or sale.seller.username }}</p>
@@ -131,7 +131,7 @@
 
   {% if sale.payments %}
   <div style="margin-top: 10px; padding-top: 15px; border-top: 1px dashed #999;">
-    <h4 style="font-size: 9px; margin-bottom: 10px; text-align: center; text-decoration: underline;">💰 الدفعات</h4>
+    <h4 style="font-size: 9px; margin-bottom: 10px; text-align: center; text-decoration: underline;"> الدفعات</h4>
     <table style="font-size: 9px;">
       <thead>
         <tr>
@@ -179,7 +179,7 @@
     
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin-top: 12px; padding: 10px; border: 1px solid #333; background: #f9f9f9;">
-      <p style="font-weight: 700; font-size: 8px; margin-bottom: 5px; text-align: center; border-bottom: 1px solid #333; padding-bottom: 3px;">🏦 معلومات التحويل البنكي</p>
+      <p style="font-weight: 700; font-size: 8px; margin-bottom: 5px; text-align: center; border-bottom: 1px solid #333; padding-bottom: 3px;"> معلومات التحويل البنكي</p>
       <div style="font-size: 9px; text-align: center;">
         {% if settings.bank_name and settings.bank_name != 'None' %}<span><strong>البنك:</strong> {{ settings.bank_name }}</span>{% endif %}
         {% if settings.bank_name and settings.iban %} | {% endif %}
@@ -198,11 +198,11 @@
     {% endif %}
     
     {% if settings and settings.default_invoice_note_ar and settings.default_invoice_note_ar != 'None' %}
-    <p style="margin-top: 10px; font-size: 9px; font-style: italic; color: #666; border: 1px dashed #999; padding: 5px;">💬 {{ settings.default_invoice_note_ar }}</p>
+    <p style="margin-top: 10px; font-size: 9px; font-style: italic; color: #666; border: 1px dashed #999; padding: 5px;"> {{ settings.default_invoice_note_ar }}</p>
     {% endif %}
     
     <p style="margin-top: 10px;">شكراً لتعاملكم معنا</p>
-    {% if settings and settings.website and settings.website != 'None' %}<p>🌐 {{ settings.website }}</p>{% endif %}
+    {% if settings and settings.website and settings.website != 'None' %}<p> {{ settings.website }}</p>{% endif %}
     
     {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
     <div style="margin-top: 8px; font-size: 9px;">

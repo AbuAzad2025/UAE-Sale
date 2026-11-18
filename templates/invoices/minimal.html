@@ -74,29 +74,29 @@
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
-      <div>📞 {{ settings.phone_1 or '' }} | 📧 {{ settings.email or '' }}</div>
+      <div> {{ settings.phone_1 or '' }} |  {{ settings.email or '' }}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div>الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
 
   <div class="invoice-title">
-    <h2>🧾 فاتورة بيع</h2>
+    <h2> فاتورة بيع</h2>
     <div class="invoice-number">{{ sale.sale_number }}</div>
   </div>
 
   <div class="content">
     <div class="info-grid">
       <div class="info-box">
-        <h3>🏢 بيانات الزبون</h3>
+        <h3> بيانات الزبون</h3>
         <p><strong>الاسم:</strong> {{ sale.customer.name }}</p>
         <p><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
         <p><strong>العنوان:</strong> {{ sale.customer.address }}</p>
         {% if sale.customer.tax_number %}<p><strong>الرقم الضريبي:</strong> {{ sale.customer.tax_number }}</p>{% endif %}
       </div>
       <div class="info-box">
-        <h3>📅 بيانات الفاتورة</h3>
+        <h3> بيانات الفاتورة</h3>
         <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
-        <p><strong>الحالة:</strong> <span style="color: #28a745">✓ مكتملة</span></p>
+        <p><strong>الحالة:</strong> <span style="color: #28a745"> مكتملة</span></p>
       </div>
     </div>
 
@@ -146,7 +146,7 @@
 
     {% if sale.payments %}
     <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">
-      <h4 style="color: #6c757d; font-size: 9px; margin-bottom: 8px; font-weight: 700;">💰 الدفعات</h4>
+      <h4 style="color: #6c757d; font-size: 9px; margin-bottom: 8px; font-weight: 700;"> الدفعات</h4>
       <table style="font-size: 9px;">
         <thead>
           <tr>
@@ -173,9 +173,9 @@
             <td style="padding: 4px; font-size: 8px;">
               {% if payment.payment_method == 'cheque' and payment.cheque_number %}
                 <div style="background: #fff3cd; padding: 3px 5px; border-radius: 3px; border-right: 2px solid #ffc107;">
-                  📝 {{ payment.cheque_number }}<br>
-                  📅 {{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}<br>
-                  🏦 {{ payment.bank_name or '-' }}
+                   {{ payment.cheque_number }}<br>
+                   {{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}<br>
+                   {{ payment.bank_name or '-' }}
                 </div>
               {% elif payment.reference_number %}
                 {{ payment.reference_number }}
@@ -202,7 +202,7 @@
     
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin-top: 8px; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 5px; border-right: 3px solid #6c757d;">
-      <p style="font-weight: 700; font-size: 9px; color: #495057; margin-bottom: 5px;">🏦 معلومات التحويل البنكي</p>
+      <p style="font-weight: 700; font-size: 9px; color: #495057; margin-bottom: 5px;"> معلومات التحويل البنكي</p>
       {% if settings.bank_name and settings.bank_name != 'None' %}
       <p style="font-size: 9px; margin: 3px 0;"><strong>البنك:</strong> {{ settings.bank_name }}</p>
       {% endif %}
@@ -232,11 +232,11 @@
     
     {% if settings and settings.default_invoice_note_ar and settings.default_invoice_note_ar != 'None' %}
     <div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; border-right: 2px solid #ffc107;">
-      <p style="font-size: 9px; color: #856404; margin: 0;">💬 {{ settings.default_invoice_note_ar }}</p>
+      <p style="font-size: 9px; color: #856404; margin: 0;"> {{ settings.default_invoice_note_ar }}</p>
     </div>
     {% endif %}
     
-    <p style="margin-top: 10px; font-size: 9px;">شكراً لتعاملكم معنا 🌟</p>
+    <p style="margin-top: 10px; font-size: 9px;">شكراً لتعاملكم معنا </p>
     
     {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
     <div style="margin-top: 10px; text-align: center;">

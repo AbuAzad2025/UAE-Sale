@@ -282,19 +282,19 @@
           </div>
           <div style="flex: 1;">
             <strong style="color: #667eea; font-size: 1.1rem;">المساعد الذكي الخارق</strong>
-            <p class="mt-2 mb-0">مرحباً! 👋 أنا أذكى مساعد محاسبي في العالم 🌟</p>
+            <p class="mt-2 mb-0">مرحباً!  أنا أذكى مساعد محاسبي في العالم </p>
             
             <div class="mt-3">
-              <h6 style="color: #667eea;">🧠 قدراتي الخارقة:</h6>
+              <h6 style="color: #667eea;"> قدراتي الخارقة:</h6>
               <ul class="mb-0">
-                <li>📊 <strong>تنبؤ بالمبيعات</strong> - توقع دقيق للإيرادات القادمة</li>
-                <li>💰 <strong>تحليل الربحية</strong> - فهم عميق لهوامش الربح</li>
-                <li>🔍 <strong>كشف الأنماط</strong> - أنماط مخفية في البيانات</li>
-                <li>💵 <strong>توقع التدفق النقدي</strong> - تخطيط مالي استباقي</li>
-                <li>💎 <strong>تسعير ذكي</strong> - أسعار مثالية لكل عميل</li>
-                <li>⚠️ <strong>توقع فقدان العملاء</strong> - احتفظ بعملائك</li>
-                <li>📦 <strong>تحسين المخزون</strong> - مستويات مثالية</li>
-                <li>💡 <strong>رؤى أعمال فورية</strong> - قرارات ذكية</li>
+                <li> <strong>تنبؤ بالمبيعات</strong> - توقع دقيق للإيرادات القادمة</li>
+                <li> <strong>تحليل الربحية</strong> - فهم عميق لهوامش الربح</li>
+                <li> <strong>كشف الأنماط</strong> - أنماط مخفية في البيانات</li>
+                <li> <strong>توقع التدفق النقدي</strong> - تخطيط مالي استباقي</li>
+                <li> <strong>تسعير ذكي</strong> - أسعار مثالية لكل عميل</li>
+                <li> <strong>توقع فقدان العملاء</strong> - احتفظ بعملائك</li>
+                <li> <strong>تحسين المخزون</strong> - مستويات مثالية</li>
+                <li> <strong>رؤى أعمال فورية</strong> - قرارات ذكية</li>
             </ul>
             </div>
             
@@ -308,7 +308,7 @@
             </div>
             
             <div class="alert alert-success mt-3 mb-0">
-              <strong>🎯 أوامر سريعة:</strong>
+              <strong> أوامر سريعة:</strong>
               <br>• <strong>تعديل رصيد:</strong> "رصيد: أحمد محمد، 500 درهم"
               <br>• <strong>استلام دفعة:</strong> "استلام: أحمد محمد، 200 درهم، نقد"
               <br>• <strong>إعطاء دفعة:</strong> "إعطاء: أحمد محمد، 100 درهم، استرداد"
@@ -317,10 +317,10 @@
             </div>
             
             <div class="alert alert-warning mt-3 mb-0">
-              <strong>💡 نصيحة ذكية:</strong>
+              <strong> نصيحة ذكية:</strong>
               <br>• اكتب كلمة واحدة مثل "رصيد" أو "عميل" وسأعطيك الخيارات!
               <br>• أو اكتب الطلب كاملاً وسأنفذه فوراً!
-              <br>• أنا أفهم أي طريقة تكتب بها! 🤖
+              <br>• أنا أفهم أي طريقة تكتب بها! 
             </div>
           </div>
         </div>
@@ -352,7 +352,7 @@
               <i class="fas fa-book"></i>
             </button>
             <button type="button" class="btn btn-outline-primary active" onclick="setDialect('palestinian')" title="فلسطيني" id="palestinianBtn">
-              <i class="fas fa-flag"></i> 🇵🇸
+              <i class="fas fa-flag"></i> 
             </button>
             <button type="button" class="btn btn-outline-info" onclick="setDialect('gulf')" title="خليجي" id="gulfBtn">
               <i class="fas fa-mosque"></i>
@@ -415,7 +415,7 @@
         
         <div class="input-group">
         <input type="text" id="userMessage" class="form-control form-control-lg" 
-               placeholder="اسأل أي سؤال... 🤖" autocomplete="off"
+               placeholder="اسأل أي سؤال... " autocomplete="off"
                style="border-radius: 12px 0 0 12px; border: 2px solid #667eea;">
           <div class="input-group-append">
           <button class="btn btn-lg" id="sendBtn"
@@ -502,7 +502,7 @@ function addMessage(sender, text, isBot = false) {
            <i class="fas fa-user text-white fa-2x"></i>
          </div>`;
     
-    const senderName = isBot ? 'أزاد 🤖' : '{{ current_user.username }}' || 'أنت';
+    const senderName = isBot ? 'أزاد ' : '{{ current_user.username }}' || 'أنت';
     
     chatBox.append(`
       <div class="${messageClass}">
@@ -588,7 +588,7 @@ $(document).ready(function() {
       },
       error: function() {
         hideTyping();
-        addMessage('bot', '❌ عذراً، حدث خطأ. حاول مرة أخرى.', true);
+        addMessage('bot', ' عذراً، حدث خطأ. حاول مرة أخرى.', true);
         sendBtn.prop('disabled', false);
       }
     });
@@ -623,12 +623,12 @@ $(document).ready(function() {
   
   window.getSummary = function() {
     if (chatHistory.length === 0) {
-      addMessage('bot', '📝 لا توجد محادثة لتلخيصها بعد!', true);
+      addMessage('bot', ' لا توجد محادثة لتلخيصها بعد!', true);
       return;
     }
     
     const questions = chatHistory.filter(m => m.role === 'user').length;
-    const summary = `📊 **ملخص المحادثة:**\n\n• عدد الأسئلة: ${questions}\n• عدد الردود: ${chatHistory.filter(m => m.role === 'bot').length}\n\n🔍 **المواضيع:**\n${chatHistory.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n')}`;
+    const summary = ` **ملخص المحادثة:**\n\n• عدد الأسئلة: ${questions}\n• عدد الردود: ${chatHistory.filter(m => m.role === 'bot').length}\n\n **المواضيع:**\n${chatHistory.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n')}`;
     
     addMessage('bot', summary, true);
   };
@@ -639,10 +639,10 @@ $(document).ready(function() {
     
     if (beginnersMode) {
       btn.removeClass('btn-outline-success').addClass('btn-success');
-      addMessage('bot', '👨‍🎓 **وضع المبتدئين مفعّل!**\n\nسأشرح كل شيء بالتفصيل مع أمثلة وخطوات واضحة! 📚', true);
+      addMessage('bot', ' **وضع المبتدئين مفعّل!**\n\nسأشرح كل شيء بالتفصيل مع أمثلة وخطوات واضحة! ', true);
     } else {
       btn.removeClass('btn-success').addClass('btn-outline-success');
-      addMessage('bot', '👔 **وضع المحترفين مفعّل!**\n\nردود مباشرة وسريعة! ⚡', true);
+      addMessage('bot', ' **وضع المحترفين مفعّل!**\n\nردود مباشرة وسريعة! ', true);
     }
   };
   
@@ -653,9 +653,9 @@ $(document).ready(function() {
     $(`#${dialect}Btn`).addClass('active');
     
     const dialectMessages = {
-      'formal': '📖 **اللغة: فصحى**\n\nسأتحدث بالعربية الفصحى المعيارية.',
-      'palestinian': '🇵🇸 **اللهجة: فلسطينية**\n\nأهلاً وسهلاً! إيش بدك يا زميل؟ 😊',
-      'gulf': '🏝️ **اللهجة: خليجية**\n\nأهلاً وسهلاً! شخبارك؟ شلونك؟ 😊'
+      'formal': ' **اللغة: فصحى**\n\nسأتحدث بالعربية الفصحى المعيارية.',
+      'palestinian': ' **اللهجة: فلسطينية**\n\nأهلاً وسهلاً! إيش بدك يا زميل؟ ',
+      'gulf': ' **اللهجة: خليجية**\n\nأهلاً وسهلاً! شخبارك؟ شلونك؟ '
     };
     
     addMessage('bot', dialectMessages[dialect], true);
@@ -719,7 +719,7 @@ $(document).ready(function() {
         'transform': 'scale(1)'
       });
       $('#ai-status-badge').removeClass('badge-success').addClass('badge-secondary')
-        .html('<i class="fas fa-microchip mr-2"></i>محلي 💻');
+        .html('<i class="fas fa-microchip mr-2"></i>محلي ');
     } else {
       $('#ai-mode-groq').css({
         'background': '#17a2b8',
@@ -733,7 +733,7 @@ $(document).ready(function() {
         'transform': 'scale(1)'
       });
       $('#ai-status-badge').removeClass('badge-secondary').addClass('badge-info')
-        .html('<i class="fas fa-cloud mr-2"></i>Groq ☁️');
+        .html('<i class="fas fa-cloud mr-2"></i>Groq ');
     }
   };
   
@@ -821,14 +821,14 @@ $('#excelUploadForm').on('submit', function(e) {
         addMessage('bot', response.message, true);
         hideExcelUploader();
       } else {
-        addMessage('bot', `❌ خطأ: ${response.error}`, true);
+        addMessage('bot', ` خطأ: ${response.error}`, true);
       }
       $('#uploadExcelBtn').prop('disabled', false);
       $('#uploadProgress').hide();
     },
     error: function(xhr) {
       const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'حدث خطأ غير متوقع';
-      addMessage('bot', `❌ خطأ: ${errorMsg}`, true);
+      addMessage('bot', ` خطأ: ${errorMsg}`, true);
       $('#uploadExcelBtn').prop('disabled', false);
       $('#uploadProgress').hide();
     }
@@ -846,14 +846,14 @@ function openExcelTemplate() {
   link.click();
   document.body.removeChild(link);
   
-  addMessage('bot', `📗 تم فتح ملف Excel في التطبيق!
+  addMessage('bot', ` تم فتح ملف Excel في التطبيق!
   
-  💡 تعليمات:
+   تعليمات:
   1. عدّل البيانات في Excel
   2. احفظ الملف (Ctrl+S)
   3. ارجع هنا واضغط "Excel" لرفع الملف المحدث
   
-  🤖 المصدر: GROQ API + التحليل المحلي`, true);
+   المصدر: GROQ API + التحليل المحلي`, true);
 }
 </script>
 {% endblock %}

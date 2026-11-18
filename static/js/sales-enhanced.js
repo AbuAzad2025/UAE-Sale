@@ -157,7 +157,7 @@ function addLine() {
                         if (data.current_stock < 1) {
                             $(`#stock_${currentIndex}`).addClass('text-danger font-weight-bold');
                             if (typeof azad !== 'undefined') {
-                                azad.showWarning('⚠️ تنبيه: المخزون منخفض للمنتج');
+                                azad.showWarning(' تنبيه: المخزون منخفض للمنتج');
                             }
                         }
                     }
@@ -249,7 +249,7 @@ function loadProductPrice(index) {
                 
                 if (data.current_stock < 1) {
                     $(`#stock_${index}`).addClass('text-danger font-weight-bold');
-                    azad.showError(`⚠️ تنبيه: المخزون منخفض للمنتج`);
+                    azad.showError(` تنبيه: المخزون منخفض للمنتج`);
                 }
             }
             
@@ -451,7 +451,7 @@ $('#currency').on('change', function() {
         serverExchangeRate = 1;
         $rateInput.prop('readonly', false);
         $rateInput.css('background-color', '#e9ecef');
-        azad.showInfo('💡 العملة: درهم - الأسعار والمدفوع بالدرهم');
+        azad.showInfo(' العملة: درهم - الأسعار والمدفوع بالدرهم');
         return;
     }
     
@@ -469,7 +469,7 @@ $('#currency').on('change', function() {
                 const examplePayment = 100;
                 const exampleAED = (examplePayment * data.rate).toFixed(2);
                 const _base = window.BASE_CURRENCY || 'AED';
-                azad.showSuccess(`✅ سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n💡 التوضيح:\n• الفاتورة: بالدرهم (${_base})\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
+                azad.showSuccess(` سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n التوضيح:\n• الفاتورة: بالدرهم (${_base})\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
                 updateLinePrices();
             } else if (data.manual_input_required) {
                 serverExchangeRate = null;
@@ -477,7 +477,7 @@ $('#currency').on('change', function() {
                 $rateInput.prop('readonly', false);
                 $rateInput.css('background-color', '#fff3cd');
                 $rateInput.focus();
-                azad.showError('⚠️ يرجى إدخال سعر الصرف يدوياً');
+                azad.showError(' يرجى إدخال سعر الصرف يدوياً');
             }
         },
         error: function() {
@@ -485,7 +485,7 @@ $('#currency').on('change', function() {
             $rateInput.val('');
             $rateInput.prop('readonly', false);
             $rateInput.css('background-color', '#f8d7da');
-            azad.showError('⚠️ فشل تحميل سعر الصرف - يرجى الإدخال يدوياً');
+            azad.showError(' فشل تحميل سعر الصرف - يرجى الإدخال يدوياً');
         }
     });
 });
@@ -496,7 +496,7 @@ $('#exchange_rate').on('change', function() {
     const serverRate = parseFloat($(this).data('server-rate')) || serverExchangeRate;
     
     if (!manualRate || manualRate <= 0) {
-        azad.showError('⚠️ سعر الصرف يجب أن يكون أكبر من صفر');
+        azad.showError(' سعر الصرف يجب أن يكون أكبر من صفر');
         if (serverRate) {
             $(this).val(serverRate.toFixed(6));
         }
@@ -511,7 +511,7 @@ $('#exchange_rate').on('change', function() {
             // Manual rate is lower than server rate - requires documentation
             $(this).css('background-color', '#f8d7da');
             azad.showWarning(
-                `⚠️ تحذير: سعر الصرف المدخل (${manualRate.toFixed(6)}) أقل من سعر السيرفر (${serverRate.toFixed(6)}) بنسبة ${diffText}` +
+                ` تحذير: سعر الصرف المدخل (${manualRate.toFixed(6)}) أقل من سعر السيرفر (${serverRate.toFixed(6)}) بنسبة ${diffText}` +
                 `\nسيتم توثيق هذا التغيير في سجل العمليات`
             );
             
@@ -524,7 +524,7 @@ $('#exchange_rate').on('change', function() {
             `);
         } else if (manualRate > serverRate) {
             $(this).css('background-color', '#d1ecf1');
-            azad.showInfo(`ℹ️ سعر الصرف المدخل أعلى من السيرفر بنسبة ${diffText}`);
+            azad.showInfo(`ℹ سعر الصرف المدخل أعلى من السيرفر بنسبة ${diffText}`);
         } else {
             $(this).css('background-color', '#d4edda');
         }
@@ -601,7 +601,7 @@ $('#payment_method').on('change', function() {
             }
         },
         error: function() {
-            azad.showError('⚠️ فشل تحميل حقول الدفع');
+            azad.showError(' فشل تحميل حقول الدفع');
         }
     });
 });
@@ -657,14 +657,14 @@ $(document).ready(function() {
         
         if (totals.lineCount === 0) {
             e.preventDefault();
-            azad.showError('⚠️ يجب إضافة منتج واحد على الأقل');
+            azad.showError(' يجب إضافة منتج واحد على الأقل');
             return false;
         }
         
         // Don't block if total is 0 - could be all free items
         if (totals.total < 0) {
             e.preventDefault();
-            azad.showError('⚠️ الإجمالي لا يمكن أن يكون سالب');
+            azad.showError(' الإجمالي لا يمكن أن يكون سالب');
             return false;
         }
         
@@ -674,13 +674,13 @@ $(document).ready(function() {
         whEl.toggleClass('is-invalid', !whEl.val()).toggleClass('is-valid', !!whEl.val());
         if (!custEl.val()) {
             e.preventDefault();
-            azad.showError('⚠️ يجب اختيار زبون');
+            azad.showError(' يجب اختيار زبون');
             custEl.select2('open');
             return false;
         }
         if (!whEl.val()) {
             e.preventDefault();
-            azad.showError('⚠️ يجب اختيار مستودع');
+            azad.showError(' يجب اختيار مستودع');
             whEl.focus();
             return false;
         }

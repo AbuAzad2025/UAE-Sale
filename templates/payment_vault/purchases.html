@@ -182,11 +182,11 @@
                                     <td>
                                         <span class="status-badge status-{{ purchase.payment_status }}">
                                             {% if purchase.payment_status == 'completed' %}
-                                                ✓ مكتملة
+                                                 مكتملة
                                             {% elif purchase.payment_status == 'pending' %}
                                                 ⏳ قيد الانتظار
                                             {% elif purchase.payment_status == 'failed' %}
-                                                ✗ فشلت
+                                                 فشلت
                                             {% elif purchase.payment_status == 'refunded' %}
                                                 ↩ مسترجعة
                                             {% else %}

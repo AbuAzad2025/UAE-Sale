@@ -62,27 +62,27 @@
       <div class="company-name">{{ settings.company_name_ar or '' }}</div>
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
-        <div>📞 {{ settings.phone_1 or '' }}{% if settings.email %} | 📧 {{ settings.email }}{% endif %}{% if settings.website %} | 🌐 {{ settings.website }}{% endif %}</div>
+        <div> {{ settings.phone_1 or '' }}{% if settings.email %} |  {{ settings.email }}{% endif %}{% if settings.website %} |  {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 
     <div class="purchase-title">
-      <h2>📋 فاتورة شراء</h2>
+      <h2> فاتورة شراء</h2>
       <div class="purchase-number">{{ purchase.purchase_number }}</div>
     </div>
 
     <div class="content">
       <div class="info-grid">
         <div class="info-box">
-          <h3>🏢 معلومات المورد</h3>
+          <h3> معلومات المورد</h3>
           <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
           {% if purchase.supplier and purchase.supplier.tax_number %}<p><strong>الرقم الضريبي للمورد:</strong> {{ purchase.supplier.tax_number }}</p>{% endif %}
           {% if purchase.reverse_charge %}<p><strong>Reverse Charge:</strong> ضريبة ذاتية التقييم — المورد لا يضيف ضريبة</p>{% endif %}
           <p><strong>الهاتف:</strong> {{ purchase.supplier_phone }}</p>
         </div>
         <div class="info-box">
-          <h3>📅 بيانات الفاتورة</h3>
+          <h3> بيانات الفاتورة</h3>
           <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') if purchase.purchase_date else '' }}</p>
           <p><strong>المبلغ الإجمالي:</strong> {{ purchase.amount_base }} {{ base_currency }}</p>
           <p><strong>المدفوع:</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>

@@ -286,7 +286,7 @@
           
           <form method="POST" action="{{ url_for('owner.delete_backup') }}" 
                 style="display: inline-block;"
-                onsubmit="return confirm('⚠️ هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n📁 {{ backup.filename }}\n\n{% if not backup.manual %}⚠️ تنبيه: هذه نسخة تلقائية.\n{% endif %}⚠️ لا يمكن التراجع عن هذا الإجراء!');">
+                onsubmit="return confirm(' هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n {{ backup.filename }}\n\n{% if not backup.manual %} تنبيه: هذه نسخة تلقائية.\n{% endif %} لا يمكن التراجع عن هذا الإجراء!');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="filename" value="{{ backup.filename }}">
             <button type="submit" class="btn btn-sm btn-danger" title="حذف النسخة نهائياً">

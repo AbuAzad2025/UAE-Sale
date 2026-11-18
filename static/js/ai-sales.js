@@ -135,7 +135,7 @@ $(document).ready(function() {
                 if (result.found && result.suggested_price_aed) {
                     const marketInfo = `
                         <div class="alert alert-success alert-sm mt-2">
-                            <strong>💰 سعر السوق العالمي:</strong><br>
+                            <strong> سعر السوق العالمي:</strong><br>
                             <span class="badge badge-primary">${result.average_price_usd} USD</span>
                             <span class="badge badge-info">${result.suggested_price_aed.toFixed(2)} ${window.BASE_CURRENCY || 'AED'}</span><br>
                             <small>${result.notes || ''}</small>

@@ -191,15 +191,15 @@ $(document).ready(function() {
                 
                 // تقرير أداء مفصل
                 if (loadTime > 10000) {
-                    console.warn('⚠️ Page load VERY SLOW:', loadTime + 'ms');
+                    console.warn(' Page load VERY SLOW:', loadTime + 'ms');
                 } else if (loadTime > 5000) {
-                    console.info('ℹ️ Page load slow:', loadTime + 'ms');
+                    console.info('ℹ Page load slow:', loadTime + 'ms');
                 } else {
-                    console.log('✅ Page load OK:', loadTime + 'ms');
+                    console.log(' Page load OK:', loadTime + 'ms');
                 }
                 
                 if (loadTime > 10000) {
-                    console.log('📊 Performance Details:', {
+                    console.log(' Performance Details:', {
                         'Total Load': loadTime + 'ms',
                         'DOM Ready': domContentLoaded + 'ms',
                         'DNS': (timing.domainLookupEnd - timing.domainLookupStart) + 'ms',

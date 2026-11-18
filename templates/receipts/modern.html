@@ -78,27 +78,27 @@
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
-      <div>📞 {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-      <div>📧 {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}| 🌐 {{ settings.website }}{% endif %}</div>
+      <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
+      <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
 
   <div class="receipt-title">
-    <h2>💵 سند قبض</h2>
+    <h2> سند قبض</h2>
     <div class="receipt-number">{{ receipt.receipt_number }}</div>
   </div>
 
   <div class="content">
     <div class="info-grid">
       <div class="info-box">
-        <h3>👤 بيانات العميل</h3>
+        <h3> بيانات العميل</h3>
         <p><strong>الاسم:</strong> {{ receipt.customer.name }}</p>
         {% if receipt.customer.phone %}<p><strong>الهاتف:</strong> {{ receipt.customer.phone }}</p>{% endif %}
         {% if receipt.customer.email %}<p><strong>البريد:</strong> {{ receipt.customer.email }}</p>{% endif %}
       </div>
       <div class="info-box">
-        <h3>📅 بيانات السند</h3>
+        <h3> بيانات السند</h3>
         <p><strong>التاريخ:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d') }}</p>
         <p><strong>الوقت:</strong> {{ receipt.receipt_date.strftime('%H:%M') }}</p>
         <p><strong>المحصل:</strong> {{ receipt.user.full_name if receipt.user else 'النظام' }}</p>
@@ -118,18 +118,18 @@
     </div>
 
     <div class="payment-method">
-      <h4>💳 طريقة الدفع</h4>
+      <h4> طريقة الدفع</h4>
       <div style="font-size: 8px; font-weight: 700; color: #155724;">
-        {% if receipt.payment_method == 'cash' %}💵 نقدي
-        {% elif receipt.payment_method == 'card' %}💳 بطاقة ائتمانية
-        {% elif receipt.payment_method == 'bank_transfer' %}🏦 تحويل بنكي
-        {% elif receipt.payment_method == 'cheque' %}📝 شيك بنكي
-        {% else %}💰 محفظة إلكترونية{% endif %}
+        {% if receipt.payment_method == 'cash' %} نقدي
+        {% elif receipt.payment_method == 'card' %} بطاقة ائتمانية
+        {% elif receipt.payment_method == 'bank_transfer' %} تحويل بنكي
+        {% elif receipt.payment_method == 'cheque' %} شيك بنكي
+        {% else %} محفظة إلكترونية{% endif %}
       </div>
       
       {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
       <div class="cheque-box">
-        <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 9px;">📝 معلومات الشيك</div>
+        <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 9px;"> معلومات الشيك</div>
         <div class="cheque-grid">
           <div class="cheque-item"><label>رقم الشيك</label><value>{{ receipt.cheque_number }}</value></div>
           <div class="cheque-item"><label>تاريخ الاستحقاق</label><value>{{ receipt.cheque_date.strftime('%Y-%m-%d') if receipt.cheque_date else '-' }}</value></div>
@@ -144,7 +144,7 @@
     {% set source_info = receipt.get_source_info() %}
     {% if source_info %}
     <div class="allocations-section">
-      <h4>📋 تفاصيل الفاتورة</h4>
+      <h4> تفاصيل الفاتورة</h4>
       <div class="allocation-item">
         <div>
           <strong style="color: #007bff;">{{ source_info.number }}</strong>
@@ -158,7 +158,7 @@
 
     {% if receipt.notes %}
     <div class="notes-section">
-      <h4>📝 ملاحظات وسبب الدفع</h4>
+      <h4> ملاحظات وسبب الدفع</h4>
       <p>{{ receipt.notes }}</p>
     </div>
     {% endif %}
@@ -172,7 +172,7 @@
   <div class="receipt-footer">
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 5px;">
-      <p style="font-weight: 700; font-size: 8px; margin-bottom: 5px;">🏦 معلومات التحويل البنكي</p>
+      <p style="font-weight: 700; font-size: 8px; margin-bottom: 5px;"> معلومات التحويل البنكي</p>
       <div style="font-size: 9px; line-height: 1.5;">
         {% if settings.bank_name and settings.bank_name != 'None' %}<p style="margin: 2px 0;"><strong>البنك:</strong> {{ settings.bank_name }}</p>{% endif %}
         {% if settings.iban and settings.iban != 'None' %}<p style="margin: 2px 0;"><strong>IBAN:</strong> {{ settings.iban }}</p>{% endif %}
@@ -190,12 +190,12 @@
     {% endif %}
     
     {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
-    <div style="background: rgba(255,255,255,0.2); padding: 8px; margin-bottom: 10px; border-radius: 5px;"><p style="font-size: 9px; margin: 0;">💬 {{ settings.default_receipt_note_ar }}</p></div>
+    <div style="background: rgba(255,255,255,0.2); padding: 8px; margin-bottom: 10px; border-radius: 5px;"><p style="font-size: 9px; margin: 0;"> {{ settings.default_receipt_note_ar }}</p></div>
     {% endif %}
     
     <div style="font-size: 9px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'شكراً لثقتكم' }}</div>
-    <div>✨ نتمنى لكم تجربة ممتازة ✨</div>
-    {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px; font-size: 8px;">🌐 {{ settings.website }}</div>{% endif %}
+    <div> نتمنى لكم تجربة ممتازة </div>
+    {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px; font-size: 8px;"> {{ settings.website }}</div>{% endif %}
     
     {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
     <div style="margin-top: 8px; font-size: 9px;">

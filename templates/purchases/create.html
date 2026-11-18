@@ -205,7 +205,7 @@
               </div>
             </div>
             <small class="form-text text-muted">
-              💡 لا يوجد المورد؟ اضغط زر الإضافة لفتح صفحة الموردين في نافذة جديدة.
+               لا يوجد المورد؟ اضغط زر الإضافة لفتح صفحة الموردين في نافذة جديدة.
             </small>
           </div>
         </div>
@@ -222,7 +222,7 @@
               {% if warehouses %}
                 {% for warehouse in warehouses %}
                 <option value="{{ warehouse.id }}">
-                  {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}🔀{% else %}📦{% endif %}
+                  {% if warehouse.is_main %}⭐{% elif warehouse.parent_id %}{% else %}{% endif %}
                   {{ warehouse.name_ar or warehouse.name }}
                   {% if warehouse.code %}({{ warehouse.code }}){% endif %}
                 </option>
@@ -530,14 +530,14 @@ function addLine() {
         if (p.loading) return 'جاري البحث...';
         if (!p.id) return p.text;
         
-        const stockIcon = (p.current_stock || 0) > 0 ? '✅' : '❌';
+        const stockIcon = (p.current_stock || 0) > 0 ? '' : '';
         const stockClass = (p.current_stock || 0) > 0 ? 'text-success' : 'text-danger';
         
         return $(`
           <div style="padding: 5px;">
             <div class="d-flex justify-content-between">
               <div>
-                <strong>📦 ${p.text}</strong>
+                <strong> ${p.text}</strong>
                 <br><small class="text-muted">SKU: ${p.sku || '-'}</small>
               </div>
               <div class="text-left">
@@ -549,7 +549,7 @@ function addLine() {
         `);
       },
       templateSelection: function(p) {
-        return p.id ? `📦 ${p.text}` : p.text;
+        return p.id ? ` ${p.text}` : p.text;
       },
       escapeMarkup: function(m) { return m; }
     });
@@ -801,7 +801,7 @@ $('#supplier_id').on('change', function() {
     $('#supplier_email').val(selectedData.email || '');
     
     if (selectedData.is_verified) {
-      toastr.success(`✅ مورد موثوق: ${selectedData.name}`);
+      toastr.success(` مورد موثوق: ${selectedData.name}`);
     }
   }
 });

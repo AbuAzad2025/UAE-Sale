@@ -1,5 +1,5 @@
 /**
- * 🌍 JavaScript Internationalization
+ *  JavaScript Internationalization
  * نظام الترجمة في JavaScript
  */
 

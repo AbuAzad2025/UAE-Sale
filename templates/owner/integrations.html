@@ -68,7 +68,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="api_token" placeholder="أدخل API Token هنا" value="{{ integrations.whatsapp.config.api_token or '' }}">
                                     <small class="form-text text-muted">
-                                        🔐 <strong>مثال:</strong> EAA... (من Twilio أو Meta Business)
+                                         <strong>مثال:</strong> EAA... (من Twilio أو Meta Business)
                                     </small>
                                 </div>
                                 
@@ -78,7 +78,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="phone_number" placeholder="+971501234567" value="{{ integrations.whatsapp.config.phone_number or '' }}">
                                     <small class="form-text text-muted">
-                                        📱 <strong>مثال:</strong> +971501234567 (بالصيغة الدولية مع +)
+                                         <strong>مثال:</strong> +971501234567 (بالصيغة الدولية مع +)
                                     </small>
                                 </div>
                                 
@@ -88,7 +88,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="api_url" placeholder="https://api.whatsapp.com/send" value="{{ integrations.whatsapp.config.api_url or '' }}">
                                     <small class="form-text text-muted">
-                                        🌐 <strong>مثال:</strong> https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json
+                                         <strong>مثال:</strong> https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json
                                     </small>
                                 </div>
                                 
@@ -98,7 +98,7 @@
                                     </label>
                                     <textarea class="form-control" name="message_template" rows="3" placeholder="مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!">{{ integrations.whatsapp.config.message_template or 'مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!' }}</textarea>
                                     <small class="form-text text-muted">
-                                        💬 <strong>المتغيرات المتاحة:</strong> {customer_name}, {invoice_number}, {amount}, {date}
+                                         <strong>المتغيرات المتاحة:</strong> {customer_name}, {invoice_number}, {amount}, {date}
                                     </small>
                                 </div>
                                 
@@ -153,7 +153,7 @@
                                             </label>
                                             <input type="text" class="form-control" name="smtp_host" placeholder="smtp.gmail.com" value="{{ integrations.email.config.smtp_host or '' }}">
                                             <small class="form-text text-muted">
-                                                🖥️ <strong>أمثلة:</strong><br>
+                                                 <strong>أمثلة:</strong><br>
                                                 • Gmail: smtp.gmail.com<br>
                                                 • Outlook: smtp.office365.com<br>
                                                 • Yahoo: smtp.mail.yahoo.com
@@ -168,7 +168,7 @@
                                             </label>
                                             <input type="number" class="form-control" name="smtp_port" placeholder="587" value="{{ integrations.email.config.smtp_port or '587' }}">
                                             <small class="form-text text-muted">
-                                                🔌 <strong>الافتراضي:</strong><br>
+                                                 <strong>الافتراضي:</strong><br>
                                                 • TLS: 587<br>
                                                 • SSL: 465
                                             </small>
@@ -184,7 +184,7 @@
                                             </label>
                                             <input type="email" class="form-control" name="smtp_user" placeholder="your-email@gmail.com" value="{{ integrations.email.config.smtp_user or '' }}">
                                             <small class="form-text text-muted">
-                                                📧 عادةً نفس البريد الإلكتروني الذي ترسل منه
+                                                 عادةً نفس البريد الإلكتروني الذي ترسل منه
                                             </small>
                                         </div>
                                     </div>
@@ -196,7 +196,7 @@
                                             </label>
                                             <input type="password" class="form-control" name="smtp_password" placeholder="••••••••••" value="{{ integrations.email.config.smtp_password or '' }}">
                                             <small class="form-text text-muted">
-                                                🔐 <strong>Gmail:</strong> استخدم App Password (ليس كلمة المرور العادية)<br>
+                                                 <strong>Gmail:</strong> استخدم App Password (ليس كلمة المرور العادية)<br>
                                                 <a href="https://myaccount.google.com/apppasswords" target="_blank">إنشاء App Password</a>
                                             </small>
                                         </div>
@@ -214,7 +214,7 @@
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                        🔒 <strong>ننصح بـ TLS</strong> للأمان والتوافق
+                                         <strong>ننصح بـ TLS</strong> للأمان والتوافق
                                     </small>
                                 </div>
                                 
@@ -224,7 +224,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="sender_name" placeholder="كراج الامارات" value="{{ integrations.email.config.sender_name or '' }}">
                                     <small class="form-text text-muted">
-                                        ✉️ الاسم الذي سيظهر للمستلم (مثال: "كراج الامارات" <no-reply@garage.ae>)
+                                         الاسم الذي سيظهر للمستلم (مثال: "كراج الامارات" <no-reply@garage.ae>)
                                     </small>
                                 </div>
                                 
@@ -280,7 +280,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="{{ integrations.redis.config.redis_host or 'localhost' }}">
                                     <small class="form-text text-muted">
-                                        🖥️ <strong>محلي:</strong> localhost أو 127.0.0.1<br>
+                                         <strong>محلي:</strong> localhost أو 127.0.0.1<br>
                                         <strong>سحابي:</strong> redis-12345.c1.us-east-1.redislabs.com
                                     </small>
                                 </div>
@@ -291,7 +291,7 @@
                                     </label>
                                     <input type="number" class="form-control" name="redis_port" placeholder="6379" value="{{ integrations.redis.config.redis_port or '6379' }}">
                                     <small class="form-text text-muted">
-                                        🔌 <strong>الافتراضي:</strong> 6379
+                                         <strong>الافتراضي:</strong> 6379
                                     </small>
                                 </div>
                                 
@@ -301,7 +301,7 @@
                                     </label>
                                     <input type="password" class="form-control" name="redis_password" placeholder="••••••••••" value="{{ integrations.redis.config.redis_password or '' }}">
                                     <small class="form-text text-muted">
-                                        🔐 اتركه فارغاً إذا لم يكن Redis محمياً بكلمة مرور
+                                         اتركه فارغاً إذا لم يكن Redis محمياً بكلمة مرور
                                     </small>
                                 </div>
                                 
@@ -364,7 +364,7 @@
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                        🌐 اختر مزود خدمة أسعار الصرف
+                                         اختر مزود خدمة أسعار الصرف
                                     </small>
                                 </div>
                                 
@@ -374,7 +374,7 @@
                                     </label>
                                     <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE" value="{{ integrations.currency_api.config.api_key or '' }}">
                                     <small class="form-text text-muted">
-                                        🔑 <strong>احصل على API Key مجاناً:</strong><br>
+                                         <strong>احصل على API Key مجاناً:</strong><br>
                                         • <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a> (1500 request/شهر مجاناً)<br>
                                         • <a href="https://fixer.io" target="_blank">Fixer.io</a> (100 request/شهر مجاناً)
                                     </small>
@@ -391,7 +391,7 @@
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                        💱 العملة المرجعية لحساب أسعار الصرف
+                                         العملة المرجعية لحساب أسعار الصرف
                                     </small>
                                 </div>
                                 

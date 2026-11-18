@@ -177,6 +177,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', initAll);
-  // expose for tests
+  // Public API for other scripts on the page
   window.BarcodeUnified = { bindInput: bindInput, fetchByBarcode: fetchByBarcode, findOrAddRow: findOrAddRow };
 })();

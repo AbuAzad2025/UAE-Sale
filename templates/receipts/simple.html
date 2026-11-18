@@ -34,7 +34,7 @@
     <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
     {% endif %}
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
-    <div class="company-info">{{ settings.address_ar or '' }}<br>📞 {{ settings.phone_1 or '' }}{% if settings.email %} • 📧 {{ settings.email }}{% endif %}</div>
+    <div class="company-info">{{ settings.address_ar or '' }}<br> {{ settings.phone_1 or '' }}{% if settings.email %} •  {{ settings.email }}{% endif %}</div>
   </div>
 
   <div class="title">سند قبض</div>
@@ -46,7 +46,7 @@
     </tr>
     <tr>
       <td><strong>المستلم من:</strong> {{ receipt.customer.name if receipt.customer else receipt.customer_name }}</td>
-      <td><strong>طريقة الدفع:</strong> {% if receipt.payment_method == 'cash' %}💵 نقدي {% elif receipt.payment_method == 'card' %}💳 بطاقة {% elif receipt.payment_method == 'bank_transfer' %}🏦 تحويل {% elif receipt.payment_method == 'cheque' %}📝 شيك {% else %}{{ receipt.payment_method }}{% endif %}</td>
+      <td><strong>طريقة الدفع:</strong> {% if receipt.payment_method == 'cash' %} نقدي {% elif receipt.payment_method == 'card' %} بطاقة {% elif receipt.payment_method == 'bank_transfer' %} تحويل {% elif receipt.payment_method == 'cheque' %} شيك {% else %}{{ receipt.payment_method }}{% endif %}</td>
     </tr>
     {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
     <tr>
@@ -87,7 +87,7 @@
     {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}<div style="font-size: 8px; margin: 5px 0;">{% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}{% if settings.commercial_register and settings.license_number %} | {% endif %}{% if settings.license_number and settings.license_number != 'None' %}رخصة: {{ settings.license_number }}{% endif %}</div>{% endif %}
     {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}<div style="margin: 10px 0; font-size: 8px; font-style: italic;">{{ settings.default_receipt_note_ar }}</div>{% endif %}
     <div style="margin-top: 10px;">شكراً لكم</div>
-    {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}<div style="margin-top: 8px; font-size: 9px;">{% if settings.whatsapp_number %}<span>📱 {{ settings.whatsapp_number }}</span>{% endif %}</div>{% endif %}
+    {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}<div style="margin-top: 8px; font-size: 9px;">{% if settings.whatsapp_number %}<span> {{ settings.whatsapp_number }}</span>{% endif %}</div>{% endif %}
   </div>
 
   <div class="signature"><div class="sig-box"><div class="sig-line">المحصل</div></div><div class="sig-box"><div class="sig-line">العميل</div></div></div>

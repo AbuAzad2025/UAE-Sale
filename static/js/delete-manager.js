@@ -1,5 +1,5 @@
 /**
- * 🗑️ Delete Manager - نظام حذف موحد واحترافي
+ *  Delete Manager - نظام حذف موحد واحترافي
  * إدارة عمليات الحذف في كل النظام مع تأكيد وأرشفة
  */
 
@@ -70,7 +70,7 @@
   // =====================================
   window.deleteMultiple = function(itemIds, itemType, redirectUrl) {
     if (!itemIds || itemIds.length === 0) {
-      toastr.warning('⚠️ يجب اختيار عنصر واحد على الأقل');
+      toastr.warning(' يجب اختيار عنصر واحد على الأقل');
       return;
     }
     
@@ -141,7 +141,7 @@
       if (result.isConfirmed) {
         $(rowElement).fadeOut(300, function() {
           $(this).remove();
-          toastr.success('✅ تم الحذف');
+          toastr.success(' تم الحذف');
         });
       }
     });

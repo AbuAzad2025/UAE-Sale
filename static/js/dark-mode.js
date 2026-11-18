@@ -8,14 +8,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const toggleButton = document.createElement('button');
     toggleButton.className = 'theme-toggle';
-    toggleButton.innerHTML = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+    toggleButton.innerHTML = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
     toggleButton.title = 'تبديل الوضع الليلي';
     document.body.appendChild(toggleButton);
     
     toggleButton.addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
-        toggleButton.innerHTML = isDark ? '☀️' : '🌙';
+        toggleButton.innerHTML = isDark ? 'light' : 'dark';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
     });
     
@@ -23,10 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (localStorage.getItem('theme') === 'auto') {
             if (e.matches) {
                 document.body.classList.add('dark-mode');
-                toggleButton.innerHTML = '☀️';
+                toggleButton.innerHTML = 'light';
             } else {
                 document.body.classList.remove('dark-mode');
-                toggleButton.innerHTML = '🌙';
+                toggleButton.innerHTML = 'dark';
             }
         }
     });

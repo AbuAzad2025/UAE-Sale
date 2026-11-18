@@ -124,10 +124,10 @@
                                             <th>تحويل لـ Bitcoin:</th>
                                             <td>
                                                 {% if purchase.payment_details.get('converted_to_crypto') %}
-                                                    <span class="badge badge-warning">✓ تم التحويل</span>
+                                                    <span class="badge badge-warning"> تم التحويل</span>
                                                     <br><small class="text-muted">العنوان: {{ purchase.payment_details.get('pay_address', 'N/A') }}</small>
                                                 {% else %}
-                                                    <span class="badge badge-secondary">✗ بدون تحويل</span>
+                                                    <span class="badge badge-secondary"> بدون تحويل</span>
                                                 {% endif %}
                                             </td>
                                         </tr>

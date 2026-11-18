@@ -44,8 +44,8 @@
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
       {{ settings.address_ar or '' }}<br>
-      📞 {{ settings.phone_1 or '' }}
-      {% if settings and settings.email %} • 📧 {{ settings.email }}{% endif %}
+       {{ settings.phone_1 or '' }}
+      {% if settings and settings.email %} •  {{ settings.email }}{% endif %}
     </div>
   </div>
 

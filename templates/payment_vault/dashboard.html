@@ -7,7 +7,7 @@
     <div class="d-flex align-items-center">
         <i class="fas fa-vault text-danger mr-3" style="font-size: 2rem;"></i>
         <div>
-            <h1 class="mb-0">🔐 لوحة تحكم الخزينة السرية</h1>
+            <h1 class="mb-0"> لوحة تحكم الخزينة السرية</h1>
             <p class="text-muted mb-0">إدارة المشتريات والتبرعات والباقات</p>
         </div>
     </div>
@@ -125,7 +125,7 @@
                         <i class="fas fa-clock"></i> قيد الانتظار
                     </div>
                     <div class="live-indicator mt-2">
-                        <span class="badge badge-light">🟢 مباشر</span>
+                        <span class="badge badge-light"> مباشر</span>
                     </div>
                 </div>
             </div>
@@ -144,11 +144,11 @@
                                 <div class="text-center mb-3">
                                     <h3 class="mb-0">
                                         {% if security_status.security_level == 'high' %}
-                                            <span class="badge badge-success" style="font-size: 1.5rem;">🛡️ عالي</span>
+                                            <span class="badge badge-success" style="font-size: 1.5rem;"> عالي</span>
                                         {% elif security_status.security_level == 'medium' %}
-                                            <span class="badge badge-warning" style="font-size: 1.5rem;">⚠️ متوسط</span>
+                                            <span class="badge badge-warning" style="font-size: 1.5rem;"> متوسط</span>
                                         {% else %}
-                                            <span class="badge badge-danger" style="font-size: 1.5rem;">🚨 منخفض</span>
+                                            <span class="badge badge-danger" style="font-size: 1.5rem;"> منخفض</span>
                                         {% endif %}
                                     </h3>
                                     <p class="text-muted mb-0">مستوى الأمان</p>
@@ -295,16 +295,16 @@
                                         <td>{{ purchase.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>{{ purchase.customer_name or 'غير محدد' }}</td>
                                         <td>
-                                            {% if purchase.package == 'basic' %}📦 أساسية
-                                            {% elif purchase.package == 'professional' %}💼 احترافية
-                                            {% elif purchase.package == 'enterprise' %}🏢 شركات
+                                            {% if purchase.package == 'basic' %} أساسية
+                                            {% elif purchase.package == 'professional' %} احترافية
+                                            {% elif purchase.package == 'enterprise' %} شركات
                                             {% else %}{{ purchase.package }}
                                             {% endif %}
                                         </td>
                                         <td><strong>${{ purchase.amount_usd }}</strong></td>
                                         <td>
                                             {% if purchase.status == 'completed' %}
-                                                <span class="badge badge-success">✓ مكتملة</span>
+                                                <span class="badge badge-success"> مكتملة</span>
                                             {% elif purchase.status == 'pending' %}
                                                 <span class="badge badge-warning">⏳ قيد الانتظار</span>
                                             {% else %}
@@ -350,7 +350,7 @@
                                         <td>{{ donation.crypto_type|upper }}</td>
                                         <td>
                                             {% if donation.status == 'completed' %}
-                                                <span class="badge badge-success">✓</span>
+                                                <span class="badge badge-success"></span>
                                             {% else %}
                                                 <span class="badge badge-warning">⏳</span>
                                             {% endif %}

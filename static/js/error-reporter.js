@@ -201,7 +201,7 @@
     uninstall: uninstall
   };
 
-  // Auto-install (page context only — harmless under test runners).
+  // Auto-install in the browser to capture client-side errors.
   try {
     if (typeof document !== 'undefined' && !window[INSTALLED_FLAG]) {
       if (document.readyState !== 'loading') {

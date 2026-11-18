@@ -67,11 +67,11 @@
                         </div>
                         <div>
                             {% if donation.status == 'completed' %}
-                                <span class="badge badge-success status-badge">✓ مكتمل</span>
+                                <span class="badge badge-success status-badge"> مكتمل</span>
                             {% elif donation.status == 'pending' %}
                                 <span class="badge badge-warning status-badge">⏳ قيد الانتظار</span>
                             {% elif donation.status == 'failed' %}
-                                <span class="badge badge-danger status-badge">✗ فاشل</span>
+                                <span class="badge badge-danger status-badge"> فاشل</span>
                             {% else %}
                                 <span class="badge badge-secondary status-badge">{{ donation.status }}</span>
                             {% endif %}

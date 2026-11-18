@@ -396,11 +396,11 @@ function deleteSupplier(id) {
         'X-CSRFToken': $('input[name="csrf_token"]').val()
       },
       success: function() {
-        toastr.success('✅ تم حذف المورد بنجاح');
+        toastr.success(' تم حذف المورد بنجاح');
         window.location.href = '{{ url_for("suppliers.index") }}';
       },
       error: function() {
-        toastr.error('❌ خطأ في حذف المورد');
+        toastr.error(' خطأ في حذف المورد');
       }
     });
   }

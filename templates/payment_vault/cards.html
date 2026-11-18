@@ -190,9 +190,9 @@
                                         <td><strong>النوع:</strong></td>
                                         <td>
                                             {% if card.transaction_type == 'purchase' %}
-                                                🛒 مشترية
+                                                 مشترية
                                             {% else %}
-                                                💝 تبرع
+                                                 تبرع
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -214,7 +214,7 @@
                                         <td><strong>الحالة:</strong></td>
                                         <td>
                                             {% if card.status == 'completed' %}
-                                                <span class="badge badge-success">✓ مكتملة</span>
+                                                <span class="badge badge-success"> مكتملة</span>
                                             {% else %}
                                                 <span class="badge badge-warning">⏳ {{ card.status }}</span>
                                             {% endif %}
@@ -310,7 +310,7 @@
                         <p><strong>CVV:</strong> ${esc(data.card.cvv)}</p>
                         <p><strong>تاريخ الانتهاء:</strong> ${esc(data.card.expiry)}</p>
                         <hr>
-                        <p class="text-danger"><strong>⚠️ لا تشارك هذه المعلومات!</strong></p>
+                        <p class="text-danger"><strong> لا تشارك هذه المعلومات!</strong></p>
                     </div>
                 `;
                 

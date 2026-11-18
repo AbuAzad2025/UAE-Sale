@@ -11,10 +11,10 @@
       </div>
       <div class="card-body">
         {% if quotation.expires_soon %}
-        <div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-1"></i>⚠️ هذا العرض سينتهي خلال 3 أيام ({{ quotation.valid_until.strftime('%Y-%m-%d') }}).</div>
+        <div class="alert alert-warning"><i class="fas fa-exclamation-triangle mr-1"></i> هذا العرض سينتهي خلال 3 أيام ({{ quotation.valid_until.strftime('%Y-%m-%d') }}).</div>
         {% endif %}
         {% if quotation.is_expired %}
-        <div class="alert alert-danger"><i class="fas fa-times-circle mr-1"></i>❌ هذا العرض منتهي الصلاحية.</div>
+        <div class="alert alert-danger"><i class="fas fa-times-circle mr-1"></i> هذا العرض منتهي الصلاحية.</div>
         {% endif %}
         {% if quotation.version and quotation.version > 1 %}
         <div class="alert alert-info"><i class="fas fa-code-branch mr-1"></i>نسخة {{ quotation.version_label }}{% if quotation.version_notes %} — {{ quotation.version_notes }}{% endif %}</div>

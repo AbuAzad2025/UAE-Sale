@@ -112,7 +112,7 @@
     });
 
     if (missingCount > 0) {
-      notify(`⚠️ يوجد ${missingCount} صف بدون اسم.`, 'warning');
+      notify(` يوجد ${missingCount} صف بدون اسم.`, 'warning');
     }
   }
 
@@ -133,7 +133,7 @@
     btnSave.addEventListener('click', () => {
       validateInline();
       prepare(saveField);
-      notify('✅ تم تجهيز البيانات للحفظ', 'success');
+      notify(' تم تجهيز البيانات للحفظ', 'success');
       document.getElementById('saveForm').submit();
     });
   }
@@ -142,7 +142,7 @@
     btnCommit.addEventListener('click', () => {
       validateInline();
       prepare(commitField);
-      notify('✅ تم تجهيز البيانات للإدخال النهائي', 'success');
+      notify(' تم تجهيز البيانات للإدخال النهائي', 'success');
       document.getElementById('commitForm').submit();
     });
   }

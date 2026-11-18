@@ -2,6 +2,51 @@
 
 All notable changes to the Azad ERP system are documented here.
 
+## [Unreleased] — current state (verified against source)
+
+> Version labels below (`2.1.0`, `2.0.0`, …) are historical release notes. The
+> running app reports `APP_VERSION`, which defaults to `1.0.0` (`config.py`);
+> set `APP_VERSION` in the environment to change it.
+
+### Tenant isolation & package enforcement
+- **Real load-time isolation**: `install_tenant_loader_criteria()` uses
+  `do_orm_execute` + `with_loader_criteria` (`models/tenant_scope.py`) to filter
+  all ~79 registered tenant-scoped tables — including `session.get()`,
+  relationships, aliases and paginated queries. `before_compile` is retained as
+  a secondary hook; `before_flush` stamps/validates `tenant_id` on writes.
+  Platform rows (roles, tax rulesets, fiscal periods) stay visible via `OR tenant_id IS NULL`.
+- **Feature gates are real controls** (`utils/feature_guards.py`): `install_feature_gate`
+  on `api`, `ai`, `ledger` (`gl`), `reports`, `maintenance`, `api_enhanced`,
+  `api_analytics`, `graphql`. Disabled feature → 403; verification failure → 503
+  (fail-closed); infra endpoints exempt; `enable_api` defaults to False.
+
+### Migrations
+- Head is `b49_alter_column_widths` (71 revisions). `b48_maint_child_tenant`
+  added `tenant_id` to the 8 maintenance child tables; `b47` dropped the global
+  unique on `roles.name`; `b44` scoped product returns; `b41` added audit-log
+  soft-delete (`is_archived`).
+
+### Financial integrity (permanent CI tests)
+- New seed tests drive real services and assert balanced GL in base currency:
+  `test_financial_seed_integrity.py`, `test_financial_domains_integrity.py`,
+  `test_financial_gaps_integrity.py` (PostgreSQL-only, run in `alembic-smoke`).
+- `test_schema_parity.py` (no model/migration drift) and `test_feature_gates.py`
+  wired into CI.
+
+### Fixed
+- Logging stream-handler leaks on repeated app creation (closed-file errors).
+- Corrupted Arabic flash messages in `routes/payments.py` and recurring-expense posting.
+- Restored `SanitizeFilter` on the app logger after logging hardening.
+
+### Operations
+- Stable dev DB: `postgresql://…@localhost:5433/ERPLite2026`; app at `http://localhost:5000/`.
+- Deployment assets target **Render** (`render.yaml` + `Procfile`, disk at `/data`).
+  **No deployment has been performed yet.**
+- Deleted legacy `tests/manual/` scripts and `scripts/` generator.
+- CI green: 8 jobs in `ci.yml` + `e2e.yml` (30-domain matrix) + `alembic_roundtrip.yml`.
+
+---
+
 ## [2.1.0] - 2026-11-11
 
 ### 🟢 Maintenance Module — Complete Release (M1–M7)
@@ -60,7 +105,7 @@ Full maintenance module for garage/workshop management with strict tenant isolat
 
 ### 📊 Test Suite
 - **Total Tests**: ~3400+ across unit, integration, E2E, and maintenance-specific suites
-- **All CI jobs passing**: test, frontend, integration, lint, security-scan, alembic-smoke, verify-boot, repo-security
+- **All CI jobs passing**: test, frontend, integration, lint, security-scan, alembic-smoke, verify-boot, repo-security (8 in `ci.yml`), plus green `e2e.yml` and `alembic_roundtrip.yml` workflows
 
 ---
 
@@ -69,7 +114,7 @@ Full maintenance module for garage/workshop management with strict tenant isolat
 ### 🔴 Major Financial Integrity Fixes (P0)
 
 #### Multi-Tenant Isolation
-- **TenantScopeMixin**: Row-level filtering on all tenant-scoped tables
+- **Load-time tenant filtering**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria` in `models/tenant_scope.py`) on all tenant-scoped tables (historic note: this replaced the older mixin/before_compile approach)
 - **TENANT_LESS_SCOPE**: Users without tenant see only `tenant_id IS NULL` rows
 - **Fail-closed**: Authenticated users without tenant get 403
 - **19 CHECK constraints** added to production schema via Alembic

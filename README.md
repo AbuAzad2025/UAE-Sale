@@ -106,18 +106,18 @@ Azad ERP is a comprehensive business management system designed for small to med
 
 | Layer | Technology |
 |-------|-----------|
-| **Backend** | Python 3.11+, Flask 2.x |
-| **Database** | PostgreSQL 15+ (production), SQLite (development) |
+| **Backend** | Python 3.11+, Flask 3.1+ |
+| **Database** | PostgreSQL 15+ (stable dev DB on `localhost:5433` / `ERPLite2026`; production Postgres); SQLite in-memory only for isolated unit tests |
 | **ORM** | SQLAlchemy 2.0 |
-| **Migrations** | Alembic (Flask-Migrate) |
-| **Authentication** | Flask-Login, bcrypt |
+| **Migrations** | Alembic (Flask-Migrate) — 71 revisions, head `b49_alter_column_widths` |
+| **Authentication** | Flask-Login, Werkzeug PBKDF2 (`generate_password_hash`); daily master key for the owner |
 | **Task Queue** | Celery (optional, requires Redis) |
 | **Cache** | Redis (optional) / SimpleCache (default) |
 | **Frontend** | Bootstrap 5, AdminLTE, jQuery |
-| **PDF/Export** | WeasyPrint, XlsxWriter |
-| **Testing** | pytest, 3300+ tests |
-| **CI/CD** | GitHub Actions |
-| **Deployment** | PythonAnywhere (recommended) |
+| **PDF/Export** | WeasyPrint, openpyxl |
+| **Testing** | pytest — see [Testing](#testing) for current counts |
+| **CI/CD** | GitHub Actions — 8 green jobs in `ci.yml`, plus `e2e.yml` and `alembic_roundtrip.yml` |
+| **Deployment** | Render (container + persistent disk via `DATA_DIR=/data`); see [DEPLOYMENT.md](DEPLOYMENT.md) |
 
 ---
 
@@ -126,7 +126,7 @@ Azad ERP is a comprehensive business management system designed for small to med
 ### Prerequisites
 
 - Python 3.11+
-- PostgreSQL 15+ (production) or SQLite (development)
+- PostgreSQL 15+ (the stable local dev DB runs on `localhost:5433`, database `ERPLite2026`; see `.env`)
 - Node.js 18+ (frontend assets)
 
 ### Development Setup
@@ -148,35 +148,40 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your settings
 
-# 5. Run migrations (SQLite for dev)
-python -m flask --app wsgi:app db upgrade
+# 5. Run migrations (PostgreSQL — dev DB ERPLite2026, or your configured DATABASE_URL)
+python -m flask --app wsgi:app db upgrade head
 
-# 6. Run the application
-python wsgi.py
-# Or: flask run --host=0.0.0.0 --port=5000
+# 6. Run the application (dev serves at http://localhost:5000/)
+python app.py
+# Or: flask --app wsgi:app run --host=0.0.0.0 --port=5000
+# Production uses gunicorn via the Procfile.
 ```
 
 ### Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Production | PostgreSQL connection string |
-| `SECRET_KEY` | Production | Flask secret key (generate with `secrets.token_hex(32)`) |
-| `OWNER_PASSWORD` | Yes | Master owner password |
-| `CARD_ENCRYPTION_KEY` | Yes | Card vault encryption key |
+| `DATABASE_URL` | Yes (dev & prod) | PostgreSQL connection string (`postgresql://…@localhost:5433/ERPLite2026` in dev) |
+| `SECRET_KEY` | Production | Flask secret key (generate with `secrets.token_hex(32)`); auto-generated & persisted if unset |
+| `OWNER_PASSWORD` | Deprecated | Ignored for login — the owner has a random password and authenticates via the daily master key |
+| `CARD_ENCRYPTION_KEY` | Production | Card vault encryption key |
 | `OWNER_USERNAME` | No | Owner username (default: `owner`) |
-| `OWNER_EMAIL` | No | Owner email (default: `owner@system.local`) |
-| `MASTER_KEY_SEED` | No | Daily master key seed (default: `Azad@1983`) |
+| `OWNER_EMAIL` | No | Owner email (default: empty) |
+| `MASTER_KEY_SEED` | No | Seed for the daily master key; if unset, auto-generated and persisted to `instance/master_seed`. Format: `<seed>@YYYY@MM@DD` (UTC) |
+| `DATA_DIR` | Production | Persistent root for backups/uploads (Render mounts `/data`); defaults to `instance/` |
 | `CACHE_TYPE` | No | `SimpleCache` (default) or `RedisCache` |
 | `APP_ENV` | No | `production` (default) or `development` |
 | `DEBUG` | No | `false` (default) or `true` |
+| `APP_VERSION` | No | Reported version (default: `1.0.0`) |
 
 ### Default Credentials
 
 | Username | Password | Role |
 |----------|----------|------|
-| `owner` | `OWNER_PASSWORD` env var | Owner (Master Key) |
-| Daily Master Key | `Azad@1983@YYYY@MM@DD` | Owner (daily rotating) |
+| `owner` | Daily master key (not a fixed password) | Owner / platform admin |
+| Daily Master Key | `<seed>@YYYY@MM@DD` (e.g. `Azad@1983@2026@11@18`) | Owner (UTC daily rotating) |
+
+The master key seed comes from `MASTER_KEY_SEED`, else `instance/master_seed`, else an auto-generated persisted value. `OWNER_PASSWORD` does **not** enable login.
 
 ---
 
@@ -184,28 +189,32 @@ python wsgi.py
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
-### PythonAnywhere (Recommended)
+### Render (current deployment target)
 
-1. Create a PythonAnywhere account (Web + PostgreSQL plan)
-2. Clone the repository
-3. Set up virtualenv and install dependencies
-4. Configure Web tab with WSGI file
-5. Set environment variables in Web tab
-6. Run `flask db upgrade`
-7. Reload the web app
+The repository ships `render.yaml` (web service + PostgreSQL + 1 GB persistent disk mounted at `/data`) and a `Procfile` (gunicorn). Backups and uploads live on the persistent disk via `DATA_DIR=/data` so they survive redeploys. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full guide.
+
+1. Create the services from `render.yaml` (or use the Render dashboard)
+2. Set `SECRET_KEY`, `OWNER_PASSWORD`, and `MASTER_KEY_SEED` (`sync: false` — set them manually)
+3. Run `flask db upgrade head` once against the production DB
+4. Health check path: `/api/health`
+
+> **No deployment has been performed yet.** These are the prepared deployment assets, not a live environment.
 
 ### Health Check
 
 ```bash
-curl -s https://your-domain.com/api/healthz | python -m json.tool
+curl -s http://localhost:5000/api/healthz | python -m json.tool
+# or on the deployed domain: curl -s https://your-domain.com/api/healthz
 ```
 
-Expected response:
+Expected response (five checks — `nowpayments` may be a warning before the vault is initialized):
 ```json
 {
   "checks": {
     "database": {"status": "healthy"},
+    "nowpayments": {"status": "healthy"},
     "encryption": {"status": "healthy"},
+    "system": {"status": "healthy"},
     "ai_engine": {"status": "healthy"}
   },
   "overall_status": "healthy"
@@ -218,28 +227,27 @@ Expected response:
 
 | Document | Description |
 |----------|-------------|
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Detailed deployment guide for PythonAnywhere |
-| [QA_REPORT_TEMPLATE.md](QA_REPORT_TEMPLATE.md) | QA reporting template |
+| [docs/TECHNICAL_STATUS.md](docs/TECHNICAL_STATUS.md) | **Authoritative current-state report** — architecture, isolation, security, finance, CI, deployment |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment guide (Render + local dev) |
+| [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Migration chain & golden rules |
+| [CHANGELOG.md](CHANGELOG.md) | Version history & current-state notes |
 | [.env.example](.env.example) | Environment variables reference |
-| [MAINTENANCE_USER_GUIDE.md](MAINTENANCE_USER_GUIDE.md) | Maintenance module user guide (reception → invoice → receipt → printing) |
-| [FULL_USER_GUIDE.md](FULL_USER_GUIDE.md) | Complete user guide (all modules) |
-| [OWNER_USER_GUIDE.md](OWNER_USER_GUIDE.md) | Owner dashboard / platform admin guide |
-| [docs/maintenance_status.md](docs/maintenance_status.md) | Maintenance module technical status & accounting policy |
-| [docs/SECURITY_ROLE_AUDIT.md](docs/SECURITY_ROLE_AUDIT.md) | Security role audit details |
-| [docs/ROUTE_ISOLATION_AUDIT.md](docs/ROUTE_ISOLATION_AUDIT.md) | Route isolation audit details |
+
+> Older per-topic audit reports and unused user guides were consolidated into
+> `docs/TECHNICAL_STATUS.md` or removed (2026-11-18).
 
 ### Key Directories
 
 | Directory | Description |
-|-----------|-------------|
-| `routes/` | Flask route handlers (35 blueprints) |
-| `models/` | SQLAlchemy ORM models |
-| `services/` | Business logic services |
+|----------|-------------|
+| `routes/` | Flask route handlers (37 blueprints) |
+| `models/` | SQLAlchemy ORM models (~103 classes) |
+| `services/` | Business logic services (GL posting is service-layer, `GLService`, flush-only) |
 | `templates/` | Jinja2 HTML templates |
 | `static/` | CSS, JS, images |
-| `tests/` | 3300+ pytest tests |
-| `migrations/` | Alembic database migrations |
-| `.github/workflows/` | CI/CD pipelines |
+| `tests/` | pytest suites (`unit`, `security`, `integration`, `e2e`, `simulation`) |
+| `migrations/` | Alembic migrations (71 revisions, head `b49_alter_column_widths`) |
+| `.github/workflows/` | CI/CD pipelines (`ci.yml`, `e2e.yml`, `alembic_roundtrip.yml`) |
 
 ---
 
@@ -248,19 +256,21 @@ Expected response:
 ### Run Tests Locally
 
 ```bash
-# Remove DATABASE_URL to use SQLite
-Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+# Unit + security (in-memory SQLite; no DATABASE_URL needed)
+python -m pytest tests/unit/ tests/security/ -q -p no:randomly
 
-# Run unit tests
-python -m pytest tests/unit/ -q -p no:randomly
-
-# Run integration tests
+# Integration (real PostgreSQL; set DATABASE_URL, ALLOW_DESTRUCTIVE_POSTGRES_TESTS=1)
 python -m pytest tests/integration/ -q -p no:randomly
 
-# Run E2E tests
-python -m pytest tests/e2e/ -q -p no:randomly
+# E2E vertical slice (305 tests; the big combinatorial matrix runs in CI shards)
+python -m pytest tests/e2e/ --ignore=tests/e2e/test_matrix.py -q -p no:randomly
 
-# Run specific test
+# PostgreSQL-only financial integrity tests (run in CI's alembic-smoke job)
+python -m pytest tests/unit/test_financial_seed_integrity.py \
+  tests/unit/test_financial_domains_integrity.py \
+  tests/unit/test_financial_gaps_integrity.py -q -p no:cacheprovider -o addopts=
+
+# Run a specific test
 python -m pytest tests/unit/test_writeoffs_p0.py -v -p no:randomly
 ```
 
@@ -268,19 +278,22 @@ python -m pytest tests/unit/test_writeoffs_p0.py -v -p no:randomly
 
 | Test Suite | Count | Description |
 |------------|-------|-------------|
-| **Unit Tests** | 2000+ | Business logic, pricing engine, system init, account resolution |
-| **Integration Tests** | 500+ | Full HTTP-level tests on real PostgreSQL (ERP-lite) |
-| **E2E Tests** | 300+ | Browser-path smoke tests over real HTTP with CSRF |
-| **Maintenance Security** | 57 | Tenant isolation, IDOR, CSRF, tenant scoping, audit immutability, financial cycle |
-| **Maintenance Pricing** | 24 | Inclusive/exclusive pricing, mixed tax, order discount allocation |
-| **Route Coverage** | 486/486 | 100% of routes covered by E2E tests |
-| **Total** | **3400+** | All tests passing on CI |
+| **Unit** | ~3,577 | Business logic, GL/reports, tenant isolation, feature gates, schema parity, financial seeds |
+| **Security** | ~80 | Tenant isolation / zero-trust, maintenance finance & safety |
+| **Integration** | ~507 | Full HTTP-level tests on real PostgreSQL |
+| **E2E vertical slice** | ~305 | Browser-path smoke tests over real HTTP with CSRF |
+| **E2E combinatorial matrix** | ~28,350 | 30 domains × 2 CI shards (`e2e.yml`) |
+| **Route census** | ≥545 | Every route classified by isolation scope (`test_route_isolation_census.py`) |
 
-### Maintenance Test Details
+All CI workflows are green: `ci.yml` (8 jobs: lint, security-scan, verify-boot, frontend, test, integration, repo-security, alembic-smoke), `e2e.yml`, and `alembic_roundtrip.yml`.
 
-- `tests/security/test_maintenance_safety.py` — 32 tests: isolation, IDOR, CSRF, tenant scoping, audit immutability
-- `tests/security/test_maintenance_finance.py` — 25 tests: GL balance, warranty, returns, credit notes, deposits, supplier payments
-- `tests/unit/test_maintenance_pricing.py` — 24 tests: pricing engine
+### Permanent financial-integrity tests
+
+- `tests/unit/test_financial_seed_integrity.py` — sale, payment, purchase+VAT, return, write-off
+- `tests/unit/test_financial_domains_integrity.py` — cheques, multi-currency/FX, maintenance, payroll
+- `tests/unit/test_financial_gaps_integrity.py` — fixed assets/depreciation, maintenance sub-types, partner shares, FX-difference
+- `tests/unit/test_feature_gates.py` — package flags are real HTTP controls (403 disabled / 503 fail-closed)
+- `tests/unit/test_schema_parity.py` — model/migration drift guard
 
 ---
 
@@ -288,12 +301,13 @@ python -m pytest tests/unit/test_writeoffs_p0.py -v -p no:randomly
 
 ### Security Features
 
-- **Multi-tenant isolation**: Row-level tenant filtering on all data
-- **Role-based access control**: Granular permissions per role
-- **Audit trail**: All financial transactions logged
+- **Load-time tenant isolation**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria()`) filters all ~79 registered tenant-scoped tables — including `session.get()`, relationships, aliases and paginated queries. A `before_flush` guard stamps/validates `tenant_id` on writes. Platform rows (roles, tax rulesets, fiscal periods) stay visible via an `OR tenant_id IS NULL` criterion. See [docs/TECHNICAL_STATUS.md](docs/TECHNICAL_STATUS.md).
+- **Role-based access control**: Granular permissions per role (27 seeded codes)
+- **Feature gates (package enforcement)**: `install_feature_gate()` on `api`, `ai`, `ledger` (`gl`), `reports`, `maintenance`, `api_enhanced`, `api_analytics`, `graphql`. Disabled feature → 403; verification failure → 503 (fail-closed); infra endpoints exempt. `enable_api` defaults to **False**; other `enable_*` flags default True.
+- **Audit trail**: All financial transactions logged (append-only, soft-delete via `b41`)
 - **CSRF protection**: Flask-WTF CSRF tokens
-- **Password hashing**: bcrypt with salt
-- **Session security**: Secure session cookies
+- **Password hashing**: Werkzeug PBKDF2 with per-user salt; owner authenticates via a daily master key
+- **Session security**: Secure session cookies + inactivity timeout
 - **Input validation**: Server-side validation on all forms
 - **SQL injection prevention**: SQLAlchemy ORM (parameterized queries)
 

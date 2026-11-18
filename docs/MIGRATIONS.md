@@ -1,14 +1,22 @@
 # Migration Contract — عقد التهجيرات (FROZEN / ثابت)
 
-> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من 21 مراجعة مرتبة
-> برأس واحد (`21_inbound_shipment`). ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
+> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من **71 مراجعة** مرتبة
+> برأس واحد **`b49_alter_column_widths`**. ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
 > أي تغيير في الموديل = مراجعة جديدة في آخر السلسلة فقط. هذا الملف هو المرجع
 > الوحيد المعتمد، ولا يجوز لأي مهمة مستقبلية مخالفته.
 
-## 1. Status (verified 2026-09-16 — inbound shipments + shipment expedition)
+> ⚠️ **تحديث 2026-11-18:** السلسلة نمت من 21 إلى 71 مراجعة. الرأس الحالي
+> `b49_alter_column_widths` (`down_revision = b48_maint_child_tenant`).
+> من المراجعات الجديدة الهامة: `b41_audit_log_soft_delete` (حذف ناعم لسجلات التدقيق)،
+> `b42_role_tenant_unique`, `b44_product_return_tenant_id` (عزل المرتجعات),
+> `b47_roles_drop_name_unique`, `b48_maint_child_tenant` (أضاف `tenant_id` لثمانية
+> جداول صيانة فرعية), `b49` (الرأس). بوابة الانحراف `tests/unit/test_schema_parity.py`
+> تعمل في `alembic-smoke` وتمنع أي انحراف model/migration.
 
-- **Revisions:** 21 files in `migrations/versions/`, UTF-8, no null bytes.
-- **History:** single linear chain, exactly **ONE head**: `21_inbound_shipment`.
+## 1. Status (verified 2026-11-18)
+
+- **Revisions:** 71 files in `migrations/versions/`, UTF-8, no null bytes.
+- **History:** single linear chain, exactly **ONE head**: `b49_alter_column_widths`.
 - **Database:** PostgreSQL 15+ only. No SQLite fallback anywhere in the chain.
 - **Engine source:** `migrations/env.py` (stock Flask-Migrate) always uses the
   Flask app engine, therefore it always respects the `DATABASE_URL`
@@ -46,10 +54,12 @@
 | 18 | `18_donation_method_flags` | Per-method donation switches (owner panel) |
 | 19 | `19_error_log_table` | `error_logs` table for the centralized error journal |
 | 20 | `20_shipment_module` | Field sales shipments — الإرسالية الميدانية (from warehouse to site, then sale→payment→invoice) |
-| 21 | `21_inbound_shipment` *(HEAD)* | Inbound shipments — استقبال شحنات البضائع الواردة (in_transit→arrived→inspected→put_away→closed, stock movement on put_away) |
+| 21 | `21_inbound_shipment` | Inbound shipments — استقبال شحنات البضائع الواردة (in_transit→arrived→inspected→put_away→closed, stock movement on put_away) |
+| 22–49 | `b0` … `b49_alter_column_widths` *(HEAD)* | سلسلة الـ `b*` اللاحقة (P0 isolation, due dates, inventory costing, tax/tenant, partners, maintenance b28–b40, audit soft-delete b41, role tenant unique b42, product-return tenant b44, must-change-password b45, drop error-log FK b46, drop roles.name unique b47, maintenance child tenant b48, column widths b49). الرجوع إلى أسماء الملفات الفعلية في `migrations/versions/`. |
 
 Each file's `down_revision` points to its exact predecessor above.
 `alembic history` / `flask db history` must always render one straight line.
+**HEAD = `b49_alter_column_widths`.**
 
 ## 3. How migrations run (do not redesign this)
 

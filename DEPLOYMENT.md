@@ -1,12 +1,41 @@
-# دليل النشر على PythonAnywhere — UAE-Sale / Azad ERP
+# دليل النشر — UAE-Sale / Azad ERP
 
-خطوات عملية لنشر التطبيق على PythonAnywhere مع PostgreSQL.
-كل الأوامر تُنفَّذ في **Bash console** الخاص بحسابك على PythonAnywhere
-(أو عبر SSH).
+> **الحالة الحالية (مهم):** لم يُنفَّذ أي نشر بعد. المستودع جاهز تقنياً — كل
+> وظائف CI خضراء (8 في `ci.yml` + `e2e.yml` + `alembic_roundtrip.yml`) — لكن
+> لا توجد بيئة إنتاج أو staging حيّة حتى الآن. ما يلي هو المسار المُعدّ
+> للنشر، لا سجلّ لعملية تمّت.
+
+## 0. بيئة التطوير المستقرة (الحالية)
+
+```
+DATABASE_URL=postgresql://postgres:123@localhost:5433/ERPLite2026   (من .env)
+التطبيق: http://localhost:5000/
+الترحيلات: flask db upgrade head   (الرأس b49_alter_column_widths)
+```
+
+## 0.1 الهدف الحالي للنشر: Render
+
+المستودع يحتوي على `render.yaml` (خدمة web + PostgreSQL + قرص دائم 1 GB
+مُركَّب على `/data`) و `Procfile` (gunicorn). النسخ الاحتياطية والملفات
+المرفوعة تُخزَّن على القرص الدائم عبر `DATA_DIR=/data` فتبقى بعد كل إعادة
+نشر (دليل التطبيق على Render مؤقت). خطوات مختصرة:
+
+1. أنشئ الخدمات من `render.yaml` (أو من لوحة Render).
+2. اضبط المتغيرات ذات `sync: false` يدوياً: `SECRET_KEY`, `OWNER_PASSWORD`,
+   `MASTER_KEY_SEED` (نفس البذرة على كل نسخة من الخدمة).
+3. شغّل `flask db upgrade head` مرة واحدة ضد قاعدة الإنتاج.
+4. مسار الفحص الصحي: `/api/health`.
+
+> `CACHE_TYPE` الافتراضي `SimpleCache` (داخل العملية) ولا يحتاج Redis.
+> عامل Celery اختياري ويتطلب Redis.
+
+## 0.2 بديل: PythonAnywhere
+
+القسم أدناه يوضّح النشر على PythonAnywhere كبديل (يُحدَّث عند الحاجة).
 
 ---
 
-## 0. المتطلبات
+## 0. المتطلبات (PythonAnywhere)
 
 | المتطلب | التفاصيل |
 |---|---|
@@ -121,9 +150,15 @@ flask db current
 يشغّل رحلة ذهاب وإياب كاملة على **PostgreSQL 15** حقيقي عند كل تغيير في
 `migrations/` أو `models/` — أي أن الترحيلات مُختبرة على Postgres لا على SQLite.
 
-> **ترتيب الترحيلات الضريبية (مطلوب الالتزام):** `b5_tax_per_tenant` →
-> `b6_corp_tax` → `b7_tenant_invoice_profile` → `b8_vat_treatments` →
-> `b9_purchase_tax_treatment` → `b10_sale_line_tax_treatment` → `b11_expense_tenant` → `b12_purchase_list_tenant` → `b13_payroll_leave_type_tenant` → `b14_product_group_tenant` → `b15_shipment_lines_tenant` → `b16_tax_rulesets` → `b17_purchase_vat_features` → `b18_taxruleset_unique_defaults` → `b19_ruleset_effective_dates` → `b20_expense_tax` → `b21_vat_split_accounts` → `b22_compliance_credentials` → `b23_subscription_plans` → `b24_support_incidents_backups` → `b25_partners`.
+> **الرأس الحالي: `b49_alter_column_widths`** (71 مراجعة). سلسلة الترحيلات
+> الكاملة موثّقة في [docs/MIGRATIONS.md](docs/MIGRATIONS.md). من الترحيلات
+> الحديثة المهمة: `b41_audit_log_soft_delete`, `b42_role_tenant_unique`,
+> `b44_product_return_tenant_id`, `b47_roles_drop_name_unique`,
+> `b48_maint_child_tenant` (أضاف `tenant_id` لجداول الصيانة الفرعية),
+> `b49_alter_column_widths` (الرأس).
+>
+> **ترتيب الترحيلات الضريبية (مطلوب الالتزام، جزء من السلسلة):**
+> `b5_tax_per_tenant` → `b6_corp_tax` → … → `b21_vat_split_accounts` → … → `b49_alter_column_widths`.
 > ملاحظة تشغيلية على `b6_corp_tax`: نسخته الحالية **لم تعد** تفرض تبديل عملة
 > أساس التينانتات تلقائياً. أي بيئة قديمة طُبّقت عليها النسخة القديمة وتغيّرت
 > عملات فيها تحتاج مراجعة يدوية — لا تُعالج بأي ترحيل آخر.
@@ -189,13 +224,13 @@ flask db current
 >   الفاتورة** — الفواتير السابقة تبقى بنسبتها القديمة.
 > * حساب `6910` (حصص الشركاء في الأرباح) مُبذَر تلقائيًا بأول قيد تسوية عبر
 >   `ensure_core_accounts()` إن لم يكن موجودًا، ولا يُعدَّل ولا يُحذف.
-> قبل نشر أي منها: `flask db upgrade` باتجاه head (= `b25_partners`).
+> قبل نشر أي منها: `flask db upgrade head` (الرأس `b49_alter_column_widths`).
 > فحص Round-Trip إلزامي على Postgres قبل النشر (الترقية → التراجع خطوة → إعادة الترقية).
 >
 > **صفحة التحقق العميق من النسخ الاحتياطية + cron (موصى بها يوميًا):**
 > `/owner/backups/verify-latest` — فحص كل نسخة (حجم، SHA-256، جداول ≥ 30، مؤشرات بيانات).
 > على PythonAnywhere → Scheduled Tasks: أمر يومي الساعة 03:00:
-> `cd ~/AzadERP && venv/bin/flask verify-backup`
+> `cd ~/UAE-Sale && venv/bin/flask verify-backup`
 > أي فشل يظهر في القائمة ويُسجَّل عبر `audit_logs` و`backup_verifications`. **[ادعاء صادق]**:
 > التحقق ليس إعادة استعادة اختبارية — هو تحقق محتوى؛ الاستعادة الفعلية من اختصاص الناشر وتحت مسؤوليته.
 
@@ -224,29 +259,24 @@ flask db current
 
 ---
 
-## 6. إنشاء حساب المالك
+## 6. حساب المالك
 
-يُنشأ المالك تلقائياً عند أول تشغيل باستخدام `OWNER_PASSWORD`:
-
-```bash
-flask shell
->>> from utils.system_init import ensure_system_integrity
->>> from app import create_app
->>> app = create_app()
->>> with app.app_context():
-...     ensure_system_integrity(app)
->>> exit
-```
-
-تحقق:
+يُنشأ المالك تلقائياً عند أول تشغيل (`create_app()` يستدعي `ensure_system_integrity`)
+بكلمة مرور عشوائية **غير صالحة لتسجيل الدخول**. تسجيل دخول المالك يتم **فقط**
+بالمفتاح الرئيسي اليومي `<seed>@YYYY@MM@DD` (حيث البذرة من `MASTER_KEY_SEED`
+أو `instance/master_seed` أو مولّدة تلقائياً). `OWNER_PASSWORD` مهمل لتسجيل الدخول.
 
 ```bash
+# تحقق من وجود المالك
 flask shell -c "from models import User; print([(u.username, u.is_owner) for u in User.query.filter_by(is_owner=True).all()])"
+
+# اعرض المفتاح اليومي (بعد ضبط MASTER_KEY_SEED)
+flask shell -c "from utils.licensing import master_key_for_today; print(master_key_for_today())"
 ```
 
 ---
 
-## 6. إعداد الويب (Web tab)
+## 7. إعداد الويب (Web tab)
 
 | الحقل | القيمة |
 |---|---|
@@ -259,7 +289,7 @@ flask shell -c "from models import User; print([(u.username, u.is_owner) for u i
 
 ---
 
-## 7. التحقق بعد النشر
+## 8. التحقق بعد النشر
 
 ```bash
 # فحص الصحة الكامل (يعيد 200 إذا لم يكن هناك فشل حرج)
@@ -357,8 +387,8 @@ git clone <repo> && cd UAE-Sale
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 # اضبط متغيرات البيئة في تبويب Web
-flask db upgrade
-flask shell -c "from app import create_app; from utils.system_init import ensure_system_integrity; a=create_app(); ctx=a.app_context(); ctx.push(); ensure_system_integrity(a)"
+flask db upgrade head
+# create_app() يستدعي ensure_system_integrity تلقائياً — لا حاجة لاستدعائ يدوي
 # ثم: Web tab -> WSGI file = ~/UAE-Sale/wsgi.py -> Reload
 curl -s https://<domain>/api/healthz
 ```

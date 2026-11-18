@@ -699,15 +699,17 @@ class TestReturnCostBasisAndFx:
             user_id=owner_user.id,
         )
 
-        entry = GLJournalEntry.query.filter_by(
-            reference_type="ProductReturn", reference_id=ret.id
+        # Cost/COGS reversal is posted in its own entry (ProductReturnCost) at
+        # base currency, separate from the revenue/VAT reversal entry.
+        cost_entry = GLJournalEntry.query.filter_by(
+            reference_type="ProductReturnCost", reference_id=ret.id
         ).first()
-        assert entry is not None
+        assert cost_entry is not None
         cogs_line = next(
-            ln for ln in entry.lines if "COGS Reversal" in (ln.description or "")
+            ln for ln in cost_entry.lines if "COGS Reversal" in (ln.description or "")
         )
         inv_line = next(
-            ln for ln in entry.lines if "Inventory Restock" in (ln.description or "")
+            ln for ln in cost_entry.lines if "Inventory Restock" in (ln.description or "")
         )
         assert cogs_line.credit == Decimal("25.000")
         assert inv_line.debit == Decimal("25.000")

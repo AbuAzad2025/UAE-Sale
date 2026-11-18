@@ -783,9 +783,20 @@ class TestTrialBalanceScope:
         )
         db.session.commit()
         _oeid = orphan_entry.id
-        db.session.execute(_text("SET session_replication_role = replica"))
-        db.session.execute(_text("DELETE FROM gl_journal_entries WHERE id = :eid"), {"eid": _oeid})
-        db.session.execute(_text("SET session_replication_role = origin"))
+        # Bypass the FK from gl_journal_lines to the entry so the line becomes
+        # a true orphan. `session_replication_role` is PostgreSQL-only; on
+        # SQLite the FK is not enforced by default, so a plain delete works.
+        _dialect = db.session.get_bind().dialect.name
+        if _dialect == "postgresql":
+            db.session.execute(_text("SET session_replication_role = replica"))
+            db.session.execute(
+                _text("DELETE FROM gl_journal_entries WHERE id = :eid"), {"eid": _oeid}
+            )
+            db.session.execute(_text("SET session_replication_role = origin"))
+        else:
+            db.session.execute(
+                _text("DELETE FROM gl_journal_entries WHERE id = :eid"), {"eid": _oeid}
+            )
         db.session.commit()
 
         resp = client.get("/ledger/trial-balance")

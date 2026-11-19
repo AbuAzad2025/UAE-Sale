@@ -408,3 +408,27 @@ def company_settings():
             flash("حدث خطأ أثناء الحفظ", "danger")
 
     return render_template("main/company_settings.html", tenant=tenant, editable=editable)
+
+
+
+@main_bp.route("/settings/partners", methods=["GET", "POST"])
+@login_required
+@permission_required("manage_customers")
+def company_partners():
+    """شركاء/مساهمو المستأجر ونسبهم — صفحة محايدة للمدير.
+
+    تعيد استخدام منطق صفحة الشركاء نفسه، لكن المستأجر يُؤخذ دائماً من
+    current_user.tenant_id (لا من مبدّل شركات المالك) — عزل تام.
+    """
+    from flask import abort
+
+    tid = getattr(current_user, "tenant_id", None)
+    if not tid:
+        flash("هذه الصفحة خاصة بمديري المستأجرين.", "danger")
+        return redirect(url_for("main.dashboard"))
+    tenant = db.session.get(Tenant, tid)
+    if tenant is None:
+        abort(404)
+    from routes.owner import _partners_view
+
+    return _partners_view(tenant, post_endpoint="main.company_partners")

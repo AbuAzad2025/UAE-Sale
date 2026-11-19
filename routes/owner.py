@@ -4189,24 +4189,42 @@ def owner_guide():
 @login_required
 @owner_required
 def partners():
+    """Owner entry point. Kept owner-only; tenant managers use
+    ``main.company_partners`` which reuses the same tenant-scoped logic.
+    """
+    return _partners_view(_session_impersonated_tenant(), "owner.partners")
+
+
+def _session_impersonated_tenant():
+    from flask import session
+    from models import Tenant
+
+    raw = session.get("impersonate_tenant_id")
+    if not raw:
+        return None
+    try:
+        return Tenant.query.get(int(raw))
+    except (ValueError, TypeError):
+        return None
+
+
+def _partners_view(imp, post_endpoint="owner.partners"):
+    """Render and process the partners page for ONE concrete tenant.
+
+    ``imp`` must already be resolved by the caller: the owner passes the
+    impersonated tenant, the tenant manager passes their own tenant from
+    current_user.tenant_id. All writes below go through get_owned_or_404 and
+    the tenant-scoped partner_profit services, so no cross-tenant write is
+    possible from either entry point.
+    """
     from datetime import date as _date
 
-    from flask import session
     from models import Customer, Tenant, Product, ProductPartner
     from models.gl import GLAccount, GLJournalLine
     from services import partner_profit as pp
     from services.account_resolution import AccountRole
     from services.currency_service import CurrencyService
     from sqlalchemy import func
-
-    def _impersonated_tenant():
-        raw = session.get("impersonate_tenant_id")
-        if not raw:
-            return None
-        try:
-            return Tenant.query.get(int(raw))
-        except (ValueError, TypeError):
-            return None
 
     def _parse_day(raw, default=None):
         raw = (raw or "").strip()
@@ -4217,7 +4235,6 @@ def partners():
         except ValueError:
             return default
 
-    imp = _impersonated_tenant()
     today = _date.today()
     default_from = today.replace(day=1)
 
@@ -4331,7 +4348,7 @@ def partners():
             flash(f"⛔ {exc}", "danger")
 
         qs = f"?from={period_from.isoformat()}&to={period_to.isoformat()}"
-        return redirect(url_for("owner.partners") + qs)
+        return redirect(url_for(post_endpoint) + qs)
 
     ctx = {
         "impersonated": imp,
@@ -4454,4 +4471,6 @@ def partners():
             )
         ctx["per_tenant"] = per_tenant
 
+    ctx["post_endpoint"] = post_endpoint
+    ctx["neutral"] = post_endpoint != "owner.partners"
     return render_template("owner/partners.html", **ctx)

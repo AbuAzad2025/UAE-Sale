@@ -921,6 +921,12 @@
           {% if current_user.has_permission('manage_settings') %}
           <li class="nav-header">إعدادات الشركة</li>
           <li class="nav-item">
+            <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
+              <i class="nav-icon fas fa-handshake text-warning"></i>
+              <p>الشركاء والنسب</p>
+            </a>
+          </li>
+          <li class="nav-item">
             <a href="{{ url_for('main.company_settings') }}" class="nav-link {% if request.endpoint == 'main.company_settings' %}active{% endif %}">
               <i class="nav-icon fas fa-building text-info"></i>
               <p>بيانات الشركة والشعارات</p>

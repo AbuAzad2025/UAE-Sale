@@ -93,6 +93,26 @@ def _status_badge(status):
     )
 
 
+def _page_title_text(value):
+    """Plain-text label for the breadcrumb from a page_title block.
+
+    Many templates place a whole toolbar (div/h1/buttons) inside page_title.
+    Rendering that block in both the header <h1> and the breadcrumb duplicates
+    the title and buttons. Prefer the first heading's text, otherwise strip
+    tags and keep the first non-empty line. Returns safe Markup.
+    """
+    import re as _re
+    from html import unescape as _unescape
+
+    s = str(value or "")
+    heading = _re.search(r"<h[1-6][^>]*>(.*?)</h[1-6]>", s, _re.S | _re.I)
+    if heading:
+        s = heading.group(1)
+    s = _re.sub(r"<[^>]*>", " ", s)
+    s = " ".join(_unescape(s).split()).strip()
+    return Markup(escape(s))
+
+
 def _get_current_tenant():
     """Return the current tenant for branding (logo, colors) in templates."""
     try:
@@ -584,6 +604,7 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter("money")(_format_money)
     app.template_filter("num")(_format_num)
     app.template_filter("status_badge")(_status_badge)
+    app.template_filter("page_title_text")(_page_title_text)
 
     try:
         from models.tenant_scope import (

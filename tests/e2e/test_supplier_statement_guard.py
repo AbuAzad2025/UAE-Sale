@@ -29,7 +29,7 @@ def test_manager_can_open_own_supplier_statement(client, login_as, app, db):
     import re as _re
     assert len(_re.findall(r'/suppliers/\d+/statement/print"', body)) == 1  # no duplicated toolbar
     assert "حركة الحساب" in body
-    assert body.count("<h1") == 1
+    assert body.count('class="page-title-host"') == 1  # header rendered once
 
     # Dedicated clean print preview (A4 document, no app chrome).
     printed = client.get(f"/suppliers/{sid}/statement/print")

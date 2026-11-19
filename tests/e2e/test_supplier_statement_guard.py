@@ -84,6 +84,19 @@ def test_statement_rows_have_expandable_details_and_doc_links(client, login_as, 
     assert "منتجات:" in printed
     assert "الشيك:" in printed
 
+    # Sign convention: invoice = CREDIT (we owe), payment = DEBIT (reduces it).
+    with app.test_request_context("/"):
+        from models import Supplier
+        from routes.suppliers import _statement_transactions
+
+        supplier = db.session.get(Supplier, sid)
+        rows, _, _, balance = _statement_transactions(supplier)
+        inv = [r for r in rows if r["type"] == "purchase"][0]
+        pay = [r for r in rows if r["type"] == "payment"][0]
+        assert inv["debit"] == 0 and inv["credit"] == 100.0
+        assert pay["debit"] == 40.0 and pay["credit"] == 0
+        assert balance == -60.0
+
 
 def test_print_pages_get_auto_back_link(client, login_as, app, db):
     """Any /.../<id>/print preview gets a back link to /.../<id>."""

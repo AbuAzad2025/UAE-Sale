@@ -442,8 +442,10 @@ def _statement_transactions(supplier):
             "date": payment.payment_date,
             "type": "payment",
             "reference": payment.payment_number or f"PMT-{payment.id}",
-            "debit": float(payment.amount_base or 0) if not outgoing else 0,
-            "credit": float(payment.amount_base or 0) if outgoing else 0,
+            # Supplier statement convention: invoices are CREDIT (we owe them),
+            # payments TO the supplier are DEBIT (they reduce what we owe).
+            "debit": float(payment.amount_base or 0) if outgoing else 0,
+            "credit": float(payment.amount_base or 0) if not outgoing else 0,
             "description": f"دفعة ({payment.payment_method})"
                            + (" — شيك قيد الانتظار" if pending_cheque else ""),
             "status": "confirmed" if payment.payment_confirmed else "pending",

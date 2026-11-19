@@ -1,0 +1,116 @@
+{% extends 'base_print.html' %}
+{% block print_title %}كشف حساب المورد - {{ supplier.name }}{% endblock %}
+
+{% block extra_print_css %}
+<style>
+  .st-doc { background: #fff; }
+  @media print { .st-doc { box-shadow: none; border: none; } }
+  .st-head {
+    background: linear-gradient(135deg, {{ settings.header_color or '#007A3D' }} 0%, {{ settings.accent_color or '#D4AF37' }} 100%);
+    color: #fff; padding: 14px 18px; text-align: center;
+  }
+  .st-logo { height: 46px; background: #fff; padding: 6px; border-radius: 6px; margin-bottom: 6px; }
+  .st-co { font-size: 10px; font-weight: 700; }
+  .st-co-info { font-size: 8px; opacity: .95; margin-top: 3px; }
+  .st-title-band {
+    background: {{ settings.accent_color or '#D4AF37' }}22;
+    border-bottom: 1px solid {{ settings.header_color or '#007A3D' }};
+    padding: 8px; text-align: center;
+  }
+  .st-title-band h2 { margin: 0; font-size: 11px; color: {{ settings.header_color or '#007A3D' }}; }
+  .st-body { padding: 12px 16px; }
+  .st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .st-box { border: 1px solid {{ settings.accent_color or '#D4AF37' }}; border-radius: 5px; padding: 8px 10px; }
+  .st-box h3 { margin: 0 0 6px; font-size: 9px; color: {{ settings.header_color or '#007A3D' }}; }
+  .st-box p { margin: 3px 0; font-size: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 8px; }
+  thead { background: {{ settings.header_color or '#007A3D' }}; color: #fff; }
+  th, td { padding: 6px 7px; border-bottom: 1px solid #e3e3e3; text-align: right; }
+  th { font-size: 8px; }
+  .st-total { margin-top: 12px; padding: 10px 12px; border: 1px solid {{ settings.accent_color or '#D4AF37' }}; border-radius: 5px; }
+  .st-total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 9px; }
+  .st-total-row.final { border-top: 2px solid {{ settings.header_color or '#007A3D' }}; margin-top: 6px; padding-top: 8px; font-weight: 700; color: {{ settings.header_color or '#007A3D' }}; }
+  .st-sign { display: flex; justify-content: space-between; margin-top: 26px; font-size: 8px; }
+  .st-foot { background: {{ settings.header_color or '#007A3D' }}; color: #fff; text-align: center; padding: 7px; font-size: 8px; margin-top: 14px; }
+</style>
+{% endblock %}
+
+{% block document_content %}
+<div class="st-doc">
+  <div class="st-head">
+    {% if settings.show_logo and settings.logo_url %}
+    <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://','http://','/')) else url_for('static', filename=settings.logo_url) }}" class="st-logo" alt="logo">
+    {% endif %}
+    <div class="st-co">{{ settings.company_name_ar or '' }}</div>
+    <div class="st-co-info">
+      {{ settings.address_ar or '' }}
+      {% if settings.phone_1 %} | {{ settings.phone_1 }}{% endif %}
+      {% if settings.email %} | {{ settings.email }}{% endif %}
+      {% if settings.tax_number and settings.tax_number != 'None' %} | الرقم الضريبي: {{ settings.tax_number }}{% endif %}
+    </div>
+  </div>
+
+  <div class="st-title-band">
+    <h2>كشف حساب المورد — {{ supplier.name }}</h2>
+    <div style="font-size:8px;">التاريخ: {{ now().strftime('%Y-%m-%d') }} | رقم المورد: #{{ supplier.id }}</div>
+  </div>
+
+  <div class="st-body">
+    <div class="st-grid">
+      <div class="st-box">
+        <h3>بيانات المورد</h3>
+        <p><strong>الاسم:</strong> {{ supplier.name }}</p>
+        {% if supplier.company_name %}<p><strong>الشركة:</strong> {{ supplier.company_name }}</p>{% endif %}
+        {% if supplier.phone %}<p><strong>الهاتف:</strong> {{ supplier.phone }}</p>{% endif %}
+        {% if supplier.tax_number %}<p><strong>الرقم الضريبي:</strong> {{ supplier.tax_number }}</p>{% endif %}
+      </div>
+      <div class="st-box">
+        <h3>ملخص الحساب</h3>
+        <p><strong>إجمالي المشتريات:</strong> {{ '{:,.2f}'.format(total_purchases) }}</p>
+        <p><strong>إجمالي الدفعات:</strong> {{ '{:,.2f}'.format(total_payments) }}</p>
+        <p><strong>الرصيد المستحق:</strong> {{ '{:,.2f}'.format(final_balance) }} {{ base_currency }}</p>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:12%">التاريخ</th>
+          <th style="width:18%">المرجع</th>
+          <th>البيان</th>
+          <th style="width:13%">مدين</th>
+          <th style="width:13%">دائن</th>
+          <th style="width:15%">الرصيد</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '-' }}</td>
+          <td>{{ t.reference }}</td>
+          <td>{{ t.description }}</td>
+          <td>{{ '{:,.2f}'.format(t.debit) if t.debit else '-' }}</td>
+          <td>{{ '{:,.2f}'.format(t.credit) if t.credit else '-' }}</td>
+          <td><strong>{{ '{:,.2f}'.format(t.balance) }}</strong></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;">لا توجد حركات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="st-total">
+      <div class="st-total-row"><span>إجمالي المشتريات</span><span>{{ '{:,.2f}'.format(total_purchases) }} {{ base_currency }}</span></div>
+      <div class="st-total-row"><span>إجمالي الدفعات</span><span>{{ '{:,.2f}'.format(total_payments) }} {{ base_currency }}</span></div>
+      <div class="st-total-row final"><span>الرصيد المستحق للمورد</span><span>{{ '{:,.2f}'.format(final_balance) }} {{ base_currency }}</span></div>
+    </div>
+
+    <div class="st-sign">
+      <div>التوقيع: ............................................</div>
+      <div>اعتماد المحاسب: ............................................</div>
+    </div>
+  </div>
+
+  <div class="st-foot">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</div>
+</div>
+{% endblock %}

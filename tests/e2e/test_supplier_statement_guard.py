@@ -24,6 +24,17 @@ def test_manager_can_open_own_supplier_statement(client, login_as, app, db):
 
     resp = client.get(f"/suppliers/{sid}/statement")
     assert resp.status_code == 200, resp.get_data(as_text=True)[:300]
+    body = resp.get_data(as_text=True)
+    assert "معاينة الطباعة" in body
+    assert "حركة الحساب" in body
+
+    # Dedicated clean print preview (A4 document, no app chrome).
+    printed = client.get(f"/suppliers/{sid}/statement/print")
+    assert printed.status_code == 200, printed.get_data(as_text=True)[:300]
+    pbody = printed.get_data(as_text=True)
+    assert "كشف حساب المورد" in pbody
+    assert "AzadERP" in pbody
+    assert "main-sidebar" not in pbody  # base_print, not the app shell
 
 
 def test_manager_cannot_open_foreign_supplier_statement(client, login_as, app, db):

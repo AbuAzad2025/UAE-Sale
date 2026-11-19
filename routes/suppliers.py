@@ -15,6 +15,7 @@ from flask import (
     request,
     jsonify,
     current_app,
+    abort,
 )
 from flask_login import login_required, current_user
 from extensions import db, limiter
@@ -465,6 +466,71 @@ def statement(id):
         payments=payments,
         transactions=transactions,
         final_balance=final_balance,
+        now=datetime.now,
+    )
+
+
+@suppliers_bp.route("/<int:id>/statement/print")
+@login_required
+@permission_required("manage_purchases")
+def statement_print(id):
+    """معاينة طباعة نظيفة لكشف حساب المورد (ورقة A4 بلا واجهة النظام)."""
+    from models.invoice_settings import InvoiceSettings
+    from utils.invoice_header import document_tenant, with_tenant_header
+
+    supplier = get_owned_or_404(Supplier, id)
+    try:
+        settings = with_tenant_header(
+            InvoiceSettings.get_active(), document_tenant(supplier)
+        )
+    except ValueError:
+        abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
+
+    purchases = (
+        supplier.purchases.filter_by(status="confirmed")
+        .order_by(Purchase.purchase_date.asc())
+        .all()
+    )
+    payments = (
+        Payment.query.filter_by(supplier_id=id)
+        .order_by(Payment.payment_date.asc())
+        .all()
+    )
+    transactions = []
+    for purchase in purchases:
+        transactions.append({
+            "date": purchase.purchase_date,
+            "reference": purchase.purchase_number,
+            "description": "فاتورة شراء",
+            "debit": 0,
+            "credit": float(purchase.amount_base or purchase.total_amount or 0),
+        })
+    for payment in payments:
+        outgoing = payment.direction == "outgoing"
+        transactions.append({
+            "date": payment.payment_date,
+            "reference": payment.payment_number or f"PMT-{payment.id}",
+            "description": f"دفعة ({payment.payment_method})"
+                           + (" — شيك قيد الانتظار"
+                              if payment.payment_method == "cheque"
+                              and not payment.payment_confirmed else ""),
+            "debit": float(payment.amount_base or 0) if not outgoing else 0,
+            "credit": float(payment.amount_base or 0) if outgoing else 0,
+        })
+    transactions.sort(key=lambda t: (t["date"] or datetime.min))
+    balance = 0.0
+    for t in transactions:
+        balance += t["debit"] - t["credit"]
+        t["balance"] = balance
+
+    return render_template(
+        "suppliers/statement_print.html",
+        supplier=supplier,
+        settings=settings,
+        transactions=transactions,
+        total_purchases=float(sum(t["credit"] for t in transactions if t["description"] == "فاتورة شراء")),
+        total_payments=float(sum(t["debit"] for t in transactions)),
+        final_balance=balance,
         now=datetime.now,
     )
 

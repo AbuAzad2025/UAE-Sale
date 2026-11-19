@@ -85,6 +85,42 @@ def test_statement_rows_have_expandable_details_and_doc_links(client, login_as, 
     assert "الشيك:" in printed
 
 
+def test_print_pages_get_auto_back_link(client, login_as, app, db):
+    """Any /.../<id>/print preview gets a back link to /.../<id>."""
+    from models import Product, Purchase, PurchaseLine
+    from decimal import Decimal
+
+    mgr = login_as("manager")
+    tag = uuid.uuid4().hex[:8]
+    with app.app_context():
+        product = Product(name=f"PB-{tag}", sku=f"PB-{tag}",
+                          regular_price=Decimal("10"), cost_price=Decimal("8"),
+                          current_stock=Decimal("0"), tenant_id=mgr.tenant_id,
+                          is_active=True)
+        db.session.add(product)
+        db.session.flush()
+        pur = Purchase(purchase_number=f"PB-{tag}", supplier_name="PB",
+                       user_id=mgr.id, tenant_id=mgr.tenant_id, currency="ILS",
+                       tax_rate=Decimal("0"), tax_inclusive=False, vat_recoverable=True,
+                       exchange_rate=Decimal("1"), subtotal=Decimal("100"),
+                       tax_amount=Decimal("0"), total_amount=Decimal("100"),
+                       amount_base=Decimal("100"))
+        db.session.add(pur)
+        db.session.flush()
+        db.session.add(PurchaseLine(purchase_id=pur.id, product_id=product.id,
+                                    quantity=Decimal("10"), unit_cost=Decimal("10"),
+                                    line_total=Decimal("100"), tax_treatment="standard",
+                                    tenant_id=mgr.tenant_id))
+        db.session.commit()
+        pid = pur.id
+
+    resp = client.get(f"/purchases/{pid}/print")
+    assert resp.status_code == 200, resp.get_data(as_text=True)[:300]
+    body = resp.get_data(as_text=True)
+    assert "رجوع" in body
+    assert f'href="/purchases/{pid}"' in body
+
+
 def test_manager_cannot_open_foreign_supplier_statement(client, login_as, app, db):
     mgr = login_as("manager")
     with app.app_context():

@@ -161,6 +161,10 @@
 <body class="print-body">
   <div class="page-wrapper">
     
+    {# Auto back link: /<doc>/<id>/print -> /<doc>/<id>. Routes may still pass
+       an explicit back_url (e.g. the supplier statement) to override it. #}
+    {% set _auto_back = request.path[:-6] if request.path.endswith('/print') else none %}
+    {% set _back_url = back_url if (back_url is defined and back_url) else _auto_back %}
     <header class="no-print print-header-bar">
       <div class="template-selector selector-wrapper">
         <span class="template-label">القالب:</span>
@@ -174,9 +178,9 @@
             </button>
           {% endfor %}
         </div>
-        {% if back_url is defined and back_url %}
-        <a href="{{ back_url }}" class="print-btn-fixed" style="text-decoration:none;">
-          <i class="fas fa-arrow-right"></i> رجوع للكشف
+        {% if _back_url %}
+        <a href="{{ _back_url }}" class="print-btn-fixed" style="text-decoration:none;">
+          <i class="fas fa-arrow-right"></i> {{ back_label if back_label is defined and back_label else 'رجوع' }}
         </a>
         {% endif %}
         <button type="button" class="print-btn-fixed" onclick="window.print()">

@@ -235,7 +235,21 @@ class CostingService:
 
         net_line_amount = line_total - allocated_discount
 
-        if not getattr(purchase, "vat_recoverable", True):
+        inclusive = bool(getattr(purchase, "tax_inclusive", False))
+        recoverable = bool(getattr(purchase, "vat_recoverable", True))
+        tax_amount = _dec(getattr(purchase, "tax_amount", 0))
+        subtotal = _dec(getattr(purchase, "subtotal", 0))
+
+        if inclusive and recoverable and tax_amount > 0 and subtotal > 0:
+            # Invoice prices are VAT-inclusive and the VAT is recoverable: the
+            # inventory asset (and GL debit) is the NET of VAT. Scale each
+            # line down by the invoice's net/gross ratio so stock valuation
+            # matches the posted journal exactly.
+            total_amount = _dec(getattr(purchase, "total_amount", 0))
+            net_base = total_amount - tax_amount
+            if net_base > 0:
+                net_line_amount = net_line_amount * (net_base / subtotal)
+        elif not inclusive and not recoverable:
             tax_amount = _dec(getattr(purchase, "tax_amount", 0))
             invoice_treatment = (
                 getattr(purchase, "tax_treatment", "standard") or "standard"

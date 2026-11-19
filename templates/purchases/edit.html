@@ -8,7 +8,7 @@
     <div class="col-12">
       <div class="alert alert-info">
         <i class="fas fa-info-circle"></i>
-        <strong>ملاحظة:</strong> يمكن تعديل الملاحظات فقط. لا يمكن تعديل المنتجات أو المبالغ بعد إنشاء الفاتورة.
+        <strong>ملاحظة:</strong> يمكنك تعديل الملاحظات وتاريخ الاستحقاق والضريبة. عند تغيير الضريبة يُعاد ترحيل القيد المحاسبي وتُحدَّث تكلفة المخزون تلقائياً. لا يمكن تعديل المنتجات أو الكميات.
       </div>
 
       <div class="card">
@@ -73,6 +73,36 @@
             </table>
 
             
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="tax_rate">نسبة الضريبة %</label>
+                  <input type="number" name="tax_rate" id="tax_rate" class="form-control" step="0.01" min="0" max="100" value="{{ purchase.tax_rate or 0 }}">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="tax_treatment">المعاملة الضريبية</label>
+                  <select name="tax_treatment" id="tax_treatment" class="form-control">
+                    <option value="standard" {% if (purchase.tax_treatment or 'standard') == 'standard' %}selected{% endif %}>قياسية</option>
+                    <option value="zero" {% if purchase.tax_treatment == 'zero' %}selected{% endif %}>صفرية</option>
+                    <option value="exempt" {% if purchase.tax_treatment == 'exempt' %}selected{% endif %}>معفاة</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-check mt-4">
+                  <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" {% if purchase.tax_inclusive %}checked{% endif %}>
+                  <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة</label>
+                </div>
+                <div class="form-check">
+                  <input type="hidden" name="vat_recoverable" value="0">
+                  <input type="checkbox" name="vat_recoverable" class="form-check-input" id="vat_recoverable" value="on" {% if purchase.vat_recoverable %}checked{% endif %}>
+                  <label class="form-check-label" for="vat_recoverable">ضريبة المدخلات قابلة للاسترداد</label>
+                </div>
+              </div>
+            </div>
+
             <div class="form-group">
               <label>تاريخ الاستحقاق</label>
               <input type="date" name="due_date" class="form-control"

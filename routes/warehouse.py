@@ -12,7 +12,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
 from services.stock_service import StockService
-from utils.decorators import permission_required, admin_required, get_owned_or_404
+from utils.decorators import permission_required, get_owned_or_404
 
 from decimal import Decimal
 
@@ -213,7 +213,7 @@ def view_warehouse(id):
 @warehouse_bp.route("/create", methods=["GET", "POST"])
 @warehouse_bp.route("/create-warehouse", methods=["GET", "POST"])
 @login_required
-@admin_required
+@permission_required("manage_warehouse")
 def create_warehouse():  # noqa: C901
     from models import User
 
@@ -316,7 +316,7 @@ def list_warehouses():
 
 @warehouse_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
-@admin_required
+@permission_required("manage_warehouse")
 def delete_warehouse(id):
     """حذف مستودع"""
     warehouse = get_owned_or_404(Warehouse, id, code=404)

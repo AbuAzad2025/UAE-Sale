@@ -5205,8 +5205,9 @@ def _run_dashboard(client, db, sc, fixtures):
 def _run_stock(client, db, sc, fixtures):
     """Domain STK — warehouse stock-in and the warehouse read surface.
 
-    routes/warehouse.py gates everything on manage_warehouse except create and
-    delete, which are admin-only. add_stock is the write path here: it must
+    routes/warehouse.py gates every endpoint on manage_warehouse, including
+    create and delete (they used to be owner-only). add_stock is the write path
+    here: it must
     increase the product's on-hand quantity by exactly the requested amount
     and record a movement, and the warehouse read surfaces (index, movements,
     low-stock, out-of-stock) must render for a permitted role.

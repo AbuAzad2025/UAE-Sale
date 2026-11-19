@@ -1295,20 +1295,9 @@ $(function() {
           return;
         }
       }
-      throw new Error('API failed');
     } catch (e) {
-      try {
-        const r2 = await fetch('https://open.er-api.com/v6/latest/USD', { cache: 'no-store' });
-        if (r2.ok) {
-          const j2 = await r2.json();
-          const aed = j2.rates && j2.rates.AED;
-          if (aed) {
-            rateDisplay.textContent = parseFloat(aed).toFixed(4);
-            return;
-          }
-        }
-      } catch (e2) {}
-      console.warn('Exchange rate fetch failed', e);
+      // Keep the displayed rate unchanged when the rate feed is unavailable.
+      // No external fetch here: the CSP only allows same-origin requests.
     }
   }
   

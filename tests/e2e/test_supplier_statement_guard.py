@@ -35,6 +35,8 @@ def test_manager_can_open_own_supplier_statement(client, login_as, app, db):
     assert "كشف حساب المورد" in pbody
     assert "AzadERP" in pbody
     assert "main-sidebar" not in pbody  # base_print, not the app shell
+    assert "رجوع للكشف" in pbody
+    assert f'/suppliers/{sid}/statement"' in pbody  # back link target
 
 
 def test_statement_rows_have_expandable_details_and_doc_links(client, login_as, app, db):

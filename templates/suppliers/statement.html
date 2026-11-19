@@ -56,9 +56,9 @@
         <h6>إجمالي الدفعات</h6><h3 class="text-primary">{{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }}</h3>
       </div>
       <div class="st-card">
-        <h6>الرصيد المستحق</h6>
-        <h3 class="{{ 'st-balance-pos' if final_balance > 0 else 'st-balance-neg' }}">
-          {{ '{:,.2f}'.format(final_balance) }} {{ base_currency }}
+        <h6>الرصيد {{ 'المستحق للمورد' if final_balance < 0 else 'لصالحنا' }}</h6>
+        <h3 class="{{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
+          {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
         </h3>
       </div>
     </div>
@@ -92,7 +92,9 @@
             </td>
             <td class="text-left">{{ '{:,.2f}'.format(tr.debit) if tr.debit else '-' }}</td>
             <td class="text-left">{{ '{:,.2f}'.format(tr.credit) if tr.credit else '-' }}</td>
-            <td class="text-left"><strong>{{ '{:,.2f}'.format(tr.balance) }}</strong></td>
+            <td class="text-left"><strong>{{ '{:,.2f}'.format(tr.balance|abs) }}</strong>
+              <small class="text-muted">{{ 'دائن' if tr.balance < 0 else 'مدين' }}</small>
+            </td>
             <td class="text-center no-print">
               <button type="button" class="st-toggle" data-target="st-d-{{ loop.index }}" aria-expanded="false">▸ تفاصيل</button>
             </td>
@@ -138,9 +140,9 @@
         </tbody>
         <tfoot class="font-weight-bold">
           <tr>
-            <td colspan="4" class="text-left">الرصيد النهائي المستحق للمورد</td>
-            <td colspan="4" class="text-left {{ 'st-balance-pos' if final_balance > 0 else 'st-balance-neg' }}">
-              {{ '{:,.2f}'.format(final_balance) }} {{ base_currency }}
+            <td colspan="4" class="text-left">الرصيد النهائي {{ 'المستحق للمورد' if final_balance < 0 else 'لصالحنا' }}</td>
+            <td colspan="4" class="text-left {{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
+              {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
             </td>
           </tr>
         </tfoot>

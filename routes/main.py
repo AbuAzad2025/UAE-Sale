@@ -339,3 +339,16 @@ def tenant_data_export():
         mimetype=mimetype,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+
+# Tenant-facing alias for the letterhead settings page. The canonical view
+# lives in routes.owner but is really per-tenant data (see b50); expose it at
+# a neutral URL so tenant managers don't see "/owner/" in their address bar.
+# The decorators on the view itself (login_required + permission_required) are
+# preserved because we call the decorated function object.
+@main_bp.route("/settings/letterheads", methods=["GET", "POST"])
+def letterheads_settings():
+    from routes.owner import invoice_settings as _invoice_settings
+
+    return _invoice_settings()

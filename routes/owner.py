@@ -2231,7 +2231,8 @@ def constants_visibility(group):
     return redirect(url_for("owner.constants_group", group=group))
 
 
-@owner_bp.route("/invoice-settings", methods=["GET", "POST"])
+@owner_bp.route("/settings/letterheads", methods=["GET", "POST"])
+@owner_bp.route("/invoice-settings", methods=["GET", "POST"])  # legacy alias (tests/bookmarks)
 @login_required
 @permission_required("manage_settings")
 def invoice_settings():
@@ -2385,6 +2386,9 @@ def invoice_settings():
             db.session.commit()
 
             flash("تم حفظ إعدادات الترويسات بنجاح", "success")
+            # Stay on the neutral tenant-facing URL when invoked via the alias.
+            if request.endpoint == "main.letterheads_settings":
+                return redirect(url_for("main.letterheads_settings"))
             return redirect(url_for("owner.invoice_settings"))
 
         except Exception as e:

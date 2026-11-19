@@ -155,7 +155,7 @@
               <div class="form-group">
                 <label>دولة الضريبة (النسبة الافتراضية)</label>
                 <select name="tax_country" class="form-control">
-                  {% for code, label in [('AE','الإمارات — 5%'),('SA','السعودية — 15%'),('BH','البحرين — 10%'),('OM','عمان — 5%'),('KW','الكويت — 5%'),('EG','مصر — 14%'),('JO','الأردن — 16%')] %}
+                  {% for code, label in [('AE','الإمارات — 5%'),('SA','السعودية — 15%'),('BH','البحرين — 10%'),('OM','عمان — 5%'),('KW','الكويت — 5%'),('EG','مصر — 14%'),('JO','الأردن — 16%'),('PS','فلسطين — 16%')] %}
                   <option value="{{ code }}" {{ 'selected' if form.tax_country == code }}>{{ label }}</option>
                   {% endfor %}
                 </select>

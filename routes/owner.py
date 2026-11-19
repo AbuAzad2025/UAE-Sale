@@ -2233,7 +2233,7 @@ def constants_visibility(group):
 
 @owner_bp.route("/invoice-settings", methods=["GET", "POST"])
 @login_required
-@owner_required
+@permission_required("manage_settings")
 def invoice_settings():
     """إعدادات ترويسات الفواتير وسندات القبض"""
     settings = InvoiceSettings.get_active()

@@ -115,6 +115,7 @@ for _model_cls in [
     Cheque,
     GLJournalEntry,
     GLJournalLine,
+    InvoiceSettings,
     Warehouse,
     Shipment,
     ShipmentLine,

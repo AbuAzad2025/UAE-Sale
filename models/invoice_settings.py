@@ -6,16 +6,20 @@ Invoice & Receipt Header Settings Model
 from datetime import datetime, timezone
 from extensions import db
 from decimal import Decimal
+from models.tenant_scope import TenantScopedMixin, get_current_tenant_id
 
 
-class InvoiceSettings(db.Model):
+class InvoiceSettings(TenantScopedMixin, db.Model):
     """
-    إعدادات ترويسات الفواتير وسندات القبض
+    إعدادات ترويسات الفواتير وسندات القبض — لكل مستأجر إعداداته الخاصة.
     """
 
     __tablename__ = "invoice_settings"
 
     id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(
+        db.Integer, db.ForeignKey("tenants.id"), nullable=True, index=True
+    )
 
     company_name_ar = db.Column(db.String(200), nullable=False, default="شركة أزاد")
     company_name_en = db.Column(db.String(200), nullable=False, default="Azad Company")
@@ -105,10 +109,17 @@ class InvoiceSettings(db.Model):
 
     @staticmethod
     def get_active():
-        """Get active settings or create default"""
+        """Get the active settings for the CURRENT tenant, or create a default.
+
+        Tenant-scoped: the loader criteria filters InvoiceSettings by the active
+        tenant_id, so a tenant never sees another tenant's letterheads.
+        """
+        tid = get_current_tenant_id()
+        # TENANT_LESS_SCOPE (-1) / None (platform) have no real tenant to own
+        # letterheads; fall back to unscoped rows for those operator contexts.
         settings = InvoiceSettings.query.filter_by(is_active=True).first()
         if not settings:
-            settings = InvoiceSettings()
+            settings = InvoiceSettings(tenant_id=tid)
             db.session.add(settings)
             db.session.commit()
         return settings

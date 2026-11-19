@@ -918,6 +918,16 @@
           {% endif %}
 
           
+          {% if current_user.has_permission('manage_settings') %}
+          <li class="nav-header">إعدادات الشركة</li>
+          <li class="nav-item">
+            <a href="{{ url_for('owner.invoice_settings') }}" class="nav-link {% if request.endpoint == 'owner.invoice_settings' %}active{% endif %}">
+              <i class="nav-icon fas fa-file-invoice text-info"></i>
+              <p>ترويسات الفواتير والسندات</p>
+            </a>
+          </li>
+          {% endif %}
+
           <li class="nav-header">مساعد ودليل</li>
           <li class="nav-item">
             <a href="{{ url_for('ai.assistant_page') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ai.') %}active{% endif %}">

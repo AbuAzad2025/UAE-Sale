@@ -10,6 +10,13 @@
   .st-label { color: #6c757d; font-size: 11px; }
   .st-balance-pos { color: #dc3545; }
   .st-balance-neg { color: #28a745; }
+  .st-toggle { cursor: pointer; border: none; background: #eef4ff; color: #0d6efd; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
+  .st-detail-row { display: none; }
+  .st-detail-row.open { display: table-row; }
+  .st-detail-box { background: #f8fbff; padding: 10px 14px; border-right: 3px solid #0d6efd; }
+  .st-detail-box h6 { margin: 0 0 6px; font-size: 11px; color: #0d6efd; }
+  .st-detail-box table { font-size: 11px; margin: 0; }
+  .st-detail-box table th { background: #e9f0fb; }
   @media (max-width: 900px) { .st-summary { grid-template-columns: repeat(2, 1fr); } }
   @media print {
     .main-sidebar, .main-header, .main-footer, .content-header, .no-print { display: none !important; }
@@ -68,6 +75,7 @@
             <th class="text-left">مدين</th>
             <th class="text-left">دائن</th>
             <th class="text-left">الرصيد</th>
+            <th class="text-center no-print">التفاصيل</th>
           </tr>
         </thead>
         <tbody>
@@ -85,15 +93,53 @@
             <td class="text-left">{{ '{:,.2f}'.format(tr.debit) if tr.debit else '-' }}</td>
             <td class="text-left">{{ '{:,.2f}'.format(tr.credit) if tr.credit else '-' }}</td>
             <td class="text-left"><strong>{{ '{:,.2f}'.format(tr.balance) }}</strong></td>
+            <td class="text-center no-print">
+              <button type="button" class="st-toggle" data-target="st-d-{{ loop.index }}" aria-expanded="false">▸ تفاصيل</button>
+            </td>
+          </tr>
+          <tr class="st-detail-row" id="st-d-{{ loop.index }}">
+            <td colspan="8">
+              <div class="st-detail-box">
+                {% if tr.type == 'purchase' %}
+                  <h6>
+                    <i class="fas fa-file-invoice mr-1"></i> منتجات الفاتورة
+                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">فتح الفاتورة الأصلية</a>
+                  </h6>
+                  <table class="table table-sm table-bordered mb-2">
+                    <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+                    <tbody>
+                      {% for ln in tr.details.lines %}
+                      <tr><td>{{ ln.product }}</td><td>{{ '{:,.2f}'.format(ln.quantity) }}</td><td>{{ '{:,.2f}'.format(ln.unit_cost) }}</td><td>{{ '{:,.2f}'.format(ln.total) }}</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  <small class="text-muted">الضريبة: {{ '{:,.2f}'.format(tr.details.tax) }} · الإجمالي: {{ '{:,.2f}'.format(tr.details.total) }} · الاستحقاق: {{ tr.details.due_date }}</small>
+                {% else %}
+                  <h6>
+                    <i class="fas fa-receipt mr-1"></i> تفاصيل سند الدفع
+                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">فتح السند الأصلي</a>
+                  </h6>
+                  <small>
+                    الطريقة: <strong>{{ tr.details.method }}</strong> ·
+                    الحالة: <strong>{{ 'مؤكد' if tr.details.confirmed else 'معلق' }}</strong> ·
+                    رقم الشيك: <strong>{{ tr.details.cheque_number }}</strong> ·
+                    البنك: <strong>{{ tr.details.bank_name }}</strong> ·
+                    الحساب: <strong>{{ tr.details.account_number }}</strong> ·
+                    استحقاق الشيك: <strong>{{ tr.details.due_date }}</strong>
+                  </small>
+                  {% if tr.details.notes %}<div class="mt-1"><small class="text-muted">الملاحظات: {{ tr.details.notes }}</small></div>{% endif %}
+                {% endif %}
+              </div>
+            </td>
           </tr>
           {% else %}
-          <tr><td colspan="7" class="text-center text-muted py-4">لا توجد حركات لهذا المورد</td></tr>
+          <tr><td colspan="8" class="text-center text-muted py-4">لا توجد حركات لهذا المورد</td></tr>
           {% endfor %}
         </tbody>
         <tfoot class="font-weight-bold">
           <tr>
             <td colspan="4" class="text-left">الرصيد النهائي المستحق للمورد</td>
-            <td colspan="3" class="text-left {{ 'st-balance-pos' if final_balance > 0 else 'st-balance-neg' }}">
+            <td colspan="4" class="text-left {{ 'st-balance-pos' if final_balance > 0 else 'st-balance-neg' }}">
               {{ '{:,.2f}'.format(final_balance) }} {{ base_currency }}
             </td>
           </tr>
@@ -107,4 +153,20 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  document.querySelectorAll('.st-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var row = document.getElementById(btn.getAttribute('data-target'));
+      if (!row) return;
+      var open = row.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? '▾ إخفاء' : '▸ تفاصيل';
+    });
+  });
+})();
+</script>
 {% endblock %}

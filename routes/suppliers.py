@@ -391,6 +391,83 @@ def delete(id):
     return redirect(url_for("suppliers.index"))
 
 
+def _statement_transactions(supplier):
+    """Unified, sorted movements with per-line details and an original-doc link."""
+    from flask import url_for
+
+    purchases = (
+        supplier.purchases.filter_by(status="confirmed")
+        .order_by(Purchase.purchase_date.asc())
+        .all()
+    )
+    payments = (
+        Payment.query.filter_by(supplier_id=supplier.id)
+        .order_by(Payment.payment_date.asc())
+        .all()
+    )
+    rows = []
+    for purchase in purchases:
+        rows.append({
+            "date": purchase.purchase_date,
+            "type": "purchase",
+            "reference": purchase.purchase_number,
+            "debit": 0,
+            "credit": float(purchase.amount_base or purchase.total_amount or 0),
+            "description": "فاتورة شراء",
+            "status": purchase.status,
+            "url": url_for("purchases.view", id=purchase.id),
+            "details": {
+                "lines": [
+                    {
+                        "product": (line.product.name if line.product else "-"),
+                        "quantity": float(line.quantity or 0),
+                        "unit_cost": float(line.unit_cost or 0),
+                        "total": float(line.line_total or 0),
+                    }
+                    for line in purchase.lines
+                ],
+                "tax": float(purchase.tax_amount or 0),
+                "total": float(purchase.total_amount or 0),
+                "due_date": (purchase.effective_due_date.strftime("%Y-%m-%d")
+                             if purchase.effective_due_date else "-"),
+            },
+        })
+    for payment in payments:
+        outgoing = payment.direction == "outgoing"
+        cheque = payment.cheque if hasattr(payment, "cheque") else None
+        pending_cheque = (
+            payment.payment_method == "cheque" and not payment.payment_confirmed
+        )
+        rows.append({
+            "date": payment.payment_date,
+            "type": "payment",
+            "reference": payment.payment_number or f"PMT-{payment.id}",
+            "debit": float(payment.amount_base or 0) if not outgoing else 0,
+            "credit": float(payment.amount_base or 0) if outgoing else 0,
+            "description": f"دفعة ({payment.payment_method})"
+                           + (" — شيك قيد الانتظار" if pending_cheque else ""),
+            "status": "confirmed" if payment.payment_confirmed else "pending",
+            "url": url_for("payments.view_payment", id=payment.id),
+            "details": {
+                "method": payment.payment_method,
+                "confirmed": bool(payment.payment_confirmed),
+                "cheque_number": (cheque.cheque_number if cheque else "-"),
+                "bank_name": (cheque.bank_name if cheque else "-"),
+                "account_number": (cheque.account_number if cheque else "-"),
+                "due_date": (cheque.due_date.strftime("%Y-%m-%d")
+                             if cheque and cheque.due_date else "-"),
+                "notes": payment.notes or "",
+            },
+        })
+    rows.sort(key=lambda t: (t["date"] or datetime.min).replace(tzinfo=None)
+              if getattr(t["date"], "tzinfo", None) else (t["date"] or datetime.min))
+    balance = 0.0
+    for t in rows:
+        balance += t["debit"] - t["credit"]
+        t["balance"] = balance
+    return rows, purchases, payments, balance
+
+
 @suppliers_bp.route("/<int:id>/statement")
 @login_required
 @permission_required("manage_purchases")
@@ -398,66 +475,7 @@ def statement(id):
     """كشف حساب المورد"""
     supplier = get_owned_or_404(Supplier, id)
 
-    purchases = (
-        supplier.purchases.filter_by(status="confirmed")
-        .order_by(Purchase.purchase_date.asc())
-        .all()
-    )
-
-    payments = (
-        Payment.query.filter_by(supplier_id=id)
-        .order_by(Payment.payment_date.asc())
-        .all()
-    )
-
-    # Build unified transaction list with running balance
-    transactions = []
-    for purchase in purchases:
-        transactions.append({
-            "date": purchase.purchase_date,
-            "type": "purchase",
-            "reference": purchase.purchase_number,
-            "debit": 0,
-            "credit": float(purchase.amount_base or purchase.total_amount or 0),
-            "description": "شراء",
-            "currency": purchase.currency or "AED",
-            "exchange_rate": float(purchase.exchange_rate or 1),
-            "status": purchase.status,
-        })
-
-    for payment in payments:
-        credit_amount = (
-            float(payment.amount_base or 0) if payment.direction == "outgoing" else 0.0
-        )
-        debit_amount = (
-            float(payment.amount_base or 0) if payment.direction != "outgoing" else 0.0
-        )
-        transactions.append({
-            "date": payment.payment_date,
-            "type": "payment",
-            "reference": payment.payment_number or f"PMT-{payment.id}",
-            "debit": debit_amount,
-            "credit": credit_amount,
-            "description": f"دفعة - {payment.payment_method}",
-            "currency": payment.currency or "AED",
-            "exchange_rate": float(payment.exchange_rate or 1),
-            "status": "confirmed" if payment.payment_confirmed else "pending",
-        })
-
-    def _date_key(t):
-        d = t["date"]
-        if d is None:
-            return datetime.min
-        return d.replace(tzinfo=None) if d.tzinfo else d
-
-    transactions.sort(key=_date_key)
-
-    running_balance = 0.0
-    for t in transactions:
-        running_balance += t["debit"] - t["credit"]
-        t["balance"] = running_balance
-
-    final_balance = running_balance
+    transactions, purchases, payments, final_balance = _statement_transactions(supplier)
 
     return render_template(
         "suppliers/statement.html",
@@ -486,42 +504,10 @@ def statement_print(id):
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
 
-    purchases = (
-        supplier.purchases.filter_by(status="confirmed")
-        .order_by(Purchase.purchase_date.asc())
-        .all()
-    )
-    payments = (
-        Payment.query.filter_by(supplier_id=id)
-        .order_by(Payment.payment_date.asc())
-        .all()
-    )
-    transactions = []
-    for purchase in purchases:
-        transactions.append({
-            "date": purchase.purchase_date,
-            "reference": purchase.purchase_number,
-            "description": "فاتورة شراء",
-            "debit": 0,
-            "credit": float(purchase.amount_base or purchase.total_amount or 0),
-        })
-    for payment in payments:
-        outgoing = payment.direction == "outgoing"
-        transactions.append({
-            "date": payment.payment_date,
-            "reference": payment.payment_number or f"PMT-{payment.id}",
-            "description": f"دفعة ({payment.payment_method})"
-                           + (" — شيك قيد الانتظار"
-                              if payment.payment_method == "cheque"
-                              and not payment.payment_confirmed else ""),
-            "debit": float(payment.amount_base or 0) if not outgoing else 0,
-            "credit": float(payment.amount_base or 0) if outgoing else 0,
-        })
-    transactions.sort(key=lambda t: (t["date"] or datetime.min))
-    balance = 0.0
-    for t in transactions:
-        balance += t["debit"] - t["credit"]
-        t["balance"] = balance
+    transactions, purchases, payments, final_balance = _statement_transactions(supplier)
+    total_purchases = float(sum(
+        t["credit"] for t in transactions if t["type"] == "purchase"))
+    total_payments = float(sum(t["debit"] for t in transactions))
 
     return render_template(
         "suppliers/statement_print.html",
@@ -530,7 +516,7 @@ def statement_print(id):
         transactions=transactions,
         total_purchases=float(sum(t["credit"] for t in transactions if t["description"] == "فاتورة شراء")),
         total_payments=float(sum(t["debit"] for t in transactions)),
-        final_balance=balance,
+        final_balance=final_balance,
         now=datetime.now,
     )
 

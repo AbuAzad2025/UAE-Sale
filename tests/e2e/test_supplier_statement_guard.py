@@ -37,6 +37,52 @@ def test_manager_can_open_own_supplier_statement(client, login_as, app, db):
     assert "main-sidebar" not in pbody  # base_print, not the app shell
 
 
+def test_statement_rows_have_expandable_details_and_doc_links(client, login_as, app, db):
+    from models import Payment, Product, Purchase, PurchaseLine
+    from decimal import Decimal
+
+    mgr = login_as("manager")
+    tag = uuid.uuid4().hex[:8]
+    with app.app_context():
+        sid = _supplier(db, mgr.tenant_id, tag)
+        product = Product(name=f"DET-{tag}", sku=f"DET-{tag}",
+                          regular_price=Decimal("10"), cost_price=Decimal("8"),
+                          current_stock=Decimal("0"), tenant_id=mgr.tenant_id,
+                          is_active=True)
+        db.session.add(product)
+        db.session.flush()
+        pur = Purchase(purchase_number=f"DET-P-{tag}", supplier_name="DET",
+                       supplier_id=sid,
+                       user_id=mgr.id, tenant_id=mgr.tenant_id, currency="ILS",
+                       tax_rate=Decimal("0"), tax_inclusive=False, vat_recoverable=True,
+                       exchange_rate=Decimal("1"), subtotal=Decimal("100"),
+                       tax_amount=Decimal("0"), total_amount=Decimal("100"),
+                       amount_base=Decimal("100"))
+        db.session.add(pur)
+        db.session.flush()
+        db.session.add(PurchaseLine(purchase_id=pur.id, product_id=product.id,
+                                    quantity=Decimal("10"), unit_cost=Decimal("10"),
+                                    line_total=Decimal("100"), tax_treatment="standard",
+                                    tenant_id=mgr.tenant_id))
+        db.session.add(Payment(payment_number=f"DET-PAY-{tag}", supplier_id=sid,
+                               user_id=mgr.id, tenant_id=mgr.tenant_id,
+                               amount=Decimal("40"), amount_base=Decimal("40"),
+                               currency="ILS", exchange_rate=Decimal("1"),
+                               payment_method="cash", direction="outgoing",
+                               payment_type="supplier_payment", payment_confirmed=True))
+        db.session.commit()
+
+    body = client.get(f"/suppliers/{sid}/statement").get_data(as_text=True)
+    assert "st-toggle" in body
+    assert "فتح الفاتورة الأصلية" in body
+    assert "فتح السند الأصلي" in body
+    assert f"DET-{tag}" in body
+
+    printed = client.get(f"/suppliers/{sid}/statement/print").get_data(as_text=True)
+    assert "منتجات:" in printed
+    assert "الشيك:" in printed
+
+
 def test_manager_cannot_open_foreign_supplier_statement(client, login_as, app, db):
     mgr = login_as("manager")
     with app.app_context():

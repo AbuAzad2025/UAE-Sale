@@ -93,6 +93,23 @@
           <td>{{ '{:,.2f}'.format(t.credit) if t.credit else '-' }}</td>
           <td><strong>{{ '{:,.2f}'.format(t.balance) }}</strong></td>
         </tr>
+        <tr>
+          <td colspan="6" style="background:#fafafa; font-size:7px; padding:4px 7px;">
+            {% if t.type == 'purchase' %}
+              <strong>منتجات:</strong>
+              {% for ln in t.details.lines %}{{ ln.product }} ({{ '{:,.2f}'.format(ln.quantity) }} × {{ '{:,.2f}'.format(ln.unit_cost) }}){% if not loop.last %}، {% endif %}{% endfor %}
+              · <strong>الضريبة:</strong> {{ '{:,.2f}'.format(t.details.tax) }}
+              · <strong>الاستحقاق:</strong> {{ t.details.due_date }}
+            {% else %}
+              <strong>الطريقة:</strong> {{ t.details.method }}
+              · <strong>الحالة:</strong> {{ 'مؤكد' if t.details.confirmed else 'معلق' }}
+              · <strong>الشيك:</strong> {{ t.details.cheque_number }}
+              · <strong>البنك/الحساب:</strong> {{ t.details.bank_name }} / {{ t.details.account_number }}
+              · <strong>الاستحقاق:</strong> {{ t.details.due_date }}
+              {% if t.details.notes %}· <strong>ملاحظات:</strong> {{ t.details.notes }}{% endif %}
+            {% endif %}
+          </td>
+        </tr>
         {% else %}
         <tr><td colspan="6" style="text-align:center;">لا توجد حركات</td></tr>
         {% endfor %}

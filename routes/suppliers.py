@@ -514,6 +514,7 @@ def statement_print(id):
         supplier=supplier,
         settings=settings,
         back_url=url_for("suppliers.statement", id=supplier.id),
+        back_label="رجوع للكشف",
         transactions=transactions,
         total_purchases=float(sum(t["credit"] for t in transactions if t["description"] == "فاتورة شراء")),
         total_payments=float(sum(t["debit"] for t in transactions)),

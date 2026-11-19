@@ -796,7 +796,9 @@
     text-align: center;
   }
 </style>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 $(document).ready(function() {
   $('input[name="header_color"], input[name="accent_color"]').on('change', function() {

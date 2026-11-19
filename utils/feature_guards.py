@@ -14,7 +14,12 @@ logger = logging.getLogger(__name__)
 # that hasn't purchased the gated feature.
 _GATE_EXEMPT_ENDPOINTS = frozenset({
     "api.health", "api.healthz", "api.version", "api.client_errors",
-    "api.csrf_token", "monitoring.health", "monitoring.metrics",
+    "api.csrf_token",
+    # Reference data the UI itself needs on every page (currency label/rate).
+    # Blocking it for tenants without the API package only produces console
+    # noise; it is not a paid API capability.
+    "api.currency_rate",
+    "monitoring.health", "monitoring.metrics",
 })
 
 

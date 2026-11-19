@@ -362,16 +362,43 @@
                   <p>قائمة الزبائن</p>
                 </a>
               </li>
+            </ul>
+          </li>
+          {% endif %}
+          
+          {% if current_user.has_permission('manage_customers') %}
+          <li class="nav-item has-treeview {% if request.endpoint == 'main.company_partners' or request.args.get('type') == 'partner' %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
+              <i class="nav-icon fas fa-handshake"></i>
+              <p>
+                الشركاء والمساهمون
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('customers.create') }}" class="nav-link">
+                  <i class="fas fa-user-plus nav-icon text-success"></i>
+                  <p>شريك جديد</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('customers.index', type='partner') }}" class="nav-link">
+                  <i class="fas fa-list nav-icon"></i>
+                  <p>قائمة الشركاء</p>
+                </a>
+              </li>
               <li class="nav-item">
                 <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
-                  <i class="fas fa-handshake nav-icon text-warning"></i>
-                  <p>الشركاء والنسب (المساهمون)</p>
+                  <i class="fas fa-percentage nav-icon text-warning"></i>
+                  <p>النسب والتوزيع</p>
                 </a>
               </li>
             </ul>
           </li>
           {% endif %}
           
+
           {% if current_user.has_permission('manage_products') %}
           <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('products.') %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('products.') %}active{% endif %}">
@@ -397,6 +424,59 @@
             </ul>
           </li>
           {% endif %}
+
+          {% if current_user.has_permission('manage_warehouse') %}
+          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('warehouse.') %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('warehouse.') %}active{% endif %}">
+              <i class="nav-icon fas fa-warehouse"></i>
+              <p>
+                المستودعات والمخزون
+                <i class="right fas fa-angle-left"></i>
+              </p>
+            </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.index') }}" class="nav-link">
+                  <i class="fas fa-boxes nav-icon text-info"></i>
+                  <p>إدارة المخزون</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.list_warehouses') }}" class="nav-link">
+                  <i class="fas fa-building nav-icon text-primary"></i>
+                  <p>المستودعات</p>
+                </a>
+              </li>
+              {% if current_user.has_permission('manage_warehouse') %}
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.create_warehouse') }}" class="nav-link">
+                  <i class="fas fa-plus-circle nav-icon text-success"></i>
+                  <p>إضافة مستودع</p>
+                </a>
+              </li>
+              {% endif %}
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.movements') }}" class="nav-link">
+                  <i class="fas fa-exchange-alt nav-icon text-secondary"></i>
+                  <p>حركات المخزون</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.low_stock') }}" class="nav-link">
+                  <i class="fas fa-exclamation-triangle nav-icon text-warning"></i>
+                  <p>مخزون منخفض</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ url_for('warehouse.out_of_stock') }}" class="nav-link">
+                  <i class="fas fa-ban nav-icon text-danger"></i>
+                  <p>نفذ من المخزون</p>
+                </a>
+              </li>
+            </ul>
+          </li>
+          {% endif %}
+
           
           {% if current_user.has_permission('manage_purchases') %}
           <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('purchases.') %}menu-open{% endif %}">
@@ -870,68 +950,11 @@
           </li>
           {% endif %}
 
-          {% if current_user.has_permission('manage_warehouse') %}
-          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('warehouse.') %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('warehouse.') %}active{% endif %}">
-              <i class="nav-icon fas fa-warehouse"></i>
-              <p>
-                المستودعات والمخزون
-                <i class="right fas fa-angle-left"></i>
-              </p>
-            </a>
-            <ul class="nav nav-treeview">
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.index') }}" class="nav-link">
-                  <i class="fas fa-boxes nav-icon text-info"></i>
-                  <p>إدارة المخزون</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.list_warehouses') }}" class="nav-link">
-                  <i class="fas fa-building nav-icon text-primary"></i>
-                  <p>المستودعات</p>
-                </a>
-              </li>
-              {% if current_user.is_admin() %}
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.create_warehouse') }}" class="nav-link">
-                  <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>إضافة مستودع</p>
-                </a>
-              </li>
-              {% endif %}
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.movements') }}" class="nav-link">
-                  <i class="fas fa-exchange-alt nav-icon text-secondary"></i>
-                  <p>حركات المخزون</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.low_stock') }}" class="nav-link">
-                  <i class="fas fa-exclamation-triangle nav-icon text-warning"></i>
-                  <p>مخزون منخفض</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('warehouse.out_of_stock') }}" class="nav-link">
-                  <i class="fas fa-ban nav-icon text-danger"></i>
-                  <p>نفذ من المخزون</p>
-                </a>
-              </li>
-            </ul>
-          </li>
-          {% endif %}
           {% endif %}
 
           
           {% if current_user.has_permission('manage_settings') %}
           <li class="nav-header">إعدادات الشركة</li>
-          <li class="nav-item">
-            <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
-              <i class="nav-icon fas fa-handshake text-warning"></i>
-              <p>الشركاء والنسب</p>
-            </a>
-          </li>
           <li class="nav-item">
             <a href="{{ url_for('main.company_settings') }}" class="nav-link {% if request.endpoint == 'main.company_settings' %}active{% endif %}">
               <i class="nav-icon fas fa-building text-info"></i>

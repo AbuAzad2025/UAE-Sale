@@ -540,6 +540,7 @@ def create_app(config_class=Config):  # noqa: C901
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com",
             "font-src 'self' fonts.gstatic.com cdn.jsdelivr.net",
             "img-src 'self' data: blob:",
+            "media-src 'self' data:",
             "connect-src 'self'",
             "frame-ancestors 'self'",
         ]

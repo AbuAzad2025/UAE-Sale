@@ -373,6 +373,10 @@ def change_password():
 
         create_audit_log("change_password", "users", current_user.id)
         flash("✅ تم تغيير كلمة المرور بنجاح!", "success")
-        return redirect(url_for("users.change_password"))
+        # After a successful change, leave the form: send the user to their
+        # dashboard. Staying on this page looks like the change failed.
+        if getattr(current_user, "is_owner", False) or current_user.is_super_admin():
+            return redirect(url_for("owner.dashboard"))
+        return redirect(url_for("main.dashboard"))
 
     return render_template("users/change_password.html")

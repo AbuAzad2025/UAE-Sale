@@ -13,7 +13,7 @@
   let defaultPrintAction = null;
 
   if (!hasPrintExtension) {
-    console.warn('SmartPrint: DataTables Buttons with print extension is required.');
+    if (false) console.warn('SmartPrint: DataTables Buttons with print extension is required.');
   } else {
     defaultPrintAction = $.fn.dataTable.ext.buttons.print.action;
   }
@@ -244,7 +244,7 @@
             info = dt.buttons.exportInfo(config);
         } else {
             // Manual extraction from DOM if Buttons extension is missing
-            console.log('SmartPrint: Extracting data from DOM (Buttons extension missing)');
+            if (false) console.log('SmartPrint: Extracting data from DOM (Buttons extension missing)');
             
             // Extract Header
             $(dt.table().header()).find('tr').each(function() {
@@ -413,11 +413,11 @@
       try {
         defaultPrintAction.call(state.buttonApi, new $.Event('smart-print'), state.table, buttonNode, originalConfig);
       } catch (e) {
-        console.warn('SmartPrint: Standard print failed, trying fallback.', e);
+        if (false) console.warn('SmartPrint: Standard print failed, trying fallback.', e);
         fallbackPrint(state.table, originalConfig);
       }
     } else {
-      console.log('SmartPrint: Using fallback print.');
+      if (false) console.log('SmartPrint: Using fallback print.');
       fallbackPrint(state.table, originalConfig);
     }
   }
@@ -512,7 +512,7 @@
 
       const $trigger = $(triggerSelector);
       if (!$trigger.length) {
-        console.warn('SmartPrint: trigger button not found for selector', triggerSelector);
+        if (false) console.warn('SmartPrint: trigger button not found for selector', triggerSelector);
         return;
       }
 
@@ -531,13 +531,13 @@
 
     trigger: function (table, options) {
       if (!table) {
-        console.warn('SmartPrint: table instance is required for trigger.');
+        if (false) console.warn('SmartPrint: table instance is required for trigger.');
         return;
       }
 
       const buttonApi = table.button('.smart-print-button');
       if (!buttonApi.length) {
-        console.warn('SmartPrint: hidden print button not available.');
+        if (false) console.warn('SmartPrint: hidden print button not available.');
         return;
       }
 

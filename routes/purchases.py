@@ -359,7 +359,12 @@ def print_purchase(id):
 @login_required
 @permission_required("manage_purchases")
 def edit(id):
-    """تعديل فاتورة شراء - الملاحظات والخصم فقط"""
+    """تعديل فاتورة شراء: الملاحظات/الاستحقاق + الضريبة مع إعادة الترحيل.
+
+    أي تغيير في الضريبة يُعكس القيد المحاسبي القديم ويُعاد ترحيله، وتُحدَّث
+    تكلفة المخزون (average_cost) للمنتجات المتأثرة بالفروق — لا تعديل يدوي
+    للـ DB. الفاتورة التي سُدِّدت لا تُعدَّل حفاظاً على الأثر المحاسبي.
+    """
     purchase = get_owned_or_404(Purchase, id)
 
     if purchase.get_paid_amount() > 0:
@@ -371,8 +376,34 @@ def edit(id):
 
     if request.method == "POST":
         try:
-            purchase.notes = request.form.get("notes", "")
+            from decimal import Decimal as _D
 
+            from services.costing_service import CostingService
+            from services.purchase_gl import build_purchase_gl_lines
+
+            # Cost basis BEFORE the change (for the inventory-value correction).
+            old_costs = [
+                (line.product_id, _D(str(line.quantity or 0)),
+                 CostingService.net_unit_cost(line, purchase))
+                for line in purchase.lines
+            ]
+
+            new_rate = _D(str(request.form.get("tax_rate", 0) or 0))
+            new_inclusive = request.form.get("tax_inclusive") in ("on", "1", "true")
+            new_recoverable = "on" in request.form.getlist("vat_recoverable") or \
+                "1" in request.form.getlist("vat_recoverable")
+            new_treatment = (request.form.get("tax_treatment") or "standard").strip().lower()
+            if new_treatment not in ("standard", "zero", "exempt"):
+                new_treatment = "standard"
+
+            tax_changed = (
+                new_rate != _D(str(purchase.tax_rate or 0))
+                or new_inclusive != bool(purchase.tax_inclusive)
+                or new_recoverable != bool(purchase.vat_recoverable)
+                or new_treatment != (purchase.tax_treatment or "standard")
+            )
+
+            purchase.notes = request.form.get("notes", "")
             if "due_date" in request.form:
                 purchase.due_date = due_date_service.due_date_for_purchase(
                     purchase.purchase_date,
@@ -380,16 +411,58 @@ def edit(id):
                     explicit=request.form.get("due_date"),
                 )
 
+            if tax_changed:
+                purchase.tax_rate = new_rate
+                purchase.tax_inclusive = new_inclusive
+                purchase.vat_recoverable = new_recoverable
+                purchase.tax_treatment = new_treatment
+                purchase.calculate_totals()
+                db.session.flush()
+
+                # Reverse the old balanced entry, then post the corrected one.
+                reverse_or_purge_gl_entries(
+                    "Purchase",
+                    purchase.id,
+                    description=f"عكس فاتورة شراء {purchase.purchase_number} (تعديل الضريبة)",
+                )
+                gl_lines = build_purchase_gl_lines(purchase)
+                GLService.post_entry(
+                    gl_lines,
+                    description=f"Purchase {purchase.purchase_number} (ضريبة معدّلة)",
+                    reference_type="Purchase",
+                    reference_id=purchase.id,
+                    currency=purchase.currency,
+                    exchange_rate=purchase.exchange_rate,
+                )
+
+                # Stock valuation follows the invoice's net-of-VAT cost.
+                new_costs = {
+                    line.product_id: CostingService.net_unit_cost(line, purchase)
+                    for line in purchase.lines
+                }
+                for pid, qty, old_cost in old_costs:
+                    product = db.session.get(Product, pid)
+                    if product is None:
+                        continue
+                    total_qty = _D(str(product.current_stock or 0))
+                    if total_qty <= 0:
+                        continue
+                    value = _D(str(product.average_cost or 0)) * total_qty
+                    value += (new_costs.get(pid, old_cost) - old_cost) * qty
+                    if value >= 0:
+                        product.average_cost = (value / total_qty).quantize(
+                            _D("0.001"), rounding=ROUND_HALF_UP
+                        )
+
             db.session.commit()
             create_audit_log("update", "purchases", id)
-
             flash("✅ تم تحديث فاتورة الشراء بنجاح!", "success")
             return redirect(url_for("purchases.view", id=id))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            current_app.logger.exception("handler failed")
-            flash(f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات.", "danger")
+            current_app.logger.exception("purchase edit failed")
+            flash("❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات.", "danger")
 
     return render_template("purchases/edit.html", purchase=purchase)
 

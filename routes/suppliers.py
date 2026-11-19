@@ -19,7 +19,7 @@ from flask import (
 from flask_login import login_required, current_user
 from extensions import db, limiter
 from models import Supplier, Purchase, Payment
-from utils.decorators import permission_required, admin_required, get_owned_or_404
+from utils.decorators import permission_required, get_owned_or_404
 
 from utils.helpers import create_audit_log
 from sqlalchemy import desc
@@ -392,7 +392,7 @@ def delete(id):
 
 @suppliers_bp.route("/<int:id>/statement")
 @login_required
-@admin_required
+@permission_required("manage_purchases")
 def statement(id):
     """كشف حساب المورد"""
     supplier = get_owned_or_404(Supplier, id)

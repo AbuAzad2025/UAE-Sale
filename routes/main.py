@@ -14,12 +14,14 @@ from flask_login import login_required, current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from extensions import db, cache
+from utils.decorators import permission_required
 from models import (
     Sale,
     Customer,
     Product,
     GLAccount,
     GLJournalLine,
+    Tenant,
     get_current_tenant_id,
 )
 from services.stock_service import StockService
@@ -352,3 +354,57 @@ def letterheads_settings():
     from routes.owner import invoice_settings as _invoice_settings
 
     return _invoice_settings()
+
+
+
+@main_bp.route("/settings/company", methods=["GET", "POST"])
+@login_required
+@permission_required("manage_settings")
+def company_settings():
+    """مركز إعدادات الشركة الخاص بالمستأجر — يعزل تماماً عبر tenant_id.
+
+    يجمع البيانات التي يملك مدير المستأجر تعديلها (الاسم، العملة، الشعارات،
+    الألوان، العنوان، الهاتف، الضريبة). المعرّفات الحساسة (slug، نوع النشاط،
+    حالة الاشتراك) تُدار من مالك المنصة فقط.
+    """
+    from flask import abort
+
+    tid = getattr(current_user, "tenant_id", None)
+    if not tid:
+        flash("هذه الصفحة خاصة بمديري المستأجرين.", "danger")
+        return redirect(url_for("main.dashboard"))
+    tenant = db.session.get(Tenant, tid)
+    if tenant is None:
+        abort(404)
+
+    editable = [
+        "name_ar", "name_en", "address_ar", "address_en", "city", "country",
+        "phone_1", "phone_2", "mobile", "email", "website",
+        "tax_number", "commercial_register", "license_number",
+        "logo_url", "logo_dark_url", "favicon_url",
+        "brand_color_primary", "brand_color_secondary",
+        "default_currency", "default_language", "timezone",
+        "enable_tax", "default_tax_rate", "tax_country", "tax_inclusive",
+        "bank_name", "bank_account_number", "iban", "swift_code",
+        "payment_terms_ar", "footer_text_ar", "default_invoice_note_ar",
+        "enable_multi_currency",
+    ]
+    if request.method == "POST":
+        try:
+            for field in editable:
+                if field in ("enable_tax", "tax_inclusive", "enable_multi_currency"):
+                    setattr(tenant, field, request.form.get(field) == "on")
+                elif field == "default_tax_rate":
+                    setattr(tenant, field, Decimal(request.form.get(field, "0") or "0"))
+                else:
+                    setattr(tenant, field, (request.form.get(field, "") or "").strip() or None)
+            tenant.name = tenant.name_en or tenant.name_ar
+            db.session.commit()
+            flash("تم حفظ إعدادات الشركة بنجاح", "success")
+            return redirect(url_for("main.company_settings"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("company settings save failed")
+            flash("حدث خطأ أثناء الحفظ", "danger")
+
+    return render_template("main/company_settings.html", tenant=tenant, editable=editable)

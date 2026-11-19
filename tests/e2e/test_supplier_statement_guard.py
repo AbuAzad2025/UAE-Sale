@@ -26,7 +26,10 @@ def test_manager_can_open_own_supplier_statement(client, login_as, app, db):
     assert resp.status_code == 200, resp.get_data(as_text=True)[:300]
     body = resp.get_data(as_text=True)
     assert "معاينة الطباعة" in body
+    import re as _re
+    assert len(_re.findall(r'/suppliers/\d+/statement/print"', body)) == 1  # no duplicated toolbar
     assert "حركة الحساب" in body
+    assert body.count("<h1") == 1
 
     # Dedicated clean print preview (A4 document, no app chrome).
     printed = client.get(f"/suppliers/{sid}/statement/print")

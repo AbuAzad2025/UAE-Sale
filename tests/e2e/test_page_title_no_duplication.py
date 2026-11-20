@@ -25,6 +25,15 @@ def test_header_rendered_once_and_breadcrumb_is_plain(client, login_as, path):
     assert "<a " not in crumb
 
 
+def test_theme_uses_tenant_brand_for_title_and_cards(client, login_as):
+    login_as("manager")
+    body = client.get("/customers/").get_data(as_text=True)
+    assert "--tenant-primary:" in body
+    assert "var(--tenant-primary)" in body
+    assert ".page-title-host" in body
+    assert ".page-title-host" in body
+
+
 def test_page_title_text_filter():
     from app import _page_title_text
 

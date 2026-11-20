@@ -113,11 +113,19 @@
   </script>
   
   <style>
+    {# Theme colors follow the current tenant's brand. Fallbacks are the
+       platform defaults for contexts without a tenant (login, owner console). #}
+    :root {
+      --tenant-primary: {{ (current_tenant.brand_color_primary if current_tenant else None) or '#007A3D' }};
+      --tenant-secondary: {{ (current_tenant.brand_color_secondary if current_tenant else None) or '#1B4D89' }};
+      --card-header-bg: linear-gradient(135deg, var(--tenant-primary) 0%, var(--tenant-secondary) 100%);
+    }
     * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     img { will-change: transform; }
     /* Plain-text page titles keep the old h1 look; full toolbars inside the
-       page_title block render their own headings/buttons. */
-    .page-title-host { font-size: 1.5rem; font-weight: 600; }
+       page_title block render their own headings/buttons. The content-header
+       is a light tint, so the title must be dark/brand colored, not white. */
+    .page-title-host { font-size: 1.5rem; font-weight: 700; color: var(--tenant-primary) !important; }
     .content-wrapper { min-height: calc(100vh - 120px); }
     
     .sidebar::-webkit-scrollbar {

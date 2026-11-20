@@ -275,7 +275,21 @@ def view(id):
         flash(ErrorMessages.permission_denied("عرض هذه الفاتورة"), "danger")
         return redirect(url_for("sales.index"))
 
-    return render_template("sales/view.html", sale=sale)
+    from sqlalchemy import func
+
+    from models import ProductReturn, ProductReturnLine
+
+    returned = dict(
+        db.session.query(
+            ProductReturnLine.sale_line_id,
+            func.sum(ProductReturnLine.quantity),
+        )
+        .join(ProductReturn, ProductReturn.id == ProductReturnLine.return_id)
+        .filter(ProductReturn.status == "approved")
+        .group_by(ProductReturnLine.sale_line_id)
+        .all()
+    )
+    return render_template("sales/view.html", sale=sale, returned=returned)
 
 
 @sales_bp.route("/<int:id>/print")

@@ -5,6 +5,16 @@ from extensions import cache
 from utils.transaction import atomic_transaction
 
 
+def test_dashboard_shows_real_cheque_payment_payables_maintenance_cards(client, login_as):
+    login_as("manager")
+    body = client.get("/dashboard").get_data(as_text=True)
+    for label in ("شيكات معلقة", "دفعات اليوم (صادر / وارد)",
+                  "أوامر صيانة مفتوحة", "الذمم الدائنة"):
+        assert label in body
+    # Payables card is sourced from GL account 2110, not a hardcoded number.
+    assert "من الأستاذ (2110)" in body
+
+
 def test_dashboard_uses_correct_gl_account_codes():
     src = open("routes/main.py", encoding="utf-8").read()
     assert '("1110", "cash_balance")' in src

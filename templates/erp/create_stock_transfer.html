@@ -11,6 +11,10 @@
     </div>
   </div></div>
   <div class="card"><div class="card-header"><h5 class="mb-0">المنتجات</h5></div><div class="card-body">
+    <div class="form-group">
+      <label for="product-search"><i class="fas fa-search mr-1"></i>بحث سريع عن منتج (يُفلتر كل الصفوف)</label>
+      <input type="search" id="product-search" class="form-control" placeholder="اكتب اسم المنتج..." autocomplete="off">
+    </div>
     <table class="table" id="lines-table"><thead><tr><th>المنتج</th><th>الكمية</th><th></th></tr></thead><tbody></tbody></table>
     <button type="button" class="btn btn-success btn-sm" onclick="addLine()"><i class="fas fa-plus mr-1"></i>إضافة منتج</button>
   </div></div>
@@ -20,8 +24,37 @@
   </div></div>
 </form>
 <script>
-var i = 0;
+var lineIndex = 0;
 var products = [{% for p in products %}{id:{{p.id}},name:{{ p.name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}];
+
+function fillOptions(sel, term, keepValue){
+  term = (term || '').trim().toLowerCase();
+  var empty = document.createElement('option');
+  empty.value = ''; empty.textContent = '— اختر —';
+  sel.innerHTML = '';
+  sel.appendChild(empty);
+  var matched = products.filter(function(p){
+    return !term || p.name.toLowerCase().indexOf(term) !== -1;
+  });
+  // Keep the current selection visible even if it does not match the filter.
+  if (keepValue && keepValue !== '0' && !matched.some(function(p){ return String(p.id) === String(keepValue); })) {
+    var current = products.filter(function(p){ return String(p.id) === String(keepValue); })[0];
+    if (current) matched.unshift(current);
+  }
+  matched.forEach(function(p){
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name; sel.appendChild(o);
+  });
+  if (keepValue) sel.value = keepValue;
+}
+
+function applyProductFilter(){
+  var term = document.getElementById('product-search')?.value || '';
+  document.querySelectorAll('#lines-table select[name^="lines["]').forEach(function(sel){
+    fillOptions(sel, term, sel.value);
+  });
+}
+
 function addLine(){
   var tbody = document.querySelector('#lines-table tbody');
   if (!tbody) return;
@@ -29,19 +62,15 @@ function addLine(){
 
   var td1 = document.createElement('td');
   var sel = document.createElement('select');
-  sel.name = 'lines[' + i + '][product_id]';
+  sel.name = 'lines[' + lineIndex + '][product_id]';
   sel.className = 'form-control';
-  var empty = document.createElement('option');
-  empty.value = ''; empty.textContent = '— اختر —'; sel.appendChild(empty);
-  products.forEach(function(p){
-    var o = document.createElement('option');
-    o.value = p.id; o.textContent = p.name; sel.appendChild(o);
-  });
+  fillOptions(sel, document.getElementById('product-search')?.value || '', null);
+  sel.addEventListener('change', applyProductFilter);
   td1.appendChild(sel); tr.appendChild(td1);
 
   var td2 = document.createElement('td');
   var qty = document.createElement('input');
-  qty.type = 'number'; qty.name = 'lines[' + i + '][quantity]';
+  qty.type = 'number'; qty.name = 'lines[' + lineIndex + '][quantity]';
   qty.className = 'form-control'; qty.step = '0.01'; qty.required = true;
   td2.appendChild(qty); tr.appendChild(td2);
 
@@ -53,8 +82,10 @@ function addLine(){
   td3.appendChild(del); tr.appendChild(td3);
 
   tbody.appendChild(tr);
-  i++;
+  lineIndex++;
 }
+
+document.getElementById('product-search')?.addEventListener('input', applyProductFilter);
 addLine();
 </script>
 {% endblock %}

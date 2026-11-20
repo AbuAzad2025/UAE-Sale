@@ -18,7 +18,7 @@ function addLine() {
     const html = `
         <div class="product-line mb-2" id="line_${lineIndex}">
             <div class="row">
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <label class="font-weight-bold mb-1">
                         <i class="fas fa-box text-primary"></i> المنتج
                         <span class="text-danger">*</span>
@@ -47,7 +47,7 @@ function addLine() {
                            id="price_${lineIndex}" onchange="calculateTotals()" onkeyup="calculateTotals()"
                            title="سعر الوحدة بالدرهم">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label class="font-weight-bold mb-1">
                         <i class="fas fa-percent text-warning"></i> خصم
                     </label>
@@ -57,10 +57,10 @@ function addLine() {
                 </div>
                 <div class="col-md-2">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-balance-scale text-info"></i> المعاملة الضريبية
+                        <i class="fas fa-balance-scale text-info"></i> الضريبة
                     </label>
                     <select name="lines[${lineIndex}][tax_treatment]" class="form-control tax-treatment-input" onchange="calculateTotals()">
-                        <option value="standard">قياسية (نسبة الشركة)</option>
+                        <option value="standard">قياسية</option>
                         <option value="zero">صفرية 0%</option>
                         <option value="exempt">معفاة</option>
                     </select>

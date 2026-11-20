@@ -118,6 +118,69 @@
     </div>
   </div>
   {% endif %}
+
+  {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') %}
+  <div class="col-lg-3 col-md-6 mb-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);">
+        <i class="fas fa-money-check"></i>
+      </div>
+      <div class="stat-value">{{ stats.pending_cheques_count|default(0) }}</div>
+      <div class="stat-label">شيكات معلقة</div>
+      <div class="mt-2">
+        <strong style="color:#0d6efd; font-size:1.2rem;">{{ "{:,.0f}".format(stats.pending_cheques_amount|default(0)) }}</strong>
+        <small class="text-muted"> {{ base_currency_name }} · صُرف {{ stats.cleared_cheques_count|default(0) }}</small>
+      </div>
+      <a href="{{ url_for('cheques.outgoing') }}" class="btn btn-sm btn-primary mt-2 w-100">عرض الشيكات</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') %}
+  <div class="col-lg-3 col-md-6 mb-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #198754 0%, #20c997 100%);">
+        <i class="fas fa-exchange-alt"></i>
+      </div>
+      <div class="stat-value">{{ stats.outgoing_today_count|default(0) }} / {{ stats.incoming_today_count|default(0) }}</div>
+      <div class="stat-label">دفعات اليوم (صادر / وارد)</div>
+      <div class="mt-2">
+        <strong style="color:#198754; font-size:1.1rem;">{{ "{:,.0f}".format(stats.outgoing_today_amount|default(0)) }}</strong>
+        <small class="text-muted">صادر · </small>
+        <strong style="color:#0d6efd; font-size:1.1rem;">{{ "{:,.0f}".format(stats.incoming_today_amount|default(0)) }}</strong>
+        <small class="text-muted">وارد</small>
+      </div>
+      <a href="{{ url_for('payments.receipts') }}" class="btn btn-sm btn-success mt-2 w-100">عرض المدفوعات</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user.has_permission('maintenance_view') or current_user.has_permission('view_reports') %}
+  <div class="col-lg-3 col-md-6 mb-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);">
+        <i class="fas fa-tools"></i>
+      </div>
+      <div class="stat-value">{{ stats.maintenance_open|default(0) }}</div>
+      <div class="stat-label">أوامر صيانة مفتوحة</div>
+      <div class="mt-2"><small class="text-muted">استُلم اليوم: {{ stats.maintenance_today|default(0) }}</small></div>
+      <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-sm btn-warning mt-2 w-100">عرض الأوامر</a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_ledger') or current_user.has_permission('view_reports') %}
+  <div class="col-lg-3 col-md-6 mb-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);">
+        <i class="fas fa-hand-holding-usd"></i>
+      </div>
+      <div class="stat-value">{{ "{:,.0f}".format(stats.total_payables|default(0)) }}</div>
+      <div class="stat-label">الذمم الدائنة</div>
+      <div class="mt-2"><small class="text-muted">من الأستاذ (2110) · {{ base_currency }}</small></div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 {% if current_user.can_see_costs() and stats.cash_balance is defined %}

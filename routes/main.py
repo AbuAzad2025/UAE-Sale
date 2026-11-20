@@ -20,11 +20,15 @@ from models import (
     Customer,
     Product,
     Purchase,
+    Payment,
+    Receipt,
+    Cheque,
     GLAccount,
     GLJournalLine,
     Tenant,
     get_current_tenant_id,
 )
+from models.maintenance import MaintenanceOrder
 from services.stock_service import StockService
 
 DASHBOARD_CACHE_TTL = 60
@@ -70,12 +74,17 @@ def dashboard():  # noqa: C901
         can_payments = current_user.has_permission("manage_payments")
         can_purchases = current_user.has_permission("manage_purchases")
         can_ledger = current_user.has_permission("view_ledger")
+        can_maintenance = current_user.has_permission("maintenance_view")
 
         show_sales_card = can_sales or can_reports
         show_customers_card = can_customers or can_reports
         show_receivables_card = can_payments or can_reports or can_ledger
         show_purchases_card = can_purchases or can_reports
         show_products_card = can_products or can_view_products or can_warehouse
+        show_cheques_card = can_payments or can_reports
+        show_payments_today_card = can_payments or can_reports
+        show_payables_card = can_payments or can_reports or can_ledger
+        show_maintenance_card = can_maintenance or can_reports
         show_recent_table = can_sales
 
         tenant_key = get_current_tenant_id()
@@ -200,6 +209,83 @@ def dashboard():  # noqa: C901
             month_purchases = _cached("month_purchases", _month_purchases)
             stats["month_purchases_count"] = month_purchases[0] or 0
             stats["month_purchases_amount"] = float(month_purchases[1] or 0)
+
+        if show_cheques_card:
+
+            def _cheques_summary():
+                q = db.session.query(
+                    func.count(Cheque.id).filter(
+                        Cheque.cheque_type == "outgoing",
+                        Cheque.status.in_(("pending", "deposited")),
+                    ),
+                    func.sum(Cheque.amount_base).filter(
+                        Cheque.cheque_type == "outgoing",
+                        Cheque.status.in_(("pending", "deposited")),
+                    ),
+                    func.count(Cheque.id).filter(
+                        Cheque.cheque_type == "outgoing", Cheque.status == "cleared"
+                    ),
+                    func.sum(Cheque.amount_base).filter(
+                        Cheque.cheque_type == "outgoing", Cheque.status == "cleared"
+                    ),
+                )
+                row = q.one()
+                return row
+
+            cs = _cached("cheques_summary", _cheques_summary)
+            stats["pending_cheques_count"] = cs[0] or 0
+            stats["pending_cheques_amount"] = float(cs[1] or 0)
+            stats["cleared_cheques_count"] = cs[2] or 0
+            stats["cleared_cheques_amount"] = float(cs[3] or 0)
+
+        if show_payments_today_card:
+
+            def _today_outgoing():
+                return db.session.query(
+                    func.count(Payment.id), func.sum(Payment.amount_base)
+                ).filter(
+                    func.date(Payment.payment_date) == today,
+                    Payment.direction == "outgoing",
+                ).one()
+
+            def _today_incoming():
+                return db.session.query(
+                    func.count(Receipt.id), func.sum(Receipt.amount_base)
+                ).filter(func.date(Receipt.receipt_date) == today).one()
+
+            out = _cached("payments_out_today", _today_outgoing)
+            inn = _cached("payments_in_today", _today_incoming)
+            stats["outgoing_today_count"] = out[0] or 0
+            stats["outgoing_today_amount"] = float(out[1] or 0)
+            stats["incoming_today_count"] = inn[0] or 0
+            stats["incoming_today_amount"] = float(inn[1] or 0)
+
+        if show_payables_card:
+
+            def _payables():
+                acc = GLAccount.query.filter_by(code="2110").first()
+                if acc is None:
+                    return 0.0
+                # AP is a credit balance; get_balance() is debit-credit.
+                return abs(float(acc.get_balance()))
+
+            stats["total_payables"] = _cached("total_payables", _payables)
+
+        if show_maintenance_card:
+
+            def _maintenance_summary():
+                open_count = MaintenanceOrder.query.filter(
+                    MaintenanceOrder.is_archived.is_(False),
+                    MaintenanceOrder.status.notin_(("closed", "cancelled")),
+                ).count()
+                today_count = MaintenanceOrder.query.filter(
+                    func.date(MaintenanceOrder.received_at) == today
+                ).count()
+                return open_count, today_count
+
+            ms = _cached("maintenance_summary", _maintenance_summary)
+            stats["maintenance_open"] = ms[0]
+            stats["maintenance_today"] = ms[1]
 
         if current_user.can_see_costs():
 

@@ -227,6 +227,12 @@ def _enforce_target_role_not_higher(target_role):
     owners (and that path is still owner-gated by ``owner_required``).
     """
     target_level = _role_level(target_role)
+    slug = (getattr(target_role, "slug", "") or "").lower()
+    if slug in ("owner", "super_admin", "developer") and not getattr(
+        current_user, "is_owner", False
+    ):
+        flash("لا يمكن منح أدوار المنصة (مالك / مطور / سوبر أدمن)", "danger")
+        abort(403)
     if target_level > _current_user_level():
         flash("لا يمكنك ترقية مستخدم إلى دور أعلى من صلاحياتك", "danger")
         abort(403)

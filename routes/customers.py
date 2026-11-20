@@ -947,8 +947,51 @@ def statement(id):
 
     system_balance = derive_customer_balance(id)
 
+    # Partner entitlements: all GL lines booked to the partner current account
+    # (3350) with this customer as the party. Credits = profit shares owed to
+    # them, debits = draws/losses. This covers BOTH product-level shares (posted
+    # per sale) and company-level distributions in one authoritative place.
+    from models import GLAccount, GLJournalEntry, GLJournalLine, Product, ProductPartner
+
+    partner_gl = (
+        db.session.query(
+            GLJournalEntry.entry_number,
+            GLJournalEntry.description,
+            GLJournalEntry.entry_date,
+            GLJournalLine.debit,
+            GLJournalLine.credit,
+        )
+        .join(GLJournalLine, GLJournalLine.entry_id == GLJournalEntry.id)
+        .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+        .filter(GLJournalLine.party_id == id, GLAccount.code == "3350")
+        .order_by(GLJournalEntry.entry_date, GLJournalEntry.id)
+        .all()
+    )
+    partner_movements = []
+    partner_entitlement = Decimal("0")
+    for num, desc, edate, debit, credit in partner_gl:
+        amount = (credit or Decimal("0")) - (debit or Decimal("0"))
+        partner_entitlement += amount
+        partner_movements.append({
+            "entry_number": num,
+            "description": desc or "-",
+            "date": edate,
+            "amount": amount,
+            "kind": "حصة ربح" if amount > 0 else "مسحوبات/تسوية",
+        })
+
+    partner_links = (
+        db.session.query(Product.name, ProductPartner.percentage)
+        .join(Product, Product.id == ProductPartner.product_id)
+        .filter(ProductPartner.partner_customer_id == id)
+        .all()
+    )
+
     return render_template(
         "customers/statement.html",
+        partner_movements=partner_movements,
+        partner_entitlement=partner_entitlement,
+        partner_links=partner_links,
         customer=customer,
         transactions=transactions,
         final_balance=running_balance,

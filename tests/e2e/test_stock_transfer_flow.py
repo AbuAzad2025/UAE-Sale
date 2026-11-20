@@ -12,6 +12,19 @@ def _make(db, cls, tenant_id, **kw):
     return obj
 
 
+def test_create_form_has_vanilla_product_search(client, login_as, app, db):
+    """Product search must work without jQuery (loaded after content block)."""
+    login_as("manager")
+    body = client.get("/erp/stock-transfers/create").get_data(as_text=True)
+    assert 'id="product-search"' in body
+    assert "applyProductFilter" in body
+    assert "fillOptions" in body
+    assert "addEventListener('input'" in body
+    # Regression: the inline script must not depend on $ / jQuery (loaded late).
+    script = body.split("<script>", 1)[1].split("</script>", 1)[0]
+    assert "$(" not in script and "jQuery(" not in script
+
+
 def test_transfer_create_send_receive_persists(client, login_as, app, db):
     from models import Product, Warehouse
     from models.erp_modules import StockTransfer, StockTransferLine

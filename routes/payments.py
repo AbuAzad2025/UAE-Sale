@@ -1661,6 +1661,16 @@ def create_payment(purchase_id):  # noqa: C901
             if payment_method_value == "cheque" and cheque_number:
                 from models import Cheque
 
+                # Form dates arrive as strings; Date columns need real date
+                # objects or later status checks/clearance break.
+                parsed_cheque_date = None
+                if cheque_date:
+                    try:
+                        parsed_cheque_date = datetime.strptime(
+                            cheque_date, "%Y-%m-%d"
+                        ).date()
+                    except ValueError:
+                        parsed_cheque_date = None
                 cheque = Cheque(
                     cheque_number=cheque_number,
                     cheque_bank_number=cheque_number,
@@ -1671,7 +1681,7 @@ def create_payment(purchase_id):  # noqa: C901
                     exchange_rate=exchange_rate_decimal,
                     amount_base=amount_base,
                     issue_date=datetime.utcnow().date(),
-                    due_date=cheque_date if cheque_date else None,
+                    due_date=parsed_cheque_date,
                     bank_name=bank_name,
                     status="pending",
                     notes=notes,
@@ -1685,7 +1695,17 @@ def create_payment(purchase_id):  # noqa: C901
                 from services.gl_service import GLService
 
                 GLService.ensure_core_accounts()
-                cash_or_bank = "1110" if payment_method_value == "cash" else "1120"
+                # Accounting convention (matches Cheque._create_clearing_journal_entry):
+                #   cash            -> Dr 2110 / Cr 1110 (Cash)
+                #   bank/card/etc   -> Dr 2110 / Cr 1120 (Bank)
+                #   pending cheque  -> Dr 2110 / Cr 2120 (Deferred Cheques Payable);
+                #                      the Bank is only credited when the cheque clears.
+                if payment_method_value == "cheque":
+                    settlement_account = "2120"
+                elif payment_method_value == "cash":
+                    settlement_account = "1110"
+                else:
+                    settlement_account = "1120"
                 lines = [
                     {
                         "account": "2110",
@@ -1693,7 +1713,7 @@ def create_payment(purchase_id):  # noqa: C901
                         "description": f"سداد للمورد {payment.supplier_name}",
                     },
                     {
-                        "account": cash_or_bank,
+                        "account": settlement_account,
                         "credit": payment.amount,
                         "description": f"سند صرف {payment.payment_number}",
                     },

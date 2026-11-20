@@ -34,6 +34,13 @@ def test_theme_uses_tenant_brand_for_title_and_cards(client, login_as):
     assert ".page-title-host" in body
 
 
+def test_users_table_has_horizontal_scroll(client, login_as):
+    login_as("manager")
+    body = client.get("/users/").get_data(as_text=True)
+    assert 'class="table-responsive"' in body
+    assert "min-width:1200px" in body
+
+
 def test_page_title_text_filter():
     from app import _page_title_text
 

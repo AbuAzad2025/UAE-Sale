@@ -52,7 +52,8 @@
 
 <div class="card">
   <div class="card-body">
-    <table class="table table-bordered table-striped datatable">
+    <div class="table-responsive" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+    <table class="table table-bordered table-striped datatable" style="min-width:1200px;">
       <thead>
         <tr>
           <th>{{ t('Username') }}</th>
@@ -98,6 +99,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

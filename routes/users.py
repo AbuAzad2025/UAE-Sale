@@ -14,7 +14,7 @@ from extensions import db
 from models import User, Role, Tenant
 from services.user_service import UserService
 from utils.decorators import (
-    admin_required,
+    permission_required,
     _role_level,
     _current_user_level,
     get_owned_or_404,
@@ -39,6 +39,21 @@ def _role_obj_for(slug):
 
 def _is_platform_owner():
     return bool(getattr(current_user, "is_owner", False))
+
+
+_PLATFORM_ROLE_SLUGS = {"owner", "super_admin", "developer"}
+
+
+def _assignable_roles():
+    """Roles a user may grant. Platform roles are never offered to tenants."""
+    roles = Role.query.filter_by(is_active=True).all()
+    if not _is_platform_owner():
+        roles = [
+            r for r in roles
+            if (r.slug or "").lower() not in _PLATFORM_ROLE_SLUGS
+        ]
+    level = _current_user_level()
+    return [r for r in roles if _role_level(r) <= level]
 
 
 @users_bp.route("/")
@@ -102,9 +117,7 @@ def create():
     if not current_user.has_permission("manage_users"):
         abort(403)
 
-    current_level = _current_user_level()
-    roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(r) <= current_level]
+    roles = _assignable_roles()
     default_form = {"is_active": "1"}
 
     fixed_tenant = None
@@ -235,7 +248,7 @@ def view(id):
 
 @users_bp.route("/<int:id>/edit", methods=["GET", "POST"])
 @login_required
-@admin_required
+@permission_required("manage_users")
 def edit(id):
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner and not _is_platform_owner():
@@ -282,15 +295,13 @@ def edit(id):
             current_app.logger.error(f"User edit error: {e}")
             flash("❌ حدث خطأ في تحديث المستخدم. يرجى المحاولة مرة أخرى.", "danger")
 
-    current_level = _current_user_level()
-    roles = Role.query.filter_by(is_active=True).all()
-    roles = [r for r in roles if _role_level(r) <= current_level]
+    roles = _assignable_roles()
     return render_template("users/edit.html", user=user, roles=roles)
 
 
 @users_bp.route("/<int:id>/toggle-active", methods=["POST"])
 @login_required
-@admin_required
+@permission_required("manage_users")
 def toggle_active(id):
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner:

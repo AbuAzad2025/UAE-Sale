@@ -84,6 +84,11 @@ def _resolve_role(role_id, actor):
     role = Role.query.get(role_id)
     if role is None or not getattr(role, "is_active", True):
         raise ValidationError("الدور المختار غير صالح.")
+    # Platform roles must never be assignable by a tenant actor. Their numeric
+    # level alone is not enough (e.g. 'owner' has no level entry -> 0).
+    if (role.slug or "").lower() in ("owner", "super_admin", "developer") \
+            and not getattr(actor, "is_owner", False):
+        raise ValidationError("لا يمكن منح أدوار المنصة (مالك / مطور / سوبر أدمن).")
     actor_level = _actor_level(actor)
     if _role_level_of(role) > actor_level:
         raise ValidationError("لا يمكنك منح دور أعلى من دورك.")

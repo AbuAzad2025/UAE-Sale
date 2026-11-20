@@ -19,6 +19,7 @@ from models import (
     Sale,
     Customer,
     Product,
+    Purchase,
     GLAccount,
     GLJournalLine,
     Tenant,
@@ -67,11 +68,13 @@ def dashboard():  # noqa: C901
         can_view_products = current_user.has_permission("view_products")
         can_warehouse = current_user.has_permission("manage_warehouse")
         can_payments = current_user.has_permission("manage_payments")
+        can_purchases = current_user.has_permission("manage_purchases")
         can_ledger = current_user.has_permission("view_ledger")
 
         show_sales_card = can_sales or can_reports
         show_customers_card = can_customers or can_reports
         show_receivables_card = can_payments or can_reports or can_ledger
+        show_purchases_card = can_purchases or can_reports
         show_products_card = can_products or can_view_products or can_warehouse
         show_recent_table = can_sales
 
@@ -182,6 +185,22 @@ def dashboard():  # noqa: C901
             stats["month_sales_count"] = month_sales[0] or 0
             stats["month_sales_amount"] = float(month_sales[1] or 0)
 
+        if show_purchases_card:
+
+            def _month_purchases():
+                return (
+                    db.session.query(func.count(Purchase.id), func.sum(Purchase.amount_base))
+                    .filter(
+                        func.date(Purchase.purchase_date) >= month_start,
+                        Purchase.status == "confirmed",
+                    )
+                    .first()
+                )
+
+            month_purchases = _cached("month_purchases", _month_purchases)
+            stats["month_purchases_count"] = month_purchases[0] or 0
+            stats["month_purchases_amount"] = float(month_purchases[1] or 0)
+
         if current_user.can_see_costs():
 
             def _month_profit():
@@ -233,10 +252,14 @@ def dashboard():  # noqa: C901
 
             def _gl_balances():
                 result = {}
+                # Actual chart-of-accounts codes (verified): 1110 Cash,
+                # 1120 Bank current, 1140 Inventory. The previous codes
+                # (1000/1010/1200) pointed at parent/fixed-asset accounts, so
+                # these cards showed zeroes or unrelated balances.
                 for code, key in [
-                    ("1000", "cash_balance"),
-                    ("1010", "bank_balance"),
-                    ("1200", "inventory_value_gl"),
+                    ("1110", "cash_balance"),
+                    ("1120", "bank_balance"),
+                    ("1140", "inventory_value_gl"),
                 ]:
                     acc = GLAccount.query.filter_by(code=code).first()
                     if acc:

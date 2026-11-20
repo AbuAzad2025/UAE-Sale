@@ -19,6 +19,13 @@ _GATE_EXEMPT_ENDPOINTS = frozenset({
     # Blocking it for tenants without the API package only produces console
     # noise; it is not a paid API capability.
     "api.currency_rate",
+    # Internal UI support endpoints (search pickers, payment-method fields,
+    # product info/barcode). They are not the paid public API; blocking them
+    # breaks ordinary pages for tenants that haven't enabled enable_api.
+    "api.payment_fields",
+    "api.api_search", "api.api_search_target",
+    "api.api_product_info", "api.product_by_barcode", "api.products_low_stock",
+    "api.check_username",
     "monitoring.health", "monitoring.metrics",
 })
 

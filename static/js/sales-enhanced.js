@@ -16,7 +16,7 @@ function getCsrfToken() {
  */
 function addLine() {
     const html = `
-        <div class="product-line mb-3 p-3" id="line_${lineIndex}" style="background: #f8f9fa; border-radius: 8px; border-right: 4px solid #667eea;">
+        <div class="product-line mb-2" id="line_${lineIndex}">
             <div class="row">
                 <div class="col-md-5">
                     <label class="font-weight-bold mb-1">
@@ -27,7 +27,6 @@ function addLine() {
                             data-index="${lineIndex}" onchange="loadProductPrice(${lineIndex})">
                         <option value="">بلا</option>
                     </select>
-                    <small class="text-muted">ابحث بالاسم أو رقم القطعة</small>
                 </div>
                 <div class="col-md-2">
                     <label class="font-weight-bold mb-1">
@@ -37,7 +36,6 @@ function addLine() {
                     <input type="number" name="lines[${lineIndex}][quantity]" class="form-control quantity-input" 
                            placeholder="الكمية" value="1" step="0.01" min="0.01" required 
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
-                    <small class="text-muted">عدد الوحدات</small>
                 </div>
                 <div class="col-md-2">
                     <label class="font-weight-bold mb-1">
@@ -48,7 +46,6 @@ function addLine() {
                            placeholder="السعر" step="0.01" min="0" required 
                            id="price_${lineIndex}" onchange="calculateTotals()" onkeyup="calculateTotals()"
                            title="سعر الوحدة بالدرهم">
-                    <small class="text-muted">درهم/وحدة</small>
                 </div>
                 <div class="col-md-2">
                     <label class="font-weight-bold mb-1">
@@ -57,7 +54,6 @@ function addLine() {
                     <input type="number" name="lines[${lineIndex}][discount_percent]" class="form-control discount-input"
                            placeholder="خصم%" value="0" step="0.01" min="0" max="100"
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
-                    <small class="text-muted">نسبة الخصم %</small>
                 </div>
                 <div class="col-md-2">
                     <label class="font-weight-bold mb-1">
@@ -68,7 +64,6 @@ function addLine() {
                         <option value="zero">صفرية 0%</option>
                         <option value="exempt">معفاة</option>
                     </select>
-                    <small class="text-muted">تُلقط مع السطر</small>
                 </div>
                 <div class="col-md-1">
                     <label class="font-weight-bold mb-1">&nbsp;</label>

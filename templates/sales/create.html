@@ -131,6 +131,19 @@ a.btn.btn-outline-secondary i,
 a.btn.btn-outline-secondary span {
   color: #111827 !important;
 }
+
+    /* Compact line rows: one clean band per product instead of big cards. */
+    .sale-create-form .product-line {
+      background: transparent !important;
+      border: none !important;
+      border-bottom: 1px solid #e9ecef !important;
+      border-radius: 0 !important;
+      padding: 0.5rem 0 !important;
+      margin-bottom: 0 !important;
+    }
+    .sale-create-form .product-line .row { align-items: flex-end; }
+    .sale-create-form .total-box { padding: 0.75rem 0; }
+    .sale-create-form .total-box h3, .sale-create-form .total-box h2 { margin-bottom: 0.35rem; }
 </style>
 {% endblock %}
 
@@ -300,7 +313,21 @@ a.btn.btn-outline-secondary span {
             </small>
           </div>
 
-          <div class="form-group mt-3">
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-gradient-success">
+          <h3 class="card-title text-white mb-0"><i class="fas fa-check-circle mr-2"></i>إتمام الفاتورة</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+<div class="col-md-4 form-group mt-3">
             <label class="font-weight-bold">
               <i class="fas fa-credit-card text-info"></i> طريقة الدفع
             </label>
@@ -313,12 +340,11 @@ a.btn.btn-outline-secondary span {
           </div>
 
           
-          <div id="payment_fields_container"></div>
+          <div id="payment_fields_container" class="col-md-4"></div>
 
-          <div class="form-group" id="payment_amount_group" style="display:none;">
+          <div class="col-md-4 form-group" id="payment_amount_group" style="display:none;">
             <label class="font-weight-bold">
               <i class="fas fa-hand-holding-usd mr-1"></i>المبلغ المدفوع
-              <i class="fas fa-info-circle text-info" title="أدخل المبلغ بالعملة المختارة - سيتم تحويله تلقائياً لعملة الشركة"></i>
             </label>
             <div class="input-group">
               <input type="number" name="payment_amount" id="payment_amount" class="form-control" 
@@ -328,27 +354,26 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text" id="payment_currency_display">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="text-muted d-block mt-1">اترك صفر للدفع الآجل</small>
           </div>
 
-          <div class="form-group">
+          <div class="col-md-12 form-group">
             <label class="font-weight-bold">
               <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
             </label>
             <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية عن الفاتورة..."></textarea>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-block btn-lg d-none d-md-block">
+          <button type="submit" class="btn btn-primary btn-lg">
             <i class="fas fa-save mr-2"></i>حفظ الفاتورة
           </button>
           <div class="d-md-none text-center text-muted small mt-2">
             <i class="fas fa-info-circle"></i> استخدم الشريط السفلي للحفظ على الجوال
           </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  
   <div class="sale-mobile-bottom-bar d-md-none d-flex">
     <div>
       <strong id="mobile-total">0.00 {{ base_currency }}</strong>

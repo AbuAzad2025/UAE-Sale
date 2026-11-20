@@ -124,6 +124,42 @@ def index():
     )
 
 
+@warehouse_bp.route("/opening-stock")
+@login_required
+@permission_required("manage_warehouse")
+def opening_stock():
+    """Rigid, idempotent posting of opening stock to the GL."""
+    from services.opening_stock_service import OpeningStockService
+
+    tid = getattr(current_user, "tenant_id", None)
+    rows = OpeningStockService.pending(tid)
+    total = sum(
+        (Decimal(str(m.quantity or 0)) * Decimal(str(m.product.cost_price or 0)))
+        for m in rows
+    )
+    return render_template(
+        "warehouse/opening_stock.html",
+        pending=rows,
+        total=total,
+    )
+
+
+@warehouse_bp.route("/opening-stock/post", methods=["POST"])
+@login_required
+@permission_required("manage_warehouse")
+def post_opening_stock():
+    from services.opening_stock_service import OpeningStockService
+
+    tid = getattr(current_user, "tenant_id", None)
+    entries = OpeningStockService.post_all(tid, current_user)
+    db.session.commit()
+    if entries:
+        flash(f"✅ تم ترحيل {len(entries)} حركة رصيد افتتاحي إلى الأستاذ", "success")
+    else:
+        flash("لا توجد حركات رصيد افتتاحي بانتظار الترحيل.", "info")
+    return redirect(url_for("warehouse.opening_stock"))
+
+
 @warehouse_bp.route("/movements")
 @login_required
 @permission_required("manage_warehouse")

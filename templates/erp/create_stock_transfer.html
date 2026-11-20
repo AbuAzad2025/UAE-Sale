@@ -20,8 +20,41 @@
   </div></div>
 </form>
 <script>
-var i=0;var products=[{% for p in products %}{id:{{p.id}},name:'{{p.name}}'}{% if not loop.last %},{% endif %}{% endfor %}];
-function addLine(){$('#lines-table tbody').append('<tr><td><select name="lines['+i+'][product_id]" class="form-control"><option value="">— اختر —</option>'+products.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')+'</select></td><td><input type="number" name="lines['+i+'][quantity]" class="form-control" step="0.01" required></td><td><button type="button" class="btn btn-danger btn-sm" onclick="$(this).closest(\'tr\').remove()"><i class="fas fa-trash"></i></button></td></tr>');i++}
+var i = 0;
+var products = [{% for p in products %}{id:{{p.id}},name:{{ p.name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}];
+function addLine(){
+  var tbody = document.querySelector('#lines-table tbody');
+  if (!tbody) return;
+  var tr = document.createElement('tr');
+
+  var td1 = document.createElement('td');
+  var sel = document.createElement('select');
+  sel.name = 'lines[' + i + '][product_id]';
+  sel.className = 'form-control';
+  var empty = document.createElement('option');
+  empty.value = ''; empty.textContent = '— اختر —'; sel.appendChild(empty);
+  products.forEach(function(p){
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name; sel.appendChild(o);
+  });
+  td1.appendChild(sel); tr.appendChild(td1);
+
+  var td2 = document.createElement('td');
+  var qty = document.createElement('input');
+  qty.type = 'number'; qty.name = 'lines[' + i + '][quantity]';
+  qty.className = 'form-control'; qty.step = '0.01'; qty.required = true;
+  td2.appendChild(qty); tr.appendChild(td2);
+
+  var td3 = document.createElement('td');
+  var del = document.createElement('button');
+  del.type = 'button'; del.className = 'btn btn-danger btn-sm';
+  del.innerHTML = '<i class="fas fa-trash"></i>';
+  del.addEventListener('click', function(){ tr.remove(); });
+  td3.appendChild(del); tr.appendChild(td3);
+
+  tbody.appendChild(tr);
+  i++;
+}
 addLine();
 </script>
 {% endblock %}

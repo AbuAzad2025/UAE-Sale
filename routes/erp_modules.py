@@ -602,6 +602,8 @@ def create_stock_transfer():
                 user_id=current_user.id,
                 notes=request.form.get("notes"),
             )
+            # The service only flushes; persist the transfer and its lines.
+            db.session.commit()
             flash(f"✅ تم إنشاء طلب النقل {transfer.transfer_number}", "success")
             return redirect(url_for("erp_modules.stock_transfers"))
         except Exception as e:
@@ -636,6 +638,7 @@ def send_stock_transfer(id):
 def receive_stock_transfer(id):
     try:
         StockTransferService.receive_transfer(id, current_user.id)
+        db.session.commit()  # service flushes only; persist stock + status
         flash("✅ تم استلام الشحنة وتحديث المخزون", "success")
     except ValueError as e:
         current_app.logger.exception("handler failed")

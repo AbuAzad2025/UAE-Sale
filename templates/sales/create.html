@@ -150,12 +150,10 @@ a.btn.btn-outline-secondary span {
                 <label class="font-weight-bold">
                   <i class="fas fa-user text-primary mr-1"></i>الزبون 
                   <span class="text-danger">*</span>
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر العميل - الفلتر الذكي: ابحث بالاسم أو الهاتف (إجباري)"></i>
                 </label>
                 <select name="customer_id" id="customer_id" class="form-control customer-select" required>
                   <option value=""></option>
                 </select>
-                <small class="form-text text-muted"> الفلتر الذكي: ابحث بالاسم أو رقم الهاتف (اكتب حرفين على الأقل)</small>
               </div>
             </div>
             <div class="col-md-4">
@@ -163,7 +161,6 @@ a.btn.btn-outline-secondary span {
                 <label class="font-weight-bold">
                   <i class="fas fa-warehouse text-info mr-1"></i>المستودع 
                   <span class="text-danger">*</span>
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي سيُخصم منه المخزون (إجباري)"></i>
                 </label>
                 <select name="warehouse_id" id="warehouse_id" class="form-control" required>
                   <option value="" disabled selected>اختر المستودع...</option>
@@ -179,39 +176,28 @@ a.btn.btn-outline-secondary span {
                     <option value="">لا توجد مستودعات متاحة</option>
                   {% endif %}
                 </select>
-                <small class="form-text text-info">
-                  <i class="fas fa-info-circle"></i> سيُخصم المخزون من هذا المستودع
-                </small>
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة التي سيدفع بها العميل - الفاتورة بـ{{ base_currency_name }} دائماً (اختياري)"></i>
                 </label>
                 <select name="currency" id="currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
                   <option value="{{ code }}" {% if base_currency == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
                   {% endfor %}
                 </select>
-                <small class="form-text text-info">
-                  <i class="fas fa-lightbulb"></i> الأسعار بـ{{ base_currency_name }} - العملة فقط لتحويل المدفوع
-                </small>
               </div>
             </div>
             <div class="col-md-2">
               <div class="form-group">
                 <label class="font-weight-bold">
                   <i class="fas fa-exchange-alt text-info mr-1"></i>سعر الصرف
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر صرف العملة مقابل {{ base_currency }} - يُحدث تلقائياً (اختياري)"></i>
                 </label>
                 <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" 
                        value="1.000000" step="0.000001" min="0.000001" 
                        placeholder="1.000000">
-                <small class="form-text text-muted">
-                  <i class="fas fa-robot"></i> يُحدّث تلقائياً عند اختيار العملة
-                </small>
               </div>
             </div>
           </div>
@@ -221,17 +207,12 @@ a.btn.btn-outline-secondary span {
               <div class="form-group">
                 <label class="font-weight-bold" for="due_date">
                   <i class="fas fa-calendar-check text-warning mr-1"></i>تاريخ الاستحقاق
-                  <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تاريخ استحقاق الذمم المدينة - اتركه فارغاً ليُحسب من شروط دفع العميل"></i>
                 </label>
                 <input type="date" name="due_date" id="due_date" class="form-control">
-                <small class="form-text text-muted">
-                  <i class="fas fa-lightbulb"></i> اتركه فارغاً ليُحسب تلقائياً من شروط دفع العميل
-                </small>
               </div>
             </div>
           </div>
 
-          <hr>
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h5><i class="fas fa-list mr-2"></i>الأصناف (<span id="line_count_display">0</span>)</h5>
             <button type="button" class="btn btn-success" onclick="addLine()">
@@ -252,7 +233,6 @@ a.btn.btn-outline-secondary span {
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-percent text-danger mr-1"></i>الخصم الإجمالي
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="خصم إضافي على إجمالي الفاتورة بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="discount_amount" class="form-control" value="0" step="0.01" min="0" 
@@ -262,13 +242,11 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-muted">خصم بـ{{ base_currency_name }} على المجموع الفرعي</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة الشحن
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تكلفة الشحن والتوصيل بـ{{ base_currency_name }} (اختياري - افتراضي: 0)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="shipping_cost" class="form-control" value="0" step="0.01" min="0" 
@@ -278,13 +256,11 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-muted">تُضاف للمجموع قبل الضريبة</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-receipt text-warning mr-1"></i>نسبة الضريبة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="نسبة VAT (الإمارات 5% — افتراضي الشركة)"></i>
             </label>
             <div class="input-group">
               <input type="number" name="tax_rate" class="form-control" data-tax-enabled="{{ 'false' if current_tenant and not current_tenant.enable_tax else 'true' }}" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
@@ -303,7 +279,6 @@ a.btn.btn-outline-secondary span {
               <option value="zero">خاضعة بنسبة صفرية 0% (حسب الحالة النظامية)</option>
               <option value="exempt">معفاة من الضريبة</option>
             </select>
-            <small class="form-text text-muted">فاتورة على حساب غير شامل: الضريبة تضاف على الصافي. الشامل: الضريبة مستخرجة من الإجمالي.</small>
           </div>
           
           <div class="total-box text-center">
@@ -325,7 +300,6 @@ a.btn.btn-outline-secondary span {
           <div class="form-group mt-3">
             <label class="font-weight-bold">
               <i class="fas fa-credit-card text-info"></i> طريقة الدفع
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر طريقة الدفع أو اتركها فارغة للدفع الآجل"></i>
             </label>
             <select name="payment_method" id="payment_method" class="form-control select2">
               <option value="">آجل (بدون دفع)</option>
@@ -333,9 +307,6 @@ a.btn.btn-outline-secondary span {
               <option value="{{ code }}">{{ meta.ar }}</option>
               {% endfor %}
             </select>
-            <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> اترك فارغاً للدفع الآجل (على الحساب)
-            </small>
           </div>
 
           
@@ -354,21 +325,14 @@ a.btn.btn-outline-secondary span {
                 <span class="input-group-text" id="payment_currency_display">{{ base_currency }}</span>
               </div>
             </div>
-            <small class="form-text text-success">
-              <i class="fas fa-calculator"></i> سيتم تحويل المبلغ تلقائياً حسب سعر الصرف
-            </small>
             <small class="text-muted d-block mt-1">اترك صفر للدفع الآجل</small>
           </div>
 
           <div class="form-group">
             <label class="font-weight-bold">
               <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="أي ملاحظات أو تعليمات إضافية عن هذه الفاتورة"></i>
             </label>
             <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية عن الفاتورة..."></textarea>
-            <small class="form-text text-muted">
-              <i class="fas fa-lightbulb"></i> يمكنك كتابة أي ملاحظات أو تعليمات خاصة
-            </small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block btn-lg d-none d-md-block">

@@ -4403,30 +4403,29 @@ def _run_users(client, db, sc, fixtures):
         )
         return
 
-    # ---- admin-only: edit and toggle_active carry @admin_required ----
+    # ---- toggle_active: guarded by @permission_required("manage_users") ----
     if sc.edge in ("invalid_permission", "rollback_no_partial_write"):
         r = client.post(f"/users/{target.id}/toggle-active")
         from flask_login import current_user
 
-        # utils/decorators.py::admin_required admits is_owner OR super_admin,
-        # not a role slug of 'admin' - so the predicate has to mirror the
-        # decorator, not a role name.
-        allowed = (
-            bool(getattr(current_user, "is_owner", False))
-            or current_user.is_super_admin()
-        )
+        # The route guard is permission_required("manage_users"): owner,
+        # super_admin, and tenant managers (who hold manage_users) may toggle;
+        # viewers/accountants without that grant may not.
+        allowed = bool(getattr(current_user, "is_owner", False)) or \
+            current_user.is_super_admin() or \
+            current_user.has_permission("manage_users")
         if allowed:
             assert r.status_code in (302, 303), f"{sc.id}: {r.status_code}"
             db.session.refresh(target)
             assert target.is_active is False, (
-                f"{sc.id}: toggle-active did not deactivate the user for an admin"
+                f"{sc.id}: toggle-active did not deactivate the user for an authorized actor"
             )
         else:
             assert r.status_code in (403, 302, 303), (
                 f"{sc.id}: toggle-active answered {r.status_code}"
             )
             db.session.refresh(target)
-            assert target.is_active is True, f"{sc.id}: a non-admin deactivated a user"
+            assert target.is_active is True, f"{sc.id}: an unauthorized actor deactivated a user"
         return None
 
     # ---- create: the provisioning path and its role-level clamp ----

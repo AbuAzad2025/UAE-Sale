@@ -23,7 +23,7 @@
         <select name="employee" class="form-control">
           <option value="">— كل الموظفين —</option>
           {% for emp in employees %}
-          <option value="{{ emp.id }}" {% if request.args.get('employee', '', type=int) == emp.id %}selected{% endif %}>{{ emp.employee_number }} - {{ emp.user.full_name if emp.user else '' }}</option>
+          <option value="{{ emp.id }}" {% if request.args.get('employee', 0)|int == emp.id %}selected{% endif %}>{{ emp.employee_number }} - {{ emp.user.full_name if emp.user else '' }}</option>
           {% endfor %}
         </select>
       </div>

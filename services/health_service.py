@@ -129,10 +129,9 @@ class HealthCheckService:
     def get_system_metrics():
         """الحصول على مقاييس النظام"""
         try:
-            from models import Donation, PackagePurchase, CardPayment
+            from models import Donation, CardPayment
 
             total_donations = Donation.query.count()
-            total_purchases = PackagePurchase.query.count()
             total_cards = CardPayment.query.count()
 
             process = psutil.Process(os.getpid())
@@ -141,7 +140,6 @@ class HealthCheckService:
             return {
                 "database": {
                     "total_donations": total_donations,
-                    "total_purchases": total_purchases,
                     "total_cards": total_cards,
                 },
                 "process": {

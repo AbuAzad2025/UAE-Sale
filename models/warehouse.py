@@ -123,6 +123,8 @@ class StockMovement(TenantScopedMixin, db.Model):
             "damage": {"ar": "تالف", "en": "Damage"},
             "maintenance": {"ar": "صرف صيانة", "en": "Maintenance Issue"},
             "maintenance_return": {"ar": "إرجاع صيانة", "en": "Maintenance Return"},
+            "shipment": {"ar": "صرف إرسالية", "en": "Shipment Issue"},
+            "shipment_return": {"ar": "إرجاع إرسالية", "en": "Shipment Return"},
         }
         return types.get(self.movement_type, {}).get(lang, self.movement_type)
 

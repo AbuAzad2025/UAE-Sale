@@ -24,7 +24,7 @@
         <select name="department" class="form-control">
           <option value="">— كل الأقسام —</option>
           {% for dept in departments %}
-          <option value="{{ dept.id }}" {% if request.args.get('department', '', type=int) == dept.id %}selected{% endif %}>{{ dept.code }} - {{ dept.name }}</option>
+          <option value="{{ dept.id }}" {% if request.args.get('department', 0)|int == dept.id %}selected{% endif %}>{{ dept.code }} - {{ dept.name }}</option>
           {% endfor %}
         </select>
       </div>

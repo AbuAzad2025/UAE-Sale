@@ -654,6 +654,7 @@ class GLService:
         notes: str | None = None,
         created_by: int | None = None,
         is_posted: bool = True,
+        idempotency_key: str | None = None,
     ) -> GLJournalEntry:
         """Post a balanced double-entry journal.
 
@@ -668,10 +669,22 @@ class GLService:
             entry_type: ``auto`` / ``manual`` / ``reversing`` / ``closing``.
             entry_date: تاريخ المستند — يجب أن يقع في فترة مالية مفتوحة (F10).
             is_posted: F9 — True (ترحيل فوري) أو False (مسودة تُرحَّل لاحقاً).
+            idempotency_key: optional key — if an entry with this key already
+                exists for the tenant, it is returned instead of double-posting.
         """
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
+
+        # Idempotency: when a caller supplies a key, return the existing entry
+        # rather than posting a duplicate (e.g. double-submitted payment).
+        if idempotency_key:
+            existing = GLJournalEntry.query.filter_by(
+                idempotency_key=str(idempotency_key)[:120],
+                tenant_id=_current_tenant_id(),
+            ).first()
+            if existing is not None:
+                return existing
 
         try:
             normalized, total_debit, total_credit = _normalize_lines(
@@ -704,6 +717,9 @@ class GLService:
                 total_credit=total_credit,
                 is_posted=bool(is_posted),
                 notes=notes,
+                idempotency_key=(
+                    str(idempotency_key)[:120] if idempotency_key else None
+                ),
                 created_by=created_by if created_by is not None else _current_user_id(),
                 tenant_id=_current_tenant_id(),
             )

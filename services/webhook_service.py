@@ -5,7 +5,7 @@ Webhook Service - خدمة Webhooks
 
 from datetime import datetime, timezone
 from extensions import db
-from models import Donation, PackagePurchase
+from models import Donation
 from services.notification_service import NotificationService
 import hmac
 import hashlib
@@ -151,9 +151,7 @@ class WebhookService:
                 f"📨 NOWPayments webhook received: {payment_id} - {payment_status}"
             )
 
-            if order_id.startswith("PURCHASE_"):
-                return WebhookService._process_purchase_webhook(data)
-            elif order_id.startswith("DONATION_"):
+            if order_id.startswith("DONATION_"):
                 return WebhookService._process_donation_webhook(data)
             else:
                 logger.warning(f"Unknown order type: {order_id}")
@@ -162,38 +160,6 @@ class WebhookService:
         except Exception as e:
             logger.error(f"❌ Webhook processing error: {str(e)}")
             return {"success": False, "error": str(e)}
-
-    @staticmethod
-    def _process_purchase_webhook(data):
-        """معالجة webhook للمشتريات"""
-        payment_status = data.get("payment_status")
-        payment_id = data.get("payment_id")
-
-        purchase = PackagePurchase.query.filter_by(transaction_id=payment_id).first()
-
-        if not purchase:
-            logger.warning(f"Purchase not found for payment_id: {payment_id}")
-            return {"success": False, "error": "Purchase not found"}
-
-        if payment_status == "finished":
-            purchase.payment_status = "completed"
-            purchase.activation_status = "activated"
-            purchase.activation_date = datetime.now(timezone.utc)
-
-            NotificationService.notify_purchase_activated(
-                purchase.package.name_ar if purchase.package else "N/A",
-                purchase.customer_name,
-            )
-
-            logger.info(f"✅ Purchase {purchase.id} completed and activated")
-
-        elif payment_status == "failed" or payment_status == "expired":
-            purchase.payment_status = "failed"
-            logger.warning(f"❌ Purchase {purchase.id} failed")
-
-        db.session.flush()
-
-        return {"success": True, "message": f"Purchase updated to {payment_status}"}
 
     @staticmethod
     def _process_donation_webhook(data):

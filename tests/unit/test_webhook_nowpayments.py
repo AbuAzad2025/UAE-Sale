@@ -13,7 +13,7 @@ import pytest
 import requests
 
 import services.nowpayments_service as nowpayments_module
-from models import Donation, Package, PackagePurchase
+from models import Donation
 from services.notification_service import NotificationService, SecurityService
 from services.nowpayments_service import NOWPaymentsService
 from services.webhook_service import WebhookService
@@ -89,31 +89,6 @@ def sha512_sign(payload_bytes, secret=IPN_SECRET):
 
 
 @pytest.fixture
-def purchase(db):
-    pkg = Package(
-        name_ar="الباقة الأساسية",
-        name_en="Basic",
-        slug="basic-" + uuid4().hex[:8],
-        price=99.0,
-    )
-    db.session.add(pkg)
-    db.session.flush()
-    proc = PackagePurchase(
-        package_id=pkg.id,
-        customer_name="عميل تجريبي",
-        customer_email="buyer@test.com",
-        payment_method="crypto",
-        payment_status="pending",
-        amount_paid=99.0,
-        currency="USD",
-        transaction_id="pay-purchase-001",
-    )
-    db.session.add(proc)
-    db.session.commit()
-    return proc
-
-
-@pytest.fixture
 def donation(db):
     don = Donation(
         amount_usd=Decimal("25.00"),
@@ -178,20 +153,6 @@ class TestNowPaymentsSignatureVerification:
 
 
 class TestNowPaymentsWebhookRouting:
-    def test_purchase_prefix_routes_to_purchase_handler(self, db, purchase):
-        result = WebhookService.process_nowpayments_webhook(
-            {
-                "payment_id": "pay-purchase-001",
-                "payment_status": "finished",
-                "order_id": "PURCHASE_1001",
-            }
-        )
-        assert result["success"] is True
-        db.session.expire_all()
-        refreshed = db.session.get(PackagePurchase, purchase.id)
-        assert refreshed.payment_status == "completed"
-        assert refreshed.activation_status == "activated"
-
     def test_donation_prefix_routes_to_donation_handler(self, db, donation):
         result = WebhookService.process_nowpayments_webhook(
             {
@@ -224,72 +185,6 @@ class TestNowPaymentsWebhookRouting:
         )
         assert result["success"] is False
         assert result["error"] == "Unknown order type"
-
-
-class TestPurchaseWebhookProcessing:
-    def test_finished_activates_purchase_and_notifies(self, db, purchase):
-        result = WebhookService._process_purchase_webhook(
-            {
-                "payment_id": "pay-purchase-001",
-                "payment_status": "finished",
-            }
-        )
-        assert result["success"] is True
-        db.session.expire_all()
-        refreshed = db.session.get(PackagePurchase, purchase.id)
-        assert refreshed.payment_status == "completed"
-        assert refreshed.activation_status == "activated"
-        assert refreshed.activation_date is not None
-        assert NotificationService._notifications[-1]["title"] == "✅ تفعيل باقة"
-        assert (
-            NotificationService._notifications[-1]["data"]["customer"] == "عميل تجريبي"
-        )
-
-    def test_failed_marks_purchase_failed(self, db, purchase):
-        result = WebhookService._process_purchase_webhook(
-            {
-                "payment_id": "pay-purchase-001",
-                "payment_status": "failed",
-            }
-        )
-        assert result["success"] is True
-        db.session.expire_all()
-        assert db.session.get(PackagePurchase, purchase.id).payment_status == "failed"
-
-    def test_expired_marks_purchase_failed(self, db, purchase):
-        WebhookService._process_purchase_webhook(
-            {
-                "payment_id": "pay-purchase-001",
-                "payment_status": "expired",
-            }
-        )
-        db.session.expire_all()
-        assert db.session.get(PackagePurchase, purchase.id).payment_status == "failed"
-
-    def test_intermediate_status_keeps_pending(self, db, purchase):
-        result = WebhookService._process_purchase_webhook(
-            {
-                "payment_id": "pay-purchase-001",
-                "payment_status": "confirming",
-            }
-        )
-        assert result["success"] is True
-        assert "updated to confirming" in result["message"]
-        db.session.expire_all()
-        refreshed = db.session.get(PackagePurchase, purchase.id)
-        assert refreshed.payment_status == "pending"
-        assert refreshed.activation_status == "pending"
-        assert NotificationService._notifications == []
-
-    def test_unknown_payment_id_not_found(self, db, purchase):
-        result = WebhookService._process_purchase_webhook(
-            {
-                "payment_id": "pay-missing-999",
-                "payment_status": "finished",
-            }
-        )
-        assert result == {"success": False, "error": "Purchase not found"}
-        assert NotificationService._notifications == []
 
 
 class TestDonationWebhookProcessing:

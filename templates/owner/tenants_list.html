@@ -40,7 +40,6 @@
           <th>#</th>
           <th>المستأجر</th>
           <th>المعرف</th>
-          <th>الخطة</th>
           <th>المستخدمون</th>
           <th>المبيعات</th>
           <th>الحالة</th>
@@ -53,8 +52,7 @@
         <tr>
           <td>{{ t.id }}</td>
           <td><strong>{{ t.name_ar }}</strong><br><small class="text-muted">{{ t.name_en or '' }}</small></td>
-          <td><code>{{ t.slug }}</code></td>
-          <td>{{ t.subscription_plan or 'basic' }}{% if t.is_trial %} <span class="badge badge-info">تجريبي</span>{% endif %}</td>
+          <td><code>{{ t.slug }}</code>{% if t.is_trial %} <span class="badge badge-info">تجريبي</span>{% endif %}</td>
           <td>{{ row.users }}</td>
           <td>{{ row.sales }}</td>
           <td>
@@ -83,7 +81,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted">لا يوجد مستأجرون مطابقون.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted">لا يوجد مستأجرون مطابقون.</td></tr>
         {% endfor %}
       </tbody>
     </table>

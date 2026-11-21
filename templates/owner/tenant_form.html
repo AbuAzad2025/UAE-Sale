@@ -255,7 +255,7 @@
   </div>
 
   <div class="card shadow-sm mb-3">
-    <div class="card-header bg-gradient-warning text-white"><h5 class="mb-0">التفضيلات والاشتراك</h5></div>
+    <div class="card-header bg-gradient-warning text-white"><h5 class="mb-0">التفضيلات والحدود</h5></div>
     <div class="card-body">
       <div class="row">
         <div class="col-md-3">
@@ -292,14 +292,6 @@
           </div>
         </div>
         <div class="col-md-3">
-          <div class="form-group">
-            <label>الخطة</label>
-            <select name="subscription_plan" class="form-control select2">
-              {% for code, meta in lookups.get('subscription_plans', []) %}
-              <option value="{{ code }}" {{ 'selected' if form.subscription_plan == code }}>{{ meta.ar }} ({{ code }})</option>
-              {% endfor %}
-            </select>
-          </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">

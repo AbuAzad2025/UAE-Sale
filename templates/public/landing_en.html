@@ -90,7 +90,7 @@
           "name": "How much does a subscription cost?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "We offer 3 flexible plans for businesses of all sizes. All plans include technical support, free updates, training and AI tools."
+            "text": "We offer one unified package for businesses of all sizes. It includes technical support, free updates, training and AI tools."
           }
         },
         {
@@ -191,9 +191,6 @@
             </div>
             
             <div style="margin-top: 30px; text-align: center;">
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline" style="display: inline-block; min-width: 250px;">
-                    <i class="fas fa-gem"></i> View All Plans & Pricing
-                </a>
             </div>
         </div>
     </section>
@@ -239,53 +236,7 @@
     </section>
 
     
-    <section class="pricing-preview">
-        <h2>Flexible Plans for Every Business</h2>
-        <p>Choose the right plan for you — professional solutions at competitive prices</p>
-        <div class="pricing-cards">
-            <div class="price-card">
-                <h3>Basic Plan</h3>
-                <div class="price">$50<small>/month</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $80 with managed hosting</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> 3 users</li>
-                    <li><i class="fas fa-check"></i> Sales & purchasing</li>
-                    <li><i class="fas fa-check"></i> Stock management</li>
-                    <li><i class="fas fa-check"></i> Basic reports</li>
-                </ul>
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
-            </div>
-            
-            <div class="price-card featured">
-                <span style="background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem;">Most Popular</span>
-                <h3>Professional Plan</h3>
-                <div class="price">$100<small>/month</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $130 with managed hosting</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> 10 users</li>
-                    <li><i class="fas fa-check"></i> Everything in Basic</li>
-                    <li><i class="fas fa-check"></i> Artificial intelligence</li>
-                    <li><i class="fas fa-check"></i> GL general ledger</li>
-                    <li><i class="fas fa-check"></i> 24/7 technical support</li>
-                </ul>
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Choose Plan</a>
-            </div>
-            
-            <div class="price-card">
-                <h3>Business & Enterprise Plan</h3>
-                <div class="price">$120<small>/month</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">or $150 with managed hosting</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> Unlimited users</li>
-                    <li><i class="fas fa-check"></i> All advanced features</li>
-                    <li><i class="fas fa-check"></i> Full customization</li>
-                    <li><i class="fas fa-check"></i> Free training</li>
-                    <li><i class="fas fa-check"></i> Dedicated API</li>
-                </ul>
-                <a href="{{ url_for('public.contact') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">Contact Us</a>
-            </div>
-        </div>
-    </section>
+    
 
     
     <section class="contact">
@@ -316,9 +267,6 @@
         <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <a href="{{ url_for('public.user_guide') }}" class="btn-hero btn-primary">
                 <i class="fas fa-book"></i> User Guide
-            </a>
-            <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline">
-                <i class="fas fa-tags"></i> Pricing
             </a>
             <a href="{{ url_for('public.contact') }}" class="btn-hero btn-outline">
                 <i class="fas fa-envelope"></i> Message Us
@@ -442,8 +390,7 @@
                         How much does a subscription cost?
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        We offer <strong>3 flexible plans</strong> for businesses of all sizes. All plans include technical support, free updates and training. <a href="{{ url_for('public.pricing') }}" style="color: var(--gulf-gold); text-decoration: underline;">See plan details</a>
-                    </p>
+                        We offer <strong>one unified package</strong> for businesses of all sizes. It includes technical support, free updates and training.                    </p>
                 </div>
                 
                 
@@ -519,7 +466,6 @@
         <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME }}. All rights reserved.</p>
         <p class="developer" style="font-size: 0.9rem;">{{ config.DEVELOPER_CREDIT }}</p>
         <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem;">
-            <a href="{{ url_for('public.pricing') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Pricing</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
             <a href="{{ url_for('public.features') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">Features</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>

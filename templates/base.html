@@ -1023,10 +1023,6 @@
             </a>
           </li>
           <li class="nav-item">
-            <a href="{{ url_for('owner.plans') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.plans') %}active{% endif %}">
-              <i class="nav-icon fas fa-layer-group text-info"></i>
-              <p>الخطط والأسعار</p>
-            </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.support_inbox') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.support_ticket') %}active{% endif %}">

@@ -116,6 +116,7 @@ def create_inbound():
 @login_required
 @permission_required("manage_warehouse")
 def arrive_inbound(id):
+    get_owned_or_404(InboundShipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             InboundShipmentService.arrive(id, current_user.id)
@@ -130,6 +131,7 @@ def arrive_inbound(id):
 @login_required
 @permission_required("manage_warehouse")
 def inspect_inbound(id):
+    get_owned_or_404(InboundShipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             InboundShipmentService.inspect_shipment(id)
@@ -144,6 +146,7 @@ def inspect_inbound(id):
 @login_required
 @permission_required("manage_warehouse")
 def put_away_inbound(id):
+    get_owned_or_404(InboundShipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             InboundShipmentService.put_away(id, current_user.id)
@@ -158,6 +161,7 @@ def put_away_inbound(id):
 @login_required
 @permission_required("manage_warehouse")
 def close_inbound(id):
+    get_owned_or_404(InboundShipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             InboundShipmentService.close(id, current_user.id)
@@ -172,6 +176,7 @@ def close_inbound(id):
 @login_required
 @permission_required("manage_warehouse")
 def cancel_inbound(id):
+    get_owned_or_404(InboundShipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             InboundShipmentService.cancel(id, current_user.id)

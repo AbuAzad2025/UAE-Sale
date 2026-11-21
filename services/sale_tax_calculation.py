@@ -86,8 +86,13 @@ def sale_tax_totals_mixed(
 
     if inclusive:
         divisor = Decimal("1") + rate / Decimal("100")
-        net_std = (std_base / divisor).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-        tax = (std_base - net_std).quantize(TAX_Q, rounding=ROUND_HALF_UP)
+        # Compute VAT first on the tax grid, then derive the net as the
+        # remainder so that net + tax == std_base EXACTLY (no rounding leak
+        # between differently-quantized figures).
+        tax = (
+            std_base - std_base / divisor
+        ).quantize(TAX_Q, rounding=ROUND_HALF_UP)
+        net_std = (std_base - tax).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
         total = (subtotal - discount + shipping).quantize(
             MONEY_Q, rounding=ROUND_HALF_UP
         )

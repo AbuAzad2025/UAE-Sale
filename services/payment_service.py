@@ -770,6 +770,7 @@ class PaymentService:
                 description=f"Refund {payment.payment_number}",
                 reference_type="Payment",
                 reference_id=payment.id,
+                idempotency_key=f"Payment:{payment.id}",
                 currency=currency,
                 exchange_rate=rate,
             )

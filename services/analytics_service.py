@@ -4,7 +4,7 @@ Analytics Service - خدمة التحليلات
 """
 
 from datetime import datetime, timezone, timedelta
-from models import Donation, PackagePurchase, Package
+from models import Donation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,25 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsService:
     """خدمة التحليلات المتقدمة"""
+
+
+    @staticmethod
+    def get_daily_stats():
+        """إحصائيات اليوم — من التبرعات (النظام الموحد بلا باقات)."""
+        from datetime import datetime, timezone
+
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        today_donations = Donation.query.filter(
+            Donation.created_at >= today_start).all()
+        today_revenue = sum(float(d.amount_usd or 0) for d in today_donations
+                            if d.status == "completed")
+        return {
+            "today_revenue": round(today_revenue, 2),
+            "today_transactions": len(today_donations),
+            "pending_today": sum(1 for d in today_donations if d.status == "pending"),
+            "completed_today": sum(1 for d in today_donations if d.status == "completed"),
+        }
 
     @staticmethod
     def get_revenue_by_period(period="month", months=6):  # noqa: C901
@@ -90,35 +109,6 @@ class AnalyticsService:
         }
 
     @staticmethod
-    def get_package_performance():
-        """تحليل أداء الباقات"""
-        packages = Package.query.filter_by(is_active=True).all()
-
-        performance = []
-        for package in packages:
-            purchases = PackagePurchase.query.filter_by(package_id=package.id).all()
-
-            completed = [p for p in purchases if p.payment_status == "completed"]
-            pending = [p for p in purchases if p.payment_status == "pending"]
-
-            total_revenue = sum(float(p.amount_paid) for p in completed)
-
-            performance.append(
-                {
-                    "package_name": package.name_ar,
-                    "total_sales": len(purchases),
-                    "completed": len(completed),
-                    "pending": len(pending),
-                    "revenue": round(total_revenue, 2),
-                    "avg_price": round(total_revenue / len(completed), 2)
-                    if completed
-                    else 0,
-                }
-            )
-
-        return performance
-
-    @staticmethod
     def get_payment_method_stats():
         """إحصائيات طرق الدفع"""
         donations = Donation.query.filter_by(status="completed").all()
@@ -138,92 +128,3 @@ class AnalyticsService:
             "totals": [round(methods[m]["total"], 2) for m in methods],
         }
 
-    @staticmethod
-    def get_customer_behavior():
-        """تحليل سلوك العملاء"""
-        purchases = PackagePurchase.query.all()
-
-        customers = {}
-        for purchase in purchases:
-            email = purchase.customer_email
-            if email not in customers:
-                customers[email] = {"purchases": 0, "total_spent": 0, "packages": []}
-
-            customers[email]["purchases"] += 1
-            customers[email]["total_spent"] += float(purchase.amount_paid)
-            if purchase.package:
-                customers[email]["packages"].append(purchase.package.name_ar)
-
-        new_customers = sum(1 for c in customers.values() if c["purchases"] == 1)
-        returning_customers = sum(1 for c in customers.values() if c["purchases"] > 1)
-        vip_customers = sum(1 for c in customers.values() if c["total_spent"] > 1000)
-
-        return {
-            "total_customers": len(customers),
-            "new_customers": new_customers,
-            "returning_customers": returning_customers,
-            "vip_customers": vip_customers,
-            "avg_purchases_per_customer": round(
-                sum(c["purchases"] for c in customers.values()) / len(customers), 2
-            )
-            if customers
-            else 0,
-            "avg_spent_per_customer": round(
-                sum(c["total_spent"] for c in customers.values()) / len(customers), 2
-            )
-            if customers
-            else 0,
-        }
-
-    @staticmethod
-    def predict_revenue(months=3):
-        """
-        توقع الإيرادات المستقبلية
-        (تحليل بسيط بناءً على المتوسط)
-        """
-        revenue_data = AnalyticsService.get_revenue_by_period(months=6)
-
-        total_revenue = revenue_data["total_revenue"]
-        avg_monthly = total_revenue / 6
-
-        predictions = []
-        for i in range(1, months + 1):
-            month = datetime.now(timezone.utc) + timedelta(days=30 * i)
-            predicted = avg_monthly * (1.05**i)
-            predictions.append(
-                {
-                    "month": month.strftime("%b %Y"),
-                    "predicted_revenue": round(predicted, 2),
-                }
-            )
-
-        return {
-            "historical_avg": round(avg_monthly, 2),
-            "predictions": predictions,
-            "growth_rate": 0.05,  # 5% نمو افتراضي
-        }
-
-    @staticmethod
-    def get_daily_stats():
-        """إحصائيات اليوم"""
-        today_start = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-
-        today_donations = Donation.query.filter(
-            Donation.created_at >= today_start
-        ).all()
-
-        today_revenue = sum(
-            float(d.amount_usd or 0) for d in today_donations if d.status == "completed"
-        )
-        pending_today = sum(1 for d in today_donations if d.status == "pending")
-
-        return {
-            "today_revenue": round(today_revenue, 2),
-            "today_transactions": len(today_donations),
-            "pending_today": pending_today,
-            "completed_today": sum(
-                1 for d in today_donations if d.status == "completed"
-            ),
-        }

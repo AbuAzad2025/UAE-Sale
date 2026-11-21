@@ -204,8 +204,8 @@ flask db current
 > **[ادعاء صادق]**: لا إرسال، لا توقيع، لا رفع إلى أي سلطة — حتى بعد التثبيت.
 > قبل أي تقديم إقرار، يلزم عقد وشهادة من السلطة بالفرض القانوني.
 
-> **`b23_subscription_plans` + `b24_support_incidents_backups` — الباقات والدعم والنسخ:**
-> `b23` ينشئ `subscription_plans` (basic/pro/enterprise بأسعار أولية ثم تُعدَّل)
+> **`b23_subscription_plans` (هجرة تاريخية — أُزيل نظام الباقات لاحقاً) + `b24_support_incidents_backups` — الدعم والنسخ:**
+> `b23` أنشأت تاريخياً جدول `subscription_plans` (باقات اشتراك) الذي أُزيل لاحقاً؛ واليوم المنصة بباقة موحّدة واحدة.
 > + عمود `tenants.contract_signed_at`. `b24` ينشئ `support_tickets` (tenant-scoped)،
 > `incidents` (سجل حوادث المالك)، و`backup_verifications` (سجل التحقق).
 > **`b25_partners` — توزيع أرباح الشركاء (مستويا المنتج والشركة):** يضيف

@@ -21,8 +21,6 @@ from models import (
     PaymentLog,
     Donation,
     CardPayment,
-    Package,
-    PackagePurchase,
     CardVault,
     Customer,
     SystemSettings,
@@ -232,9 +230,7 @@ def dashboard():
 
     payment_methods_stats = AnalyticsService.get_payment_method_stats()
 
-    customer_behavior = AnalyticsService.get_customer_behavior()
 
-    package_performance = AnalyticsService.get_package_performance()
 
     return render_template(
         "payment_vault/dashboard.html",
@@ -247,8 +243,6 @@ def dashboard():
         monthly_purchases=monthly_purchases,
         monthly_donations=monthly_donations,
         payment_methods_stats=payment_methods_stats,
-        customer_behavior=customer_behavior,
-        package_performance=package_performance,
     )
 
 
@@ -444,157 +438,6 @@ def donations():
     )
 
 
-@payment_vault_bp.route("/packages-management")
-@login_required
-def packages_management():
-    """إدارة الباقات من الخزينة"""
-    if not current_user.is_owner:
-        flash("❌ غير مصرح - الخزينة السرية للمالك فقط!", "danger")
-        return redirect(url_for("main.dashboard"))
-
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        flash("❌ يجب فتح الخزينة أولاً", "warning")
-        return redirect(url_for("payment_vault.unlock_vault"))
-
-    packages = Package.query.order_by(Package.sort_order.asc()).all()
-
-    basic_purchases = (
-        PackagePurchase.query.join(Package).filter(Package.slug == "basic").count()
-    )
-    pro_purchases = (
-        PackagePurchase.query.join(Package)
-        .filter(Package.slug == "professional")
-        .count()
-    )
-    ent_purchases = (
-        PackagePurchase.query.join(Package).filter(Package.slug == "enterprise").count()
-    )
-
-    package_stats = [basic_purchases, pro_purchases, ent_purchases]
-
-    return render_template(
-        "payment_vault/packages.html", packages=packages, package_stats=package_stats
-    )
-
-
-@payment_vault_bp.route("/package/<int:package_id>/edit", methods=["GET", "POST"])
-@login_required
-def edit_package(package_id):  # noqa: C901
-    """تعديل باقة"""
-    if not current_user.is_owner:
-        flash("❌ غير مصرح", "danger")
-        return redirect(url_for("main.dashboard"))
-
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        flash("❌ يجب فتح الخزينة أولاً", "warning")
-        return redirect(url_for("payment_vault.unlock_vault"))
-
-    package = db.get_or_404(Package, package_id)
-
-    if request.method == "POST":
-        try:
-
-            def _as_float(value, default):
-                try:
-                    if value is None:
-                        return float(default)
-                    s = str(value).strip()
-                    if s == "":
-                        return float(default)
-                    return float(s)
-                except Exception:
-                    return float(default)
-
-            def _as_int(value, default):
-                try:
-                    if value is None:
-                        return int(default)
-                    s = str(value).strip()
-                    if s == "":
-                        return int(default)
-                    return int(s)
-                except Exception:
-                    return int(default)
-
-            package.name_ar = request.form.get("name_ar", package.name_ar).strip()
-            package.name_en = request.form.get("name_en", package.name_en).strip()
-            package.description_ar = request.form.get(
-                "description_ar", package.description_ar or ""
-            ).strip()
-            package.description_en = request.form.get(
-                "description_en", package.description_en or ""
-            ).strip()
-            package.price = _as_float(request.form.get("price"), package.price)
-            package.max_users = _as_int(
-                request.form.get("max_users"), package.max_users or 1
-            )
-            package.max_branches = _as_int(
-                request.form.get("max_branches"), package.max_branches or 1
-            )
-            package.support_duration_months = _as_int(
-                request.form.get("support_duration_months"),
-                package.support_duration_months,
-            )
-            package.is_active = request.form.get("is_active") == "on"
-            package.is_featured = request.form.get("is_featured") == "on"
-            package.badge_text = request.form.get(
-                "badge_text", package.badge_text or ""
-            ).strip()
-
-            features = request.form.get("features", "").strip()
-            package.features = features.split("\n") if features else []
-
-            db.session.commit()
-
-            create_audit_log(
-                action="update",
-                table_name="packages",
-                record_id=package.id,
-                changes={"updated": "Package updated"},
-            )
-
-            flash("✅ تم تحديث الباقة بنجاح!", "success")
-            return redirect(url_for("payment_vault.packages_management"))
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
-
-    return render_template("payment_vault/edit_package.html", package=package)
-
-
-@payment_vault_bp.route("/package/<int:package_id>/delete", methods=["POST"])
-@login_required
-def delete_package(package_id):
-    """حذف باقة"""
-    if not current_user.is_owner:
-        return jsonify({"success": False, "error": "غير مصرح"}), 403
-
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        return jsonify({"success": False, "error": "الخزينة مقفلة"}), 403
-
-    package = db.get_or_404(Package, package_id)
-
-    try:
-        db.session.delete(package)
-        db.session.commit()
-
-        create_audit_log(
-            action="delete",
-            table_name="packages",
-            record_id=package_id,
-            changes={"deleted": f"Package {package.name_ar} deleted"},
-        )
-
-        return jsonify({"success": True, "message": "تم حذف الباقة بنجاح!"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 400
-
-
 @payment_vault_bp.route("/reports")
 @login_required
 def reports():
@@ -631,15 +474,6 @@ def reports():
         monthly_purchases_data.insert(0, 0)
         monthly_donations_data.insert(0, 0)
 
-    package_stats = [
-        Donation.query.filter_by(transaction_type="purchase", package="basic").count(),
-        Donation.query.filter_by(
-            transaction_type="purchase", package="professional"
-        ).count(),
-        Donation.query.filter_by(
-            transaction_type="purchase", package="enterprise"
-        ).count(),
-    ]
 
     return render_template(
         "payment_vault/reports.html",
@@ -648,7 +482,6 @@ def reports():
         monthly_labels=monthly_labels,
         monthly_purchases_data=monthly_purchases_data,
         monthly_donations_data=monthly_donations_data,
-        package_stats=package_stats,
     )
 
 
@@ -1067,180 +900,6 @@ def change_password():
     return render_template("payment_vault/change_password.html")
 
 
-@payment_vault_bp.route("/api/purchase", methods=["POST"])
-@csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
-@limiter.limit("5 per minute")
-def api_create_purchase():  # noqa: C901
-    """API لإنشاء عملية شراء جديدة"""
-    try:
-        if not request.is_json:
-            return jsonify(
-                {"success": False, "error": "Content-Type must be application/json"}
-            ), 400
-        origin = request.headers.get("Origin", "")
-        allowed_origins = current_app.config.get("CORS_ORIGINS", [])
-        _ = request.headers.get("Referer", "")
-        from utils.origin_check import origin_allowed
-
-        if origin and not origin_allowed(origin, allowed_origins):
-            return jsonify({"success": False, "error": "Invalid origin"}), 403
-
-        data = request.get_json()
-
-        required_fields = [
-            "package_id",
-            "customer_name",
-            "customer_email",
-            "payment_method",
-            "amount_paid",
-        ]
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({"success": False, "error": f"الحقل {field} مطلوب"}), 400
-
-        import re
-
-        email_pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
-        if not re.match(email_pattern, data["customer_email"]):
-            return jsonify({"success": False, "error": "بريد إلكتروني غير صحيح"}), 400
-
-        from html import escape
-
-        def sanitize(text, max_len=200):
-            if not text:
-                return None
-            return escape(str(text)[:max_len].strip())
-
-        customer_name = sanitize(data["customer_name"], 100)
-        customer_email = sanitize(data["customer_email"], 100)
-        customer_phone = sanitize(data.get("customer_phone", ""), 50)
-        company_name = sanitize(data.get("company_name", ""), 100)
-
-        package = db.session.get(Package, data["package_id"])
-        if not package or not package.is_active:
-            return jsonify({"success": False, "error": "الباقة غير متاحة"}), 404
-
-        if float(data["amount_paid"]) < package.price:
-            return jsonify(
-                {"success": False, "error": "المبلغ المدفوع أقل من سعر الباقة"}
-            ), 400
-
-        purchase = PackagePurchase(
-            package_id=int(data["package_id"]),
-            customer_name=customer_name,
-            customer_email=customer_email,
-            customer_phone=customer_phone,
-            company_name=company_name,
-            payment_method=data["payment_method"],
-            payment_status="pending",
-            amount_paid=float(data["amount_paid"]),
-            currency=data.get("currency", "USD"),
-            transaction_id=sanitize(data.get("transaction_id", ""), 100),
-            payment_details=data.get("payment_details"),
-            notes=sanitize(data.get("notes", ""), 500),
-        )
-
-        db.session.add(purchase)
-        db.session.commit()
-
-        payment_result = {"success": False}
-
-        if purchase.payment_method != "bank":
-            nowpayments = NOWPaymentsService()
-            crypto_currency = data.get("crypto_currency", "btc")  # افتراضي BTC
-
-            payment_result = nowpayments.create_payment(
-                amount=purchase.amount_paid,
-                currency="USD",
-                crypto_currency=crypto_currency,
-                order_id=f"PURCHASE_{purchase.id}",
-                customer_email=customer_email,
-                description=f"شراء باقة {package.name_ar} - ${purchase.amount_paid}",
-                transaction_type="purchase",
-                package=package.slug,
-                customer_name=customer_name,
-                customer_phone=customer_phone,
-            )
-
-            if payment_result.get("success"):
-                purchase.transaction_id = payment_result.get(
-                    "payment_id", purchase.transaction_id
-                )
-                purchase.payment_details = {
-                    "nowpayments_id": payment_result.get("payment_id"),
-                    "pay_address": payment_result.get("pay_address"),
-                    "pay_amount": payment_result.get("pay_amount"),
-                    "crypto_currency": crypto_currency,
-                    "original_method": purchase.payment_method,
-                    "converted_to_crypto": True,
-                }
-                db.session.commit()
-        else:
-            purchase.payment_details = {
-                "original_method": "bank",
-                "converted_to_crypto": False,
-                "note": "يتطلب تواصل مباشر للحصول على تفاصيل الحساب البنكي",
-            }
-            db.session.commit()
-
-        donation = Donation.query.filter_by(
-            transaction_hash=payment_result.get("payment_id")
-        ).first()
-
-        if not donation:
-            donation = Donation(
-                amount_usd=purchase.amount_paid,
-                payment_method=purchase.payment_method,
-                transaction_type="purchase",
-                package=package.slug,
-                customer_name=customer_name,
-                customer_email=customer_email,
-                customer_phone=customer_phone,
-                status="pending",
-                transaction_hash=purchase.transaction_id,
-                ip_address=request.remote_addr,
-                user_agent=request.headers.get("User-Agent", "")[:500],
-            )
-            db.session.add(donation)
-            db.session.commit()
-
-        create_audit_log(
-            action=f"purchase_created: {package.name_ar} - ${purchase.amount_paid}",
-            table_name="package_purchases",
-            record_id=purchase.id,
-            changes={
-                "customer": customer_name,
-                "package": package.name_ar,
-                "amount": purchase.amount_paid,
-            },
-        )
-
-        response_data = {
-            "success": True,
-            "message": "تم إنشاء طلب الشراء بنجاح",
-            "purchase_id": purchase.id,
-            "payment_method_display": purchase.payment_method,  # ما يراه الزبون
-            "actual_payment_method": "crypto",  # الحقيقة: تحويل لـ Bitcoin
-        }
-
-        if payment_result.get("success"):
-            response_data.update(
-                {
-                    "payment_address": payment_result.get("pay_address"),
-                    "payment_amount": payment_result.get("pay_amount"),
-                    "crypto_currency": crypto_currency.upper(),
-                    "payment_id": payment_result.get("payment_id"),
-                    "payment_url": payment_result.get("invoice_url"),
-                }
-            )
-
-        return jsonify(response_data), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
-
-
 @payment_vault_bp.route("/api/donation", methods=["POST"])
 @csrf.exempt  # JSON API - CSRF bypassed; Origin validation below
 @limiter.limit("5 per minute")
@@ -1260,7 +919,14 @@ def api_create_donation():  # noqa: C901
 
         data = request.get_json()
 
-        if not data.get("amount") or not data.get("payment_method"):
+        # Accept `amount` (standard) or `amount_paid` (legacy purchase payload).
+        _amount = data.get("amount") or data.get("amount_paid")
+        # Unified platform: one package, but a payment may be a purchase or a donation.
+        _tx_type = (data.get("transaction_type") or "donation").strip()
+        if _tx_type not in ("donation", "purchase"):
+            _tx_type = "donation"
+
+        if not _amount or not data.get("payment_method"):
             return jsonify(
                 {"success": False, "error": "المبلغ وطريقة الدفع مطلوبة"}
             ), 400
@@ -1276,7 +942,7 @@ def api_create_donation():  # noqa: C901
             )
         except (TypeError, ValueError):
             _min_amt = 15
-        if float(data["amount"]) < _min_amt:
+        if float(_amount) < _min_amt:
             return jsonify(
                 {"success": False, "error": f"الحد الأدنى للتبرع ${_min_amt:g}"}
             ), 400
@@ -1292,6 +958,8 @@ def api_create_donation():  # noqa: C901
         donor_email = sanitize(data.get("donor_email"), 100)
         donor_message = sanitize(data.get("message"), 500)
         customer_phone = sanitize(data.get("customer_phone"), 50)
+        customer_name = sanitize(data.get("customer_name"), 100)
+        customer_email = sanitize(data.get("customer_email"), 100)
 
         if donor_email:
             import re
@@ -1301,14 +969,16 @@ def api_create_donation():  # noqa: C901
                 donor_email = None  # تجاهل البريد الخاطئ بدلاً من رفض الطلب
 
         donation = Donation(
-            amount_usd=float(data["amount"]),
+            amount_usd=float(_amount),
             payment_method=data["payment_method"],
             crypto_type=sanitize(data.get("crypto_type"), 20),
-            transaction_type="donation",
+            transaction_type=_tx_type,
             donor_name=donor_name,
             donor_email=donor_email,
             donor_message=donor_message,
             customer_phone=customer_phone,
+            customer_name=customer_name,
+            customer_email=customer_email,
             status="pending",
             transaction_hash=sanitize(data.get("transaction_id"), 100),
             ip_address=request.remote_addr,
@@ -1322,13 +992,13 @@ def api_create_donation():  # noqa: C901
         crypto_currency = data.get("crypto_currency", "btc")
 
         payment_result = nowpayments.create_payment(
-            amount=float(data["amount"]),
+            amount=float(_amount),
             currency="USD",
             crypto_currency=crypto_currency,
-            order_id=f"DONATION_{donation.id}",
-            customer_email=donor_email,
-            description=f"تبرع لمشروع Azad Systems - ${data['amount']}",
-            transaction_type="donation",
+            order_id=f"{_tx_type.upper()}_{donation.id}",
+            customer_email=customer_email or donor_email,
+            description=f"{'شراء' if _tx_type == 'purchase' else 'تبرع'} - Azad Systems - ${_amount}",
+            transaction_type=_tx_type,
             donor_name=donor_name,
             donor_email=donor_email,
             donor_message=donor_message,
@@ -1387,141 +1057,6 @@ def api_create_donation():  # noqa: C901
 
         return jsonify(response_data), 201
 
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
-
-
-@payment_vault_bp.route("/purchases")
-@login_required
-def view_purchases():
-    """عرض جميع عمليات الشراء مع Pagination"""
-    if not current_user.is_owner:
-        flash("❌ غير مصرح", "danger")
-        return redirect(url_for("main.dashboard"))
-
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        flash("❌ يجب فتح الخزينة أولاً", "warning")
-        return redirect(url_for("payment_vault.unlock_vault"))
-
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
-    status_filter = request.args.get("status", "")
-
-    query = PackagePurchase.query
-    if status_filter:
-        query = query.filter_by(payment_status=status_filter)
-
-    pagination = query.order_by(PackagePurchase.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    purchases = pagination.items
-
-    all_purchases = PackagePurchase.query.all()
-    stats = {
-        "total": len(all_purchases),
-        "pending": len([p for p in all_purchases if p.payment_status == "pending"]),
-        "completed": len([p for p in all_purchases if p.payment_status == "completed"]),
-        "revenue": sum(
-            [p.amount_paid for p in all_purchases if p.payment_status == "completed"]
-        ),
-    }
-
-    return render_template(
-        "payment_vault/purchases.html",
-        purchases=purchases,
-        stats=stats,
-        pagination=pagination,
-    )
-
-
-@payment_vault_bp.route("/purchase/<int:id>")
-@login_required
-def purchase_detail(id):
-    """تفاصيل عملية شراء"""
-    if not current_user.is_owner:
-        return redirect(url_for("main.dashboard"))
-
-    vault = PaymentVault.query.first()
-    if not vault or vault.is_locked:
-        return redirect(url_for("payment_vault.unlock_vault"))
-
-    purchase = db.get_or_404(PackagePurchase, id)
-    return render_template("payment_vault/purchase_detail.html", purchase=purchase)
-
-
-@payment_vault_bp.route("/purchase/<int:id>/activate", methods=["POST"])
-@login_required
-def activate_purchase(id):
-    """تفعيل عملية شراء"""
-    if not current_user.is_owner:
-        return redirect(url_for("main.dashboard"))
-
-    purchase = db.get_or_404(PackagePurchase, id)
-
-    try:
-        purchase.activation_status = "activated"
-        purchase.activation_date = datetime.now(timezone.utc)
-        purchase.payment_status = "completed"
-
-        donation = Donation.query.filter_by(
-            customer_email=purchase.customer_email, transaction_type="purchase"
-        ).first()
-        if donation:
-            donation.status = "completed"
-            donation.completed_at = datetime.now(timezone.utc)
-
-        db.session.commit()
-        flash("✅ تم تفعيل الباقة", "success")
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
-
-    return redirect(url_for("payment_vault.purchase_detail", id=id))
-
-
-@payment_vault_bp.route("/api/package-stats/<int:package_id>")
-@login_required
-def api_package_stats(package_id):
-    """API لإحصائيات باقة محددة"""
-    if not current_user.is_owner:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    _ = db.get_or_404(Package, package_id)
-    purchases = PackagePurchase.query.filter_by(package_id=package_id).all()
-
-    stats = {
-        "total_sales": len(purchases),
-        "total_revenue": sum(
-            [p.amount_paid for p in purchases if p.payment_status == "completed"]
-        ),
-        "pending": len([p for p in purchases if p.payment_status == "pending"]),
-        "completed": len([p for p in purchases if p.payment_status == "completed"]),
-        "failed": len([p for p in purchases if p.payment_status == "failed"]),
-    }
-
-    return jsonify(stats)
-
-
-@payment_vault_bp.route("/package/<int:package_id>/toggle", methods=["POST"])
-@login_required
-def toggle_package_status(package_id):
-    """تبديل حالة الباقة (نشط/معطل)"""
-    if not current_user.is_owner:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    package = db.get_or_404(Package, package_id)
-    package.is_active = not package.is_active
-
-    try:
-        db.session.commit()
-        status_text = "تم تنشيط" if package.is_active else "تم تعطيل"
-        return jsonify(
-            {"success": True, "message": f"{status_text} الباقة {package.name_ar}"}
-        )
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
@@ -1673,27 +1208,6 @@ def api_live_stats():
     )
 
 
-@payment_vault_bp.route("/export/purchases")
-@login_required
-def export_purchases():
-    """تصدير المشتريات إلى CSV"""
-    if not current_user.is_owner:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    from services.export_service import ExportService
-    from flask import send_file
-
-    purchases = PackagePurchase.query.order_by(PackagePurchase.created_at.desc()).all()
-    csv_file = ExportService.export_purchases_to_csv(purchases)
-
-    return send_file(
-        csv_file,
-        mimetype="text/csv",
-        as_attachment=True,
-        download_name=f"purchases_{datetime.now().strftime('%Y%m%d')}.csv",
-    )
-
-
 @payment_vault_bp.route("/export/donations")
 @login_required
 def export_donations():
@@ -1749,26 +1263,20 @@ def export_report_pdf():
 
     from services.export_service import ExportService
 
-    purchases = PackagePurchase.query.all()
     donations = Donation.query.filter_by(transaction_type="donation").all()
+    donation_revenue = sum(float(d.amount_usd or 0) for d in donations)
 
     stats = {
-        "إجمالي المشتريات": len(purchases),
         "إجمالي التبرعات": len(donations),
-        "إجمالي الإيرادات": f"${sum(float(p.amount_paid) for p in purchases) + sum(float(d.amount_usd or 0) for d in donations):.2f}",
+        "إجمالي الإيرادات": f"${donation_revenue:.2f}",
     }
 
     table_headers = ["العنصر", "العدد", "المبلغ"]
     table_data = [
         [
-            "المشتريات",
-            len(purchases),
-            f"${sum(float(p.amount_paid) for p in purchases):.2f}",
-        ],
-        [
             "التبرعات",
             len(donations),
-            f"${sum(float(d.amount_usd or 0) for d in donations):.2f}",
+            f"${donation_revenue:.2f}",
         ],
     ]
 
@@ -1888,67 +1396,6 @@ def system_metrics():
     return jsonify(metrics)
 
 
-@payment_vault_bp.route("/api/v2/purchases", methods=["GET"])
-@login_required
-@limiter.limit("60 per minute")
-def api_v2_purchases():
-    """API v2 للمشتريات - محسن مع Filtering & Pagination"""
-    if not current_user.is_owner:
-        return jsonify({"error": "Unauthorized", "version": "2.0"}), 403
-
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
-    status = request.args.get("status", "")
-    package_id = request.args.get("package_id", type=int)
-    search = request.args.get("search", "")
-    sort_by = request.args.get("sort_by", "created_at")
-    order = request.args.get("order", "desc")
-
-    query = PackagePurchase.query
-
-    if status:
-        query = query.filter_by(payment_status=status)
-    if package_id:
-        query = query.filter_by(package_id=package_id)
-    if search:
-        query = query.filter(
-            db.or_(
-                PackagePurchase.customer_name.ilike(f"%{search}%"),
-                PackagePurchase.customer_email.ilike(f"%{search}%"),
-            )
-        )
-
-    if hasattr(PackagePurchase, sort_by):
-        column = getattr(PackagePurchase, sort_by)
-        if order == "asc":
-            query = query.order_by(column.asc())
-        else:
-            query = query.order_by(column.desc())
-
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-
-    return jsonify(
-        {
-            "version": "2.0",
-            "success": True,
-            "data": [p.to_dict() for p in pagination.items],
-            "pagination": {
-                "page": pagination.page,
-                "per_page": pagination.per_page,
-                "total": pagination.total,
-                "pages": pagination.pages,
-                "has_next": pagination.has_next,
-                "has_prev": pagination.has_prev,
-            },
-            "filters_applied": {
-                "status": status,
-                "package_id": package_id,
-                "search": search,
-            },
-        }
-    )
-
-
 @payment_vault_bp.route("/api/v2/donations", methods=["GET"])
 @login_required
 @limiter.limit("60 per minute")
@@ -2023,8 +1470,6 @@ def api_v2_stats():
     daily_stats = AnalyticsService.get_daily_stats()
     revenue_data = AnalyticsService.get_revenue_by_period(months=6)
     payment_methods = AnalyticsService.get_payment_method_stats()
-    customer_behavior = AnalyticsService.get_customer_behavior()
-    package_performance = AnalyticsService.get_package_performance()
     security_status = SecurityService.get_security_status()
 
     return jsonify(
@@ -2035,8 +1480,6 @@ def api_v2_stats():
                 "daily": daily_stats,
                 "revenue_trend": revenue_data,
                 "payment_methods": payment_methods,
-                "customers": customer_behavior,
-                "packages": package_performance,
                 "security": security_status,
             },
             "generated_at": datetime.now(timezone.utc).isoformat(),

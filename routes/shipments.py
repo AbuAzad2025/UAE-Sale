@@ -22,7 +22,6 @@ from models.shipment import Shipment
 from services.shipment_service import ShipmentService
 from utils.decorators import permission_required, get_owned_or_404
 from utils.transaction import atomic_transaction
-from utils.transaction import atomic_transaction
 from utils.helpers import create_audit_log
 from models.tenant_scope import get_current_tenant_id
 
@@ -127,6 +126,7 @@ def create_shipment():
 @login_required
 @permission_required("manage_warehouse")
 def send_shipment(id):
+    s = get_owned_or_404(Shipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             ShipmentService.send_shipment(id, current_user.id)
@@ -141,6 +141,7 @@ def send_shipment(id):
 @login_required
 @permission_required("manage_warehouse")
 def arrive_shipment(id):
+    s = get_owned_or_404(Shipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             ShipmentService.arrive_shipment(id, current_user.id)
@@ -155,6 +156,7 @@ def arrive_shipment(id):
 @login_required
 @permission_required("manage_warehouse")
 def start_selling(id):
+    s = get_owned_or_404(Shipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             ShipmentService.start_selling(id, current_user.id)
@@ -169,6 +171,7 @@ def start_selling(id):
 @login_required
 @permission_required("manage_warehouse")
 def close_shipment(id):
+    s = get_owned_or_404(Shipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             ShipmentService.close_shipment(id, current_user.id)
@@ -183,6 +186,7 @@ def close_shipment(id):
 @login_required
 @permission_required("manage_warehouse")
 def cancel_shipment(id):
+    s = get_owned_or_404(Shipment, id)  # tenant isolation
     try:
         with atomic_transaction():
             ShipmentService.cancel_shipment(id, current_user.id)

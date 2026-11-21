@@ -220,7 +220,7 @@ COUNTRY_VAT = {
     "SA": Decimal("15.00"),
     "BH": Decimal("10.00"),
     "OM": Decimal("5.00"),
-    "KW": Decimal("5.00"),
+    "KW": Decimal("0.00"),  # لا ضريبة قيمة مضافة مُفعّلة — يطابق قاعدة البيانات
     "EG": Decimal("14.00"),
     "JO": Decimal("16.00"),
     "PS": Decimal("16.00"),

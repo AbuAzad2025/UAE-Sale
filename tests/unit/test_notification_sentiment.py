@@ -124,14 +124,6 @@ class TestNotificationTemplates:
         assert notif["message"] == "محاولة اختراق: IP 1.2.3.4"
         assert notif["data"]["alert_type"] == "محاولة اختراق"
 
-    def test_purchase_activated_template(self):
-        notif = NotificationService.notify_purchase_activated("باقة ذهبية", "أحمد")
-
-        assert notif["type"] == "info"
-        assert "باقة ذهبية" in notif["message"]
-        assert "أحمد" in notif["message"]
-        assert notif["data"] == {"package": "باقة ذهبية", "customer": "أحمد"}
-
     def test_auto_approval_template(self):
         notif = NotificationService.notify_auto_approval(7, 1750.5)
 

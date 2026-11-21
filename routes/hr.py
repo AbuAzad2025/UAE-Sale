@@ -677,8 +677,13 @@ def mark_payslip_paid(id):
         codes = AccountResolver.resolve_codes(
             AccountRole.SALARY_EXPENSE,
             AccountRole.SALARIES_PAYABLE,
+            AccountRole.TAX_PAYABLE,
             AccountRole.CASH,
         )
+        tax = Decimal(str(payslip.tax_deduction or 0))
+        other_ded = total_deductions - tax
+        # Correct structure: Dr gross expense / Cr tax withheld / Cr other
+        # payables / Cr cash net.  gross == tax + other + net.
         lines = [
             {
                 "account": codes["SALARY_EXPENSE"],
@@ -686,11 +691,19 @@ def mark_payslip_paid(id):
                 "description": "رواتب وأجور",
             }
         ]
-        if total_deductions > 0:
+        if tax > 0:
+            lines.append(
+                {
+                    "account": codes["TAX_PAYABLE"],
+                    "credit": tax,
+                    "description": "ضريبة مستقطعة من الرواتب",
+                }
+            )
+        if other_ded > 0:
             lines.append(
                 {
                     "account": codes["SALARIES_PAYABLE"],
-                    "credit": total_deductions,
+                    "credit": other_ded,
                     "description": "استقطاعات رواتب",
                 }
             )
@@ -698,15 +711,19 @@ def mark_payslip_paid(id):
             {"account": codes["CASH"], "credit": net, "description": "صرف رواتب"}
         )
         GLService.ensure_core_accounts()
-        GLService.post_entry(
+        entry = GLService.post_entry(
             lines,
             description=f"Payroll {payslip.payslip_number}",
             reference_type="Payslip",
             reference_id=payslip.id,
             currency=CurrencyService.get_base_currency(),
             exchange_rate=Decimal("1"),
+            entry_date=payslip.pay_date,
             created_by=current_user.id,
+            idempotency_key=f"Payslip:{payslip.id}:pay",
         )
+        if entry is not None:
+            payslip.gl_journal_entry_id = entry.id
         db.session.commit()
         create_audit_log("pay", "payslips", payslip.id)
         flash("✅ تم تسجيل الدفع وترحيل القيد إلى دفتر الأستاذ", "success")

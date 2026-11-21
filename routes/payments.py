@@ -846,6 +846,7 @@ def create_voucher_submit():  # noqa: C901
                     description=f"Supplier Refund {payment.payment_number}",
                     reference_type="Payment",
                     reference_id=payment.id,
+                    idempotency_key=f"Payment:{payment.id}",
                     currency=currency,
                     exchange_rate=exchange_rate,
                 )
@@ -942,6 +943,7 @@ def create_voucher_submit():  # noqa: C901
                         description=f"Payment {payment.payment_number}",
                         reference_type="Payment",
                         reference_id=payment.id,
+                        idempotency_key=f"Payment:{payment.id}",
                         currency=currency,
                         exchange_rate=exchange_rate,
                     )
@@ -1025,6 +1027,7 @@ def create_voucher_submit():  # noqa: C901
                         description=f"Payment {payment.payment_number}",
                         reference_type="Payment",
                         reference_id=payment.id,
+                        idempotency_key=f"Payment:{payment.id}",
                         currency=currency,
                         exchange_rate=exchange_rate,
                     )
@@ -1689,6 +1692,7 @@ def create_payment(purchase_id):  # noqa: C901
                 db.session.add(cheque)
                 db.session.flush()
                 payment.cheque_id = cheque.id
+                cheque.payment_id = payment.id  # subledger↔GL traceability
                 payment.payment_confirmed = False
 
             try:
@@ -1723,6 +1727,7 @@ def create_payment(purchase_id):  # noqa: C901
                     description=f"Payment {payment.payment_number}",
                     reference_type="Payment",
                     reference_id=payment.id,
+                    idempotency_key=f"Payment:{payment.id}",
                     currency=payment.currency,
                     exchange_rate=payment.exchange_rate,
                 )

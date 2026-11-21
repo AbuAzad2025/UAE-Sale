@@ -5,7 +5,7 @@ Auto Approval Service
 
 from datetime import datetime, timezone, timedelta
 from extensions import db
-from models import Donation, PackagePurchase
+from models import Donation
 from utils.helpers import create_audit_log
 import logging
 
@@ -78,102 +78,15 @@ class AutoApprovalService:
             return {"success": False, "error": str(e)}
 
     @staticmethod
-    def approve_pending_purchases(hours_threshold=1):
-        """
-        قبول المشتريات المعلقة بعد ساعة واحدة
-
-        Args:
-            hours_threshold (int): عدد الساعات قبل القبول التلقائي
-
-        Returns:
-            dict: نتائج العملية
-        """
-        try:
-            threshold_time = datetime.now(timezone.utc) - timedelta(
-                hours=hours_threshold
-            )
-
-            pending_purchases = PackagePurchase.query.filter(
-                PackagePurchase.payment_status == "pending",
-                PackagePurchase.created_at <= threshold_time,
-            ).all()
-
-            approved_count = 0
-            approved_amount = 0
-
-            for purchase in pending_purchases:
-                purchase.payment_status = "completed"
-                purchase.activation_status = "activated"
-                purchase.activation_date = datetime.now(timezone.utc)
-
-                related_donation = Donation.query.filter(
-                    Donation.transaction_type == "purchase",
-                    Donation.customer_email == purchase.customer_email,
-                    Donation.package == purchase.package.slug,
-                ).first()
-
-                if related_donation and related_donation.status == "pending":
-                    related_donation.status = "completed"
-                    related_donation.completed_at = datetime.now(timezone.utc)
-
-                create_audit_log(
-                    action=f"auto_approved_purchase: {purchase.package.name_ar if purchase.package else 'N/A'}",
-                    table_name="package_purchases",
-                    record_id=purchase.id,
-                    changes={
-                        "old_status": "pending",
-                        "new_status": "completed",
-                        "auto": True,
-                    },
-                )
-
-                approved_count += 1
-                approved_amount += float(purchase.amount_paid or 0)
-
-            db.session.flush()
-
-            if approved_count > 0:
-                logger.info(
-                    f"✅ Auto-approved {approved_count} purchases, total: ${approved_amount}"
-                )
-
-            return {
-                "success": True,
-                "approved_count": approved_count,
-                "approved_amount": approved_amount,
-                "message": f"تم قبول {approved_count} مشترية تلقائياً",
-            }
-
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"❌ Error in auto-approval purchases: {str(e)}")
-            return {"success": False, "error": str(e)}
-
-    @staticmethod
     def run_auto_approval():
-        """
-        تشغيل القبول التلقائي لكل من التبرعات والمشتريات
-
-        Returns:
-            dict: نتائج العملية الكاملة
-        """
+        """تشغيل القبول التلقائي للتبرعات"""
         logger.info("🔄 Running auto-approval service...")
-
         donations_result = AutoApprovalService.approve_pending_donations(
-            hours_threshold=1
-        )
-
-        purchases_result = AutoApprovalService.approve_pending_purchases(
-            hours_threshold=1
-        )
-
+            hours_threshold=1)
         return {
             "donations": donations_result,
-            "purchases": purchases_result,
-            "total_approved": donations_result.get("approved_count", 0)
-            + purchases_result.get("approved_count", 0),
-            "total_amount": donations_result.get("approved_amount", 0)
-            + purchases_result.get("approved_amount", 0),
+            "total_approved": donations_result.get("approved_count", 0),
+            "total_amount": donations_result.get("approved_amount", 0),
         }
 
 

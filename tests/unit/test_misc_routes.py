@@ -73,7 +73,6 @@ class TestPublicPages:
         "url",
         [
             "/welcome",
-            "/pricing",
             "/features",
             "/user-guide",
             "/contact",

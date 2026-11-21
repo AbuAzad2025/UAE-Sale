@@ -252,7 +252,7 @@ class TestReturnsRoutes:
 class TestPublicRoutes:
     @pytest.mark.parametrize(
         "path",
-        ["/welcome", "/pricing", "/features", "/user-guide", "/contact", "/demo"],
+        ["/welcome", "/features", "/user-guide", "/contact", "/demo"],
     )
     def test_anonymous_pages_200(self, client, db, path):
         assert client.get(path).status_code == 200
@@ -263,7 +263,6 @@ class TestPublicRoutes:
         assert "application/xml" in resp.content_type
         text = resp.get_data(as_text=True)
         assert "<urlset" in text
-        assert "/pricing" in text
 
     def test_robots_txt(self, client, db):
         resp = client.get("/robots.txt")

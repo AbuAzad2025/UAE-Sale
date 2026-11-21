@@ -489,20 +489,8 @@ class TestAutoApprovalWrapper:
 
         result = AutoApprovalService.run_auto_approval()
         assert result["donations"]["success"] is True
-        assert result["purchases"]["success"] is True
         assert result["total_approved"] == 0
         assert result["total_amount"] == 0
-
-    def test_approve_pending_purchases_empty(self, db):
-        from services.auto_approval_service import AutoApprovalService
-
-        result = AutoApprovalService.approve_pending_purchases(hours_threshold=1)
-        assert result == {
-            "success": True,
-            "approved_count": 0,
-            "approved_amount": 0,
-            "message": "تم قبول 0 مشترية تلقائياً",
-        }
 
     def test_schedule_fn_exists_without_running(self, db):
         import services.auto_approval_service as mod
@@ -549,7 +537,10 @@ class TestUserServiceExtra:
         from services.user_service import UserService
 
         role = self._role(db, slug="super_admin")
-        with pytest.raises(ValueError, match="أعلى من دورك"):
+        # Platform roles (owner/super_admin/developer) are never assignable by a
+        # tenant actor; the service raises ValidationError (a ValueError) with
+        # the platform-role guard message.
+        with pytest.raises(ValueError, match="أدوار المنصة"):
             UserService.update_user(owner_user, actor=seller_user, role_id=role.id)
 
     def test_update_owner_flag_rules(self, db, owner_user, seller_user):

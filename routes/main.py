@@ -460,6 +460,9 @@ def tenant_data_export():
 # preserved because we call the decorated function object.
 @main_bp.route("/settings/letterheads", methods=["GET", "POST"])
 def letterheads_settings():
+    # Tenant-isolated: delegates to routes.owner.invoice_settings, which is
+    # decorated with login_required + permission_required and scopes all data
+    # to current_user.tenant_id.
     from routes.owner import invoice_settings as _invoice_settings
 
     return _invoice_settings()

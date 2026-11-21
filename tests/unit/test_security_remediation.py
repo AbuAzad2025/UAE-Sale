@@ -9,7 +9,6 @@ Covers:
 5. robots.txt dynamic base_url rendering.
 6. payment-vault public endpoints: WhatsApp contact de-hardcoding,
    CVV accept-and-discard, PAN stored via CardVault, 5/min rate limit.
-7. purchase_detail.html template extends a valid layout.
 """
 
 import base64
@@ -551,7 +550,6 @@ class TestProcessPaymentPublicEndpoint:
 
         public_post_endpoints = {
             "payment_vault.process_payment",
-            "payment_vault.api_create_purchase",
             "payment_vault.api_create_donation",
         }
         assert set(app.view_functions) >= public_post_endpoints
@@ -570,28 +568,6 @@ class TestProcessPaymentPublicEndpoint:
 
 # ============================ 7. TEMPLATE ============================
 
-
-class TestPurchaseDetailTemplate:
-    def test_extends_base_layout_with_existing_blocks(self):
-        base_dir = Path(__file__).resolve().parents[2] / "templates"
-        template = (base_dir / "payment_vault" / "purchase_detail.html").read_text(
-            encoding="utf-8"
-        )
-        base = (base_dir / "base.html").read_text(encoding="utf-8")
-
-        assert '{% extends "base.html" %}' in template
-        assert "layout.html" not in template
-
-        # blocks this template overrides must exist in base.html
-        for block in ("title", "content"):
-            assert f"{{% block {block} %}}" in base, f"base.html lacks block {block}"
-            assert "{% endblock %}" in template
-
-    def test_template_has_no_hardcoded_whatsapp_number(self):
-        base_dir = Path(__file__).resolve().parents[2] / "templates"
-        template = (base_dir / "payment_vault" / "purchase_detail.html").read_text(
-            encoding="utf-8"
-        )
-        assert "0598953362" not in template
-        assert "970598953362" not in template
-        assert "config.COMPANY_PHONE" in template
+# The payment_vault purchase_detail.html template and its package-purchase
+# flow were removed with the retired multi-package system; the template
+# security assertions that targeted it no longer apply.

@@ -205,45 +205,6 @@ class TestDictsToRows:
         assert ExportService.dicts_to_rows([], ["a"]) == []
 
 
-class TestLegacyPurchasesCsv:
-    @staticmethod
-    def _purchase(**overrides):
-        base = dict(
-            id=7,
-            package=SimpleNamespace(name_ar="باقة أساسية"),
-            customer_name="Ali Hassan",
-            customer_email="ali@test.ae",
-            amount_paid=Decimal("99.500"),
-            payment_method="card",
-            payment_status="paid",
-            created_at=datetime(2026, 3, 1, 12, 30),
-        )
-        base.update(overrides)
-        return SimpleNamespace(**base)
-
-    def test_full_purchase_row(self):
-        parsed = _csv_rows(ExportService.export_purchases_to_csv([self._purchase()]))
-        assert parsed[0][1] == "الباقة"
-        assert parsed[1] == [
-            "7",
-            "باقة أساسية",
-            "Ali Hassan",
-            "ali@test.ae",
-            "$99.500",
-            "card",
-            "paid",
-            "2026-03-01 12:30",
-        ]
-
-    def test_null_package_and_created_at_fall_back(self):
-        parsed = _csv_rows(
-            ExportService.export_purchases_to_csv(
-                [self._purchase(package=None, created_at=None)]
-            )
-        )
-        assert parsed[1][1] == "N/A"
-        assert parsed[1][7] == "N/A"
-
 
 class TestLegacyDonationsCsv:
     def test_anonymous_donor_defaults(self):

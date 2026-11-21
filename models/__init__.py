@@ -20,14 +20,12 @@ from .system_settings import SystemSettings
 from .integration_settings import IntegrationSettings
 from .tax_ruleset import TaxRuleset, seed_default_rulesets, ruleset_for_tenant
 from .compliance_credential import ComplianceCredential
-from .subscription_plan import SubscriptionPlan
 from .support_ticket import SupportTicket
 from .incident import Incident
 from .backup_verification import BackupVerification
 from .donation import Donation
 from .payment_vault import PaymentVault, PaymentTransaction, PaymentLog
 from .card_payment import CardPayment
-from .package import Package, PackagePurchase
 from .bank_reconciliation import BankReconciliation, BankReconciliationItem
 from .budget import Budget, BudgetLine
 from .cost_center import CostCenter
@@ -227,7 +225,6 @@ __all__ = [
     "seed_default_rulesets",
     "ruleset_for_tenant",
     "ComplianceCredential",
-    "SubscriptionPlan",
     "SupportTicket",
     "Incident",
     "BackupVerification",
@@ -237,8 +234,6 @@ __all__ = [
     "PaymentVault",
     "PaymentTransaction",
     "PaymentLog",
-    "Package",
-    "PackagePurchase",
     "BankReconciliation",
     "BankReconciliationItem",
     "Budget",

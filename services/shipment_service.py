@@ -4,7 +4,8 @@ ShipmentService — business logic for field sales shipments (الإرسالية
 Trusted flow (verified):
 - draft → in_transit → arrived → selling → closed
 - draft/cancelled allowed to cancel before closed
-- stock is reserved on create, moved on in_transit, no GL until sale
+- stock is deducted from the source warehouse on send (in_transit),
+- restored on cancel; no GL until sale (goods remain company-owned in transit)
 """
 
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from decimal import Decimal
 
 from extensions import db
 from models.shipment import Shipment, ShipmentLine
+from models.warehouse import StockMovement
+from services.stock_service import StockService
 from utils.helpers import generate_number  # existing helper pattern
 
 
@@ -21,6 +24,33 @@ def _generate_shipment_number():
         return generate_number("SH", Shipment, "shipment_number")
     except Exception:
         return f"SH-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+
+
+def _shipment_stock_movement(shipment, sign):
+    """Create (or reverse) the stock movements for a shipment exactly once.
+
+    sign = -1 on send (goods leave the warehouse), +1 on cancel (goods return).
+    The reference_type/reference_id pair makes the operation idempotent.
+    """
+    expected_type = "shipment"
+    for line in shipment.lines:
+        existing = StockMovement.query.filter_by(
+            reference_type=expected_type,
+            reference_id=shipment.id,
+            product_id=line.product_id,
+            movement_type=("shipment" if sign < 0 else "shipment_return"),
+        ).first()
+        if existing:
+            continue  # already applied — idempotent
+        StockService.create_movement(
+            product_id=line.product_id,
+            quantity=sign * Decimal(str(line.quantity)),
+            movement_type=("shipment" if sign < 0 else "shipment_return"),
+            reference_type=expected_type,
+            reference_id=shipment.id,
+            notes=f"إرسالية {shipment.shipment_number} — {'صرف' if sign < 0 else 'إرجاع'}",
+            warehouse_id=shipment.from_warehouse_id,
+        )
 
 
 class ShipmentService:
@@ -98,6 +128,8 @@ class ShipmentService:
         shipment.status = "in_transit"
         shipment.shipped_at = datetime.now(timezone.utc)
         db.session.flush()
+        _shipment_stock_movement(shipment, -1)  # deduct goods from source warehouse
+        db.session.flush()
         return shipment
 
     @staticmethod
@@ -144,6 +176,8 @@ class ShipmentService:
             raise ValueError("لا يمكن إلغاء إرسالية مغلقة")
         if shipment.status == "cancelled":
             raise ValueError("الإرسالية ملغاة بالفعل")
+        if shipment.status in ("in_transit", "arrived", "selling"):
+            _shipment_stock_movement(shipment, 1)  # return goods to source warehouse
         shipment.status = "cancelled"
         db.session.flush()
         return shipment

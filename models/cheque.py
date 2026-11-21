@@ -131,6 +131,12 @@ class Cheque(TenantScopedMixin, db.Model):
         "receipt_id",
     )
 
+    @validates("amount")
+    def _validate_amount_positive(self, key, value):
+        if value is not None and Decimal(str(value)) <= 0:
+            raise ValueError("مبلغ الشيك يجب أن يكون أكبر من صفر")
+        return value
+
     @validates("sale_id", "purchase_id", "expense_id", "payment_id", "receipt_id")
     def _validate_single_parent_doc(self, key, value):
         """At most one of the parent-document FKs may be set on a
@@ -380,9 +386,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     }
                 )
 
-                if self.currency_gain_loss and abs(self.currency_gain_loss) > Decimal(
-                    "0.01"
-                ):
+                if self.currency_gain_loss and self.currency_gain_loss != 0:
                     if self.currency_gain_loss > 0:
                         lines.append(
                             {
@@ -420,9 +424,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     }
                 )
 
-                if self.currency_gain_loss and abs(self.currency_gain_loss) > Decimal(
-                    "0.01"
-                ):
+                if self.currency_gain_loss and self.currency_gain_loss != 0:
                     if self.currency_gain_loss > 0:
                         lines.append(
                             {

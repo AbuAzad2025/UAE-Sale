@@ -532,9 +532,9 @@ def cancel(id):
     """إلغاء الشيك"""
     cheque = get_owned_or_404(Cheque, id)
 
-    if cheque.status == "cleared":
+    if cheque.status in ("cleared", "bounced"):
         flash(
-            "⚠️ لا يمكن إلغاء شيك تم صرفه.\n💡 الشيك تم صرفه بالفعل. لا يمكن التراجع عنه.",
+            "⚠️ لا يمكن إلغاء شيك تم صرفه أو ارتدّ.\n💡 استخدم إجراء التعديل المناسب بدلاً من الإلغاء لتجنب عكس القيد مرتين.",
             "danger",
         )
         return redirect(url_for("cheques.view", id=id))

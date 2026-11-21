@@ -963,7 +963,12 @@ def statement(id):
         )
         .join(GLJournalLine, GLJournalLine.entry_id == GLJournalEntry.id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
-        .filter(GLJournalLine.party_id == id, GLAccount.code == "3350")
+        .filter(
+            GLJournalLine.party_id == id,
+            GLAccount.code == "3350",
+            GLJournalEntry.is_posted.is_(True),
+            GLJournalEntry.is_reversed.is_(False),
+        )
         .order_by(GLJournalEntry.entry_date, GLJournalEntry.id)
         .all()
     )

@@ -110,7 +110,6 @@ def _page_title_text(value):
         s = heading.group(1)
     s = _re.sub(r"<[^>]*>", " ", s)
     s = " ".join(_unescape(s).split()).strip()
-    # Input is HTML-escaped above; Markup only prevents double-escaping.
     return Markup(escape(s))  # nosec B704
 
 
@@ -864,7 +863,6 @@ if __name__ == "__main__":  # noqa: C901
         app.logger.info("ENABLE_SCHEDULERS=0 — automatic backup scheduler disabled")
 
     port = int(os.environ.get("PORT", 5000))
-    # security note: bind address is operator-controlled via HOST env; deployed behind reverse proxy/container for multi-branch access
     host = os.environ.get("HOST", "0.0.0.0")  # nosec B104
     debug_mode = os.environ.get("DEBUG", "false").lower() in ("true", "1", "yes")
 

@@ -85,11 +85,16 @@ def _format_num(value):
 def _translate_flash(message):
     """Render a flash message in the current UI language.
 
-    Route code flashes Arabic messages; in EN mode we substitute the English
-    translation from utils/flash_translations.json while keeping {placeholders}
-    intact for runtime .format() calls.
+    Route code flashes Arabic messages, often via f-strings whose placeholders
+    are already resolved at runtime, and with real newlines rather than literal
+    ``\\n``. We therefore match by a normalized signature: every ``{...}``
+    placeholder and every whitespace run becomes a single wildcard token, so a
+    concrete runtime message still maps back to its template key. The English
+    translation keeps the original ``{placeholder}`` tokens, which we then fill
+    back in from the captured runtime values in order.
     """
     import json as _json
+    import re as _re
 
     from utils.i18n import get_current_language
 
@@ -101,7 +106,49 @@ def _translate_flash(message):
         )
         with open(_path, encoding="utf-8") as _f:
             _map = _json.load(_f)
-        return _map.get(str(message), message)
+
+        text = str(message)
+
+        # exact match first
+        if text in _map:
+            return _map[text]
+
+        # Build a regex per dictionary key: literal parts matched literally
+        # (whitespace-flexible), each ``{placeholder}`` becomes a capture group.
+        def _to_regex(s):
+            # normalize literal \n to real whitespace
+            s = _re.sub(r"\\n", " ", s)
+            # split into placeholders and literal chunks
+            chunks = _re.split(r"(\{[^{}]+\})", s)
+            out = ""
+            for chunk in chunks:
+                if _re.match(r"^\{[^{}]+\}$", chunk):
+                    out += "(.*?)"
+                    continue
+                # each literal chunk: escape non-space chars, collapse spaces to \s+
+                tokens = _re.split(r"(\s+)", chunk)
+                for tok in tokens:
+                    if tok.isspace():
+                        out += r"\s+"
+                    elif tok:
+                        out += _re.escape(tok)
+            return out
+
+        text_norm = _re.sub(r"\\n", " ", text)
+        for ar, en in _map.items():
+            pattern = _to_regex(ar)
+            if not pattern:
+                continue
+            m = _re.fullmatch(pattern, _re.sub(r"\s+", " ", text_norm).strip())
+            if m:
+                vals = list(m.groups())
+                result = en
+                for ph in _re.findall(r"\{[^{}]+\}", en):
+                    if vals:
+                        result = result.replace(ph, vals.pop(0).strip(), 1)
+                # normalize literal \n in the English output too
+                return result.replace("\\n", "\n")
+        return message
     except Exception:
         return message
 
@@ -127,6 +174,50 @@ def _status_badge(status):
             escape(cls), escape(label)
         )
     )
+
+
+# Common status codes shared by many models — used by the status_label filter
+# to render an English label when the UI language is English.
+_STATUS_EN = {
+    "draft": "Draft", "sent": "Sent", "accepted": "Accepted",
+    "rejected": "Rejected", "expired": "Expired", "converted": "Converted",
+    "pending": "Pending", "approved": "Approved", "in_progress": "In Progress",
+    "open": "Open", "closed": "Closed", "resolved": "Resolved",
+    "monitoring": "Monitoring", "done": "Done", "ok": "OK", "breached": "Breached",
+    "cleared": "Cleared", "deposited": "Deposited", "bounced": "Bounced",
+    "cancelled": "Cancelled", "paid": "Paid", "unpaid": "Unpaid",
+    "partial": "Partial", "void": "Void", "active": "Active",
+    "inactive": "Inactive", "completed": "Completed", "confirmed": "Confirmed",
+    "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent",
+    "final": "Final", "draft": "Draft", "posted": "Posted",
+}
+
+# Support ticket category labels (Arabic in routes/support.py) -> English
+_CATEGORY_EN = {
+    "technical": "Technical", "billing": "Billing", "general": "General",
+    "feature": "Feature Request", "complaint": "Complaint",
+    "accounting": "Accounting", "sales": "Sales", "other": "Other",
+    "اشتراك ودفع": "Subscription & Payment", "عطل": "Malfunction",
+    "كيف أفعل": "How To", "طلب ميزة": "Feature Request", "أخرى": "Other",
+}
+
+
+def _status_label(value, kind="status"):
+    """Translate a raw status/category code (or its *_ar label) to UI language."""
+    from utils.i18n import get_current_language, t as _t
+
+    if value is None:
+        return ""
+    s = str(value)
+    if get_current_language() != "en":
+        return s
+    if kind == "category":
+        return _CATEGORY_EN.get(s, _STATUS_EN.get(s, _t(s, default=s)))
+    if s in _STATUS_EN:
+        return _STATUS_EN[s]
+    if s in _STATUS_EN.values():  # already English
+        return s
+    return _t(s, default=s)
 
 
 def _page_title_text(value):
@@ -685,6 +776,7 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter("money")(_format_money)
     app.template_filter("num")(_format_num)
     app.template_filter("status_badge")(_status_badge)
+    app.template_filter("status_label")(_status_label)
     app.template_filter("page_title_text")(_page_title_text)
 
     # Tenant isolation is a hard security requirement: if any hook fails to

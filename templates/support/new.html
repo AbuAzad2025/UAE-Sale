@@ -29,7 +29,7 @@
         <div class="form-group"><label>{{ t('Category') }}</label>
           <select class="form-control" name="category">
             {% for code, label in category_label.items() %}
-            <option value="{{ code }}">{{ label }}</option>
+            <option value="{{ code }}">{{ label|status_label("category") }}</option>
             {% endfor %}
           </select>
         </div>

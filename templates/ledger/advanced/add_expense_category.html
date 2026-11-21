@@ -30,7 +30,7 @@
                 <option value="" {% if not form_data.get('parent_id') %}selected{% endif %}>{{ t('None') }}</option>
                 {% for parent in parent_categories %}
                 <option value="{{ parent.id }}" {% if form_data.get('parent_id') and form_data.get('parent_id')|int == parent.id %}selected{% endif %}>
-                  {{ parent.name_ar }}
+                  {{ display_name(parent) }}
                 </option>
                 {% endfor %}
               </select>
@@ -42,7 +42,7 @@
               <select name="gl_account_id" class="form-control" required>
                 {% for account in accounts %}
                 <option value="{{ account.id }}" {% if form_data.get('gl_account_id') and form_data.get('gl_account_id')|int == account.id %}selected{% endif %}>
-                  {{ account.code }} - {{ account.name_ar }}
+                  {{ account.code }} - {{ display_name(account) }}
                 </option>
                 {% endfor %}
               </select>

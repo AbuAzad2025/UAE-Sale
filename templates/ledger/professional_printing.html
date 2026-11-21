@@ -315,10 +315,10 @@
         {% for item in trial_balance_data %}
         <tr>
           <td><strong>{{ item.account.code }}</strong></td>
-          <td>{{ item.account.full_name }}</td>
+          <td>{{ display_name(item.account) }}</td>
           <td>
             <span class="badge badge-{{ 'success' if item.account.type == 'asset' else 'danger' if item.account.type == 'liability' else 'info' if item.account.type == 'equity' else 'warning' if item.account.type == 'revenue' else 'secondary' }}">
-              {{ item.account.type_ar }}
+              {{ item.account.type|status_label }}
             </span>
           </td>
           <td class="amount-{{ 'positive' if item.debit > 0 else 'zero' }}">
@@ -429,8 +429,8 @@ function printExcel() {
   {% for item in trial_balance_data %}
   data.push([
     '{{ item.account.code }}',
-    '{{ item.account.full_name }}',
-    '{{ item.account.type_ar }}',
+    '{{ display_name(item.account) }}',
+    '{{ item.account.type|status_label }}',
     {{ item.debit }},
     {{ item.credit }},
     {{ item.account.get_balance() }}

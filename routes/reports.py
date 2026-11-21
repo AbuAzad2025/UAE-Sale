@@ -26,6 +26,7 @@ from models import (
 from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from services.costing_service import CostingService
+from utils.i18n import t as _t
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
 install_feature_gate(reports_bp, "reports")
@@ -163,12 +164,9 @@ def quotation_pipeline():
     }
     statuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"]
     status_labels = {
-        "draft": "مسودة",
-        "sent": "مرسلة",
-        "accepted": "مقبولة",
-        "rejected": "مرفوضة",
-        "expired": "منتهية",
-        "converted": "محولة",
+        "draft": _t("Draft"), "sent": _t("Sent"),
+        "accepted": _t("Accepted"), "rejected": _t("Rejected"),
+        "expired": _t("Expired"), "converted": _t("Converted"),
     }
     pipeline = []
     total_count = 0
@@ -1042,10 +1040,10 @@ def entity_report_fragment(type, id):  # noqa: C901
         if type == "supplier":
             entity = get_owned_or_404(Supplier, id)
             context["entity"] = entity
-            context["type_label"] = "مورد"
+            context["type_label"] = _t("Supplier")
 
             context["balance"] = entity.get_balance_aed()
-            context["balance_label"] = "مستحق للمورد"
+            context["balance_label"] = _t("Due to supplier")
 
             p_lines = (
                 db.session.query(
@@ -1113,11 +1111,11 @@ def entity_report_fragment(type, id):  # noqa: C901
             entity = get_owned_or_404(Customer, id)
             context["entity"] = entity
             context["type_label"] = {
-                "partner": "شريك",
-                "merchant": "تاجر",
-                "regular": "زبون",
+                "partner": _t("Partner"),
+                "merchant": _t("Merchant"),
+                "regular": _t("Customer"),
                 "vip": "VIP",
-            }.get(entity.customer_type, "زبون")
+            }.get(entity.customer_type, _t("Customer"))
 
             total_sales = (
                 db.session.query(func.sum(Sale.amount_base))
@@ -1144,10 +1142,10 @@ def entity_report_fragment(type, id):  # noqa: C901
             context["balance"] = (
                 total_sales + total_payments_to
             ) - total_receipts  # Positive means they owe us
-            context["balance_label"] = "مستحق لنا"
+            context["balance_label"] = _t("Due to us")
             if context["balance"] < 0:
                 context["balance"] = abs(context["balance"])
-                context["balance_label"] = "مستحق للعميل"
+                context["balance_label"] = _t("Due to customer")
 
             s_lines = (
                 db.session.query(
@@ -1483,7 +1481,7 @@ def _inventory_reconciliation_summary():
 
     summary = {
         "available": False,
-        "valuation_basis": "qty × average_cost (متوسط التكلفة المتحرك)",
+        "valuation_basis": f"qty × average_cost ({_t('Moving average cost')})",
         "control_accounts": [],
         "control_balance": None,
         "valuation_at_cost_price": None,
@@ -2453,10 +2451,10 @@ def export_ap_aging():
     _audit_export("ap_aging", fmt, filters={"scope": "active_suppliers"})
 
     headers = [
-        "المورد",
+        _t("Supplier"),
         "إجمالي المشتريات",
         "المدفوع",
-        "الرصيد المستحق",
+        _t("Balance Due"),
         "المتأخر",
         "شروط الدفع",
     ]
@@ -2495,10 +2493,10 @@ def export_ap_aging():
             return ExportService.export_to_csv(
                 rows,
                 [
-                    "المورد",
+                    _t("Supplier"),
                     "إجمالي المشتريات",
                     "المدفوع",
-                    "الرصيد المستحق",
+                    _t("Balance Due"),
                     "المتأخر",
                     "شروط الدفع",
                 ],
@@ -2606,7 +2604,7 @@ def export_vat_report():  # noqa: C901
     purchase_headers = [
         "رقم الفاتورة",
         "التاريخ",
-        "المورد",
+        _t("Supplier"),
         "الأساس الخاضع",
         "نسبة الضريبة",
         "الضريبة",

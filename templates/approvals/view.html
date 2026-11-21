@@ -101,7 +101,7 @@
                 {% elif level.required_role == 'manager' %}
                   <span class="badge badge-info">{{ t('Department Manager') }}</span>
                 {% else %}
-                  <span class="badge badge-secondary">{{ level.required_role }}</span>
+                  <span class="badge badge-secondary">{{ level.required_role|status_label }}</span>
                 {% endif %}
               </td>
               <td>
@@ -171,7 +171,7 @@
     <div class="card">
       <div class="card-body text-center">
         <i class="fas fa-{% if req.status == 'approved' %}check-circle text-success{% elif req.status == 'rejected' %}times-circle text-danger{% else %}ban text-secondary{% endif %} fa-3x mb-3"></i>
-        <h5>{{ req.status_ar }}</h5>
+        <h5>{{ req.status|status_label }}</h5>
         {% if req.resolved_at %}
         <p class="text-muted">{{ req.resolved_at.strftime('%Y-%m-%d %H:%M') }}</p>
         {% endif %}

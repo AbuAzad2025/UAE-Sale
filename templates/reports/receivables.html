@@ -103,9 +103,9 @@
             </td>
             <td>
               {% if category == 'current' %}<span class="badge badge-success">{{ t('Current') }}</span>
-              {% elif category == 'days_30' %}<span class="badge badge-info">30-60</span>
-              {% elif category == 'days_60' %}<span class="badge badge-warning">60-90</span>
-              {% elif category == 'days_90' %}<span class="badge badge-orange">90-120</span>
+              {% elif category == 'days_30' %}<span class="badge badge-info">{{ t("30-60 days") }}</span>
+              {% elif category == 'days_60' %}<span class="badge badge-warning">{{ t("60-90 days") }}</span>
+              {% elif category == 'days_90' %}<span class="badge badge-orange">{{ t("90-120 days") }}</span>
               {% else %}<span class="badge badge-danger">{{ t('Overdue') }}</span>{% endif %}
             </td>
           </tr>

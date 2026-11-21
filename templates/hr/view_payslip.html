@@ -20,7 +20,7 @@
             <p><strong>{{ t('Pay Date') }}:</strong> {{ payslip.pay_date.strftime('%Y-%m-%d') if payslip.pay_date else '' }}</p>
           </div>
           <div class="col-md-4 text-center">
-            <h2 class="text-success mb-0">{{ "{:,.2f}".format(payslip.net_salary|float) }} د.إ</h2>
+            <h2 class="text-success mb-0">{{ "{:,.2f}".format(payslip.net_salary|float) }} {{ base_currency_name }}</h2>
             <p class="text-muted">{{ t('Net Salary') }}</p>
           </div>
           <div class="col-md-4 text-left">

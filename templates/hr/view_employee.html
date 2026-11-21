@@ -40,15 +40,15 @@
       <div class="card-body">
         <div class="row">
           <div class="col-md-4 text-center p-3">
-            <h3 class="text-primary">{{ "{:,.0f}".format(employee.base_salary|float) }} د.إ</h3>
+            <h3 class="text-primary">{{ "{:,.0f}".format(employee.base_salary|float) }} {{ base_currency_name }}</h3>
             <p class="text-muted mb-0">{{ t('Basic Salary') }}</p>
           </div>
           <div class="col-md-4 text-center p-3">
-            <h3 class="text-success">{{ "{:,.0f}".format(employee.total_monthly_compensation|float) }} د.إ</h3>
+            <h3 class="text-success">{{ "{:,.0f}".format(employee.total_monthly_compensation|float) }} {{ base_currency_name }}</h3>
             <p class="text-muted mb-0">{{ t('Monthly Total') }}</p>
           </div>
           <div class="col-md-4 text-center p-3">
-            <h3 class="text-info">{{ employee.payment_frequency or 'monthly' }}</h3>
+            <h3 class="text-info">{{ employee.payment_frequency or t('Monthly') }}</h3>
             <p class="text-muted mb-0">{{ t('Payment Frequency') }}</p>
           </div>
         </div>

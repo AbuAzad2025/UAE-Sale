@@ -526,7 +526,7 @@ table.statement-table thead th {
                       <span class="badge badge-danger status-badge">{{ t('Unpaid') }}</span>
                     {% endif %}
                   {% else %}
-                    <span class="badge badge-info status-badge">{{ trans.status }}</span>
+                    <span class="badge badge-info status-badge">{{ trans.status|status_label }}</span>
                   {% endif %}
                 </td>
                 <td class="text-center">

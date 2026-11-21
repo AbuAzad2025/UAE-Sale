@@ -193,7 +193,7 @@
     <div style="background: rgba(255,255,255,0.2); padding: 8px; margin-bottom: 10px; border-radius: 5px;"><p style="font-size: 9px; margin: 0;"> {{ settings.default_receipt_note_ar }}</p></div>
     {% endif %}
     
-    <div style="font-size: 9px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'شكراً لثقتكم' }}</div>
+    <div style="font-size: 9px; margin-bottom: 5px;">{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Thank you for your trust') }}</div>
     <div> {{ t("We wish you an excellent experience") }} </div>
     {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px; font-size: 8px;"> {{ settings.website }}</div>{% endif %}
     

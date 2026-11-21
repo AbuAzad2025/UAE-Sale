@@ -34,8 +34,8 @@
       <td>{{ q.customer.name if q.customer else '-' }}</td>
       <td>{{ q.quotation_date.strftime('%Y-%m-%d') if q.quotation_date else '-' }}</td>
       <td>{{ q.valid_until.strftime('%Y-%m-%d') if q.valid_until else '-' }}</td>
-      <td>{{ "{:,.2f}".format(q.total_amount|float) }} د.إ</td>
-      <td><span class="badge badge-{{ 'success' if q.status=='accepted' else ('danger' if q.status=='rejected' else ('info' if q.status=='sent' else 'secondary')) }}">{{ q.status_ar }}</span></td>
+      <td>{{ "{:,.2f}".format(q.total_amount|float) }} {{ base_currency_name }}</td>
+      <td><span class="badge badge-{{ 'success' if q.status=='accepted' else ('danger' if q.status=='rejected' else ('info' if q.status=='sent' else 'secondary')) }}">{{ q.status|status_label }}</span></td>
       <td><a href="{{ url_for('erp_modules.view_quotation', id=q.id) }}" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a></td>
     </tr>
     {% else %}<tr><td colspan="7" class="text-center text-muted">{{ t('No quotations') }}</td></tr>

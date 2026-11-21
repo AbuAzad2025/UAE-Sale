@@ -5,7 +5,7 @@
 <div class="card">
   <div class="card-header d-flex justify-content-between">
     <h5>{{ stocktake.warehouse.name if stocktake.warehouse else '' }} - {{ stocktake.stocktake_date.strftime('%Y-%m-%d') }}</h5>
-    <span class="badge badge-lg badge-{{ 'success' if stocktake.status=='approved' else ('info' if stocktake.status=='completed' else 'warning') }}">{{ stocktake.status_ar }}</span>
+    <span class="badge badge-lg badge-{{ 'success' if stocktake.status=='approved' else ('info' if stocktake.status=='completed' else 'warning') }}">{{ stocktake.status|status_label }}</span>
   </div>
   <div class="card-body">
     {% if stocktake.status == 'in_progress' %}

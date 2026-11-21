@@ -21,6 +21,7 @@ from services.currency_service import CurrencyService
 from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from routes.ledger import reverse_or_purge_gl_entries
+from utils.i18n import t as _t
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/payments")
 

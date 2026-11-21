@@ -34,7 +34,7 @@
               {% for tax in taxes %}
               <tr>
                 <td>{{ tax.id }}</td>
-                <td>{{ tax.name_ar }}</td>
+                <td>{{ display_name(tax) }}</td>
                 <td>{{ tax.rate }}%</td>
                 <td>{{ tax.tax_type }}</td>
                 <td>{{ tax.gl_account.code if tax.gl_account else '-' }}</td>

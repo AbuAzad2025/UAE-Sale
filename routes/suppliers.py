@@ -24,6 +24,7 @@ from utils.decorators import permission_required, get_owned_or_404
 
 from utils.helpers import create_audit_log
 from sqlalchemy import desc
+from utils.i18n import t as _t
 
 suppliers_bp = Blueprint("suppliers", __name__, url_prefix="/suppliers")
 
@@ -516,7 +517,7 @@ def statement_print(id):
         supplier=supplier,
         settings=settings,
         back_url=url_for("suppliers.statement", id=supplier.id),
-        back_label="رجوع للكشف",
+        back_label=_t("Back to statement"),
         transactions=transactions,
         total_purchases=float(sum(t["credit"] for t in transactions if t["description"] == "فاتورة شراء")),
         total_payments=float(sum(t["debit"] for t in transactions)),

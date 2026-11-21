@@ -21,6 +21,7 @@ from routes.ledger import reverse_or_purge_gl_entries
 from utils.helpers import create_audit_log, generate_number
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import datetime
+from utils.i18n import t as _t
 
 expenses_bp = Blueprint("expenses", __name__, url_prefix="/expenses")
 
@@ -260,7 +261,7 @@ def print_expense(id):
     if template not in _ALLOWED_TEMPLATES:
         template = "simple"
 
-    template_labels = {"simple": "مبسط"}
+    template_labels = {"simple": _t("Basic")}
     available_templates = [(k, v) for k, v in template_labels.items()]
 
     from utils.amount_in_words import amount_in_words

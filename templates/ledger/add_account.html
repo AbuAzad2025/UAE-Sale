@@ -73,7 +73,7 @@
               <option value="" {% if not selected_parent %}selected{% endif %}>{{ t('None') }}</option>
               {% for parent in parent_accounts %}
               <option value="{{ parent.id }}" {% if selected_parent and selected_parent|int == parent.id %}selected{% endif %}>
-                {{ parent.full_name }} ({{ parent.code }})
+                {{ display_name(parent) }} ({{ parent.code }})
               </option>
               {% endfor %}
             </select>

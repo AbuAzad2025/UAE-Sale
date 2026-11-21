@@ -307,7 +307,7 @@
                 </label>
                 <select class="form-control select2" id="cryptoType" style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
                     {% for code, meta in lookups.get('crypto_types', []) %}
-                    <option value="{{ code }}">{{ meta.en }} ({{ code }})</option>
+                    <option value="{{ code }}">{{ meta.en if current_language == "en" else meta.ar }} ({{ code }})</option>
                     {% endfor %}
                 </select>
             </div>

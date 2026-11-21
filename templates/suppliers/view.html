@@ -128,7 +128,7 @@
               {% if supplier.website %}
                 <a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>
               {% else %}
-                t('N/A')
+                {{ t('N/A') }}
               {% endif %}
             </td>
           </tr>
@@ -202,7 +202,7 @@
               {% if supplier.last_purchase_date %}
                 {{ supplier.last_purchase_date.strftime('%Y-%m-%d') }}
               {% else %}
-                t('N/A')
+                {{ t('N/A') }}
               {% endif %}
             </td>
           </tr>

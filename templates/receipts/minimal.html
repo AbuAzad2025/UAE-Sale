@@ -229,7 +229,7 @@
           </div>
         </div>
         <div class="receipt-info-right">
-          <div class="receipt-label">RECEIPT</div>
+          <div class="receipt-label">{{ t("Receipt") }}</div>
           <div class="receipt-number-large">{{ receipt.receipt_number }}</div>
         </div>
       </div>
@@ -353,9 +353,9 @@
       
       {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
       <div style="font-size: 8px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
-        {% if settings.commercial_register and settings.commercial_register != 'None' %}CR: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t('CR:') }} {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} • {% endif %}
-        {% if settings.license_number and settings.license_number != 'None' %}Lic: {{ settings.license_number }}{% endif %}
+        {% if settings.license_number and settings.license_number != 'None' %}{{ t('Lic:') }} {{ settings.license_number }}{% endif %}
       </div>
       {% endif %}
       
@@ -366,7 +366,7 @@
       </div>
       {% endif %}
       
-      <div>{{ settings.footer_text_ar if settings and settings.footer_text_ar else 'شكراً لثقتكم' }}</div>
+      <div>{{ settings.footer_text_ar if settings and settings.footer_text_ar else t('Thank you for your trust') }}</div>
       {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px;"> {{ settings.website }}</div>{% endif %}
       
       

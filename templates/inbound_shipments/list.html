@@ -15,7 +15,7 @@
         <td>{{ s.supplier.name if s.supplier else '-' }}</td>
         <td>{{ s.warehouse.name if s.warehouse else '-' }}</td>
         <td>{{ s.tracking_number or '-' }}</td>
-        <td><span class="badge badge-{{ s.status }}">{{ s.status_ar }}</span></td>
+        <td><span class="badge badge-{{ s.status }}">{{ s.status|status_label }}</span></td>
         <td>{{ s.created_at.strftime('%Y-%m-%d') if s.created_at else '' }}</td>
       </tr>
     {% else %}

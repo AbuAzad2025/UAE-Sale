@@ -10,11 +10,11 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <div>
         <h3 class="mb-0">#{{ ticket.id }} — {{ ticket.subject }}</h3>
-        <small class="text-muted">{{ category_label.get(ticket.category, ticket.category) }} — {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else '' }}</small>
+        <small class="text-muted">{{ ticket.category|status_label("category") }} — {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else '' }}</small>
       </div>
       <div>
-        <span class="badge badge-{{ 'danger' if ticket.priority == 'urgent' else ('warning' if ticket.priority == 'high' else 'secondary') }} badge-lg">{{ priority_label.get(ticket.priority, ticket.priority) }}</span>
-        <span class="badge badge-{{ 'success' if ticket.status == 'resolved' else ('warning' if ticket.status == 'in_progress' else ('danger' if ticket.status == 'closed' else 'info')) }} badge-lg">{{ ticket.status }}</span>
+        <span class="badge badge-{{ 'danger' if ticket.priority == 'urgent' else ('warning' if ticket.priority == 'high' else 'secondary') }} badge-lg">{{ ticket.priority|status_label }}</span>
+        <span class="badge badge-{{ 'success' if ticket.status == 'resolved' else ('warning' if ticket.status == 'in_progress' else ('danger' if ticket.status == 'closed' else 'info')) }} badge-lg">{{ ticket.status|status_label }}</span>
       </div>
     </div>
     <div class="card-body">

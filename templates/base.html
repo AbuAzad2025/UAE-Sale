@@ -247,11 +247,11 @@
         <div class="dropdown-menu dropdown-menu-sm dropdown-menu-left">
           <a href="{{ url_for('language.set_language', lang='ar') }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
-            العربية
+            {{ t('Arabic') }}
           </a>
           <a href="{{ url_for('language.set_language', lang='en') }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
-            English
+            {{ t('English') }}
           </a>
         </div>
       </li>

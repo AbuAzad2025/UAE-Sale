@@ -18,7 +18,7 @@
         <div class="alert alert-{% if cheque.status == 'cleared' %}success{% elif cheque.status == 'bounced' %}danger{% elif cheque.is_overdue %}danger{% elif cheque.is_due_soon %}warning{% else %}info{% endif %}">
           <div class="row">
             <div class="col-md-6">
-              <strong>{{ t('Status') }}:</strong> {{ t(cheque.status|capitalize) if cheque.status else '' }}
+              <strong>{{ t('Status') }}:</strong> {{ cheque.status|status_label }}
             </div>
             <div class="col-md-6 text-left">
               {% if cheque.is_overdue and cheque.status == 'pending' %}

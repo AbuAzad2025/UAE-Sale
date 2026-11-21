@@ -93,7 +93,7 @@
             </a>
             <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
                 <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
-                English
+                {{ t('English') }}
             </a>
         </div>
     </div>

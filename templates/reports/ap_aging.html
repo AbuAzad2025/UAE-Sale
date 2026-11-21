@@ -113,11 +113,11 @@
             {% if item.bucket == 'over_90' %}
               <span class="badge badge-danger">{{ t('90+ days') }}</span>
             {% elif item.bucket == 'days_61_90' %}
-              <span class="badge badge-warning">61-90</span>
+              <span class="badge badge-warning">{{ t("61-90 days") }}</span>
             {% elif item.bucket == 'days_31_60' %}
-              <span class="badge badge-info">31-60</span>
+              <span class="badge badge-info">{{ t("31-60 days") }}</span>
             {% else %}
-              <span class="badge badge-success">0-30</span>
+              <span class="badge badge-success">{{ t("0-30 days") }}</span>
             {% endif %}
           </td>
           <td class="text-center">{{ item.payment_terms }} {{ t('days') }}</td>

@@ -18,7 +18,7 @@
           {% for expense in expenses %}
           <tr>
             <td>{{ expense.expense_date.strftime('%Y-%m-%d') }}</td>
-            <td>{{ expense.category.name_ar if expense.category else '-' }}</td>
+            <td>{{ display_name(expense.category) if expense.category else '-' }}</td>
             <td>{{ expense.amount }} {{ base_currency }}</td>
             <td>{{ expense.description }}</td>
             <td><span class="badge badge-success">{{ t('Recorded') }}</span></td>

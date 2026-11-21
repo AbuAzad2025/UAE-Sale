@@ -59,7 +59,7 @@
         <strong>{{ t('Type') }}:</strong>
         <p>
           <span class="badge badge-{{ 'primary' if entry.entry_type == 'manual' else ('success' if entry.entry_type == 'auto' else 'warning') }}">
-            {{ entry.entry_type_ar }}
+            {{ entry.entry_type|status_label }}
           </span>
         </p>
       </div>

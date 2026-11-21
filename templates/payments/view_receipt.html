@@ -124,7 +124,7 @@
           {% endif %}
           
           <dt class="col-sm-5">{{ t('Payment Method:') }}</dt>
-          <dd class="col-sm-7"><span class="badge badge-success">{{ receipt.payment_method }}</span></dd>
+          <dd class="col-sm-7"><span class="badge badge-success">{{ receipt.payment_method|status_label }}</span></dd>
           
           {% if receipt.reference_number %}
           <dt class="col-sm-5">{{ t('Reference Number:') }}</dt>

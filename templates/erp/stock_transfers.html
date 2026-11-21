@@ -7,13 +7,13 @@
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Date') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
-    {% for t in transfers %}
+    {% for tr in transfers %}
     <tr>
       <td><strong>{{ t.transfer_number }}</strong></td>
       <td>{{ t.from_warehouse.name if t.from_warehouse else '-' }}</td>
       <td>{{ t.to_warehouse.name if t.to_warehouse else '-' }}</td>
       <td>{{ t.transfer_date.strftime('%Y-%m-%d') }}</td>
-      <td><span class="badge badge-{{ 'success' if t.status=='received' else ('info' if t.status=='in_transit' else 'warning') }}">{{ t.status_ar }}</span></td>
+      <td><span class="badge badge-{{ 'success' if t.status=='received' else ('info' if t.status=='in_transit' else 'warning') }}">{{ t.status|status_label }}</span></td>
       <td>
         {% if t.status == 'pending' %}
         <form method="POST" action="{{ url_for('erp_modules.send_stock_transfer', id=t.id) }}" style="display:inline">

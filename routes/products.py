@@ -24,6 +24,7 @@ from utils.helpers import (
 )
 from services.stock_service import StockService
 from services.costing_service import CostingService
+from utils.i18n import t as _t
 
 products_bp = Blueprint("products", __name__, url_prefix="/products")
 
@@ -175,11 +176,11 @@ def create():  # noqa: C901
     form = ProductForm()
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, _t("None"))] + [(c.id, c.name) for c in categories]
     try:
         from services.lookup_service import get_lookup
 
-        form.unit.choices = [("", "بلا")] + [
+        form.unit.choices = [("", _t("None"))] + [
             (c, m.get("ar", c)) for c, m in get_lookup("product_units")
         ]
         form.warranty_unit.choices = [
@@ -460,11 +461,11 @@ def edit(id):  # noqa: C901
     form = ProductForm(obj=product)
 
     categories = ProductCategory.query.filter_by(is_active=True).all()
-    form.category_id.choices = [(0, "بلا")] + [(c.id, c.name) for c in categories]
+    form.category_id.choices = [(0, _t("None"))] + [(c.id, c.name) for c in categories]
     try:
         from services.lookup_service import get_lookup
 
-        form.unit.choices = [("", "بلا")] + [
+        form.unit.choices = [("", _t("None"))] + [
             (c, m.get("ar", c)) for c, m in get_lookup("product_units")
         ]
         form.warranty_unit.choices = [

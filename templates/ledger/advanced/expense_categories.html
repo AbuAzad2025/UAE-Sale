@@ -34,8 +34,8 @@
               {% for category in categories %}
               <tr>
                 <td>{{ category.code }}</td>
-                <td>{{ category.name_ar }}</td>
-                <td>{{ category.parent.name_ar if category.parent else '-' }}</td>
+                <td>{{ display_name(category) }}</td>
+                <td>{{ display_name(category.parent) if category.parent else '-' }}</td>
                 <td>{{ category.gl_account.code if category.gl_account else '-' }}</td>
                 <td>{{ category.children.count() }}</td>
                 <td>

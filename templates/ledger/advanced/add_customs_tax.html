@@ -60,7 +60,7 @@
                     <option value="" {% if not form_data.get('gl_account_id') %}selected{% endif %}>{{ t('None') }}</option>
                     {% for account in accounts %}
                     <option value="{{ account.id }}" {% if form_data.get('gl_account_id') and form_data.get('gl_account_id')|int == account.id %}selected{% endif %}>
-                      {{ account.code }} - {{ account.name_ar }}
+                      {{ account.code }} - {{ display_name(account) }}
                     </option>
                     {% endfor %}
                   </select>

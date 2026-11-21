@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ t('Edit Account') }} - {{ account.name_ar }}{% endblock %}
+{% block title %}{{ t('Edit Account') }} - {{ display_name(account) }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -61,7 +61,7 @@
                     <option value="">{{ t('None (Header Account)') }}</option>
                     {% for parent in parent_accounts %}
                     <option value="{{ parent.id }}" {% if account.parent_id == parent.id %}selected{% endif %}>
-                      {{ parent.code }} - {{ parent.name_ar }}
+                      {{ parent.code }} - {{ display_name(parent) }}
                     </option>
                     {% endfor %}
                   </select>

@@ -188,10 +188,10 @@
                 <i class="fas fa-undo mr-1"></i>{{ t('Refund') }}
               </span>
             {% else %}
-              <span class="badge badge-secondary">{{ item.source_type }}</span>
+              <span class="badge badge-secondary">{{ item.source_type|status_label }}</span>
             {% endif %}
           </td>
-          <td><span class="badge badge-info">{{ item.payment_method }}</span></td>
+          <td><span class="badge badge-info">{{ item.payment_method|status_label }}</span></td>
           <td>
             {% if item.payment_confirmed %}
               <span class="badge badge-success">

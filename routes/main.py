@@ -30,6 +30,7 @@ from models import (
 )
 from models.maintenance import MaintenanceOrder
 from services.stock_service import StockService
+from utils.i18n import t as _t
 
 DASHBOARD_CACHE_TTL = 60
 
@@ -428,7 +429,7 @@ def tenant_data_export():
 
     tenant_id = getattr(current_user, "tenant_id", None)
     if not tenant_id:
-        flash("No tenant context available.", "danger")
+        flash(_t("No tenant context available."), "danger")
         return redirect(url_for("main.dashboard"))
 
     fmt = request.args.get("format", "zip").lower()

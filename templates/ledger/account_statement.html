@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ t('Account Statement') }} - {{ statement.account.full_name }}{% endblock %}
+{% block title %}{{ t('Account Statement') }} - {{ display_name(statement.account) }}{% endblock %}
 {% block page_title %}{{ t('Detailed Account Statement') }}{% endblock %}
 
 {% block content %}
@@ -21,10 +21,10 @@
   <div class="card-header bg-gradient-primary">
     <h3 class="card-title text-white">
       <i class="fas fa-file-invoice mr-2"></i>
-      {{ t('Account Statement') }}: {{ statement.account.full_name }}
+      {{ t('Account Statement') }}: {{ display_name(statement.account) }}
     </h3>
     <div class="card-tools">
-      <span class="badge badge-light">{{ statement.account.type_ar }}</span>
+      <span class="badge badge-light">{{ statement.account.type|status_label }}</span>
     </div>
   </div>
   <div class="card-body">

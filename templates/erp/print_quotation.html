@@ -51,7 +51,7 @@
           <h3>{{ t('Quotation Details') }}</h3>
           <p>{{ t('Date') }}: {{ quotation.quotation_date }}</p>
           <p>{{ t('Valid Until') }}: {{ quotation.valid_until }}</p>
-          <p>{{ t('Status') }}: {{ quotation.status_ar }}</p>
+          <p>{{ t('Status') }}: {{ quotation.status|status_label }}</p>
           {% if quotation.currency %}<p>{{ t('Currency') }}: {{ quotation.currency }}</p>{% endif %}
         </div>
       </div>

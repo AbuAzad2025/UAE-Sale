@@ -116,7 +116,7 @@
           {% if expense.reverse_charge %}<p><strong>{{ t('Reverse Charge') }}:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
           {% if not expense.vat_recoverable %}<p><strong>{{ t('Note:') }}</strong> {{ t('Tax is not recoverable - charged to cost') }}</p>{% endif %}
           <p><strong>{{ t('Base Amount:') }}</strong> {{ "%.2f"|format(expense.amount_base) }} {{ base_currency }}</p>
-          <p><strong>{{ t('Payment Method:') }}</strong> {{ expense.payment_method or '-' }}</p>
+          <p><strong>{{ t('Payment Method:') }}</strong> {{ expense.payment_method|status_label or '-' }}</p>
         </div>
       </div>
 

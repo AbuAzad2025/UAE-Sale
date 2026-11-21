@@ -19,7 +19,7 @@
               <label>{{ t('Category') }} *</label>
               <select name="category_id" class="form-control" required>
                 {% for cat in categories %}
-                <option value="{{ cat.id }}">{{ cat.name_ar }}</option>
+                <option value="{{ cat.id }}">{{ display_name(cat) }}</option>
                 {% endfor %}
               </select>
             </div>

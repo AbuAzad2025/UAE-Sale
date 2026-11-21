@@ -466,7 +466,7 @@
       {% endif %}
       
       <div style="font-size: 9px; margin-bottom: 8px; font-weight: 700;">
-        {{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع المحددة' }}
+        {{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Please adhere to the specified payment deadlines') }}
       </div>
       <div style="font-size: 8px;"> {{ t("Thank you for your kind cooperation") }} </div>
       {% if settings and settings.website and settings.website != 'None' %}

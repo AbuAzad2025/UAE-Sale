@@ -64,7 +64,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-key text-warning mr-1"></i>API Token / Access Key
+                                        <i class="fas fa-key text-warning mr-1"></i>{{ t('API Token / Access Key') }}
                                     </label>
                                     <input type="text" class="form-control" name="api_token" placeholder="{{ t('Enter API Token here') }}" value="{{ integrations.whatsapp.config.api_token or '' }}">
                                     <small class="form-text text-muted">
@@ -84,7 +84,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-server text-info mr-1"></i>API Endpoint URL
+                                        <i class="fas fa-server text-info mr-1"></i>{{ t('API Endpoint URL') }}
                                     </label>
                                     <input type="text" class="form-control" name="api_url" placeholder="https://api.whatsapp.com/send" value="{{ integrations.whatsapp.config.api_url or '' }}">
                                     <small class="form-text text-muted">
@@ -210,7 +210,7 @@
                                     <select class="form-control select2" name="smtp_encryption">
                                         {% set encryption = integrations.email.config.smtp_encryption or 'tls' %}
                                         {% for code, meta in lookups.get('smtp_encryptions', []) %}
-                                        <option value="{{ code }}" {{ 'selected' if encryption == code }}>{{ meta.en }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
+                                        <option value="{{ code }}" {{ 'selected' if encryption == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
@@ -276,7 +276,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-server text-primary mr-1"></i>Redis Host
+                                        <i class="fas fa-server text-primary mr-1"></i>{{ t('Redis Host') }}
                                     </label>
                                     <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="{{ integrations.redis.config.redis_host or 'localhost' }}">
                                     <small class="form-text text-muted">
@@ -287,7 +287,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-network-wired text-info mr-1"></i>Redis Port
+                                        <i class="fas fa-network-wired text-info mr-1"></i>{{ t('Redis Port') }}
                                     </label>
                                     <input type="number" class="form-control" name="redis_port" placeholder="6379" value="{{ integrations.redis.config.redis_port or '6379' }}">
                                     <small class="form-text text-muted">
@@ -355,7 +355,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-link text-primary mr-1"></i>API Provider
+                                        <i class="fas fa-link text-primary mr-1"></i>{{ t('API Provider') }}
                                     </label>
                                     {% set provider = integrations.currency_api.config.api_provider or 'exchangerate' %}
                                     <select class="form-control select2" name="api_provider">
@@ -370,7 +370,7 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-key text-warning mr-1"></i>API Key
+                                        <i class="fas fa-key text-warning mr-1"></i>{{ t('API Key') }}
                                     </label>
                                     <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE" value="{{ integrations.currency_api.config.api_key or '' }}">
                                     <small class="form-text text-muted">

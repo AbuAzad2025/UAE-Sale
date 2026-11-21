@@ -16,7 +16,7 @@
             <td><a href="{{ url_for('shipments.view_shipment', id=s.id) }}">{{ s.shipment_number }}</a></td>
             <td>{{ s.from_warehouse.name if s.from_warehouse else '-' }}</td>
             <td>{{ s.destination_name }}</td>
-            <td><span class="badge badge-{{ s.status }}">{{ s.status_ar }}</span></td>
+            <td><span class="badge badge-{{ s.status }}">{{ s.status|status_label }}</span></td>
             <td>{{ "%.3f"|format(s.total_value or 0) }}</td>
             <td>{{ s.created_at.strftime('%Y-%m-%d') if s.created_at else '' }}</td>
           </tr>

@@ -28,9 +28,9 @@
           <div class="card-header bg-{{ 'success' if root_account.type == 'asset' else ('danger' if root_account.type == 'liability' else ('primary' if root_account.type == 'revenue' else 'warning')) }} text-white">
             <h5 class="mb-0">
               <i class="fas fa-{{ 'coins' if root_account.type == 'asset' else ('file-invoice-dollar' if root_account.type == 'liability' else ('chart-line' if root_account.type == 'revenue' else 'receipt')) }} mr-2"></i>
-              {{ root_account.code }} - {{ root_account.name_ar }}
+              {{ root_account.code }} - {{ display_name(root_account) }}
             </h5>
-            <small>{{ root_account.type_ar }}</small>
+            <small>{{ root_account.type|status_label }}</small>
           </div>
           <div class="card-body p-0">
             <ul class="list-group list-group-flush">
@@ -42,7 +42,7 @@
                   {% else %}
                   <i class="fas fa-file text-info mr-1"></i>
                   {% endif %}
-                  {{ level1.code }} - {{ level1.name_ar }}
+                  {{ level1.code }} - {{ display_name(level1) }}
                 </strong>
                 {% if not level1.is_header %}
                 <span class="badge badge-info float-left">
@@ -58,7 +58,7 @@
                   {% for level2 in level1.children %}
                   <li class="mb-1">
                     <i class="fas fa-angle-left text-muted mr-1"></i>
-                    {{ level2.code }} - {{ level2.name_ar }}
+                    {{ level2.code }} - {{ display_name(level2) }}
                     {% if not level2.is_header %}
                     <span class="badge badge-secondary float-left">
                       {{ "{:,.2f}".format(level2.balance) }} {{ base_currency }}

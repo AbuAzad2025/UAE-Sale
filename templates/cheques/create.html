@@ -285,7 +285,7 @@ $(function() {
   if (window.jQuery && $.fn && $.fn.select2) {
     $('.customer-select, .supplier-select').select2({
       theme: 'bootstrap4',
-      language: 'ar',
+      language: '{{ current_language }}',
       placeholder: {{ t('Select...')|tojson }},
       allowClear: true
     });

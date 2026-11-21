@@ -2,7 +2,7 @@
 {% block title %}{{ t('Shipment') }} {{ shipment.shipment_number }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
-  <h3>{{ t('Shipment') }} {{ shipment.shipment_number }} <span class="badge badge-{{ shipment.status }}">{{ shipment.status_ar }}</span></h3>
+  <h3>{{ t('Shipment') }} {{ shipment.shipment_number }} <span class="badge badge-{{ shipment.status }}">{{ shipment.status|status_label }}</span></h3>
   <div class="card mb-3"><div class="card-body">
     <p><strong>{{ t('Supplier') }}:</strong> {{ shipment.supplier.name if shipment.supplier else '-' }} | <strong>{{ t('Warehouse') }}:</strong> {{ shipment.warehouse.name if shipment.warehouse else '-' }}</p>
     <p><strong>{{ t('Carrier') }}:</strong> {{ shipment.carrier or '-' }} | <strong>{{ t('Tracking') }}:</strong> {{ shipment.tracking_number or '-' }} | <strong>{{ t('Expected') }}:</strong> {{ shipment.expected_at or '-' }}</p>

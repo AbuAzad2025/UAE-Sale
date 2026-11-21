@@ -18,7 +18,7 @@
         <p><strong>{{ t('Tax') }} (5%):</strong> {{ "{:,.2f}".format(einvoice.tax_amount|float) }}</p>
         <p><strong>{{ t('Total Including Tax') }}:</strong> {{ "{:,.2f}".format(einvoice.total_with_tax|float) }} {{ einvoice.currency }}</p>
         <hr>
-        <p><strong>{{ t('Status') }}:</strong> <span class="badge badge-{{ 'success' if einvoice.status=='accepted' else 'secondary' }}">{{ einvoice.status_ar }}</span></p>
+        <p><strong>{{ t('Status') }}:</strong> <span class="badge badge-{{ 'success' if einvoice.status=='accepted' else 'secondary' }}">{{ einvoice.status|status_label }}</span></p>
         {% if einvoice.sale_id %}
         <a href="{{ url_for('sales.view', id=einvoice.sale_id) }}" class="btn btn-info btn-sm"><i class="fas fa-link mr-1"></i>{{ t('View Sales Invoice') }}</a>
         {% endif %}

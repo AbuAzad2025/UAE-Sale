@@ -321,10 +321,12 @@ jobs:
           #
           # The sweep pools are deterministic (pool[_spread(sc, len(pool))]
           # over all 945 scenarios of a domain), so this is not a moving
-          # target: 470 leaves room for shard variance while still failing
-          # loudly on regressions the old 350 floor ignored.
+          # target. The retired multi-package system removed ~12 routes from
+          # the probe pools (pricing/plans/packages), lowering reachable
+          # coverage 470 -> 460. Floor set to 455: room for shard variance,
+          # still far above the old 350 floor and loud on real regressions.
           python -m tests.e2e.route_coverage 'artifacts/**/routes-*.json' \
-            --min-covered 470 \
+            --min-covered 455 \
             --out route-coverage.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage report
         if: always()

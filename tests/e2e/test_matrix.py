@@ -2801,9 +2801,9 @@ def _allowed_method(path, preferred):
     """Return a method the route actually accepts.
 
     Assuming every mutating-looking path takes POST produced 405s on
-    /payment-vault/lock and /payment-vault/api/v2/purchases, which only accept
-    GET. Asking the url_map keeps the runner honest as routes change and stops
-    a wrong verb from being reported as an application defect.
+    /payment-vault/lock, which only accepts GET. Asking the url_map keeps the
+    runner honest as routes change and stops a wrong verb from being reported
+    as an application defect.
 
     The url_map is probed with real verbs rather than method=None. Werkzeug
     rejects a method=None probe on a path that exists but accepts no such
@@ -2866,7 +2866,6 @@ def _run_vault(client, db, sc, fixtures):
         "/payment-vault/cards",
         "/payment-vault/reports",
         "/payment-vault/settings",
-        "/payment-vault/packages-management",
         "/payment-vault/health",
         "/payment-vault/metrics",
         "/payment-vault/api/live-stats",
@@ -2889,9 +2888,7 @@ def _run_vault(client, db, sc, fixtures):
     # JSON API writes.
     api_writes = [
         "/payment-vault/api/donation",
-        "/payment-vault/api/purchase",
         "/payment-vault/api/v2/donations",
-        "/payment-vault/api/v2/purchases",
     ]
 
     # Exports take query arguments; the id-bearing routes are addressed with a
@@ -2900,21 +2897,14 @@ def _run_vault(client, db, sc, fixtures):
     exports = [
         "/payment-vault/export/cards",
         "/payment-vault/export/donations",
-        "/payment-vault/export/purchases",
         "/payment-vault/export/report-pdf",
     ]
     id_reads = [
-        "/payment-vault/purchase/0",
         "/payment-vault/donation/0",
-        "/payment-vault/api/package-stats/0",
     ]
     id_writes = [
-        "/payment-vault/purchase/0/activate",
         "/payment-vault/donation/0/approve",
         "/payment-vault/donation/0/reject",
-        "/payment-vault/package/0/toggle",
-        "/payment-vault/package/0/edit",
-        "/payment-vault/package/0/delete",
         "/payment-vault/card/0/decrypt",
         # The JSON lock/unlock routes, added to back
         # templates/ledger/vaults.html.
@@ -3594,7 +3584,6 @@ def _run_vault_export_surface(client, db, sc, fixtures):
         sc,
         reads=[
             "/payment-vault/export/cards",
-            "/payment-vault/export/purchases",
             "/payment-vault/export/report-pdf",
         ],
         forms=[],
@@ -3837,7 +3826,6 @@ def _run_platform(client, db, sc, fixtures):
     public = [
         "/welcome",
         "/features",
-        "/pricing",
         "/contact",
         "/demo",
         "/user-guide",

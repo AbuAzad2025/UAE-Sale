@@ -55,11 +55,13 @@
 | 19 | `19_error_log_table` | `error_logs` table for the centralized error journal |
 | 20 | `20_shipment_module` | Field sales shipments — الإرسالية الميدانية (from warehouse to site, then sale→payment→invoice) |
 | 21 | `21_inbound_shipment` | Inbound shipments — استقبال شحنات البضائع الواردة (in_transit→arrived→inspected→put_away→closed, stock movement on put_away) |
-| 22–49 | `b0` … `b49_alter_column_widths` *(HEAD)* | سلسلة الـ `b*` اللاحقة (P0 isolation, due dates, inventory costing, tax/tenant, partners, maintenance b28–b40, audit soft-delete b41, role tenant unique b42, product-return tenant b44, must-change-password b45, drop error-log FK b46, drop roles.name unique b47, maintenance child tenant b48, column widths b49). الرجوع إلى أسماء الملفات الفعلية في `migrations/versions/`. |
+| 22–49 | `b0` … `b49_alter_column_widths` | سلسلة الـ `b*` اللاحقة (P0 isolation, due dates, inventory costing, tax/tenant, partners, maintenance b28–b40, audit soft-delete b41, role tenant unique b42, product-return tenant b44, must-change-password b45, drop error-log FK b46, drop roles.name unique b47, maintenance child tenant b48, column widths b49). الرجوع إلى أسماء الملفات الفعلية في `migrations/versions/`. |
+| 50 | `b50_invoice_settings_tenant` | إعدادات ترويسات الفواتير وسياسات المستأجر. |
+| 51 | `c01_drop_package_system` *(HEAD)* | إزالة نظام الباقات متعدد المستويات: حذف جداول `packages`/`package_purchases`/`subscription_plans` وعمود `tenants.subscription_plan`؛ المنصة الآن بباقة موحّدة واحدة. |
 
 Each file's `down_revision` points to its exact predecessor above.
 `alembic history` / `flask db history` must always render one straight line.
-**HEAD = `b49_alter_column_widths`.**
+**HEAD = `c01_drop_package_system`.**
 
 ## 3. How migrations run (do not redesign this)
 

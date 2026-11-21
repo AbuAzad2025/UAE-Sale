@@ -80,7 +80,6 @@
           <tr><th style="width:35%;">الهواتف</th><td dir="ltr" class="text-left">{{ tenant.phone_1 or '' }} {{ tenant.phone_2 or '' }} {{ tenant.mobile or '' }}</td></tr>
           <tr><th>البريد</th><td dir="ltr" class="text-left">{{ tenant.email or '---' }}</td></tr>
           <tr><th>الرقم الضريبي</th><td>{{ tenant.tax_number or '---' }}</td></tr>
-          <tr><th>الخطة</th><td>{{ tenant.subscription_plan or 'basic' }}{% if tenant.is_trial %} <span class="badge badge-info">تجريبي</span>{% endif %}</td></tr>
           <tr><th>الحدود (مستخدم/منتج/عميل)</th><td>{{ tenant.max_users }} / {{ tenant.max_products }} / {{ tenant.max_customers }}</td></tr>
         </table>
       </div>

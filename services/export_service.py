@@ -247,34 +247,6 @@ class ExportService:
         return [[item.get(k, "") for k in keys] for item in items]
 
     @staticmethod
-    def export_purchases_to_csv(purchases):
-        headers = [
-            "الرقم",
-            "الباقة",
-            "العميل",
-            "البريد الإلكتروني",
-            "المبلغ",
-            "طريقة الدفع",
-            "الحالة",
-            "التاريخ",
-        ]
-        data = []
-        for p in purchases:
-            data.append(
-                [
-                    p.id,
-                    p.package.name_ar if p.package else "N/A",
-                    p.customer_name,
-                    p.customer_email,
-                    f"${p.amount_paid}",
-                    p.payment_method,
-                    p.payment_status,
-                    p.created_at.strftime("%Y-%m-%d %H:%M") if p.created_at else "N/A",
-                ]
-            )
-        return ExportService.export_to_csv(data, headers, "purchases.csv")
-
-    @staticmethod
     def export_donations_to_csv(donations):
         headers = [
             "الرقم",

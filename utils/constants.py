@@ -339,12 +339,6 @@ TIMEZONES = [
     ("UTC", {"ar": "التوقيت العالمي", "en": "UTC"}),
 ]
 
-SUBSCRIPTION_PLANS = [
-    ("basic", {"ar": "أساسية", "en": "Basic"}),
-    ("pro", {"ar": "احترافية", "en": "Pro"}),
-    ("enterprise", {"ar": "مؤسسات", "en": "Enterprise"}),
-]
-
 APPROVAL_ENTITY_TYPES = [
     ("sale", {"ar": "مبيعات", "en": "Sales"}),
     ("payment", {"ar": "مدفوعات", "en": "Payments"}),
@@ -736,13 +730,6 @@ LOOKUP_GROUPS = {
         "locked_codes": False,
         "allow_add": True,
         "allow_disable": True,
-    },
-    "subscription_plans": {
-        "title_ar": "خطط الاشتراك",
-        "source": "SUBSCRIPTION_PLANS",
-        "locked_codes": True,
-        "allow_add": False,
-        "allow_disable": False,
     },
     "approval_entities": {
         "title_ar": "كيانات الاعتماد",

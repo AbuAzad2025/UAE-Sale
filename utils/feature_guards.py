@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 # Infrastructure endpoints that must stay available regardless of a tenant's
-# package: health probes, version info, CSRF token and browser error reports.
+# feature flags (enable_*): health probes, version info, CSRF token and browser error reports.
 # Blocking these would break monitoring and error reporting for every tenant
 # that hasn't purchased the gated feature.
 _GATE_EXEMPT_ENDPOINTS = frozenset({
     "api.health", "api.healthz", "api.version", "api.client_errors",
     "api.csrf_token",
     # Reference data the UI itself needs on every page (currency label/rate).
-    # Blocking it for tenants without the API package only produces console
+    # Blocking it for tenants without enable_api only produces console
     # noise; it is not a paid API capability.
     "api.currency_rate",
     # Internal UI support endpoints (search pickers, payment-method fields,
@@ -50,7 +50,7 @@ def install_feature_gate(blueprint, feature_name):
             from models.tenant_scope import TENANT_LESS_SCOPE
             tenant_id = get_current_tenant_id()
             # None = platform/owner; TENANT_LESS_SCOPE (-1) = a tenant-less
-            # context. Neither maps to a real tenant, so package flags cannot
+            # context. Neither maps to a real tenant, so per-tenant feature flags cannot
             # be enforced against them — let the permission layer decide.
             if tenant_id is None or tenant_id == TENANT_LESS_SCOPE:
                 return

@@ -37,8 +37,8 @@ class Donation(db.Model):
 
     transaction_type = db.Column(
         db.String(20), default="donation"
-    )  # donation, purchase
-    package = db.Column(db.String(50))  # basic, professional, enterprise
+    )  # donation, purchase (legacy label; one unified platform)
+    package = db.Column(db.String(50))  # optional legacy reference string
     customer_name = db.Column(db.String(200))  # اسم العميل (للمشتريات)
     customer_email = db.Column(db.String(200))  # إيميل العميل (للمشتريات)
     customer_phone = db.Column(db.String(50))  # رقم الجوال

@@ -8,7 +8,7 @@
         <i class="fas fa-vault text-danger mr-3" style="font-size: 2rem;"></i>
         <div>
             <h1 class="mb-0"> لوحة تحكم الخزينة السرية</h1>
-            <p class="text-muted mb-0">إدارة المشتريات والتبرعات والباقات</p>
+            <p class="text-muted mb-0">إدارة التبرعات والمشتريات</p>
         </div>
     </div>
     <div>
@@ -166,52 +166,12 @@
                 </div>
             </div>
             
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-users"></i> تحليل العملاء</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <h4 class="text-primary">{{ customer_behavior.total_customers }}</h4>
-                                <small class="text-muted">إجمالي العملاء</small>
-                            </div>
-                            <div class="col-md-4">
-                                <h4 class="text-success">{{ customer_behavior.returning_customers }}</h4>
-                                <small class="text-muted">عملاء متكررون</small>
-                            </div>
-                            <div class="col-md-4">
-                                <h4 class="text-warning">{{ customer_behavior.vip_customers }}</h4>
-                                <small class="text-muted">عملاء VIP</small>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row text-center">
-                            <div class="col-md-6">
-                                <p class="mb-0"><i class="fas fa-shopping-cart"></i> متوسط المشتريات: <strong>{{ "%.1f"|format(customer_behavior.avg_purchases_per_customer) }}</strong></p>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="mb-0"><i class="fas fa-dollar-sign"></i> متوسط الإنفاق: <strong>${{ "%.2f"|format(customer_behavior.avg_spent_per_customer) }}</strong></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
         
         
         <div class="row mb-4">
             <div class="col-12">
                 <h4 class="mb-3"><i class="fas fa-bolt text-warning"></i> إجراءات سريعة</h4>
-            </div>
-            
-            <div class="col-md-3">
-                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.view_purchases') }}'">
-                    <i class="fas fa-shopping-cart text-primary"></i>
-                    <h5>إدارة المشتريات</h5>
-                    <p class="text-muted mb-0">عرض وإدارة جميع المشتريات</p>
-                </div>
             </div>
             
             <div class="col-md-3">
@@ -222,13 +182,6 @@
                 </div>
             </div>
             
-            <div class="col-md-3">
-                <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.packages_management') }}'">
-                    <i class="fas fa-box-open text-success"></i>
-                    <h5>إدارة الباقات</h5>
-                    <p class="text-muted mb-0">إضافة وتعديل الباقات</p>
-                </div>
-            </div>
             
             <div class="col-md-3">
                 <div class="quick-action" onclick="window.location.href='{{ url_for('payment_vault.cards') }}'">
@@ -283,7 +236,6 @@
                                 <tr>
                                     <th>التاريخ</th>
                                     <th>العميل</th>
-                                    <th>الباقة</th>
                                     <th>المبلغ</th>
                                     <th>الحالة</th>
                                 </tr>
@@ -294,13 +246,6 @@
                                     <tr>
                                         <td>{{ purchase.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>{{ purchase.customer_name or 'غير محدد' }}</td>
-                                        <td>
-                                            {% if purchase.package == 'basic' %} أساسية
-                                            {% elif purchase.package == 'professional' %} احترافية
-                                            {% elif purchase.package == 'enterprise' %} شركات
-                                            {% else %}{{ purchase.package }}
-                                            {% endif %}
-                                        </td>
                                         <td><strong>${{ purchase.amount_usd }}</strong></td>
                                         <td>
                                             {% if purchase.status == 'completed' %}

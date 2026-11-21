@@ -52,6 +52,8 @@ class HRService:
         **kwargs,
     ):
         """Create an employee profile linked to a user"""
+        if Decimal(str(base_salary or 0)) < 0:
+            raise ValueError("الراتب الأساسي لا يمكن أن يكون سالباً")
         existing = Employee.query.filter_by(user_id=user_id).first()
         if existing:
             raise ValueError("هذا المستخدم لديه ملف موظف بالفعل")

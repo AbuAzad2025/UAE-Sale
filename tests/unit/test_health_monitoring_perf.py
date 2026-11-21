@@ -206,7 +206,6 @@ class TestHealthServiceSystemResources:
         assert "error" not in metrics
         assert metrics["database"] == {
             "total_donations": 1,
-            "total_purchases": 0,
             "total_cards": 1,
         }
         assert metrics["process"]["memory_mb"] > 0

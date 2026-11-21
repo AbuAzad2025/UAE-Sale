@@ -13,13 +13,12 @@
 
 ## لوحة المالك
 
-`/owner/dashboard` تعرض إحصاءات المنصة، المستأجرين، والاشتراكات.
+`/owner/dashboard` تعرض إحصاءات المنصة، المستأجرين.
 `/owner/system-stats` و`/owner/audit-logs` للمراقبة والتدقيق.
 
-## إدارة المستأجرين والباقات
+## إدارة المستأجرين
 
 `/owner/tenants` لإنشاء المستأجرين وإدارة حالتهم وحد المستخدمين.
-`payment_vault.py`: `/payment-vault/packages-management` لإدارة الباقات،
 `/payment-vault/settings` لإعداد بوابة الدفع، `/payment-vault/donations` للتبرعات.
 تفعيل الميزات لكل مستأجر يتم عبر حقول `enable_*` في بيانات المستأجر.
 `enable_api` افتراضه **غير مفعّل**؛ بقية الحقول (ai/gl/reports/maintenance/tax)

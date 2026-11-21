@@ -396,34 +396,6 @@ class TestAuthPaymentEndpoints:
         svc.get_estimated_amount.side_effect = RuntimeError("x")
         assert client.get("/auth/payment/estimate?amount=5").status_code == 500
 
-    def test_support_lists_only_active_packages(self, client):
-        from models.package import Package
-
-        db.session.add_all(
-            [
-                Package(
-                    name_ar="أساسية",
-                    name_en="Basic",
-                    slug="basic-w",
-                    price=9.99,
-                    is_active=True,
-                    features=["a"],
-                ),
-                Package(
-                    name_ar="مخفية",
-                    name_en="Hidden",
-                    slug="hidden-w",
-                    price=19.99,
-                    is_active=False,
-                ),
-            ]
-        )
-        db.session.commit()
-        resp = client.get("/auth/support")
-        html = _html(resp)
-        assert resp.status_code == 200
-        assert "أساسية" in html and "مخفية" not in html
-
     def test_thank_you_page(self, client):
         resp = client.get("/auth/thank-you?payment_id=P42&status=finished")
         assert resp.status_code == 200

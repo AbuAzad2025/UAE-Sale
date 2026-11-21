@@ -85,7 +85,7 @@ def test_full_inventory_count(app):
     audit = route_scope.audit_routes(app)
     # Route count grows as features are added (feature-gate blueprints,
     # monitoring, etc.); assert a sane floor rather than an exact snapshot.
-    assert len(audit) >= 545
+    assert len(audit) >= 525
     scopes = {}
     for entry in audit:
         scopes[entry["scope"]] = scopes.get(entry["scope"], 0) + 1

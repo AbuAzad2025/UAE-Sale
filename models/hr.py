@@ -317,6 +317,18 @@ class LeaveRequest(TenantScopedMixin, db.Model):
     def approve(self, user_id):
         if self.status != "pending":
             raise ValueError("طلب الإجازة ليس قيد المراجعة")
+        # Re-check the available balance at approval time (not only at request
+        # time) so two pending requests cannot both drive it negative.
+        lt = self.leave_type
+        emp = self.employee
+        if emp and lt:
+            balance = {
+                "annual": emp.annual_leave_balance,
+                "sick": emp.sick_leave_balance,
+                "personal": emp.personal_leave_balance,
+            }.get(lt.code)
+            if balance is not None and Decimal(str(self.days)) > Decimal(str(balance or 0)):
+                raise ValueError("الرصيد المتبقي من الإجازة غير كافٍ لاعتماد هذا الطلب")
         self.status = "approved"
         self.approved_by_id = user_id
         self.approved_at = datetime.now(timezone.utc)
@@ -394,6 +406,7 @@ class Payslip(TenantScopedMixin, db.Model):
 
     leave_deduction = db.Column(db.Numeric(15, 3), default=0)
     advance_deduction = db.Column(db.Numeric(15, 3), default=0)
+    tax_deduction = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     other_deductions = db.Column(db.Numeric(15, 3), default=0)
     total_deductions = db.Column(db.Numeric(15, 3), default=0)
 
@@ -467,8 +480,12 @@ class Payslip(TenantScopedMixin, db.Model):
         self.total_deductions = (
             (self.leave_deduction or Decimal("0"))
             + (self.advance_deduction or Decimal("0"))
+            + (self.tax_deduction or Decimal("0"))
             + (self.other_deductions or Decimal("0"))
         )
+        # Net cannot be negative — clamp and reject impossible deductions.
+        if self.total_deductions > self.total_earnings:
+            raise ValueError("إجمالي الاستقطاعات لا يمكن أن يتجاوز إجمالي الاستحقاقات")
         self.net_salary = (self.total_earnings - self.total_deductions).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )

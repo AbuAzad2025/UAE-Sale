@@ -46,7 +46,6 @@ def _tenant_payload(slug="branch-a", name_ar="فرع أ", name_en="Branch A"):
         "default_currency": "ILS",
         "default_language": "ar",
         "timezone": "Asia/Dubai",
-        "subscription_plan": "basic",
         "max_users": "5",
         "max_products": "1000",
         "max_customers": "500",

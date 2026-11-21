@@ -204,7 +204,7 @@ def run_balance_repair(self):
 
 @celery.task(name="celery_tasks.run_auto_approval", bind=True, max_retries=2)
 def run_auto_approval(self):
-    """Scheduled task: auto-approve pending donations/purchases."""
+    """Scheduled task: auto-approve pending donations."""
     try:
         from app import create_app
 
@@ -215,13 +215,7 @@ def run_auto_approval(self):
             donation_result = AutoApprovalService.approve_pending_donations(
                 hours_threshold=1
             )
-            purchase_result = AutoApprovalService.approve_pending_purchases(
-                hours_threshold=1
-            )
-            return {
-                "donations": donation_result,
-                "purchases": purchase_result,
-            }
+            return {"donations": donation_result}
     except Exception as exc:
         raise self.retry(exc=exc, countdown=60)
 

@@ -55,14 +55,40 @@ class OpeningStockService:
         if amount <= 0:
             return None
 
+        # Policy: opening stock is normally booked at gross cost (Dr 1140 /
+        # Cr 3100).  When the recoverable VAT on opening stock is known,
+        # enable the split so inventory is carried NET of VAT and input VAT
+        # is recognised — consistent with purchase postings. Off by default
+        # to preserve existing reconciled openings; see config flag.
+        from flask import current_app
+
+        lines = [
+            {"account": INVENTORY_CODE, "debit": amount,
+             "description": f"رصيد افتتاحي مخزون - {product.name}"},
+            {"account": EQUITY_CODE, "credit": amount,
+             "description": f"رصيد افتتاحي مخزون - {product.name}"},
+        ]
+        if current_app.config.get("OPENING_STOCK_VAT_SPLIT", False):
+            from services.tax_engine import TaxEngine
+
+            tenant = getattr(product, "tenant", None)
+            rate = Decimal(str(getattr(tenant, "default_tax_rate", 0) or 0))
+            if rate > 0:
+                parts = TaxEngine.split_gross(amount, rate)
+                net = Decimal(str(parts["net"]))
+                vat = Decimal(str(parts["tax"]))
+                lines = [
+                    {"account": INVENTORY_CODE, "debit": net,
+                     "description": f"رصيد افتتاحي مخزون (صافي) - {product.name}"},
+                    {"account": "1141", "debit": vat,
+                     "description": f"ضريبة دخل رصيد افتتاحي - {product.name}"},
+                    {"account": EQUITY_CODE, "credit": amount,
+                     "description": f"رصيد افتتاحي مخزون - {product.name}"},
+                ]
+
         GLService.ensure_core_accounts()
         entry = GLService.post_entry(
-            [
-                {"account": INVENTORY_CODE, "debit": amount,
-                 "description": f"رصيد افتتاحي مخزون - {product.name}"},
-                {"account": EQUITY_CODE, "credit": amount,
-                 "description": f"رصيد افتتاحي مخزون - {product.name}"},
-            ],
+            lines,
             description=f"Opening stock {movement.id}",
             reference_type=OPENING_REF_TYPE,
             reference_id=movement.id,

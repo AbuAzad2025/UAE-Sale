@@ -278,6 +278,7 @@ def partner_statement(partner_id):
     """كشف حساب تفصيلي للشريك"""
     from models.product import ProductPartner
     from datetime import datetime
+    from services.partner_profit import compute_line_profit
 
     partner = get_owned_or_404(Customer, partner_id)
 
@@ -308,7 +309,10 @@ def partner_statement(partner_id):
         for line in sale.lines:
             if line.product_id in share_map:
                 percentage = share_map[line.product_id]
-                share_amount = float(line.line_total or 0) * (percentage / 100.0)
+                # Compute the share from NET PROFIT (authoritative, same as the
+                # posted GL entitlement) — not from gross revenue.
+                profit = compute_line_profit(line, sale)
+                share_amount = float(profit) * (percentage / 100.0)
                 transactions.append({
                     "date": sale.sale_date,
                     "type": "sale_share",
@@ -320,7 +324,41 @@ def partner_statement(partner_id):
                     "share_amount": share_amount,
                     "debit": 0,
                     "credit": share_amount,
-                    "description": "حصة من بيع",
+                    "description": "حصة من ربح بيع",
+                })
+
+    # Sales returns reverse the partner entitlement proportionally.
+    from models.product_return import ProductReturn, ProductReturnLine
+    returns = (
+        ProductReturn.query.join(ProductReturnLine)
+        .filter(
+            ProductReturn.status == "completed",
+            ProductReturnLine.product_id.in_(product_ids or [0]),
+        )
+        .distinct()
+        .all()
+    )
+    for ret in returns:
+        for line in ret.lines:
+            if line.product_id in share_map:
+                percentage = share_map[line.product_id]
+                sale = getattr(ret, "sale", None)
+                # Prefer the original sale line (it carries the pinned cost).
+                src_line = getattr(line, "sale_line", None) or line
+                profit = compute_line_profit(src_line, sale)
+                share_amount = -abs(float(profit)) * (percentage / 100.0)
+                transactions.append({
+                    "date": ret.return_date,
+                    "type": "return_share",
+                    "reference": ret.return_number,
+                    "product_name": line.product.name if line.product else "-",
+                    "quantity": float(line.quantity or 0),
+                    "revenue": 0,
+                    "percentage": percentage,
+                    "share_amount": share_amount,
+                    "debit": abs(share_amount),
+                    "credit": 0,
+                    "description": "عكس حصة من مرتجع",
                 })
 
     # Find payments to/from partner

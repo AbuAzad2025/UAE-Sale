@@ -1479,22 +1479,6 @@ def system_config():
     return render_template("owner/system_config.html", settings=settings)
 
 
-_VALID_TENANT_PLANS = ("basic", "pro", "enterprise")
-
-
-def _valid_tenant_plans():
-    """الاشتراكات الصحيحة من جدول الخطط؛ يرجع للثابتة في حال غياب الجدول."""
-    try:
-        from models import SubscriptionPlan
-
-        rows = SubscriptionPlan.query.filter_by(is_active=True).all()
-        if rows:
-            return tuple(sorted(p.slug for p in rows))
-    except Exception:
-        pass
-    return _VALID_TENANT_PLANS
-
-
 def _valid_tenant_slug(slug):
     """Normalize + validate a tenant slug.
 
@@ -1594,7 +1578,6 @@ def _tenant_form_values(tenant=None):
             "default_currency": "ILS",
             "default_language": "ar",
             "timezone": "Asia/Dubai",
-            "subscription_plan": "basic",
             "is_trial": False,
             "logo_url": "",
             "logo_dark_url": "",
@@ -1643,7 +1626,6 @@ def _tenant_form_values(tenant=None):
             "default_currency": tenant.default_currency or "ILS",
             "default_language": tenant.default_language or "ar",
             "timezone": tenant.timezone or "Asia/Dubai",
-            "subscription_plan": tenant.subscription_plan or "basic",
             "logo_url": tenant.logo_url or "",
             "logo_dark_url": tenant.logo_dark_url or "",
             "brand_color_primary": tenant.brand_color_primary or "#007A3D",
@@ -1683,10 +1665,6 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         errors.append(
             "المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100)."
         )
-    plan = (form.get("subscription_plan") or "basic").strip()
-    if plan not in _valid_tenant_plans():
-        errors.append("الخطة غير صالحة.")
-        plan = "basic"
     currency = (form.get("default_currency") or "ILS").strip().upper()
     if currency not in codes:
         errors.append("العملة الافتراضية غير مدعومة.")
@@ -1736,7 +1714,6 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         "default_currency": currency,
         "default_language": language,
         "timezone": (form.get("timezone") or "Asia/Dubai").strip() or "Asia/Dubai",
-        "subscription_plan": plan,
         "is_trial": form.get("is_trial") == "on",
         "tax_country": (form.get("tax_country") or "AE").strip().upper()[:2] or "AE",
         "tax_inclusive": form.get("tax_inclusive") == "on",
@@ -3923,96 +3900,6 @@ def compliance_credentials():
         tenant=tenant,
         authorities_rows=rows,
     )
-
-
-@owner_bp.route("/plans", methods=["GET", "POST"])
-@login_required
-@owner_required
-def plans():
-    """الخطط والاشتراكات — باقات المنتج (CRUD حقيقي، تظهر في /pricing تلقائيًا)."""
-    from models import SubscriptionPlan
-    from decimal import InvalidOperation
-
-    def _redirect_plans():
-        return redirect(url_for("owner.plans"))
-
-    if request.method == "POST":
-        action = (request.form.get("action") or "create").strip()
-        plan_id = request.form.get("id", type=int)
-        row = (
-            db.session.get(SubscriptionPlan, plan_id) if plan_id else SubscriptionPlan()
-        )
-        try:
-            row.slug = (request.form.get("slug") or "").strip().lower()
-            import re
-
-            if not row.slug or not re.fullmatch(r"[a-z0-9_-]{2,50}", row.slug):
-                raise ValueError(
-                    "المعرف (slug) غير صالح: أحرف لاتينية/أرقام/شرطات/underscores فقط"
-                )
-            row.name_ar = (request.form.get("name_ar") or "").strip()
-            row.name_en = (request.form.get("name_en") or "").strip() or None
-            if not row.name_ar:
-                raise ValueError("اسم الباقة بالعربية مطلوب")
-            row.price_year = Decimal(
-                str(request.form.get("price_year") or "0")
-            ).quantize(Decimal("0.01"))
-            row.price_month = Decimal(
-                str(request.form.get("price_month") or "0")
-            ).quantize(Decimal("0.01"))
-            row.currency = (request.form.get("currency") or "AED").strip().upper()[:3]
-            row.max_users = int(request.form.get("max_users") or 0)
-            row.max_products = int(request.form.get("max_products") or 0)
-            row.max_customers = int(request.form.get("max_customers") or 0)
-            row.is_public = request.form.get("is_public") == "on"
-            row.is_active = request.form.get("is_active") == "on"
-            row.sort_order = int(request.form.get("sort_order") or 100)
-            row.features_ar = (request.form.get("features_ar") or "").strip() or None
-            row.features_en = (request.form.get("features_en") or "").strip() or None
-            db.session.add(row)
-            db.session.commit()
-            create_audit_log(
-                "save_subscription_plan",
-                "subscription_plans",
-                row.id,
-                changes={"slug": row.slug, "price_year": str(row.price_year)},
-            )
-            flash("✅ تم حفظ الباقة", "success")
-        except Exception as exc:
-            db.session.rollback()
-            if isinstance(exc, InvalidOperation):
-                flash("⛔ قيمتان سعريتان غير صالحتين", "danger")
-            else:
-                flash(f"⛔ {exc}", "danger")
-        return _redirect_plans()
-
-    rows = SubscriptionPlan.query.order_by(
-        SubscriptionPlan.sort_order.asc(), SubscriptionPlan.id.asc()
-    ).all()
-    return render_template("owner/plans.html", plans=rows)
-
-
-@owner_bp.route("/plans/<int:plan_id>/toggle", methods=["POST"])
-@login_required
-@owner_required
-def toggle_plan(plan_id):
-    """تفعيل/إخفاء باقة — لا حذف نهائي أبدًا."""
-    from models import SubscriptionPlan
-
-    row = db.session.get(SubscriptionPlan, plan_id)
-    if row is None:
-        flash("الباقة غير موجودة", "danger")
-        return redirect(url_for("owner.plans"))
-    row.is_active = not bool(row.is_active)
-    db.session.commit()
-    create_audit_log(
-        "toggle_subscription_plan",
-        "subscription_plans",
-        row.id,
-        changes={"slug": row.slug, "is_active": bool(row.is_active)},
-    )
-    flash("✅ تم تبديل حالة الباقة", "success")
-    return redirect(url_for("owner.plans"))
 
 
 SUPPORT_STATUSES = ("open", "in_progress", "resolved", "closed")

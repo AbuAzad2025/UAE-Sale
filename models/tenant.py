@@ -59,10 +59,6 @@ class Tenant(db.Model):
     favicon_url = db.Column(db.String(500))
     brand_color_primary = db.Column(db.String(20), default="#007A3D")
     brand_color_secondary = db.Column(db.String(20), default="#D4AF37")
-
-    subscription_plan = db.Column(
-        db.String(50), default="basic"
-    )  # basic, pro, enterprise
     contract_signed_at = db.Column(db.DateTime, nullable=True)
     subscription_start = db.Column(db.DateTime)
     subscription_end = db.Column(db.DateTime)
@@ -175,7 +171,6 @@ class Tenant(db.Model):
             "country": self.country,
             "default_currency": self.default_currency,
             "is_active": self.is_active,
-            "subscription_plan": self.subscription_plan,
         }
 
     def get_business_type(self, lang="ar"):

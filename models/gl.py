@@ -463,6 +463,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("gl_journal_entries.id")
     )  # القيد المعكوس
     notes = db.Column(db.Text)  # ملاحظات إضافية
+    idempotency_key = db.Column(db.String(120), nullable=True, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False

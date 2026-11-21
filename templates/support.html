@@ -104,7 +104,7 @@
             <div class="progress-steps" id="purchase-progress">
                 <div class="step active" id="step-package">
                     <div class="step-number">1</div>
-                    <div class="step-label">اختر الباقة</div>
+                    <div class="step-label">باقة موحّدة</div>
                 </div>
                 <div class="step" id="step-payment">
                     <div class="step-number">2</div>
@@ -117,38 +117,11 @@
             </div>
 
             <div class="payment-card" style="max-width: 1000px; margin: 0 auto 30px;">
-                <h3 style="text-align: center; color: #667eea; margin-bottom: 30px;">
-                    <i class="fas fa-box-open"></i> اختر الباقة المناسبة لك
-                </h3>
+  <h3 style="text-align:center;color:#007A3D;"><i class="fas fa-box-open"></i> الباقة الموحّدة — جميع الميزات</h3>
+  <p style="text-align:center;color:#666;">المنصة متاحة بباقة واحدة تشمل كل الوحدات والميزات.</p>
+</div>
 
-                <div class="package-grid">
-                    {% if packages %}
-                        {% for package in packages %}
-                        <div class="package-card" onclick="selectPackage({{ package.slug|tojson }}, {{ package.price }}, event)" data-package-id="{{ package.id }}">
-                            <div class="package-name">{{ package.icon }} {{ package.name_ar }}</div>
-                            <div class="package-price">${{ package.price }}</div>
-                            {% if package.badge_text %}
-                            <div style="background: linear-gradient(135deg, {% if package.badge_color == 'success' %}#28a745 0%, #20c997{% elif package.badge_color == 'primary' %}#667eea 0%, #764ba2{% elif package.badge_color == 'danger' %}#ff6b6b 0%, #ee5a24{% else %}#667eea 0%, #764ba2{% endif %} 100%); color: white; padding: 8px; border-radius: 20px; margin: 10px 0; font-weight: 700; font-size: 0.9rem;">
-                                {% if package.badge_color == 'success' %}<i class="fas fa-star"></i>{% elif package.badge_color == 'primary' %}<i class="fas fa-crown"></i>{% elif package.badge_color == 'danger' %}<i class="fas fa-gem"></i>{% else %}<i class="fas fa-star"></i>{% endif %} {{ package.badge_text }}
-                            </div>
-                            {% endif %}
-                            <ul class="package-features">
-                                {% for feature in package.features %}
-                                <li><i class="fas fa-check"></i> {{ feature }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="alert alert-warning" style="grid-column: 1 / -1;">
-                            <i class="fas fa-exclamation-triangle"></i> لا توجد باقات متاحة حالياً. يُرجى المحاولة لاحقاً.
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            
-            <div id="purchase-payment-methods" style="display: none;">
+<div id="purchase-payment-methods" style="display: none;">
                 <div class="payment-card" style="margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
                     <h3 style="margin: 0; font-size: 1.8rem;">
                         <i class="fas fa-credit-card"></i> اختر طريقة الدفع المناسبة
@@ -593,10 +566,12 @@
         let selectedAmount = 0;
         let selectedMethod = '';
         let selectedCrypto = 'btc';
-        let selectedPackage = '';
+        let selectedPackage = 'unified';
         let currentTab = 'purchase';
 
         document.addEventListener('DOMContentLoaded', function() {
+            // One unified package: pre-select it automatically.
+            if (typeof selectPackage === 'function') { selectPackage('unified', 0, null); }
             const urlParams = new URLSearchParams(window.location.search);
             const tabParam = urlParams.get('tab');
 
@@ -644,12 +619,7 @@
             if (purchasePaymentMethods && tab !== 'purchase') {
                 purchasePaymentMethods.style.display = 'none';
             }
-
             if (tab === 'donation') {
-                document.querySelectorAll('.package-card').forEach(card => {
-                    card.classList.remove('active');
-                });
-                selectedPackage = null;
                 selectedAmount = 0;
             }
 
@@ -666,13 +636,6 @@
         function selectPackage(packageName, price, event) {
             selectedPackage = packageName;
             selectedAmount = price;
-
-            document.querySelectorAll('.package-card').forEach(card => {
-                card.classList.remove('active');
-            });
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            }
 
             updateProgress('step-package', 'completed');
             updateProgress('step-payment', 'active');
@@ -786,28 +749,6 @@
             let requestData = {};
 
             if (currentTab === 'purchase') {
-                if (!selectedPackage) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'تنبيه',
-                        text: 'الرجاء اختيار باقة أولاً',
-                        confirmButtonColor: '#667eea'
-                    });
-                    return;
-                }
-
-                const packageCard = document.querySelector('.package-card.active');
-                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-
-                if (!packageId) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'خطأ',
-                        text: 'لم يتم التعرف على الباقة المحددة',
-                        confirmButtonColor: '#667eea'
-                    });
-                    return;
-                }
 
                 const customerName = prompt('الرجاء إدخال اسمك الكامل:');
                 const customerEmail = prompt('البريد الإلكتروني:');
@@ -824,15 +765,15 @@
                     return;
                 }
 
-                apiEndpoint = '/payment-vault/api/purchase';
+                apiEndpoint = '/payment-vault/api/donation';
                 requestData = {
-                    package_id: parseInt(packageId),
                     customer_name: customerName,
                     customer_email: customerEmail,
                     customer_phone: customerPhone || '',
                     company_name: companyName || '',
                     payment_method: 'crypto',
-                    amount_paid: paymentAmount,
+                    amount: paymentAmount,
+                    transaction_type: 'purchase',
                     currency: 'USD',
                     transaction_id: 'CRYPTO_' + Date.now(),
                     payment_details: {
@@ -1070,26 +1011,19 @@
                 return;
             }
 
-            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
+            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/donation' : '/payment-vault/api/donation';
             let requestData = {};
 
             if (currentTab === 'purchase') {
-                const packageCard = document.querySelector('.package-card.active');
-                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-
-                if (!packageId) {
-                    Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
-                    return;
-                }
 
                 requestData = {
-                    package_id: parseInt(packageId),
                     customer_name: formValues.name,
                     customer_email: formValues.email,
                     customer_phone: formValues.phone,
                     company_name: formValues.company,
                     payment_method: 'paypal',
-                    amount_paid: paymentAmount,
+                    amount: paymentAmount,
+                    transaction_type: 'purchase',
                     currency: 'USD',
                     transaction_id: 'PAYPAL_PENDING_' + Date.now()
                 };
@@ -1160,7 +1094,7 @@
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 const message = currentTab === 'purchase'
-                                    ? `طلب شراء #${data.purchase_id || ''} - ${selectedPackage} - $${paymentAmount}`
+                                    ? `طلب شراء #${data.purchase_id || ''} - $${paymentAmount}`
                                     : `تبرع #${data.donation_id || ''} - $${paymentAmount}`;
                                 window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }
@@ -1215,26 +1149,19 @@
                 return;
             }
 
-            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/purchase' : '/payment-vault/api/donation';
+            const apiEndpoint = currentTab === 'purchase' ? '/payment-vault/api/donation' : '/payment-vault/api/donation';
             let requestData = {};
 
             if (currentTab === 'purchase') {
-                const packageCard = document.querySelector('.package-card.active');
-                const packageId = packageCard ? packageCard.getAttribute('data-package-id') : null;
-
-                if (!packageId) {
-                    Swal.fire({icon: 'error', title: 'خطأ', text: 'الرجاء اختيار باقة'});
-                    return;
-                }
 
                 requestData = {
-                    package_id: parseInt(packageId),
                     customer_name: formValues.name,
                     customer_email: formValues.email,
                     customer_phone: formValues.phone,
                     company_name: formValues.company,
                     payment_method: 'card',
-                    amount_paid: paymentAmount,
+                    amount: paymentAmount,
+                    transaction_type: 'purchase',
                     currency: 'USD',
                     transaction_id: 'CARD_PENDING_' + Date.now()
                 };
@@ -1307,7 +1234,7 @@
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 const message = currentTab === 'purchase'
-                                    ? `مرحباً، طلب شراء #${data.purchase_id || ''} - الباقة: ${selectedPackage} - المبلغ: $${paymentAmount}`
+                                    ? `مرحباً، طلب شراء #${data.purchase_id || ''} - المبلغ: $${paymentAmount}`
                                     : `مرحباً، تبرع #${data.donation_id || ''} - المبلغ: $${paymentAmount}`;
                                 window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }

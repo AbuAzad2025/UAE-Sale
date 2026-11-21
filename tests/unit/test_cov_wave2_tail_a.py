@@ -476,7 +476,6 @@ class TestPublicTail:
         "url",
         [
             "/welcome",
-            "/pricing",
             "/features",
             "/user-guide",
             "/contact",
@@ -569,7 +568,6 @@ class TestMiscRemainderTail:
             "/api/health",
             "/monitoring/health",
             "/welcome",
-            "/pricing",
         ]
         bad = []
         for url in sample:

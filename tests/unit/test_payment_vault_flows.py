@@ -1,7 +1,7 @@
-"""Flow tests for routes/payment_vault.py — donations, packages, exports, lock.
+"""Flow tests for routes/payment_vault.py — donations, exports, lock.
 
 payment_vault.py sat at ~29-34% combined coverage. These tests seed an
-unlocked vault plus donation/package/purchase rows and exercise the
+unlocked vault plus donation rows and exercise the
 approve/reject/toggle/activate/export/decrypt paths with owner +
 non-owner actors.
 """
@@ -12,7 +12,6 @@ from decimal import Decimal
 from models import User, Role
 from models.payment_vault import PaymentVault
 from models.donation import Donation
-from models.package import Package, PackagePurchase
 from extensions import db as _db
 
 
@@ -76,34 +75,6 @@ def donation(db):
     _db.session.add(d)
     _db.session.commit()
     return d
-
-
-@pytest.fixture(scope="function")
-def package(db):
-    p = Package(
-        name_ar="باقة",
-        name_en="Pack",
-        slug="pack-test",
-        price=Decimal("99"),
-        is_active=True,
-    )
-    _db.session.add(p)
-    _db.session.commit()
-    return p
-
-
-@pytest.fixture(scope="function")
-def purchase(db, package):
-    pu = PackagePurchase(
-        package_id=package.id,
-        customer_name="C",
-        customer_email="c@test.com",
-        payment_method="crypto",
-        amount_paid=Decimal("99"),
-    )
-    _db.session.add(pu)
-    _db.session.commit()
-    return pu
 
 
 def _login(client, user):
@@ -170,77 +141,13 @@ class TestDonationFlows:
         assert _db.session.get(Donation, donation.id).status == "pending"
 
 
-# ── Packages & purchases ──────────────────────────────────────────────────────
-
-
-class TestPackageFlows:
-    def test_toggle_flips(self, client, vault_owner, package, db):
-        _login(client, vault_owner)
-        assert package.is_active is True
-        resp = client.post(f"/payment-vault/package/{package.id}/toggle")
-        assert resp.status_code == 200
-        body = resp.get_json()
-        assert body["success"] is True
-        assert package.name_ar in body["message"]
-        _db.session.expire_all()
-        assert _db.session.get(Package, package.id).is_active is False
-        # Toggle back restores the original DB-state (proves a real flip).
-        resp2 = client.post(f"/payment-vault/package/{package.id}/toggle")
-        assert resp2.get_json()["success"] is True
-        _db.session.expire_all()
-        assert _db.session.get(Package, package.id).is_active is True
-
-    def test_toggle_missing_404(self, client, vault_owner):
-        _login(client, vault_owner)
-        assert client.post("/payment-vault/package/999999/toggle").status_code == 404
-
-    def test_toggle_non_owner_403(self, client, vault_plain, package):
-        _login(client, vault_plain)
-        assert (
-            client.post(f"/payment-vault/package/{package.id}/toggle").status_code
-            == 403
-        )
-
-    def test_activate_purchase(self, client, vault_owner, purchase, db):
-        _login(client, vault_owner)
-        assert purchase.activation_status == "pending"
-        resp = client.post(f"/payment-vault/purchase/{purchase.id}/activate")
-        assert resp.status_code == 302
-        assert f"/purchase/{purchase.id}" in resp.headers.get("Location", "")
-        pu = _db.session.get(PackagePurchase, purchase.id)
-        assert pu.activation_status == "activated"
-        assert pu.payment_status == "completed"
-        assert pu.activation_date is not None
-
-    def test_package_stats(self, client, vault_owner, package, purchase):
-        _login(client, vault_owner)
-        resp = client.get(f"/payment-vault/api/package-stats/{package.id}")
-        assert resp.status_code == 200
-        assert resp.is_json
-        stats = resp.get_json()
-        # Exact envelope from api_package_stats; fixture purchase is pending.
-        assert set(stats) == {
-            "total_sales",
-            "total_revenue",
-            "pending",
-            "completed",
-            "failed",
-        }
-        assert stats["total_sales"] == 1
-        assert stats["pending"] == 1
-        assert stats["completed"] == 0
-        assert stats["failed"] == 0
-        assert float(stats["total_revenue"]) == 0.0
-
-
-# ── Exports ───────────────────────────────────────────────────────────────────
+# ── Exports ──────────────────────────────────────────────────────
 
 
 class TestVaultExports:
     @pytest.mark.parametrize(
         "url",
         [
-            "/payment-vault/export/purchases",
             "/payment-vault/export/donations",
             "/payment-vault/export/cards",
         ],
@@ -254,7 +161,6 @@ class TestVaultExports:
     @pytest.mark.parametrize(
         "url",
         [
-            "/payment-vault/export/purchases",
             "/payment-vault/export/donations",
         ],
     )

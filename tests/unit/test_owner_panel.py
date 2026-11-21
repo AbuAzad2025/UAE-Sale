@@ -385,57 +385,6 @@ class TestOwnerComplianceCredentials:
         assert "secret-material" not in html
 
 
-class TestOwnerPlans:
-    def test_owner_can_view(self, client, owner_client_user, db):
-        _login(client, owner_client_user)
-        assert client.get("/owner/plans").status_code == 200
-
-    def test_non_owner_redirected(self, client, plain_user):
-        _login(client, plain_user)
-        resp = client.get("/owner/plans", follow_redirects=False)
-        assert resp.status_code == 302
-
-    def test_create_toggle_roundtrip(self, client, owner_client_user, db):
-        from models import SubscriptionPlan
-
-        _login(client, owner_client_user)
-        resp = client.post(
-            "/owner/plans",
-            data={
-                "action": "create",
-                "slug": "platinum_test",
-                "name_ar": "باقة مميزة اختبار",
-                "name_en": "Platinum Test",
-                "price_year": "499.00",
-                "price_month": "49.00",
-                "currency": "AED",
-                "max_users": "25",
-                "max_products": "9999",
-                "max_customers": "99999",
-                "sort_order": "40",
-                "is_public": "on",
-                "is_active": "on",
-                "features_ar": "كل ميزات الاحترافية",
-                "features_en": "All pro features",
-            },
-            follow_redirects=False,
-        )
-        assert resp.status_code == 302
-
-        row = SubscriptionPlan.query.filter_by(slug="platinum_test").first()
-        assert row is not None
-        assert str(row.price_year) == "499.00"
-        assert row.is_active is True
-
-        resp = client.post(
-            f"/owner/plans/{row.id}/toggle", data={}, follow_redirects=False
-        )
-        assert resp.status_code == 302
-        db.session.expire_all()
-        row = SubscriptionPlan.query.filter_by(slug="platinum_test").first()
-        assert row.is_active is False
-
-
 class TestOwnerIncidents:
     def test_owner_can_view(self, client, owner_client_user, db):
         _login(client, owner_client_user)

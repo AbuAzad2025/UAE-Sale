@@ -301,7 +301,11 @@ def compute_net_income(period_from=None, period_to=None):
         )
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
-        .filter(_Entry.is_posted.is_(True), GLAccount.type == "revenue")
+        .filter(
+            _Entry.is_posted.is_(True),
+            _Entry.is_reversed.is_(False),
+            GLAccount.type == "revenue",
+        )
     )
     expense_q = (
         db.session.query(
@@ -309,7 +313,11 @@ def compute_net_income(period_from=None, period_to=None):
         )
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
-        .filter(_Entry.is_posted.is_(True), GLAccount.type == "expense")
+        .filter(
+            _Entry.is_posted.is_(True),
+            _Entry.is_reversed.is_(False),
+            GLAccount.type == "expense",
+        )
     )
     if period_from is not None:
         revenue_q = revenue_q.filter(_Entry.entry_date >= period_from)

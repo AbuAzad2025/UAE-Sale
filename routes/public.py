@@ -1,5 +1,5 @@
 """
-Public Routes - Landing Page, Pricing, User Guide, SEO
+Public Routes - Landing Page, Unified Platform, User Guide, SEO
 """
 
 from flask import (
@@ -33,26 +33,6 @@ def landing():
     if session.get("language") == "en":
         return render_template("public/landing_en.html")
     return render_template("public/landing.html")
-
-
-@public_bp.route("/pricing")
-def pricing():
-    """صفحة الأسعار والعروض — تُبنى ديناميكيًا من جدول الخطط."""
-    from flask import session
-
-    try:
-        from models import SubscriptionPlan
-
-        plans = (
-            SubscriptionPlan.query.filter_by(is_public=True, is_active=True)
-            .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
-            .all()
-        )
-    except Exception:
-        plans = []
-    if session.get("language") == "en":
-        return render_template("public/pricing_en.html", plans=plans)
-    return render_template("public/pricing.html", plans=plans)
 
 
 @public_bp.route("/features")
@@ -111,19 +91,9 @@ def sla():
 @public_bp.route("/contract")
 def contract():
     """عقد الاشتراك (نموذج يُرسَل للعميل ويُوقَّع من الطرفين)"""
-    try:
-        from models import SubscriptionPlan
-
-        plans = (
-            SubscriptionPlan.query.filter_by(is_public=True, is_active=True)
-            .order_by(SubscriptionPlan.sort_order, SubscriptionPlan.id)
-            .all()
-        )
-    except Exception:
-        plans = []
     if session.get("language") == "en":
-        return render_template("public/contract_en.html", plans=plans)
-    return render_template("public/contract.html", plans=plans)
+        return render_template("public/contract_en.html")
+    return render_template("public/contract.html")
 
 
 @public_bp.route("/demo")
@@ -150,12 +120,6 @@ def sitemap():
             "priority": "1.0",
             "changefreq": "daily",
             "keywords": "نظام إدارة مستودعات، برنامج محاسبة الإمارات",
-        },
-        {
-            "loc": f"{base_url}/pricing",
-            "priority": "0.95",
-            "changefreq": "weekly",
-            "keywords": "أسعار برنامج المستودعات، باقات محاسبة",
         },
         {
             "loc": f"{base_url}/features",
@@ -264,7 +228,6 @@ def robots():
 
 User-agent: *
 Allow: /
-Allow: /pricing
 Allow: /features
 Allow: /user-guide
 Allow: /contact

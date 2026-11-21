@@ -23,11 +23,8 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 def support():
     """صفحة الدعم والشراء - متاحة قبل تسجيل الدخول"""
     from flask import session
-    from models import Package, PaymentVault
+    from models import PaymentVault
 
-    packages = (
-        Package.query.filter_by(is_active=True).order_by(Package.sort_order.asc()).all()
-    )
     vault = PaymentVault.query.first()
     pay_config = {
         "methods": {"crypto": False, "card": False, "paypal": False, "bank": False},
@@ -74,9 +71,9 @@ def support():
             }
     if session.get("language") == "en":
         return render_template(
-            "public/support_en.html", packages=packages, pay_config=pay_config
+            "public/support_en.html", pay_config=pay_config
         )
-    return render_template("support.html", packages=packages, pay_config=pay_config)
+    return render_template("support.html", pay_config=pay_config)
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])

@@ -73,15 +73,6 @@ class NotificationService:
             data={"alert_type": alert_type, "details": details},
         )
 
-    @staticmethod
-    def notify_purchase_activated(package_name, customer_name):
-        """إشعار بتفعيل باقة"""
-        return NotificationService.send_notification(
-            title="✅ تفعيل باقة",
-            message=f"تم تفعيل باقة {package_name} للعميل {customer_name}",
-            notification_type="info",
-            data={"package": package_name, "customer": customer_name},
-        )
 
     @staticmethod
     def notify_auto_approval(count, total_amount):

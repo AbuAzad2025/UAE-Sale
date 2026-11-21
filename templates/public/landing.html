@@ -90,7 +90,7 @@
           "name": "كم تكلفة الاشتراك؟",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "نوفر 3 باقات مرنة تناسب جميع أحجام الأعمال. جميع الباقات تشمل: دعم فني، تحديثات مجانية، تدريب، وأدوات ذكاء اصطناعي."
+            "text": "نوفر باقة موحّدة واحدة تناسب جميع أحجام الأعمال. الباقة تشمل: دعم فني، تحديثات مجانية، تدريب، وأدوات ذكاء اصطناعي."
           }
         },
         {
@@ -121,7 +121,7 @@
           "name": "كيف أبدأ باستخدام نظام أزاد؟",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "البداية سهلة! 3 خطوات فقط: (1) احجز عرضاً توضيحياً مجانياً، (2) اختر الباقة المناسبة، (3) ابدأ فوراً! نوفر تدريب مجاني لفريقك، استيراد بياناتك القديمة، ودعم فني مستمر."
+            "text": "البداية سهلة! 3 خطوات فقط: (1) احجز عرضاً توضيحياً مجانياً، (2) أكمل الاشتراك، (3) ابدأ فوراً! نوفر تدريب مجاني لفريقك، استيراد بياناتك القديمة، ودعم فني مستمر."
           }
         },
         {
@@ -191,9 +191,6 @@
             </div>
             
             <div style="margin-top: 30px; text-align: center;">
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline" style="display: inline-block; min-width: 250px;">
-                    <i class="fas fa-gem"></i> عرض جميع الباقات والأسعار
-                </a>
             </div>
         </div>
     </section>
@@ -239,53 +236,7 @@
     </section>
 
     
-    <section class="pricing-preview">
-        <h2>باقات مرنة لجميع الأعمال</h2>
-        <p>اختر الباقة المناسبة لك - حلول احترافية بأسعار تنافسية</p>
-        <div class="pricing-cards">
-            <div class="price-card">
-                <h3>الباقة الأساسية</h3>
-                <div class="price">$50<small>/شهرياً</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">أو $80 مع استضافة مُدارة</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> 3 مستخدمين</li>
-                    <li><i class="fas fa-check"></i> مبيعات ومشتريات</li>
-                    <li><i class="fas fa-check"></i> إدارة مخزون</li>
-                    <li><i class="fas fa-check"></i> تقارير أساسية</li>
-                </ul>
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">اختر الباقة</a>
-            </div>
-            
-            <div class="price-card featured">
-                <span style="background: #667eea; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem;">الأكثر شعبية</span>
-                <h3>الباقة الاحترافية</h3>
-                <div class="price">$100<small>/شهرياً</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">أو $130 مع استضافة مُدارة</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> 10 مستخدمين</li>
-                    <li><i class="fas fa-check"></i> كل ميزات الأساسية</li>
-                    <li><i class="fas fa-check"></i> ذكاء اصطناعي</li>
-                    <li><i class="fas fa-check"></i> دفتر أستاذ GL</li>
-                    <li><i class="fas fa-check"></i> دعم فني 24/7</li>
-                </ul>
-                <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">اختر الباقة</a>
-            </div>
-            
-            <div class="price-card">
-                <h3>باقة الشركات والمؤسسات</h3>
-                <div class="price">$120<small>/شهرياً</small></div>
-                <p style="color: var(--gulf-gold); font-size: 0.85rem; margin-bottom: 10px;">أو $150 مع استضافة مُدارة</p>
-                <ul>
-                    <li><i class="fas fa-check"></i> مستخدمين غير محدودين</li>
-                    <li><i class="fas fa-check"></i> كل الميزات المتقدمة</li>
-                    <li><i class="fas fa-check"></i> تخصيص كامل</li>
-                    <li><i class="fas fa-check"></i> تدريب مجاني</li>
-                    <li><i class="fas fa-check"></i> API مخصص</li>
-                </ul>
-                <a href="{{ url_for('public.contact') }}" class="btn-hero btn-primary" style="margin-top: 20px; display: inline-block;">اتصل بنا</a>
-            </div>
-        </div>
-    </section>
+    
 
     
     <section class="contact">
@@ -316,9 +267,6 @@
         <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <a href="{{ url_for('public.user_guide') }}" class="btn-hero btn-primary">
                 <i class="fas fa-book"></i> دليل المستخدم
-            </a>
-            <a href="{{ url_for('public.pricing') }}" class="btn-hero btn-outline">
-                <i class="fas fa-tags"></i> الأسعار
             </a>
             <a href="{{ url_for('public.contact') }}" class="btn-hero btn-outline">
                 <i class="fas fa-envelope"></i> راسلنا
@@ -442,8 +390,7 @@
                         كم تكلفة الاشتراك؟
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نوفر <strong>3 باقات مرنة</strong> تناسب جميع أحجام الأعمال. جميع الباقات تشمل: دعم فني، تحديثات مجانية، وتدريب. <a href="{{ url_for('public.pricing') }}" style="color: var(--gulf-gold); text-decoration: underline;">شاهد تفاصيل الباقات</a>
-                    </p>
+                        نوفر <strong>باقة موحّدة واحدة</strong> تناسب جميع أحجام الأعمال. الباقة تشمل: دعم فني، تحديثات مجانية، وتدريب.                    </p>
                 </div>
                 
                 
@@ -486,7 +433,7 @@
                         كيف أبدأ باستخدام نظام أزاد؟
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        البداية سهلة! <strong>3 خطوات فقط:</strong> (1) <a href="{{ url_for('public.demo') }}" style="color: var(--gulf-gold); text-decoration: underline;">احجز عرضاً توضيحياً مجانياً</a>، (2) اختر الباقة المناسبة، (3) ابدأ فوراً! نوفر <strong>تدريب مجاني</strong> لفريقك، استيراد بياناتك القديمة، ودعم فني مستمر.
+                        البداية سهلة! <strong>3 خطوات فقط:</strong> (1) <a href="{{ url_for('public.demo') }}" style="color: var(--gulf-gold); text-decoration: underline;">احجز عرضاً توضيحياً مجانياً</a>، (2) أكمل الاشتراك، (3) ابدأ فوراً! نوفر <strong>تدريب مجاني</strong> لفريقك، استيراد بياناتك القديمة، ودعم فني مستمر.
                     </p>
                 </div>
                 
@@ -519,7 +466,6 @@
         <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
         <p class="developer" style="font-size: 0.9rem;">{{ config.DEVELOPER_CREDIT }}</p>
         <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem;">
-            <a href="{{ url_for('public.pricing') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">الأسعار</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
             <a href="{{ url_for('public.features') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">المميزات</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>

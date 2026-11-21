@@ -82,6 +82,30 @@ def _format_num(value):
     return format(d.quantize(_MONEY_TWO, rounding=ROUND_HALF_UP), ",.2f")
 
 
+def _translate_flash(message):
+    """Render a flash message in the current UI language.
+
+    Route code flashes Arabic messages; in EN mode we substitute the English
+    translation from utils/flash_translations.json while keeping {placeholders}
+    intact for runtime .format() calls.
+    """
+    import json as _json
+
+    from utils.i18n import get_current_language
+
+    if get_current_language() != "en":
+        return message
+    try:
+        _path = os.path.join(
+            os.path.dirname(__file__), "utils", "flash_translations.json"
+        )
+        with open(_path, encoding="utf-8") as _f:
+            _map = _json.load(_f)
+        return _map.get(str(message), message)
+    except Exception:
+        return message
+
+
 def _status_badge(status):
     """Map payment status to a Bootstrap badge with Arabic label.
 
@@ -464,6 +488,7 @@ def create_app(config_class=Config):  # noqa: C901
             "timeago": timeago,
             "t": t,
             "display_name": _display_name,
+            "translate_flash": _translate_flash,
             "company_address": _company_address(),
             "is_rtl": is_rtl(),
             "current_language": get_current_language(),

@@ -22,7 +22,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         
         <div class="form-group">
-          <label>API URL</label>
+          <label>{{ t('API URL') }}</label>
           <input type="url" 
                  name="whatsapp_api_url" 
                  class="form-control" 
@@ -31,7 +31,7 @@
         </div>
         
         <div class="form-group">
-          <label>API Key</label>
+          <label>{{ t('API Key') }}</label>
           <input type="password" 
                  name="whatsapp_api_key" 
                  class="form-control" 

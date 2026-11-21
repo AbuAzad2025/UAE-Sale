@@ -113,7 +113,7 @@
           <p><strong>{{ t('Amount:') }}</strong> {{ "%.2f"|format(expense.amount) }} {{ expense.currency }}</p>
           <p><strong>{{ t('Exchange Rate:') }}</strong> {{ "%.6f"|format(expense.exchange_rate) }}</p>
           {% if expense.tax_amount and expense.tax_amount > 0 %}<p><strong>{{ t('Tax') }} ({{ '%g'|format(expense.tax_rate) }}% — {{ expense.tax_treatment }}):</strong> {{ "%.2f"|format(expense.tax_amount) }} {{ expense.currency }}</p>{% endif %}
-          {% if expense.reverse_charge %}<p><strong>Reverse Charge:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
+          {% if expense.reverse_charge %}<p><strong>{{ t('Reverse Charge') }}:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
           {% if not expense.vat_recoverable %}<p><strong>{{ t('Note:') }}</strong> {{ t('Tax is not recoverable - charged to cost') }}</p>{% endif %}
           <p><strong>{{ t('Base Amount:') }}</strong> {{ "%.2f"|format(expense.amount_base) }} {{ base_currency }}</p>
           <p><strong>{{ t('Payment Method:') }}</strong> {{ expense.payment_method or '-' }}</p>

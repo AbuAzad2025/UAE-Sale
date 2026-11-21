@@ -10,7 +10,7 @@
       <div class="card-header {% if cheque.cheque_type == 'incoming' %}bg-success{% else %}bg-danger{% endif %}">
         <h3 class="card-title text-white">
           <i class="fas fa-money-check mr-2"></i>
-          {{ t('Cheque') }} {{ cheque.type_ar }} - {{ cheque.cheque_bank_number }}
+          {{ t('Cheque') }} {{ t('Incoming') if cheque.cheque_type == 'incoming' else t('Outgoing') }} - {{ cheque.cheque_bank_number }}
         </h3>
       </div>
       <div class="card-body">
@@ -18,7 +18,7 @@
         <div class="alert alert-{% if cheque.status == 'cleared' %}success{% elif cheque.status == 'bounced' %}danger{% elif cheque.is_overdue %}danger{% elif cheque.is_due_soon %}warning{% else %}info{% endif %}">
           <div class="row">
             <div class="col-md-6">
-              <strong>{{ t('Status') }}:</strong> {{ cheque.status_ar }}
+              <strong>{{ t('Status') }}:</strong> {{ t(cheque.status|capitalize) if cheque.status else '' }}
             </div>
             <div class="col-md-6 text-left">
               {% if cheque.is_overdue and cheque.status == 'pending' %}

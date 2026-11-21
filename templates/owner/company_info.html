@@ -9,7 +9,7 @@
       <div class="profile-card__header">
         <div class="profile-card__logo">
           {% if tenant.logo_url %}
-          <img src="{{ tenant.logo_url }}" alt="Company Logo">
+          <img src="{{ tenant.logo_url }}" alt="{{ t('Company Logo') }}">
           {% else %}
           <div class="logo-placeholder">{{ tenant.name_ar[:2] if tenant.name_ar else 'AZ' }}</div>
           {% endif %}

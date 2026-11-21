@@ -78,7 +78,7 @@
           <h3> {{ t('Supplier Information') }}</h3>
           <p><strong>{{ t('Supplier:') }}</strong> {{ purchase.supplier_name }}</p>
           {% if purchase.supplier and purchase.supplier.tax_number %}<p><strong>{{ t('Supplier Tax Number:') }}</strong> {{ purchase.supplier.tax_number }}</p>{% endif %}
-          {% if purchase.reverse_charge %}<p><strong>Reverse Charge:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
+          {% if purchase.reverse_charge %}<p><strong>{{ t('Reverse Charge') }}:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
           <p><strong>{{ t('Phone:') }}</strong> {{ purchase.supplier_phone }}</p>
         </div>
         <div class="info-box">
@@ -119,7 +119,7 @@
         <div class="total-row"><span>{{ t('Tax') }} ({{ purchase.tax_rate or 0 }}% — {{ purchase.tax_treatment or 'standard' }}{% if purchase.tax_inclusive %} — {{ t('inclusive') }}{% else %} — {{ t('exclusive') }}{% endif %}):</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
         {% endif %}
         {% if purchase.reverse_charge %}
-        <div class="total-row"><span>Reverse Charge — {{ t('Self-assessed tax:') }}</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        <div class="total-row"><span>{{ t('Reverse Charge') }} — {{ t('Self-assessed tax:') }}</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
         {% endif %}
         <div class="total-row final"><span>{{ t('Grand Total:') }}</span><strong>{{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}</strong></div>
       </div>

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}API Keys{% endblock %}
+{% block title %}{{ t('API Keys') }}{% endblock %}
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
@@ -14,7 +14,7 @@
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
             <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a></li>
-            <li class="breadcrumb-item active">API Keys</li>
+            <li class="breadcrumb-item active">{{ t("API Keys") }}</li>
           </ol>
         </div>
       </div>

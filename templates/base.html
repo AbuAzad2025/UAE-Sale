@@ -261,7 +261,7 @@
           <i class="far fa-user mr-1"></i>
           <strong>{{ current_user.username }}</strong>
           {% if current_user.is_owner %}
-          <span class="badge badge-danger">OWNER</span>
+          <span class="badge badge-danger">{{ t("Owner") }}</span>
           {% endif %}
         </a>
         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left">
@@ -1011,7 +1011,7 @@
           {% endif %}
 
           {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
-          <li class="nav-header">OWNER MODE</li>
+          <li class="nav-header">{{ t("Owner Mode") }}</li>
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-crown text-warning"></i>
@@ -1145,7 +1145,7 @@
                         <i class="fas fa-info-circle text-info"></i>
                       {% endif %}
                     </div>
-                    <div class="flex-grow-1" style="line-height: 1.6;">{{ message }}</div>
+                    <div class="flex-grow-1" style="line-height: 1.6;">{{ translate_flash(message) }}</div>
                     <button type="button" class="close ml-3" data-dismiss="alert" style="font-size: 28px; opacity: 0.8;">&times;</button>
                   </div>
                   <div class="progress mt-2" style="height: 5px; background-color: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden;">

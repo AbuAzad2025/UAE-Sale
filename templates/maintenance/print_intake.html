@@ -38,7 +38,7 @@
     <tr><th>{{ t('Brand') }}</th><td>{{ order.device_brand or '-' }}</td></tr>
     <tr><th>{{ t('Model') }}</th><td>{{ order.device_model or '-' }}</td></tr>
     <tr><th>{{ t('Serial Number') }}</th><td>{{ order.device_serial or '-' }}</td></tr>
-    <tr><th>IMEI</th><td>{{ order.device_imei or '-' }}</td></tr>
+    <tr><th>{{ t('IMEI') }}</th><td>{{ order.device_imei or '-' }}</td></tr>
     <tr><th>{{ t('Plate number') }}</th><td>{{ order.device_plate or '-' }}</td></tr>
     <tr><th>{{ t('Reported Problem') }}</th><td class="problem">{{ order.device_problem or '-' }}</td></tr>
   </table>

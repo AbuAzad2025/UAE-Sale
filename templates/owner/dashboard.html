@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Main Owner Dashboard') }}{% endblock %}
-{% block page_title %} {{ t('Owner Dashboard') }} - God Mode{% endblock %}
+{% block page_title %} {{ t('Owner Dashboard') }} - {{ t('God Mode') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -242,8 +242,8 @@
       </div>
       <div class="card-body">
         <p class="text-muted small mb-3"><i class="fas fa-info-circle mr-1"></i> {{ t('Cleanup, import and security') }}</p>
-        <a href="{{ url_for('owner.ip_whitelist') }}" class="btn btn-outline-primary btn-sm btn-block mb-2"><i class="fas fa-network-wired mr-1"></i> IPs</a>
-        <a href="{{ url_for('owner.api_keys') }}" class="btn btn-outline-warning btn-sm btn-block mb-2"><i class="fas fa-key mr-1"></i> API Keys</a>
+        <a href="{{ url_for('owner.ip_whitelist') }}" class="btn btn-outline-primary btn-sm btn-block mb-2"><i class="fas fa-network-wired mr-1"></i> {{ t('IPs') }}</a>
+        <a href="{{ url_for('owner.api_keys') }}" class="btn btn-outline-warning btn-sm btn-block mb-2"><i class="fas fa-key mr-1"></i> {{ t('API Keys') }}</a>
         <a href="{{ url_for('owner.verify_backups') }}" class="btn btn-outline-success btn-sm btn-block mb-2"><i class="fas fa-check-double mr-1"></i> {{ t('Backup Check') }}</a>
         <a href="{{ url_for('owner.data_cleanup') }}" class="btn btn-outline-danger btn-sm btn-block mb-2"><i class="fas fa-trash mr-1"></i> {{ t('Cleanup') }}</a>
         <a href="{{ url_for('owner.import_export_tools') }}" class="btn btn-outline-info btn-sm btn-block mb-2"><i class="fas fa-file-export mr-1"></i> {{ t('Import/Export') }}</a>

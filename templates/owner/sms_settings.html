@@ -52,7 +52,7 @@
             <select name="sms_provider" class="form-control select2">
               <option value="" {{ 'selected' if not settings.sms_provider }}>{{ t('None') }}</option>
               {% for code, meta in lookups.get('sms_providers', []) %}
-              <option value="{{ code }}" {{ 'selected' if settings.sms_provider == code }}>{{ meta.en }}</option>
+              <option value="{{ code }}" {{ 'selected' if settings.sms_provider == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
             <small class="form-text text-muted mt-2">
@@ -61,7 +61,7 @@
           </div>
 
           <div class="form-group">
-            <label>API Key</label>
+            <label>{{ t('API Key') }}</label>
             <input type="password"
                    name="sms_api_key"
                    class="form-control"

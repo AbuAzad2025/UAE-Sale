@@ -193,7 +193,7 @@
                 <label>{{ t('Time Zone') }}</label>
                 <select name="timezone" class="form-control select2">
                   {% for code, meta in lookups.get('timezones', []) %}
-                  <option value="{{ code }}" {{ 'selected' if settings.timezone == code }}>{{ code }} ({{ meta.en }})</option>
+                  <option value="{{ code }}" {{ 'selected' if settings.timezone == code }}>{{ code }} ({{ meta.en if current_language == 'en' else meta.ar }})</option>
                   {% endfor %}
                   {% if settings.timezone and settings.timezone not in lookup_codes.timezones %}
                   <option value="{{ settings.timezone }}" selected>{{ settings.timezone }}</option>

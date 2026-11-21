@@ -40,14 +40,14 @@
               <select name="target_db" id="target_db" class="form-control select2" onchange="toggleConfig()">
                 <option value="">{{ t('None') }}</option>
                 {% for code, meta in lookups.get('db_targets', []) %}
-                <option value="{{ code }}">{{ meta.en }}</option>
+                <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
                 {% endfor %}
               </select>
           </div>
 
           <div id="postgresqlConfig" style="display: none;">
             <div class="form-group">
-              <label>PostgreSQL Connection URI:</label>
+              <label>{{ t('PostgreSQL Connection URI') }}:</label>
               <input type="text" name="postgresql_uri" class="form-control" placeholder="postgresql://user:password@host:port/dbname">
               <small class="form-text text-muted">
                 {{ t('Example') }}: postgresql://myuser:mypass@localhost:5432/garage_db

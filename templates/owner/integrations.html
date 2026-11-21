@@ -360,7 +360,7 @@
                                     {% set provider = integrations.currency_api.config.api_provider or 'exchangerate' %}
                                     <select class="form-control select2" name="api_provider">
                                         {% for code, meta in lookups.get('currency_providers', []) %}
-                                        <option value="{{ code }}" {{ 'selected' if provider == code }}>{{ meta.en }}</option>
+                                        <option value="{{ code }}" {{ 'selected' if provider == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">

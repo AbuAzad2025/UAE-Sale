@@ -112,7 +112,7 @@ function addLine() {
                             price: p.default_price || p.regular_price || p.unit_price || 0,
                             stock: p.current_stock || 0,
                             cost: p.cost_price || 0,
-                            unit: p.unit || 'قطعة',
+                            unit: p.unit || t('Piece'),
                             sku: p.sku
                         })),
                         pagination: { more: data.has_more || false }

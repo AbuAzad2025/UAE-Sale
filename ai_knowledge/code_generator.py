@@ -81,7 +81,8 @@ def {function_name}():
                     else "1=1"
                 )
 
-                query = f"SELECT {columns} FROM {table} WHERE {conditions}"  # nosec B608 - output text only, never executed
+                # security note: output text only, never executed
+                query = f"SELECT {columns} FROM {table} WHERE {conditions}"  # nosec B608
 
                 if filters and "order_by" in filters:
                     query += f" ORDER BY {filters['order_by']}"
@@ -104,7 +105,8 @@ def {function_name}():
                     else ""
                 )
 
-                return f"INSERT INTO {table} ({columns}) VALUES ({values})"  # nosec B608 - output text only, never executed
+                # security note: output text only, never executed
+                return f"INSERT INTO {table} ({columns}) VALUES ({values})"  # nosec B608
 
             elif intent == "update":
                 updates = (
@@ -128,7 +130,8 @@ def {function_name}():
                     else "1=1"
                 )
 
-                return f"UPDATE {table} SET {updates} WHERE {conditions}"  # nosec B608 - output text only, never executed
+                # security note: output text only, never executed
+                return f"UPDATE {table} SET {updates} WHERE {conditions}"  # nosec B608
 
             else:
                 return f"-- Unsupported intent: {intent}"
@@ -228,7 +231,8 @@ WHERE status = 'confirmed'
   AND sale_date BETWEEN '{start_date}' AND '{end_date}'
 GROUP BY DATE(sale_date)
 ORDER BY date DESC
-""".format(**safe_range)  # nosec B608 - output text only, never executed
+# security note: output text only, never executed
+""".format(**safe_range)  # nosec B608
 
             elif report_type == "inventory":
                 return """

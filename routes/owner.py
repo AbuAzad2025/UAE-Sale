@@ -289,7 +289,6 @@ def system_stats():
                 continue
             count_result = db.session.execute(
                 text(f"SELECT COUNT(*) FROM {table_name}")
-            # security note: table_name allowlist-validated
             )  # nosec B608
             count = count_result.scalar()
             db_stats[table_name] = count
@@ -538,7 +537,6 @@ def database_tools():
 
         row_count = db.session.execute(
             text(f"SELECT COUNT(*) FROM {tbl_name}")
-        # security note: table allowlist-validated
         ).scalar()  # nosec B608
 
         tables_info.append(
@@ -1094,7 +1092,6 @@ def truncate_table():
             commit=True,
         )
 
-        # security note: table_name validated by validate_table_name() allowlist
         db.session.execute(text(f"DELETE FROM {table_name}"))  # nosec B608
         db.session.commit()
 
@@ -1122,13 +1119,11 @@ def browse_table(table_name):
         return redirect(url_for("owner.database_tools"))
 
     try:
-        # security note: table_name validated by validate_table_name() allowlist
         count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))  # nosec B608
         total = count_result.scalar()
 
         offset = (page - 1) * per_page
         result = db.session.execute(
-            # security note: table_name validated by validate_table_name() allowlist
             text(f"SELECT * FROM {table_name} LIMIT {per_page} OFFSET {offset}")  # nosec B608
         )
 
@@ -1189,7 +1184,6 @@ def update_row(table_name, row_id):
         params = {f"v_{i}": v for i, v in enumerate(updates.values())}
         params["pk"] = row_id
         db.session.execute(
-            # security note: validated names
             text(f"UPDATE {table_name} SET {set_clause} WHERE {pk_col} = :pk"),  # nosec B608
             params,
         )
@@ -1214,7 +1208,6 @@ def edit_table_data(table_name):
         return redirect(url_for("owner.database_tools"))
 
     try:
-        # security note: table_name validated by validate_table_name() allowlist
         result = db.session.execute(text(f"SELECT * FROM {table_name} LIMIT 100"))  # nosec B608
         rows = result.fetchall()
         columns = result.keys()
@@ -1267,7 +1260,6 @@ def export_database():
             for tbl_name in inspector.get_table_names(schema="public"):
                 if tbl_name not in allowed_tables:
                     continue
-                # security note: source is DB schema catalog + allowlist re-check
                 result = db.session.execute(text(f"SELECT * FROM {tbl_name}"))  # nosec B608
                 rows = result.fetchall()
                 columns = result.keys()
@@ -1330,14 +1322,12 @@ def convert_database():
             for table_name in inspector.get_table_names():
                 if table_name not in allowed_tables:
                     continue
-                # security note: source is DB schema catalog + allowlist re-check
                 result = db.session.execute(text(f"SELECT * FROM {table_name}"))  # nosec B608
                 rows = result.fetchall()
                 columns = result.keys()
 
                 if rows:
                     placeholders = ", ".join([f":{col}" for col in columns])
-                    # security note: table_name allowlist-validated; column names from DB result keys
                     insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"  # nosec B608
 
                     with target_engine.connect() as conn:

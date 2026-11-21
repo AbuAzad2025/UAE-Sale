@@ -105,7 +105,6 @@ class Config:
             "[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)"
         )
 
-    # security note: bind address is operator-controlled via HOST env; container/reverse-proxy deployment for multi-branch access
     HOST = os.environ.get("HOST", "0.0.0.0")  # nosec B104
     PORT = _int("PORT", 5000)
 

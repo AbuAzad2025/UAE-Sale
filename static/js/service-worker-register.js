@@ -7,7 +7,7 @@ if ('serviceWorker' in navigator) {
                     
                     newWorker.addEventListener('statechange', function() {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            if (confirm('تحديث جديد متاح. هل تريد تحديث الصفحة؟')) {
+                            if (confirm(t('A new update is available. Do you want to refresh the page?'))) {
                                 window.location.reload();
                             }
                         }

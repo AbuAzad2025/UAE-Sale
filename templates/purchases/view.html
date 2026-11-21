@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - فاتورة شراء #{{ purchase.purchase_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Purchase Invoice') }} #{{ purchase.purchase_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0">فاتورة شراء رقم: {{ purchase.purchase_number }}</h1>
+    <h1 class="mb-0">{{ t('Purchase Invoice No.') }}: {{ purchase.purchase_number }}</h1>
   </div>
   <div>
     <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to List') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -21,27 +21,27 @@
   <div class="col-md-8">
     <div class="card">
       <div class="card-header bg-gradient-primary">
-        <h3 class="card-title text-white">تفاصيل فاتورة الشراء</h3>
+        <h3 class="card-title text-white">{{ t('Purchase Invoice Details') }}</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-sm-4">رقم الفاتورة:</dt>
+          <dt class="col-sm-4">{{ t('Invoice Number:') }}</dt>
           <dd class="col-sm-8"><strong>{{ purchase.purchase_number }}</strong></dd>
           
-          <dt class="col-sm-4">المورد:</dt>
+          <dt class="col-sm-4">{{ t('Supplier:') }}</dt>
           <dd class="col-sm-8">{{ purchase.supplier_name }}</dd>
           
-          <dt class="col-sm-4">الهاتف:</dt>
+          <dt class="col-sm-4">{{ t('Phone:') }}</dt>
           <dd class="col-sm-8">{{ purchase.supplier_phone or '-' }}</dd>
           
-          <dt class="col-sm-4">التاريخ:</dt>
+          <dt class="col-sm-4">{{ t('Date:') }}</dt>
           <dd class="col-sm-8">{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</dd>
           
-          <dt class="col-sm-4">تاريخ الاستحقاق:</dt>
+          <dt class="col-sm-4">{{ t('Due Date:') }}</dt>
           <dd class="col-sm-8">
             {{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}
             {% if purchase.get_paid_amount() < purchase.total_amount and purchase.days_overdue > 0 %}
-            <span class="badge badge-danger">متأخر {{ purchase.days_overdue }} يوم</span>
+            <span class="badge badge-danger">{{ t('Overdue') }} {{ purchase.days_overdue }} {{ t('days') }}</span>
             {% endif %}
           </dd>
         </dl>
@@ -51,10 +51,10 @@
         <table class="table table-bordered">
           <thead>
             <tr>
-              <th>المنتج</th>
+              <th>{{ t('Product') }}</th>
               <th>{{ t('Quantity') }}</th>
-              <th>التكلفة</th>
-              <th>الخصم%</th>
+              <th>{{ t('Cost') }}</th>
+              <th>{{ t('Discount %') }}</th>
               <th>{{ t('Total') }}</th>
             </tr>
           </thead>
@@ -78,25 +78,25 @@
   <div class="col-md-4">
     <div class="card mb-3">
       <div class="card-header bg-gradient-success">
-        <h3 class="card-title text-white">الإجماليات</h3>
+        <h3 class="card-title text-white">{{ t('Totals') }}</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-6">المجموع قبل الخصم:</dt>
+          <dt class="col-6">{{ t('Total Before Discount:') }}</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format((purchase.subtotal or 0) + (purchase.discount_amount or 0)) }}</dd>
           
-          <dt class="col-6">الخصم:</dt>
+          <dt class="col-6">{{ t('Discount:') }}</dt>
           <dd class="col-6 text-left text-danger">{{ "{:,.2f}".format(purchase.discount_amount or 0) }}</dd>
           
-          <dt class="col-6">المجموع بعد الخصم:</dt>
+          <dt class="col-6">{{ t('Total After Discount:') }}</dt>
           <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>
           
-          <dt class="col-6">الضريبة:</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }} ({{ purchase.tax_treatment or 'standard' }} — {% if purchase.tax_inclusive %}شاملة{% else %}إضافية{% endif %})</dd>
+          <dt class="col-6">{{ t('Tax:') }}</dt>
+          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }} ({{ purchase.tax_treatment or 'standard' }} — {% if purchase.tax_inclusive %}{{ t('inclusive') }}{% else %}{{ t('exclusive') }}{% endif %})</dd>
         </dl>
         <hr>
         <dl class="row">
-          <dt class="col-6"><h5>الإجمالي:</h5></dt>
+          <dt class="col-6"><h5>{{ t('Total:') }}</h5></dt>
           <dd class="col-6 text-left"><h5>{{ "{:,.2f}".format(purchase.total_amount) }} {{ purchase.currency }}</h5></dd>
         </dl>
       </div>
@@ -105,19 +105,19 @@
     
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>الإجراءات</h3>
+        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</h3>
       </div>
       <div class="card-body">
         <div class="btn-group-vertical w-100">
           <a href="{{ url_for('purchases.print_purchase', id=purchase.id) }}" class="btn btn-secondary mb-2" target="_blank">
-            <i class="fas fa-print mr-2"></i>طباعة الفاتورة
+            <i class="fas fa-print mr-2"></i>{{ t('Print Invoice') }}
           </a>
           
           {% if current_user.is_admin %}
           <hr>
           <button type="button" class="btn btn-danger" 
                   onclick="deleteItem('purchases', {{ purchase.id }}, {{ purchase.purchase_number|tojson }})">
-            <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
+            <i class="fas fa-trash-alt mr-2"></i>{{ t('Delete Invoice') }}
           </button>
           {% endif %}
         </div>

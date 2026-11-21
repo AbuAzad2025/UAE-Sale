@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إنشاء فاتورة بيع جديدة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Create New Sales Invoice") }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع جديدة</h1>
+    <h1 class="mb-0"><i class="fas fa-file-invoice mr-2"></i>{{ t("Sales Invoice") }} {{ t("New") }}</h1>
   </div>
   <div>
     <a href="{{ url_for('sales.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للمبيعات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t("Back to Sales") }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t("Home") }}
     </a>
   </div>
 </div>
@@ -18,132 +18,97 @@
 
 {% block extra_css %}
 <style>
-.product-line { 
-  background: #f8f9fa; 
-  padding: 15px; 
-  margin-bottom: 10px; 
-  border-radius: 8px;
-  border-right: 4px solid #667eea;
-  transition: all 0.3s;
-}
-.product-line:hover {
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-.total-box { 
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-  color: white; 
-  padding: 25px; 
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-.total-box h2, .total-box h3 { text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+/* ===== Sales invoice creation — clean, airy layout ===== */
+.sale-create-form .card { border: 1px solid #e3e8e6; border-radius: 12px; margin-bottom: 1rem; }
+.sale-create-form .card-header { border-radius: 12px 12px 0 0; padding: 0.9rem 1.25rem; }
+.sale-create-form .card-header .card-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+.sale-create-form .card-body { padding: 1.25rem; }
 
+/* Consistent, readable fields */
+.sale-create-form .form-group { margin-bottom: 1rem; }
+.sale-create-form label.font-weight-bold { font-size: 0.9rem; margin-bottom: 0.4rem; display: block; color: #34495e; }
 .sale-create-form .form-control,
 .sale-create-form .form-select {
-  min-height: 48px;
-  height: auto;
-  padding: 0.65rem 0.85rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  text-align: center;
+  min-height: 46px; height: 46px; padding: 0.5rem 0.75rem;
+  font-size: 0.95rem; line-height: 1.5; text-align: center;
+  border: 1px solid #d7dee6; border-radius: 8px;
 }
+.sale-create-form .form-control::placeholder { text-align: center; color: #8a97a6; }
+.sale-create-form .input-group-text { min-height: 46px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+.sale-create-form textarea.form-control { height: auto; min-height: 80px; text-align: right; padding: 0.6rem 0.75rem; line-height: 1.6; }
+.sale-create-form textarea.form-control::placeholder { text-align: right; }
 
-.sale-create-form .form-control::placeholder {
-  text-align: center;
-  color: #6c757d;
-  opacity: 0.85;
-}
-
-.sale-create-form .input-group-text {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-}
-
+/* Select2 sizing to match fields */
 .sale-create-form .select2-container--default .select2-selection--single {
-  height: 48px;
-  min-height: 48px;
-  border-radius: 12px;
-  border: 2px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.75rem;
+  height: 46px; min-height: 46px; border-radius: 8px; border: 1px solid #d7dee6;
+  display: flex; align-items: center; padding: 0 0.5rem; background: #fff;
 }
-
 .sale-create-form .select2-container--default .select2-selection--single .select2-selection__rendered {
-  width: 100%;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  line-height: 1.5 !important;
-  text-align: center;
-  font-size: 1rem;
+  width: 100%; line-height: 44px !important; padding-right: 0 !important; padding-left: 0 !important;
+  text-align: center; font-size: 0.95rem;
+}
+.sale-create-form .select2-container--default .select2-selection--single .select2-selection__arrow { height: 44px; top: 0; }
+.sale-create-form .select2-dropdown { text-align: center; border-color: #d7dee6; }
+.sale-create-form .select2-results__option { padding: 0.55rem 0.75rem; }
+
+/* No sticky overlap: totals stay in their own column */
+.sale-create-form .sale-totals-sticky { position: static; }
+.sale-totals-card { border: 1px solid #d7dee6 !important; }
+
+/* Totals box */
+.total-box {
+  background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);
+  color: #fff; padding: 1.25rem; border-radius: 10px; margin-top: 0.5rem;
+  box-shadow: 0 4px 14px rgba(0,122,61,0.22);
+}
+.total-box h2, .total-box h3 { text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+.total-box .total-amount { font-size: 2rem; font-weight: 700; }
+.total-box hr { border-color: rgba(255,255,255,0.3); margin: 0.9rem 0; }
+
+/* ===== Product lines: clear column header + evenly spaced rows ===== */
+.lines-heading { display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0 1rem; }
+.lines-heading h5 { margin: 0; font-weight: 700; }
+.lines-column-labels {
+  display: grid; grid-template-columns: 3fr 1fr 1.2fr 0.9fr 1.4fr 44px;
+  gap: 0.75rem; padding: 0 0.25rem 0.4rem; border-bottom: 2px solid #e3e8e6;
+  font-size: 0.8rem; font-weight: 700; color: #607d8b; text-align: center;
+}
+.product-line {
+  background: #f8fafb; padding: 0.9rem; margin-bottom: 0.65rem;
+  border: 1px solid #eef1f4; border-right: 4px solid #007A3D; border-radius: 10px;
+}
+.product-line .line-grid {
+  display: grid; grid-template-columns: 3fr 1fr 1.2fr 0.9fr 1.4fr 44px;
+  gap: 0.75rem; align-items: end;
+}
+.product-line .line-grid > div { min-width: 0; width: 100%; }
+.product-line .line-field .form-control,
+.product-line .line-field .select2-container { width: 100% !important; }
+.product-line label { font-size: 0.78rem; margin-bottom: 0.3rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.product-line .line-grid .form-control { min-height: 42px; height: 42px; }
+.product-line .remove-line { min-height: 42px; height: 42px; width: 44px; padding: 0; }
+.product-line .line-info { margin-top: 0.5rem; font-size: 0.82rem; color: #6c757d; }
+@media (max-width: 991px) {
+  .lines-column-labels { display: none; }
+  .product-line .line-grid { grid-template-columns: 1fr 1fr; }
+  .product-line .remove-line { width: 100%; }
 }
 
-.sale-create-form .select2-container--default .select2-selection--single .select2-selection__arrow {
-  height: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-}
+/* Section spacing */
+.sale-create-form .section-divider { height: 1px; background: #eef1f4; margin: 1.25rem 0; }
+.sale-create-form .btn-lg { padding: 0.6rem 1.2rem; font-size: 1rem; }
 
-.sale-create-form .select2-dropdown {
-  text-align: center;
-}
-
-.sale-create-form .select2-results__option {
-  padding-top: 0.6rem;
-  padding-bottom: 0.6rem;
-}
-
-.sale-create-form .form-group { margin-bottom: 0.75rem; }
-.sale-create-form label.font-weight-bold { font-size: 0.85rem; }
-.sale-create-form textarea.form-control {
-  text-align: right;
-  line-height: 1.6;
-}
-
-.sale-create-form textarea.form-control::placeholder {
-  text-align: right;
-}
-
-a.btn.btn-secondary,
-.btn.btn-secondary {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
+a.btn.btn-secondary, .btn.btn-secondary {
+  color: #fff !important; -webkit-text-fill-color: #fff !important;
   background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%) !important;
   border-color: #3498db !important;
 }
-a.btn.btn-secondary i,
-a.btn.btn-secondary span {
-  color: #ffffff !important;
+a.btn.btn-secondary i, a.btn.btn-secondary span { color: #fff !important; }
+a.btn.btn-outline-secondary, .btn.btn-outline-secondary {
+  color: #111827 !important; -webkit-text-fill-color: #111827 !important;
+  background-color: #fff !important; border-color: #334155 !important;
 }
-
-a.btn.btn-outline-secondary,
-.btn.btn-outline-secondary {
-  color: #111827 !important;
-  -webkit-text-fill-color: #111827 !important;
-  background-color: #ffffff !important;
-  border-color: #334155 !important;
-}
-a.btn.btn-outline-secondary i,
-a.btn.btn-outline-secondary span {
-  color: #111827 !important;
-}
-
-    /* Compact line rows: one clean band per product instead of big cards. */
-    .sale-create-form .product-line {
-      background: transparent !important;
-      border: none !important;
-      border-bottom: 1px solid #e9ecef !important;
-      border-radius: 0 !important;
-      padding: 0.5rem 0 !important;
-      margin-bottom: 0 !important;
-    }
-    .sale-create-form .product-line .row { align-items: flex-end; }
-    .sale-create-form .total-box { padding: 0.75rem 0; }
-    .sale-create-form .total-box h3, .sale-create-form .total-box h2 { margin-bottom: 0.35rem; }
+a.btn.btn-outline-secondary i, a.btn.btn-outline-secondary span { color: #111827 !important; }
 </style>
 {% endblock %}
 
@@ -156,14 +121,14 @@ a.btn.btn-outline-secondary span {
     <div class="col-md-8">
       <div class="card">
         <div class="card-header bg-gradient-primary">
-          <h3 class="card-title text-white"><i class="fas fa-file-invoice mr-2"></i>معلومات الفاتورة</h3>
+          <h3 class="card-title text-white"><i class="fas fa-file-invoice mr-2"></i>{{ t("Invoice Details") }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-user text-primary mr-1"></i>الزبون 
+                  <i class="fas fa-user text-primary mr-1"></i>{{ t("Client") }} 
                   <span class="text-danger">*</span>
                 </label>
                 <select name="customer_id" id="customer_id" class="form-control customer-select" required>
@@ -174,11 +139,11 @@ a.btn.btn-outline-secondary span {
             <div class="col-md-6">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-warehouse text-info mr-1"></i>المستودع 
+                  <i class="fas fa-warehouse text-info mr-1"></i>{{ t("Warehouse") }} 
                   <span class="text-danger">*</span>
                 </label>
                 <select name="warehouse_id" id="warehouse_id" class="form-control" required>
-                  <option value="" disabled selected>اختر المستودع...</option>
+                  <option value="" disabled selected>{{ t("Select Warehouse...") }}</option>
                   {% if warehouses %}
                     {% for warehouse in warehouses %}
                     <option value="{{ warehouse.id }}">
@@ -188,7 +153,7 @@ a.btn.btn-outline-secondary span {
                     </option>
                     {% endfor %}
                   {% else %}
-                    <option value="">لا توجد مستودعات متاحة</option>
+                    <option value="">{{ t("No warehouses available") }}</option>
                   {% endif %}
                 </select>
               </div>
@@ -199,7 +164,7 @@ a.btn.btn-outline-secondary span {
             <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold" for="due_date">
-                  <i class="fas fa-calendar-check text-warning mr-1"></i>تاريخ الاستحقاق
+                  <i class="fas fa-calendar-check text-warning mr-1"></i>{{ t("Due Date") }}
                 </label>
                 <input type="date" name="due_date" id="due_date" class="form-control">
               </div>
@@ -207,11 +172,11 @@ a.btn.btn-outline-secondary span {
             <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-money-bill-wave text-success mr-1"></i>عملة الدفع
+                  <i class="fas fa-money-bill-wave text-success mr-1"></i>{{ t("Payment Currency") }}
                 </label>
                 <select name="currency" id="currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
-                  <option value="{{ code }}" {% if base_currency == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+                  <option value="{{ code }}" {% if base_currency == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ code }})</option>
                   {% endfor %}
                 </select>
               </div>
@@ -219,7 +184,7 @@ a.btn.btn-outline-secondary span {
             <div class="col-md-4">
               <div class="form-group">
                 <label class="font-weight-bold">
-                  <i class="fas fa-exchange-alt text-info mr-1"></i>سعر الصرف
+                  <i class="fas fa-exchange-alt text-info mr-1"></i>{{ t("Exchange Rate") }}
                 </label>
                 <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" 
                        value="1.000000" step="0.000001" min="0.000001" 
@@ -228,11 +193,14 @@ a.btn.btn-outline-secondary span {
             </div>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5><i class="fas fa-list mr-2"></i>الأصناف (<span id="line_count_display">0</span>)</h5>
+          <div class="lines-heading">
+            <h5><i class="fas fa-list mr-2"></i>{{ t("Items") }} (<span id="line_count_display">0</span>)</h5>
             <button type="button" class="btn btn-success" onclick="addLine()">
-              <i class="fas fa-plus mr-2"></i>إضافة صنف
+              <i class="fas fa-plus mr-2"></i>{{ t("Add Item") }}
             </button>
+          </div>
+          <div class="lines-column-labels">
+            <span>{{ t("Product") }}</span><span>{{ t("Quantity") }}</span><span>{{ t("Price") }}</span><span>{{ t("Discount %") }}</span><span>{{ t("Tax") }}</span><span></span>
           </div>
           <div id="linesContainer"></div>
         </div>
@@ -242,13 +210,13 @@ a.btn.btn-outline-secondary span {
     <div class="col-md-4">
       <div class="card sale-totals-sticky">
         <div class="card-header bg-gradient-info">
-          <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>الإجماليات</h3>
+          <h3 class="card-title text-white"><i class="fas fa-calculator mr-2"></i>{{ t("Totals") }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-6"><div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-percent text-danger mr-1"></i>الخصم الإجمالي
+              <i class="fas fa-percent text-danger mr-1"></i>{{ t("Total Discount") }}
             </label>
             <div class="input-group">
               <input type="number" name="discount_amount" class="form-control" value="0" step="0.01" min="0" 
@@ -261,7 +229,7 @@ a.btn.btn-outline-secondary span {
           </div></div>
             <div class="col-6"><div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-shipping-fast text-primary mr-1"></i>تكلفة الشحن
+              <i class="fas fa-shipping-fast text-primary mr-1"></i>{{ t("Shipping Cost") }}
             </label>
             <div class="input-group">
               <input type="number" name="shipping_cost" class="form-control" value="0" step="0.01" min="0" 
@@ -276,7 +244,7 @@ a.btn.btn-outline-secondary span {
 
           <div class="form-group">
             <label class="font-weight-bold">
-              <i class="fas fa-receipt text-warning mr-1"></i>نسبة الضريبة
+              <i class="fas fa-receipt text-warning mr-1"></i>{{ t("Tax Rate") }}
             </label>
             <div class="input-group">
               <input type="number" name="tax_rate" class="form-control" data-tax-enabled="{{ 'false' if current_tenant and not current_tenant.enable_tax else 'true' }}" value="{{ current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5 }}" step="0.01" min="0" max="100"
@@ -288,19 +256,19 @@ a.btn.btn-outline-secondary span {
             </div>
             <div class="form-check mt-2">
               <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" onchange="calculateTotals()" {{ 'checked' if current_tenant and current_tenant.tax_inclusive }} {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
-              <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)</label>
+              <label class="form-check-label" for="tax_inclusive">{{ t("Prices include tax (inclusive — tax is extracted from the total)") }}</label>
             </div>
-            <select name="tax_treatment" class="form-control mt-2" title="معاملة ضريبية الفاتورة" onchange="calculateTotals()" {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
-              <option value="standard">معاملـة قياسية (نسبة الشركة)</option>
-              <option value="zero">خاضعة بنسبة صفرية 0% (حسب الحالة النظامية)</option>
-              <option value="exempt">معفاة من الضريبة</option>
+            <select name="tax_treatment" class="form-control mt-2" title="{{ t("Invoice Tax Treatment") }}" onchange="calculateTotals()" {{ 'disabled' if current_tenant and not current_tenant.enable_tax }}>
+              <option value="standard">{{ t("Standard Treatment (Company Rate)") }}</option>
+              <option value="zero">{{ t("Zero-rated 0% (per legal status)") }}</option>
+              <option value="exempt">{{ t("Tax Exempt") }}</option>
             </select>
           </div>
           
           <div class="total-box text-center">
             <div class="alert alert-info mb-3" style="background: rgba(255,255,255,0.2); border: none;">
               <i class="fas fa-info-circle"></i>
-              <strong>ملاحظة:</strong> جميع الأسعار بـ{{ base_currency_name }} ({{ base_currency }})
+              <strong>{{ t("Note:") }}</strong> {{ t("All prices") }} {{ t("In") }}{{ base_currency_name }} ({{ base_currency }})
             </div>
             <h6 class="mb-2">{{ t('Subtotal') }}</h6>
             <h3 id="subtotal" class="mb-3">0.00</h3>
@@ -323,18 +291,18 @@ a.btn.btn-outline-secondary span {
     <div class="col-12">
       <div class="card">
         <div class="card-header bg-gradient-success">
-          <h3 class="card-title text-white mb-0"><i class="fas fa-check-circle mr-2"></i>إتمام الفاتورة</h3>
+          <h3 class="card-title text-white mb-0"><i class="fas fa-check-circle mr-2"></i>{{ t("Complete Invoice") }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
 <div class="col-md-4 form-group mt-3">
             <label class="font-weight-bold">
-              <i class="fas fa-credit-card text-info"></i> طريقة الدفع
+              <i class="fas fa-credit-card text-info"></i> {{ t("Payment Method") }}
             </label>
             <select name="payment_method" id="payment_method" class="form-control select2">
-              <option value="">آجل (بدون دفع)</option>
+              <option value="">{{ t("Due (No Payment)") }}</option>
               {% for code, meta in lookups.get('payment_methods', []) %}
-              <option value="{{ code }}">{{ meta.ar }}</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -344,12 +312,12 @@ a.btn.btn-outline-secondary span {
 
           <div class="col-md-4 form-group" id="payment_amount_group" style="display:none;">
             <label class="font-weight-bold">
-              <i class="fas fa-hand-holding-usd mr-1"></i>المبلغ المدفوع
+              <i class="fas fa-hand-holding-usd mr-1"></i>{{ t("Paid Amount") }}
             </label>
             <div class="input-group">
               <input type="number" name="payment_amount" id="payment_amount" class="form-control" 
                      value="0" step="0.01" min="0"
-                     title="المبلغ المدفوع بعملة الدفع المختارة">
+                     title="{{ t("Paid amount in the selected payment currency") }}">
               <div class="input-group-append">
                 <span class="input-group-text" id="payment_currency_display">{{ base_currency }}</span>
               </div>
@@ -360,14 +328,14 @@ a.btn.btn-outline-secondary span {
             <label class="font-weight-bold">
               <i class="fas fa-sticky-note text-warning"></i> {{ t('Notes') }}
             </label>
-            <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات إضافية عن الفاتورة..."></textarea>
+            <textarea name="notes" class="form-control" rows="2" placeholder="{{ t("Additional invoice notes...") }}"></textarea>
           </div>
 
           <button type="submit" class="btn btn-primary btn-lg">
-            <i class="fas fa-save mr-2"></i>حفظ الفاتورة
+            <i class="fas fa-save mr-2"></i>{{ t("Save Invoice") }}
           </button>
           <div class="d-md-none text-center text-muted small mt-2">
-            <i class="fas fa-info-circle"></i> استخدم الشريط السفلي للحفظ على الجوال
+            <i class="fas fa-info-circle"></i> {{ t("Use the bottom bar to save on mobile") }}
           </div>
           </div>
         </div>
@@ -377,10 +345,10 @@ a.btn.btn-outline-secondary span {
   <div class="sale-mobile-bottom-bar d-md-none d-flex">
     <div>
       <strong id="mobile-total">0.00 {{ base_currency }}</strong>
-      <small class="d-block text-muted"><span id="mobile-count">0</span> أصناف</small>
+      <small class="d-block text-muted"><span id="mobile-count">0</span> {{ t("Items") }}</small>
     </div>
     <button type="submit" form="saleForm" class="btn btn-primary">
-      <i class="fas fa-save mr-1"></i> حفظ
+      <i class="fas fa-save mr-1"></i> {{ t("Save") }}
     </button>
   </div>
 </form>
@@ -415,18 +383,27 @@ $(document).ready(function() {
       },
       language: 'ar',
       dir: 'rtl',
-      placeholder: 'ابحث عن زبون...',
+      placeholder: {{ t("Search for a customer...")|tojson }},
       minimumInputLength: 1,
       width: '100%'
     });
   }
+
+  // When the warehouse changes, refresh per-line stock for the selected products.
+  $('#warehouse_id').on('change', function() {
+    const n = parseInt($('#line_count').val()) || 0;
+    for (let i = 0; i < n; i++) {
+      const pid = $(`select[name="lines[${i}][product_id]"]`).val();
+      if (pid && typeof loadProductPrice === 'function') loadProductPrice(i);
+    }
+  });
 });
 
 function validateForm() {
   const lineCount = parseInt($('#line_count').val()) || 0;
   
   if (lineCount === 0) {
-    alert('يجب إضافة منتج واحد على الأقل للفاتورة.\n\nاضغط "إضافة صف" واختر منتجاً.');
+    alert('{{ t("Add at least one product to the invoice.\\n\\nClick \"Add Row\" and choose a product.") }}');
     return false;
   }
   
@@ -440,7 +417,7 @@ function validateForm() {
   }
   
   if (!hasProduct) {
-    alert('يجب اختيار منتج واحد على الأقل.\n\nاختر منتجاً من القائمة المنسدلة.');
+    alert('{{ t("Select at least one product.\\n\\nChoose a product from the dropdown.") }}');
     return false;
   } 
   return true;

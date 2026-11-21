@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}إضافة قيد يدوي - Manual Journal Entry{% endblock %}
-{% block page_title %}إضافة قيد يدوي{% endblock %}
+{% block title %}{{ t('Add Manual Entry') }}{% endblock %}
+{% block page_title %}{{ t('Add Manual Entry') }}{% endblock %}
 
 {% block content %}
 
 <div class="card border-info mb-3" id="quickSummaryCard" style="position: relative;">
   <div class="card-header bg-info text-white">
     <h5 class="mb-0">
-      <i class="fas fa-info-circle mr-2"></i>ملخص سريع - كيف تُنشئ قيد يدوي
+      <i class="fas fa-info-circle mr-2"></i>{{ t('Quick Summary - How to Create a Manual Entry') }}
       <button type="button" class="btn btn-sm btn-light float-left" onclick="toggleCard('quickSummary')" style="padding: 2px 8px;">
         <i class="fas fa-minus" id="quickSummaryIcon"></i>
       </button>
@@ -15,11 +15,11 @@
   </div>
   <div class="card-body" id="quickSummaryBody">
     <ol class="mb-0 text-right">
-      <li class="mb-2"><strong>أدخل وصف القيد</strong> (مثال: شراء معدات، قيد تسوية)</li>
-      <li class="mb-2"><strong>اختر الحسابات</strong> من القائمة المنسدلة</li>
-      <li class="mb-2"><strong>أدخل المبالغ</strong> في المدين أو الدائن (ليس الاثنين معاً)</li>
-      <li class="mb-2"><strong>تأكد من التوازن</strong>: إجمالي المدين = إجمالي الدائن</li>
-      <li class="mb-2"><strong>اضغط حفظ القيد</strong> عندما يتحول الزر للأخضر </li>
+      <li class="mb-2"><strong>{{ t('Enter the entry description') }}</strong> ({{ t('e.g. equipment purchase, adjustment entry') }})</li>
+      <li class="mb-2"><strong>{{ t('Select accounts') }}</strong> {{ t('from the dropdown list') }}</li>
+      <li class="mb-2"><strong>{{ t('Enter amounts') }}</strong> {{ t('in Debit or Credit (not both)') }}</li>
+      <li class="mb-2"><strong>{{ t('Ensure balance') }}</strong>: {{ t('Total Debit = Total Credit') }}</li>
+      <li class="mb-2"><strong>{{ t('Click Save Entry') }}</strong> {{ t('when the button turns green') }} </li>
     </ol>
   </div>
 </div>
@@ -27,7 +27,7 @@
 <div class="card border-success mb-3" id="quickTemplatesCard" style="position: relative;">
   <div class="card-header bg-success text-white">
     <h5 class="mb-0">
-      <i class="fas fa-magic mr-2"></i>قوالب سريعة
+      <i class="fas fa-magic mr-2"></i>{{ t('Quick Templates') }}
       <button type="button" class="btn btn-sm btn-light float-left" onclick="toggleCard('quickTemplates')" style="padding: 2px 8px;">
         <i class="fas fa-minus" id="quickTemplatesIcon"></i>
       </button>
@@ -37,22 +37,22 @@
     <div class="row">
       <div class="col-md-3 mb-2">
         <button type="button" class="btn btn-success btn-block" onclick="loadTemplate('cash_sale')">
-          <i class="fas fa-cash-register mr-1"></i>مبيعة نقدية
+          <i class="fas fa-cash-register mr-1"></i>{{ t('Cash Sale') }}
         </button>
       </div>
       <div class="col-md-3 mb-2">
         <button type="button" class="btn btn-primary btn-block" onclick="loadTemplate('credit_sale')">
-          <i class="fas fa-credit-card mr-1"></i>مبيعة آجلة
+          <i class="fas fa-credit-card mr-1"></i>{{ t('Credit Sale') }}
         </button>
       </div>
       <div class="col-md-3 mb-2">
         <button type="button" class="btn btn-warning btn-block" onclick="loadTemplate('expense')">
-          <i class="fas fa-receipt mr-1"></i>مصروف
+          <i class="fas fa-receipt mr-1"></i>{{ t('Expense') }}
         </button>
       </div>
       <div class="col-md-3 mb-2">
         <button type="button" class="btn btn-info btn-block" onclick="loadTemplate('adjustment')">
-          <i class="fas fa-balance-scale mr-1"></i>تسوية
+          <i class="fas fa-balance-scale mr-1"></i>{{ t('Adjustment') }}
         </button>
       </div>
     </div>
@@ -62,10 +62,10 @@
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
     </a>
     <a href="{{ url_for('ledger.journal_entries') }}" class="btn btn-info">
-      <i class="fas fa-book mr-2"></i>عرض القيود
+      <i class="fas fa-book mr-2"></i>{{ t('View Entries') }}
     </a>
   </div>
 </div>
@@ -73,7 +73,7 @@
 <div class="card">
   <div class="card-header bg-gradient-success">
     <h3 class="card-title text-white">
-      <i class="fas fa-plus-circle mr-2"></i>قيد يدوي جديد
+      <i class="fas fa-plus-circle mr-2"></i>{{ t('New Manual Entry') }}
     </h3>
   </div>
   <div class="card-body">
@@ -85,14 +85,14 @@
       <div class="row">
         <div class="col-md-8">
           <div class="form-group">
-            <label>وصف القيد <span class="text-danger">*</span></label>
+            <label>{{ t('Entry Description') }} <span class="text-danger">*</span></label>
             <input type="text" name="description" class="form-control" required 
-                   placeholder="مثال: قيد تسوية، شراء معدات، تعديل رصيد">
+                   placeholder="{{ t('e.g. adjustment entry, equipment purchase, balance adjustment') }}">
           </div>
         </div>
         <div class="col-md-4">
           <div class="form-group">
-            <label>التاريخ <span class="text-danger">*</span></label>
+            <label>{{ t('Date') }} <span class="text-danger">*</span></label>
             <input type="date" name="entry_date" class="form-control" required>
           </div>
         </div>
@@ -101,9 +101,9 @@
       <div class="row">
         <div class="col-12">
           <div class="form-group">
-            <label>ملاحظات (اختياري)</label>
+            <label>{{ t('Notes (optional)') }}</label>
             <textarea name="notes" class="form-control" rows="2" 
-                      placeholder="أي ملاحظات إضافية..."></textarea>
+                      placeholder="{{ t('Any additional notes...') }}"></textarea>
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@
       <div class="card">
         <div class="card-header bg-light">
           <h5 class="mb-0">
-            <i class="fas fa-list mr-2"></i>سطور القيد
+            <i class="fas fa-list mr-2"></i>{{ t('Entry Lines') }}
           </h5>
         </div>
         
@@ -121,26 +121,26 @@
           <div class="row text-center">
             <div class="col-md-6 border-left">
               <h6 class="text-success mb-2">
-                <i class="fas fa-plus-circle mr-2"></i><strong>مدين (Debit)</strong>
+                <i class="fas fa-plus-circle mr-2"></i><strong>{{ t('Debit') }}</strong>
               </h6>
-              <div class="badge badge-success mb-2" style="font-size: 14px;">لنا ↓ ما يدخل للشركة</div>
-              <p class="mb-1 small"><strong>أمثلة:</strong></p>
+              <div class="badge badge-success mb-2" style="font-size: 14px;">{{ t('To us ↓ what enters the company') }}</div>
+              <p class="mb-1 small"><strong>{{ t('Examples:') }}</strong></p>
               <ul class="text-right small mb-0" style="list-style: none; padding-right: 0;">
-                <li> استلام فلوس → صندوق <strong>مدين</strong></li>
-                <li> شراء بضاعة → مخزون <strong>مدين</strong></li>
-                <li> مصروف → حساب المصروف <strong>مدين</strong></li>
+                <li> {{ t('Receiving money') }} → {{ t('Cash Account') }} <strong>{{ t('Debit') }}</strong></li>
+                <li> {{ t('Purchasing goods') }} → {{ t('Inventory') }} <strong>{{ t('Debit') }}</strong></li>
+                <li> {{ t('Expense') }} → {{ t('Expense Account') }} <strong>{{ t('Debit') }}</strong></li>
               </ul>
             </div>
             <div class="col-md-6">
               <h6 class="text-danger mb-2">
-                <i class="fas fa-minus-circle mr-2"></i><strong>دائن (Credit)</strong>
+                <i class="fas fa-minus-circle mr-2"></i><strong>{{ t('Credit') }}</strong>
               </h6>
-              <div class="badge badge-danger mb-2" style="font-size: 14px;">علينا ↑ ما يطلع من الشركة</div>
-              <p class="mb-1 small"><strong>أمثلة:</strong></p>
+              <div class="badge badge-danger mb-2" style="font-size: 14px;">{{ t('We owe ↑ what leaves the company') }}</div>
+              <p class="mb-1 small"><strong>{{ t('Examples:') }}</strong></p>
               <ul class="text-right small mb-0" style="list-style: none; padding-right: 0;">
-                <li> دفع فلوس → صندوق <strong>دائن</strong></li>
-                <li> مبيعات → إيرادات <strong>دائن</strong></li>
-                <li> قرض → خصوم <strong>دائن</strong></li>
+                <li> {{ t('Paying money') }} → {{ t('Cash Account') }} <strong>{{ t('Credit') }}</strong></li>
+                <li> {{ t('Sales') }} → {{ t('Revenue') }} <strong>{{ t('Credit') }}</strong></li>
+                <li> {{ t('Loan') }} → {{ t('Liabilities') }} <strong>{{ t('Credit') }}</strong></li>
               </ul>
             </div>
           </div>
@@ -152,21 +152,21 @@
               <thead class="bg-light">
                 <tr>
                   <th width="4%">#</th>
-                  <th width="27%">الحساب <span class="text-danger">*</span></th>
-                  <th width="24%">البيان</th>
+                  <th width="27%">{{ t('Account') }} <span class="text-danger">*</span></th>
+                  <th width="24%">{{ t('Description') }}</th>
                   <th width="13%" class="text-center">
                     <i class="fas fa-arrow-down text-success mr-1"></i>
-                    <strong class="text-success">مدين</strong>
+                    <strong class="text-success">{{ t('Debit') }}</strong>
                     <br>
-                    <small class="text-muted">(لنا)</small>
+                    <small class="text-muted">({{ t('To us') }})</small>
                   </th>
                   <th width="13%" class="text-center">
                     <i class="fas fa-arrow-up text-danger mr-1"></i>
-                    <strong class="text-danger">دائن</strong>
+                    <strong class="text-danger">{{ t('Credit') }}</strong>
                     <br>
-                    <small class="text-muted">(علينا)</small>
+                    <small class="text-muted">({{ t('We owe') }})</small>
                   </th>
-                  <th width="19%">الشريك <small class="text-muted">(اختياري)</small></th>
+                  <th width="19%">{{ t('Partner') }} <small class="text-muted">({{ t('Optional') }})</small></th>
                 </tr>
               </thead>
               <tbody id="linesTableBody">
@@ -174,7 +174,7 @@
               </tbody>
               <tfoot class="bg-light">
                 <tr>
-                  <th colspan="4" class="text-left">الإجمالي:</th>
+                  <th colspan="4" class="text-left">{{ t('Total') }}:</th>
                   <th class="text-center text-success">
                     <span id="totalDebit">0.00</span>
                   </th>
@@ -183,7 +183,7 @@
                   </th>
                 </tr>
                 <tr id="balanceRow">
-                  <th colspan="4" class="text-left">الفرق:</th>
+                  <th colspan="4" class="text-left">{{ t('Difference') }}:</th>
                   <th colspan="2" class="text-center" id="balanceCell">
                     <span id="difference" class="badge badge-secondary">0.00</span>
                   </th>
@@ -198,18 +198,18 @@
       <div class="row mt-3">
         <div class="col-12">
           <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
-            <i class="fas fa-save mr-2"></i>حفظ القيد
+            <i class="fas fa-save mr-2"></i>{{ t('Save Entry') }}
           </button>
           <button type="button" class="btn btn-primary" onclick="addLine()">
-            <i class="fas fa-plus mr-2"></i>إضافة سطر
+            <i class="fas fa-plus mr-2"></i>{{ t('Add Line') }}
           </button>
           <button type="button" class="btn btn-secondary" onclick="resetForm()">
-            <i class="fas fa-redo mr-2"></i>إعادة تعيين
+            <i class="fas fa-redo mr-2"></i>{{ t('Reset') }}
           </button>
           <div class="float-left">
             <div id="balanceStatus" class="alert alert-warning d-inline-block mb-0 py-2">
               <i class="fas fa-exclamation-triangle mr-2"></i>
-              القيد غير متوازن! المدين يجب أن يساوي الدائن
+              {{ t('Entry is not balanced! Debit must equal Credit') }}
             </div>
           </div>
         </div>
@@ -226,7 +226,7 @@ const accounts = [
     code: '{{ account.code }}',
     name_ar: '{{ account.name_ar }}',
     name_en: '{{ account.name }}',
-    full_name: '{{ account.code }} - {{ account.name_ar or account.name }}'
+    full_name: '{{ account.code }} - {{ display_name(account) }}'
   }{{ ',' if not loop.last else '' }}
   {% endfor %}
 ];
@@ -235,7 +235,7 @@ const partners = [
   {% for partner in partners | default([]) %}
   {
     id: {{ partner.id }},
-    name: '{{ partner.name }}'
+    name: '{{ display_name(partner) }}'
   }{{ ',' if not loop.last else '' }}
   {% endfor %}
 ];
@@ -250,13 +250,13 @@ function addLine() {
     <td class="text-center">${lineCounter + 1}</td>
     <td>
       <select name="line_${lineCounter}_account" class="form-control account-select" required>
-        <option value="">بلا</option>
+        <option value="">{{ t('None') }}</option>
         ${accounts.map(acc => `<option value="${acc.code}">${acc.full_name}</option>`).join('')}
       </select>
     </td>
     <td>
       <input type="text" name="line_${lineCounter}_description" class="form-control"
-             placeholder="البيان (اختياري)">
+             placeholder="{{ t('Description (optional)') }}">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input"
@@ -268,7 +268,7 @@ function addLine() {
     </td>
     <td>
       <select name="line_${lineCounter}_party" class="form-control partner-select">
-        <option value="">— بلا —</option>
+        <option value="">— {{ t('None') }} —</option>
         ${partners.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
       </select>
     </td>
@@ -327,10 +327,10 @@ function calculateJournalTotals() {
   
   if (difference < 0.01 && totalDebit > 0 && totalCredit > 0) {
     differenceSpan.className = 'badge badge-success';
-    differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> متوازن';
+    differenceSpan.innerHTML = '<i class="fas fa-check mr-1"></i> ' + {{ t('Balanced')|tojson }};
     if (balanceStatus) {
       balanceStatus.className = 'alert alert-success d-inline-block mb-0 py-2';
-      balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>القيد متوازن - يمكنك الحفظ الآن';
+      balanceStatus.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + {{ t('Entry is balanced - you can save now')|tojson }};
     }
     submitBtn.disabled = false;
     submitBtn.removeAttribute('disabled');
@@ -339,7 +339,7 @@ function calculateJournalTotals() {
     differenceSpan.className = 'badge badge-danger';
     if (balanceStatus) {
       balanceStatus.className = 'alert alert-warning d-inline-block mb-0 py-2';
-      balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>القيد غير متوازن! المدين يجب أن يساوي الدائن';
+      balanceStatus.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>' + {{ t('Entry is not balanced! Debit must equal Credit')|tojson }};
     }
     submitBtn.disabled = true;
     submitBtn.setAttribute('disabled', 'disabled');
@@ -348,7 +348,7 @@ function calculateJournalTotals() {
 }
 
 function resetForm() {
-  if (confirm('هل أنت متأكد من إعادة تعيين النموذج؟ سيتم مسح جميع البيانات.')) {
+  if (confirm({{ t('Are you sure you want to reset the form? All data will be cleared.')|tojson }})) {
     document.getElementById('journalEntryForm').reset();
     document.getElementById('linesTableBody').innerHTML = '';
     lineCounter = 0;
@@ -366,27 +366,27 @@ function loadTemplate(templateType) {
   
   switch(templateType) {
     case 'cash_sale':
-      descriptionInput.value = 'مبيعة نقدية';
-      addLineWithData('1110', 'صندوق', 1000, 0); // مدين - الصندوق يزيد
-      addLineWithData('4100', 'إيرادات المبيعات', 0, 1000); // دائن - الإيرادات
+      descriptionInput.value = {{ t('Cash Sale')|tojson }};
+      addLineWithData('1110', {{ t('Cash Account')|tojson }}, 1000, 0); // مدين - الصندوق يزيد
+      addLineWithData('4100', {{ t('Sales Revenue')|tojson }}, 0, 1000); // دائن - الإيرادات
       break;
       
     case 'credit_sale':
-      descriptionInput.value = 'مبيعة آجلة';
-      addLineWithData('1130', 'الذمم المدينة', 1000, 0); // مدين - الذمم تزيد
-      addLineWithData('4100', 'إيرادات المبيعات', 0, 1000); // دائن - الإيرادات
+      descriptionInput.value = {{ t('Credit Sale')|tojson }};
+      addLineWithData('1130', {{ t('Accounts Receivable')|tojson }}, 1000, 0); // مدين - الذمم تزيد
+      addLineWithData('4100', {{ t('Sales Revenue')|tojson }}, 0, 1000); // دائن - الإيرادات
       break;
       
     case 'expense':
-      descriptionInput.value = 'مصروف';
-      addLineWithData('6100', 'مصروف رواتب', 500, 0); // مدين - المصروف يزيد
-      addLineWithData('1110', 'صندوق', 0, 500); // دائن - الصندوق ينقص
+      descriptionInput.value = {{ t('Expense')|tojson }};
+      addLineWithData('6100', {{ t('Salary Expense')|tojson }}, 500, 0); // مدين - المصروف يزيد
+      addLineWithData('1110', {{ t('Cash Account')|tojson }}, 0, 500); // دائن - الصندوق ينقص
       break;
       
     case 'adjustment':
-      descriptionInput.value = 'قيد تسوية';
-      addLineWithData('1110', 'صندوق', 200, 0); // مدين - الصندوق يزيد
-      addLineWithData('1130', 'الذمم المدينة', 0, 200); // دائن - الذمم تنقص
+      descriptionInput.value = {{ t('Adjustment Entry')|tojson }};
+      addLineWithData('1110', {{ t('Cash Account')|tojson }}, 200, 0); // مدين - الصندوق يزيد
+      addLineWithData('1130', {{ t('Accounts Receivable')|tojson }}, 0, 200); // دائن - الذمم تنقص
       break;
   }
   
@@ -402,13 +402,13 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     <td class="text-center">${lineCounter + 1}</td>
     <td>
       <select name="line_${lineCounter}_account" class="form-control account-select" required>
-        <option value="">بلا</option>
+        <option value="">{{ t('None') }}</option>
         ${accounts.map(acc => `<option value="${acc.code}" ${acc.code === accountCode ? 'selected' : ''}>${acc.full_name}</option>`).join('')}
       </select>
     </td>
     <td>
       <input type="text" name="line_${lineCounter}_description" class="form-control"
-             value="${accountName}" placeholder="البيان (اختياري)">
+             value="${accountName}" placeholder="{{ t('Description (optional)') }}">
     </td>
     <td>
       <input type="number" name="line_${lineCounter}_debit" class="form-control text-center debit-input"
@@ -420,7 +420,7 @@ function addLineWithData(accountCode, accountName, debit, credit) {
     </td>
     <td>
       <select name="line_${lineCounter}_party" class="form-control partner-select">
-        <option value="">— بلا —</option>
+        <option value="">— {{ t('None') }} —</option>
         ${partners.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
       </select>
     </td>

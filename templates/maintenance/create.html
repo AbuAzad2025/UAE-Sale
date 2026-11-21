@@ -1,127 +1,127 @@
 {% extends 'base.html' %}
-{% block title %}أمر صيانة جديد{% endblock %}
-{% block page_title %}<i class="fas fa-plus mr-2"></i>أمر صيانة جديد{% endblock %}
+{% block title %}{{ t('New Maintenance Order') }}{% endblock %}
+{% block page_title %}<i class="fas fa-plus mr-2"></i>{{ t('New Maintenance Order') }}{% endblock %}
 {% block content %}
-<div class="alert alert-info" role="alert">تُسجَّل الدفعة المقدمة في السجل فقط؛ لا يمكن تسجيلها قبل ربطها بسند قبض فعلي.</div>
+<div class="alert alert-info" role="alert">{{ t('The deposit is recorded in the log only; it cannot be posted before being linked to an actual receipt voucher.') }}</div>
 <div class="row">
   <div class="col-lg-8">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">بيانات الأمر والجهاز</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Order & Device Details') }}</h5></div>
       <div class="card-body">
         <form method="POST">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">العميل</label>
+              <label class="form-label">{{ t('Customer') }}</label>
               <select name="customer_id" class="form-select" required>
-                <option value="">اختر العميل</option>
+                <option value="">{{ t('Select Customer') }}</option>
                 {% for c in customers %}
                 <option value="{{ c.id }}">{{ c.name }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">الأولوية</label>
+              <label class="form-label">{{ t('Priority') }}</label>
               <select name="priority" class="form-select">
-                <option value="normal">عادي</option>
-                <option value="urgent">عاجل</option>
-                <option value="low">منخفض</option>
+                <option value="normal">{{ t('Normal') }}</option>
+                <option value="urgent">{{ t('Urgent') }}</option>
+                <option value="low">{{ t('Low') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">العلامة التجارية</label>
-              <input type="text" name="device_brand" class="form-control" placeholder="مثال: تويوتا">
+              <label class="form-label">{{ t('Brand') }}</label>
+              <input type="text" name="device_brand" class="form-control" placeholder="{{ t('e.g. Toyota') }}">
             </div>
             <div class="col-md-6">
-              <label class="form-label">الموديل</label>
-              <input type="text" name="device_model" class="form-control" placeholder="مثال: كامري 2020">
+              <label class="form-label">{{ t('Model') }}</label>
+              <input type="text" name="device_model" class="form-control" placeholder="{{ t('e.g. Camry 2020') }}">
             </div>
             <div class="col-md-6">
-              <label class="form-label">الرقم التسلسلي</label>
-              <input type="text" name="device_serial" class="form-control" placeholder="رقم تسلسلي الجهاز">
+              <label class="form-label">{{ t('Serial Number') }}</label>
+              <input type="text" name="device_serial" class="form-control" placeholder="{{ t('Device serial number') }}">
             </div>
             <div class="col-md-6">
-              <label class="form-label">الـ IMEI</label>
-              <input type="text" name="device_imei" class="form-control" placeholder="رقم IMEI">
+              <label class="form-label">{{ t('IMEI') }}</label>
+              <input type="text" name="device_imei" class="form-control" placeholder="{{ t('IMEI number') }}">
             </div>
             <div class="col-md-6">
-              <label class="form-label">لوحة السيارة</label>
-              <input type="text" name="device_plate" class="form-control" placeholder="رقم اللوحة">
+              <label class="form-label">{{ t('Car Plate') }}</label>
+              <input type="text" name="device_plate" class="form-control" placeholder="{{ t('Plate number') }}">
             </div>
             <div class="col-12">
-              <label class="form-label">مشكلة الجهاز</label>
-              <textarea name="device_problem" class="form-control" rows="3" placeholder="وصف المشكلة التي يشكو منها العميل"></textarea>
+              <label class="form-label">{{ t('Device Problem') }}</label>
+              <textarea name="device_problem" class="form-control" rows="3" placeholder="{{ t('Describe the problem reported by the customer') }}"></textarea>
             </div>
             <div class="col-md-6">
-              <label class="form-label">المهندس المسؤول</label>
+              <label class="form-label">{{ t('Responsible Engineer') }}</label>
               <select name="engineer_id" class="form-select">
-                <option value="">يُحدد لاحقاً</option>
+                <option value="">{{ t('To be assigned later') }}</option>
                 {% for e in engineers %}
-                <option value="{{ e.id }}">{{ e.full_name or e.username }}</option>
+                <option value="{{ e.id }}">{{ display_name(e) }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">طريقة الدفع</label>
+              <label class="form-label">{{ t('Payment Method') }}</label>
               <select name="payment_mode" class="form-select">
-                <option value="cash">نقدي</option>
-                <option value="card">بطاقة ائتمان</option>
-                <option value="cheque">شيك</option>
-                <option value="transfer">تحويل بنكي</option>
-                <option value="account">على الحساب</option>
+                <option value="cash">{{ t('Cash') }}</option>
+                <option value="card">{{ t('Credit Card') }}</option>
+                <option value="cheque">{{ t('Cheque') }}</option>
+                <option value="transfer">{{ t('Bank Transfer') }}</option>
+                <option value="account">{{ t('On Account') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">مبلغ الدفعة المقدمة</label>
+              <label class="form-label">{{ t('Deposit Amount') }}</label>
               <input type="number" name="deposit" value="0" step="0.001" class="form-control">
             </div>
             <div class="col-md-6">
-              <label class="form-label">طريقة الدفعة المقدمة</label>
+              <label class="form-label">{{ t('Deposit Payment Method') }}</label>
               <select name="deposit_payment_method" class="form-select">
-                <option value="cash">نقدي</option>
-                <option value="card">بطاقة</option>
-                <option value="cheque">شيك</option>
-                <option value="transfer">تحويل بنكي</option>
+                <option value="cash">{{ t('Cash') }}</option>
+                <option value="card">{{ t('Card') }}</option>
+                <option value="cheque">{{ t('Cheque') }}</option>
+                <option value="transfer">{{ t('Bank Transfer') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">طريقة الدفعة المقدمة</label>
+              <label class="form-label">{{ t('Deposit Payment Method') }}</label>
               <select name="deposit_payment_method" class="form-select">
-                <option value="cash">نقدي</option>
-                <option value="card">بطاقة ائتمان</option>
-                <option value="cheque">شيك</option>
-                <option value="transfer">تحويل بنكي</option>
+                <option value="cash">{{ t('Cash') }}</option>
+                <option value="card">{{ t('Credit Card') }}</option>
+                <option value="cheque">{{ t('Cheque') }}</option>
+                <option value="transfer">{{ t('Bank Transfer') }}</option>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">السعر شامل الضريبة</label>
+              <label class="form-label">{{ t('Price Includes VAT') }}</label>
               <div class="form-check">
                 <input type="checkbox" name="tax_inclusive" class="form-check-input">
-                <label class="form-check-label">نعم</label>
+                <label class="form-check-label">{{ t('Yes') }}</label>
               </div>
             </div>
             <div class="col-md-4">
-              <label class="form-label">العملة</label>
+              <label class="form-label">{{ t('Currency') }}</label>
               <select name="currency" class="form-select">
-                <option value="AED">درهم إماراتي (AED)</option>
-                <option value="USD">دولار أمريكي (USD)</option>
-                <option value="SAR">ريال سعودي (SAR)</option>
-                <option value="EGP">جنيه مصري (EGP)</option>
-                <option value="ILS">شيقل إسرائيلي (ILS)</option>
+                <option value="AED">{{ t('UAE Dirham') }} (AED)</option>
+                <option value="USD">{{ t('US Dollar') }} (USD)</option>
+                <option value="SAR">{{ t('Saudi Riyal') }} (SAR)</option>
+                <option value="EGP">{{ t('Egyptian Pound') }} (EGP)</option>
+                <option value="ILS">{{ t('Israeli Shekel') }} (ILS)</option>
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">سعر الصرف (مقابل عملة التينانت الأساسية)</label>
+              <label class="form-label">{{ t('Exchange Rate (against tenant base currency)') }}</label>
               <input type="number" name="exchange_rate" value="1" step="0.000001" class="form-control">
             </div>
             <div class="col-12">
-              <label class="form-label">ملاحظات</label>
+              <label class="form-label">{{ t('Notes') }}</label>
               <textarea name="notes" class="form-control" rows="2"></textarea>
             </div>
           </div>
           <div class="d-grid gap-2 mt-4">
-            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i>إنشاء الأمر</button>
-            <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-outline-secondary btn-lg">إلغاء</a>
+            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i>{{ t('Create Order') }}</button>
+            <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-outline-secondary btn-lg">{{ t('Cancel') }}</a>
           </div>
         </form>
       </div>
@@ -129,11 +129,11 @@
   </div>
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">معلومات سريعة</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Quick Info') }}</h5></div>
       <div class="card-body">
-        <p class="text-muted small"><i class="fas fa-info-circle mr-1"></i>سيتم إنشاء رقم أمر تلقائياً عند الحفظ.</p>
-        <p class="text-muted small"><i class="fas fa-shield-alt mr-1"></i>يُبحث بمعرّفات الجهاز في سجل العميل فقط؛ لا يُفترض وجود ضمان من فاتورة بيع.</p>
-        <p class="text-muted small"><i class="fas fa-user-tag mr-1"></i>سيتم تعيينك كمستلم الأمر تلقائياً.</p>
+        <p class="text-muted small"><i class="fas fa-info-circle mr-1"></i>{{ t('An order number will be generated automatically on save.') }}</p>
+        <p class="text-muted small"><i class="fas fa-shield-alt mr-1"></i>{{ t("Device identifiers are searched only in the customer's registry; no warranty is assumed from a sales invoice.") }}</p>
+        <p class="text-muted small"><i class="fas fa-user-tag mr-1"></i>{{ t('You will be assigned as the order receiver automatically.') }}</p>
       </div>
     </div>
   </div>

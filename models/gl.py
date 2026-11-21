@@ -186,6 +186,12 @@ class GLAccount(db.Model):
     def __repr__(self):
         return f"<GLAccount {self.code} {self.name}>"
 
+    def get_display_name(self, lang="ar"):
+        """الاسم المعروض حسب لغة الواجهة (كبقية النماذج)."""
+        if lang == "ar" and self.name_ar:
+            return self.name_ar
+        return self.name or self.name_ar or self.code
+
     @validates("type")
     def _validate_type(self, key, value):
         """يرفض أي نوع خارج القائمة المسموحة (خطأ مطبعي = إشارة خاطئة صامتة)."""

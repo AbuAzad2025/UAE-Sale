@@ -35,7 +35,7 @@
       '  <div class="modal-dialog modal-dialog-centered" role="document">',
       '    <div class="modal-content">',
       '      <div class="modal-header">',
-      '        <h5 class="modal-title" id="smartPrintModalLabel"><i class="fas fa-print mr-2"></i>خيارات الطباعة المتقدمة</h5>',
+      '        <h5 class="modal-title" id="smartPrintModalLabel"><i class="fas fa-print mr-2"></i>' + t('Advanced Print Options') + '</h5>',
       '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">',
       '          <span aria-hidden="true">&times;</span>',
       '        </button>',
@@ -44,24 +44,24 @@
       '        <div class="alert alert-danger d-none" id="smartPrintError"></div>',
       '        <div class="custom-control custom-radio mb-2">',
       '          <input type="radio" class="custom-control-input" name="smartPrintRange" id="smartPrintAll" value="all" checked>',
-      '          <label class="custom-control-label" for="smartPrintAll">طباعة جميع الصفوف</label>',
+      '          <label class="custom-control-label" for="smartPrintAll">' + t('Print all rows') + '</label>',
       '        </div>',
       '        <div class="custom-control custom-radio mb-2">',
       '          <input type="radio" class="custom-control-input" name="smartPrintRange" id="smartPrintPage" value="page">',
-      '          <label class="custom-control-label" for="smartPrintPage">طباعة الصفحة الحالية فقط</label>',
+      '          <label class="custom-control-label" for="smartPrintPage">' + t('Print current page only') + '</label>',
       '        </div>',
       '        <div class="border rounded p-2 mb-3">',
       '          <div class="custom-control custom-radio mb-2">',
       '            <input type="radio" class="custom-control-input" name="smartPrintRange" id="smartPrintRows" value="rows">',
-      '            <label class="custom-control-label" for="smartPrintRows">تحديد مدى الأسطر</label>',
+      '            <label class="custom-control-label" for="smartPrintRows">' + t('Select row range') + '</label>',
       '          </div>',
       '          <div class="form-row">',
       '            <div class="form-group col">',
-      '              <label class="small mb-1" for="smartPrintRowStart">من السطر</label>',
+      '              <label class="small mb-1" for="smartPrintRowStart">' + t('From row') + '</label>',
       '              <input type="number" min="1" class="form-control form-control-sm" id="smartPrintRowStart" disabled>',
       '            </div>',
       '            <div class="form-group col">',
-      '              <label class="small mb-1" for="smartPrintRowEnd">إلى السطر</label>',
+      '              <label class="small mb-1" for="smartPrintRowEnd">' + t('To row') + '</label>',
       '              <input type="number" min="1" class="form-control form-control-sm" id="smartPrintRowEnd" disabled>',
       '            </div>',
       '          </div>',
@@ -69,23 +69,23 @@
       '        <div class="border rounded p-2">',
       '          <div class="custom-control custom-radio mb-2">',
       '            <input type="radio" class="custom-control-input" name="smartPrintRange" id="smartPrintPages" value="pages">',
-      '            <label class="custom-control-label" for="smartPrintPages">تحديد مدى الصفحات</label>',
+      '            <label class="custom-control-label" for="smartPrintPages">' + t('Select page range') + '</label>',
       '          </div>',
       '          <div class="form-row">',
       '            <div class="form-group col">',
-      '              <label class="small mb-1" for="smartPrintPageStart">من الصفحة</label>',
+      '              <label class="small mb-1" for="smartPrintPageStart">' + t('From page') + '</label>',
       '              <input type="number" min="1" class="form-control form-control-sm" id="smartPrintPageStart" disabled>',
       '            </div>',
       '            <div class="form-group col">',
-      '              <label class="small mb-1" for="smartPrintPageEnd">إلى الصفحة</label>',
+      '              <label class="small mb-1" for="smartPrintPageEnd">' + t('To page') + '</label>',
       '              <input type="number" min="1" class="form-control form-control-sm" id="smartPrintPageEnd" disabled>',
       '            </div>',
       '          </div>',
       '        </div>',
       '      </div>',
       '      <div class="modal-footer">',
-      '        <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>',
-      '        <button type="button" class="btn btn-primary" id="smartPrintModalConfirm"><i class="fas fa-print mr-1"></i>طباعة</button>',
+      '        <button type="button" class="btn btn-secondary" data-dismiss="modal">' + t('Cancel') + '</button>',
+      '        <button type="button" class="btn btn-primary" id="smartPrintModalConfirm"><i class="fas fa-print mr-1"></i>' + t('Print') + '</button>',
       '      </div>',
       '    </div>',
       '  </div>',
@@ -149,7 +149,7 @@
   function buildRowsSelector(mode, table, values) {
     const appliedIndexes = table.rows({ search: 'applied' }).indexes().toArray();
     if (!appliedIndexes.length) {
-      showError('لا توجد صفوف مطابقة للطباعة.');
+      showError(t('No rows match the print criteria.'));
       return null;
     }
 
@@ -162,7 +162,7 @@
     if (mode === 'page') {
       const currentIndexes = table.rows({ page: 'current' }).indexes().toArray();
       if (!currentIndexes.length) {
-        showError('لا توجد صفوف في الصفحة الحالية.');
+        showError(t('No rows on the current page.'));
         return null;
       }
       return (idx) => currentIndexes.indexOf(idx) !== -1;
@@ -176,15 +176,15 @@
       const end = values.rowEnd ? parseInt(values.rowEnd, 10) : start;
 
       if (!start || start < 1 || Number.isNaN(start)) {
-        showError('يرجى إدخال رقم سطر بداية صحيح.');
+        showError(t('Please enter a valid start row number.'));
         return null;
       }
       if (!end || end < start || Number.isNaN(end)) {
-        showError('يرجى إدخال رقم سطر نهاية صحيح لا يقل عن رقم البداية.');
+        showError(t('Please enter a valid end row number not less than the start number.'));
         return null;
       }
       if (start > appliedIndexes.length) {
-        showError('رقم السطر الأول يتجاوز عدد الصفوف المتاحة.');
+        showError(t('The first row number exceeds the number of available rows.'));
         return null;
       }
       const cappedEnd = Math.min(end, appliedIndexes.length);
@@ -200,7 +200,7 @@
       const pageInfoPages = table.page.info();
       const totalPages = pageInfoPages.pages || 1;
       if (rowsPerPage === -1 || totalPages <= 1) {
-        showError('الجدول يعرض كل الصفوف في صفحة واحدة، اختر "جميع الصفوف".');
+        showError(t('The table shows all rows on one page, select "All rows".'));
         return null;
       }
 
@@ -208,15 +208,15 @@
       const endPage = values.pageEnd ? parseInt(values.pageEnd, 10) : startPage;
 
       if (!startPage || startPage < 1 || Number.isNaN(startPage)) {
-        showError('يرجى إدخال رقم صفحة بداية صحيح.');
+        showError(t('Please enter a valid start page number.'));
         return null;
       }
       if (!endPage || endPage < startPage || Number.isNaN(endPage)) {
-        showError('يرجى إدخال رقم صفحة نهاية صحيح لا يقل عن رقم البداية.');
+        showError(t('Please enter a valid end page number not less than the start number.'));
         return null;
       }
       if (startPage > totalPages) {
-        showError('رقم الصفحة الأولى يتجاوز عدد الصفحات المتاحة.');
+        showError(t('The first page number exceeds the number of available pages.'));
         return null;
       }
       const cappedEndPage = Math.min(endPage, totalPages);
@@ -228,7 +228,7 @@
       };
     }
 
-    showError('لم يتم التعرف على خيار الطباعة.');
+    showError(t('The print option was not recognized.'));
     return null;
   }
 
@@ -301,7 +301,7 @@
         }
     } catch (e) {
         console.error('SmartPrint: Data extraction failed', e);
-        alert('حدث خطأ أثناء تحضير البيانات للطباعة.');
+        alert(t('An error occurred while preparing data for printing.'));
         return;
     }
 
@@ -342,7 +342,7 @@
     // Create a new window for printing
     const win = window.open('', '');
     if (!win) {
-      alert('يرجى السماح بالنوافذ المنبثقة لطباعة التقرير.');
+      alert(t('Please allow pop-ups to print the report.'));
       return;
     }
 
@@ -429,7 +429,7 @@
     const css = [
       '@page { size: A4 landscape; margin: 8mm; }',
       'body { font-size: 9pt; direction: rtl; font-family: "Cairo", "Tahoma", sans-serif; -webkit-print-color-adjust: exact; position: relative; }',
-      'body::before { content: "تصميم شركة أزاد للأنظمة الذكية"; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-10deg); font-size: 18pt; color: rgba(108, 117, 125, 0.12); white-space: nowrap; z-index: 0; pointer-events: none; }',
+      'body::before { content: "' + t('Designed by Azad Smart Systems Co.') + '"; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-10deg); font-size: 18pt; color: rgba(108, 117, 125, 0.12); white-space: nowrap; z-index: 0; pointer-events: none; }',
       'table { width: 100% !important; border-collapse: collapse !important; position: relative; z-index: 1; }',
       'table th, table td { border: 1px solid #dee2e6 !important; padding: 3px 4px !important; text-align: center !important; }',
       `table thead th { background: ${headerColor} !important; color: #fff !important; font-size: 8.5pt; }`,
@@ -480,7 +480,7 @@
         },
         {
           extend: 'print',
-          text: '<i class="fas fa-print mr-1"></i> طباعة',
+          text: '<i class="fas fa-print mr-1"></i> ' + t('Print'),
           title: '',
           className: 'btn btn-info btn-sm smart-print-button d-none',
           attr: {

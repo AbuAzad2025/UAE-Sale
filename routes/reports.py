@@ -964,9 +964,11 @@ def api_model_fields():
 @permission_required("view_reports")
 def api_entity_search():
     from models import Supplier
+    from utils.i18n import get_current_language
 
     query = request.args.get("q", "").strip()
     entity_type = request.args.get("type", "supplier")
+    lang = get_current_language()
 
     results = []
 
@@ -975,6 +977,7 @@ def api_entity_search():
             Supplier.query.filter(
                 db.or_(
                     Supplier.name.ilike(f"%{query}%"),
+                    Supplier.name_ar.ilike(f"%{query}%"),
                     Supplier.phone.ilike(f"%{query}%"),
                 )
             )
@@ -983,13 +986,20 @@ def api_entity_search():
         )
         for s in suppliers:
             results.append(
-                {"id": s.id, "name": s.name, "phone": s.phone, "type": "supplier"}
+                {
+                    "id": s.id,
+                    "name": s.get_display_name(lang),
+                    "phone": s.phone,
+                    "type": "supplier",
+                }
             )
 
     else:  # customer, partner, merchant
         q_filter = Customer.query.filter(
             db.or_(
-                Customer.name.ilike(f"%{query}%"), Customer.phone.ilike(f"%{query}%")
+                Customer.name.ilike(f"%{query}%"),
+                Customer.name_ar.ilike(f"%{query}%"),
+                Customer.phone.ilike(f"%{query}%"),
             )
         )
 
@@ -1001,7 +1011,12 @@ def api_entity_search():
         customers = q_filter.limit(10).all()
         for c in customers:
             results.append(
-                {"id": c.id, "name": c.name, "phone": c.phone, "type": c.customer_type}
+                {
+                    "id": c.id,
+                    "name": c.get_display_name(lang),
+                    "phone": c.phone,
+                    "type": c.customer_type,
+                }
             )
 
     return jsonify(results)

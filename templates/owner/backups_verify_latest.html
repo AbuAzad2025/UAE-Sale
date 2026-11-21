@@ -1,60 +1,60 @@
 {% extends 'base.html' %}
-{% block title %}التحقق من النسخ الاحتياطية{% endblock %}
+{% block title %}{{ t('Verify Backups') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3 d-flex justify-content-between align-items-center">
-    <h2 class="mb-0"><i class="fas fa-clipboard-check text-primary"></i> التحقق من النسخ الاحتياطية</h2>
-    <a href="{{ url_for('owner.list_backups') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للنسخ</a>
+    <h2 class="mb-0"><i class="fas fa-clipboard-check text-primary"></i> {{ t('Verify Backups') }}</h2>
+    <a href="{{ url_for('owner.list_backups') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Backups') }}</a>
   </div>
 
   <div class="alert alert-info">
-    <p class="mb-1"><strong>تحقق المحتوى لا الوجود فقط:</strong> يقرأ أحدث نسخة (`.sql.gz`/`.sql`) ويتحقق من: حجم > 0، checksum SHA-256، طاولة `CREATE TABLE` ≥ 30، وجود بيانات (COPY/INSERT markers) — هذا ليس إعادة استعادة فعلية (لا test DB)؛ لكنه يكشف تلف النسخة/الاقتطاع/البيانات الفارغة.</p>
-    <p class="mb-0"><strong>الجدولة (موصى بها يوميًا):</strong> على PythonAnywhere → Scheduled Tasks → أمر:
-      <code>cd ~/AzadERP &amp;&amp; venv/bin/flask verify-backup</code> — كل يوم الساعة 03:00 — الخرج يظهر في السجل، وأي فشل يُسجَّل في هذه الصفحة (وفي <code>audit_logs</code> لاحقًا) تلقائيًا.</p>
+    <p class="mb-1"><strong>{{ t('Content verification, not just existence') }}:</strong> {{ t('Backup verification checks') }}</p>
+    <p class="mb-0"><strong>{{ t('Schedule (recommended daily)') }}:</strong> {{ t('On PythonAnywhere → Scheduled Tasks → command:') }}
+      <code>cd ~/AzadERP &amp;&amp; venv/bin/flask verify-backup</code> — {{ t('Every day at 03:00') }} — {{ t('Output appears in the log, and any failure is recorded on this page (and in') }} <code>audit_logs</code> {{ t('later') }}) {{ t('automatically.') }}</p>
   </div>
 
   <form method="POST" action="{{ url_for('owner.verify_latest_backup') }}" class="mb-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn btn-primary btn-lg"><i class="fas fa-search"></i> تحقق الآن على أحدث نسخة</button>
+    <button class="btn btn-primary btn-lg"><i class="fas fa-search"></i> {{ t('Verify Latest Backup Now') }}</button>
   </form>
 
   {% if latest %}
   <div class="card card-outline card-{{ 'success' if latest.status == 'verified' else 'danger' }} mb-4">
     <div class="card-header">
       <h4 class="mb-0">
-        {% if latest.status == 'verified' %}<i class="fas fa-check-circle text-success"></i> آخر تحقق — سليم{% else %}<i class="fas fa-times-circle text-danger"></i> آخر تحقق — فشل{% endif %}
+        {% if latest.status == 'verified' %}<i class="fas fa-check-circle text-success"></i> {{ t('Latest check — Healthy') }}{% else %}<i class="fas fa-times-circle text-danger"></i> {{ t('Latest check — Failed') }}{% endif %}
       </h4>
     </div>
     <div class="card-body">
       <div class="row">
-        <div class="col-md-4"><strong>الملف:</strong><br>{{ latest.filename }}</div>
-        <div class="col-md-2"><strong>الحالة:</strong><br><span class="badge badge-{{ 'success' if latest.status == 'verified' else 'danger' }}">{{ latest.status }}</span></div>
-        <div class="col-md-2"><strong>النوع:</strong><br>{{ latest.dialect }}</div>
-        <div class="col-md-2"><strong>الحجم:</strong><br>{{ "{:,.0f}".format((latest.size_bytes or 0) / 1024) }} KB</div>
-        <div class="col-md-1"><strong>الجداول:</strong><br>{{ latest.table_count }}</div>
-        <div class="col-md-1"><strong>البيانات:</strong><br>{{ latest.data_markers }}</div>
+        <div class="col-md-4"><strong>{{ t('File') }}:</strong><br>{{ latest.filename }}</div>
+        <div class="col-md-2"><strong>{{ t('Status') }}:</strong><br><span class="badge badge-{{ 'success' if latest.status == 'verified' else 'danger' }}">{{ latest.status }}</span></div>
+        <div class="col-md-2"><strong>{{ t('Type') }}:</strong><br>{{ latest.dialect }}</div>
+        <div class="col-md-2"><strong>{{ t('Size') }}:</strong><br>{{ "{:,.0f}".format((latest.size_bytes or 0) / 1024) }} KB</div>
+        <div class="col-md-1"><strong>{{ t('Tables') }}:</strong><br>{{ latest.table_count }}</div>
+        <div class="col-md-1"><strong>{{ t('Data') }}:</strong><br>{{ latest.data_markers }}</div>
       </div>
       {% if latest.error %}
-      <div class="alert alert-danger mt-3 mb-0"><strong>الخطأ:</strong> {{ latest.error }}</div>
+      <div class="alert alert-danger mt-3 mb-0"><strong>{{ t('Error Details') }}:</strong> {{ latest.error }}</div>
       {% endif %}
       {% if latest_checks %}
-      <div class="mt-2"><strong>الفحوصات:</strong>
+      <div class="mt-2"><strong>{{ t('Checks') }}:</strong>
         <ul class="mb-0">
           {% for c in latest_checks %}<li> {{ c }}</li>{% endfor %}
         </ul>
       </div>
       {% endif %}
-      <small class="text-muted d-block mt-2">في: {{ latest.verified_at.strftime('%Y-%m-%d %H:%M:%S') if latest.verified_at else '—' }}</small>
+      <small class="text-muted d-block mt-2">{{ t('At') }}: {{ latest.verified_at.strftime('%Y-%m-%d %H:%M:%S') if latest.verified_at else '—' }}</small>
     </div>
   </div>
   {% endif %}
 
   <div class="card">
-    <div class="card-header"><h4 class="mb-0">آخر 20 تحققًا</h4></div>
+    <div class="card-header"><h4 class="mb-0">{{ t('Last 20 Checks') }}</h4></div>
     <div class="card-body p-0">
       <table class="table table-striped mb-0">
         <thead class="thead-light">
-          <tr><th>التوقيت</th><th>الملف</th><th>الحالة</th><th>النوع</th><th>الجداول</th><th>الحجم</th></tr>
+          <tr><th>{{ t('Timestamp') }}</th><th>{{ t('File') }}</th><th>{{ t('Status') }}</th><th>{{ t('Type') }}</th><th>{{ t('Tables') }}</th><th>{{ t('Size') }}</th></tr>
         </thead>
         <tbody>
           {% for v in verifications %}
@@ -67,7 +67,7 @@
             <td>{{ "{:,.0f}".format((v.size_bytes or 0) / 1024) }} KB</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">لا توجد تحققات مسجلة بعد — انقر «تحقق الآن» أولًا؛ ثم اضبط cron على PythonAnywhere.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">{{ t('No checks recorded yet — click "Verify Now" first; then set up cron on PythonAnywhere.') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

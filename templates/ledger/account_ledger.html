@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - دفتر حساب {{ account.name }}{% endblock %}
-{% block page_title %}دفتر حساب: {{ account.code }} - {{ account.name }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Account Ledger') }} - {{ display_name(account) }}{% endblock %}
+{% block page_title %}{{ t('Account Ledger') }}: {{ account.code }} - {{ display_name(account) }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <button onclick="window.print()" class="btn btn-secondary">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </button>
-    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">العودة</a>
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">{{ t('Back') }}</a>
   </div>
 </div>
 
 <div class="card">
   <div class="card-header bg-gradient-primary">
-    <h3 class="card-title text-white">{{ account.code }} - {{ account.name }}</h3>
+    <h3 class="card-title text-white">{{ account.code }} - {{ display_name(account) }}</h3>
     <div class="card-tools">
       <span class="badge badge-light">{{ account.type }}</span>
     </div>
@@ -24,11 +24,11 @@
       <thead>
         <tr>
           <th>{{ t('Date') }}</th>
-          <th>رقم القيد</th>
+          <th>{{ t('Entry Number') }}</th>
           <th>{{ t('Description') }}</th>
-          <th>المرجع</th>
-          <th class="text-danger">مدين</th>
-          <th class="text-success">دائن</th>
+          <th>{{ t('Reference') }}</th>
+          <th class="text-danger">{{ t('Debit') }}</th>
+          <th class="text-success">{{ t('Credit') }}</th>
           <th>{{ t('Balance') }}</th>
         </tr>
       </thead>

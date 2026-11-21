@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل حساب محاسبي - {{ account.name_ar }}{% endblock %}
+{% block title %}{{ t('Edit Account') }} - {{ account.name_ar }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,7 +9,7 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-edit"></i> تعديل حساب محاسبي - {{ account.code }}
+            <i class="fas fa-edit"></i> {{ t('Edit Account') }} - {{ account.code }}
           </h3>
         </div>
         <div class="card-body">
@@ -19,18 +19,18 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>كود الحساب *</label>
+                  <label>{{ t('Account Code') }} *</label>
                   <input type="text" name="code" class="form-control" value="{{ account.code }}" required readonly>
-                  <small class="text-muted">لا يمكن تغيير كود الحساب</small>
+                  <small class="text-muted">{{ t('The account code cannot be changed') }}</small>
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>نوع الحساب *</label>
+                  <label>{{ t('Account Type') }} *</label>
                   <select name="type" class="form-control select2" required>
                     {% for code, meta in lookups.get('account_types', []) %}
-                    <option value="{{ code }}" {% if account.type == code %}selected{% endif %}>{{ meta.ar }}</option>
+                    <option value="{{ code }}" {% if account.type == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -40,14 +40,14 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم بالعربي *</label>
+                  <label>{{ t('Arabic Name') }} *</label>
                   <input type="text" name="name_ar" class="form-control" value="{{ account.name_ar }}" required>
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم بالإنجليزي</label>
+                  <label>{{ t('English Name') }}</label>
                   <input type="text" name="name" class="form-control" value="{{ account.name or '' }}">
                 </div>
               </div>
@@ -56,9 +56,9 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الحساب الأب</label>
+                  <label>{{ t('Parent Account') }}</label>
                   <select name="parent_id" class="form-control">
-                    <option value="">بلا (حساب رئيسي)</option>
+                    <option value="">{{ t('None (Header Account)') }}</option>
                     {% for parent in parent_accounts %}
                     <option value="{{ parent.id }}" {% if account.parent_id == parent.id %}selected{% endif %}>
                       {{ parent.code }} - {{ parent.name_ar }}
@@ -73,23 +73,23 @@
                   <div class="custom-control custom-switch mt-4">
                     <input type="checkbox" class="custom-control-input" id="is_header" name="is_header" 
                            {% if account.is_header %}checked{% endif %}>
-                    <label class="custom-control-label" for="is_header">حساب رئيسي (Header)</label>
+                    <label class="custom-control-label" for="is_header">{{ t('Header Account') }}</label>
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="form-group">
-              <label>الوصف</label>
+              <label>{{ t('Description') }}</label>
               <textarea name="description" class="form-control" rows="3">{{ account.description or '' }}</textarea>
             </div>
 
             <div class="form-group">
               <button type="submit" class="btn btn-success btn-lg">
-                <i class="fas fa-save"></i> حفظ التعديلات
+                <i class="fas fa-save"></i> {{ t('Save Changes') }}
               </button>
               <a href="{{ url_for('ledger.accounts') }}" class="btn btn-secondary btn-lg">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t('Cancel') }}
               </a>
             </div>
           </form>

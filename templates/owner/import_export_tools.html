@@ -1,48 +1,48 @@
 {% extends 'base.html' %}
-{% block title %}استيراد وتصدير{% endblock %}
+{% block title %}{{ t('Import and Export') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
     <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
+      <i class="fas fa-arrow-right"></i> {{ t('Back to Owner Dashboard') }}
     </a>
   </div>
   <div class="card">
     <div class="card-header">
-      <h3><i class="fas fa-file-export"></i> أدوات الاستيراد والتصدير</h3>
+      <h3><i class="fas fa-file-export"></i> {{ t('Import and Export Tools') }}</h3>
     </div>
     <div class="card-body">
-      <h5 class="mb-4">تصدير إلى Excel</h5>
+      <h5 class="mb-4">{{ t('Export to Excel') }}</h5>
       <div class="row">
         <div class="col-md-3">
           <a href="{{ url_for('owner.export_excel', table_name='customers') }}" class="btn btn-success btn-block btn-lg mb-3">
             <i class="fas fa-file-excel fa-2x mb-2"></i>
-            <br>العملاء
+            <br>{{ t('Clients') }}
           </a>
         </div>
         <div class="col-md-3">
           <a href="{{ url_for('owner.export_excel', table_name='products') }}" class="btn btn-success btn-block btn-lg mb-3">
             <i class="fas fa-file-excel fa-2x mb-2"></i>
-            <br>المنتجات
+            <br>{{ t('Products') }}
           </a>
         </div>
         <div class="col-md-3">
           <a href="{{ url_for('owner.export_excel', table_name='sales') }}" class="btn btn-success btn-block btn-lg mb-3">
             <i class="fas fa-file-excel fa-2x mb-2"></i>
-            <br>المبيعات
+            <br>{{ t('Sales') }}
           </a>
         </div>
         <div class="col-md-3">
           <a href="{{ url_for('owner.export_excel', table_name='expenses') }}" class="btn btn-success btn-block btn-lg mb-3">
             <i class="fas fa-file-excel fa-2x mb-2"></i>
-            <br>المصروفات
+            <br>{{ t('Expenses') }}
           </a>
         </div>
       </div>
       
       <div class="alert alert-info mt-4">
         <i class="fas fa-info-circle"></i>
-        <strong>ملاحظة:</strong> سيتم تنزيل الملف بصيغة Excel (.xlsx) جاهز للفتح في Excel أو Google Sheets.
+        <strong>{{ t('Note:') }}</strong> {{ t('The file will be downloaded in Excel format (.xlsx), ready to open in Excel or Google Sheets.') }}
       </div>
     </div>
   </div>

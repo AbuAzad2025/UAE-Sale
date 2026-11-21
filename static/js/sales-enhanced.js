@@ -16,67 +16,67 @@ function getCsrfToken() {
  */
 function addLine() {
     const html = `
-        <div class="product-line mb-2" id="line_${lineIndex}">
-            <div class="row">
-                <div class="col-md-4">
+        <div class="product-line" id="line_${lineIndex}">
+            <div class="line-grid">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-box text-primary"></i> المنتج
+                        <i class="fas fa-box text-primary"></i> ${t('Product')}
                         <span class="text-danger">*</span>
                     </label>
                     <select name="lines[${lineIndex}][product_id]" class="form-control product-select" required 
                             data-index="${lineIndex}" onchange="loadProductPrice(${lineIndex})">
-                        <option value="">بلا</option>
+                        <option value="">${t('None')}</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-sort-numeric-up text-info"></i> الكمية
+                        <i class="fas fa-sort-numeric-up text-info"></i> ${t('Quantity')}
                         <span class="text-danger">*</span>
                     </label>
                     <input type="number" name="lines[${lineIndex}][quantity]" class="form-control quantity-input" 
-                           placeholder="الكمية" value="1" step="0.01" min="0.01" required 
+                           placeholder="${t('Quantity')}" value="1" step="0.01" min="0.01" required 
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
                 </div>
-                <div class="col-md-2">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-money-bill text-success"></i> السعر
+                        <i class="fas fa-money-bill text-success"></i> ${t('Price')}
                         <span class="text-danger">*</span>
                     </label>
                     <input type="number" name="lines[${lineIndex}][unit_price]" class="form-control price-input" 
-                           placeholder="السعر" step="0.01" min="0" required 
+                           placeholder="${t('Price')}" step="0.01" min="0" required 
                            id="price_${lineIndex}" onchange="calculateTotals()" onkeyup="calculateTotals()"
-                           title="سعر الوحدة بالدرهم">
+                           title="${t('Unit price in AED')}">
                 </div>
-                <div class="col-md-1">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-percent text-warning"></i> خصم
+                        <i class="fas fa-percent text-warning"></i> ${t('Discount')}
                     </label>
                     <input type="number" name="lines[${lineIndex}][discount_percent]" class="form-control discount-input"
-                           placeholder="خصم%" value="0" step="0.01" min="0" max="100"
+                           placeholder="${t('Discount')}%" value="0" step="0.01" min="0" max="100"
                            onchange="calculateTotals()" onkeyup="calculateTotals()">
                 </div>
-                <div class="col-md-2">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">
-                        <i class="fas fa-balance-scale text-info"></i> الضريبة
+                        <i class="fas fa-balance-scale text-info"></i> ${t('Tax')}
                     </label>
                     <select name="lines[${lineIndex}][tax_treatment]" class="form-control tax-treatment-input" onchange="calculateTotals()">
-                        <option value="standard">قياسية</option>
-                        <option value="zero">صفرية 0%</option>
-                        <option value="exempt">معفاة</option>
+                        <option value="standard">${t('Standard')}</option>
+                        <option value="zero">${t('Zero 0%')}</option>
+                        <option value="exempt">${t('Exempt')}</option>
                     </select>
                 </div>
-                <div class="col-md-1">
+                <div class="line-field">
                     <label class="font-weight-bold mb-1">&nbsp;</label>
-                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeLine(${lineIndex})" title="حذف الصنف">
+                    <button type="button" class="btn btn-danger remove-line" onclick="removeLine(${lineIndex})" title="${t('Delete item')}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
-            <div class="row mt-2" id="line_info_${lineIndex}" style="display:none;">
-                <div class="col-12">
+            <div class="line-info" id="line_info_${lineIndex}" style="display:none;">
+                <div>
                     <small class="text-muted">
-                        <i class="fas fa-box mr-1"></i>المخزون: <span id="stock_${lineIndex}">-</span> |
-                        <i class="fas fa-dollar-sign mr-1"></i>التكلفة: <span id="cost_${lineIndex}">-</span>
+                        <i class="fas fa-box mr-1"></i>${t('Stock:')} <span id="stock_${lineIndex}">-</span> |
+                        <i class="fas fa-dollar-sign mr-1"></i>${t('Cost:')} <span id="cost_${lineIndex}">-</span>
                     </small>
                 </div>
             </div>
@@ -121,7 +121,7 @@ function addLine() {
             },
             language: 'ar',
             dir: 'rtl',
-            placeholder: 'ابحث عن منتج...',
+            placeholder: t('Search for a product...'),
             minimumInputLength: 0,
             width: '100%'
         });
@@ -152,7 +152,7 @@ function addLine() {
                         if (data.current_stock < 1) {
                             $(`#stock_${currentIndex}`).addClass('text-danger font-weight-bold');
                             if (typeof azad !== 'undefined') {
-                                azad.showWarning(' تنبيه: المخزون منخفض للمنتج');
+                                azad.showWarning(' ' + t('Warning: Low stock for product'));
                             }
                         }
                     }
@@ -214,11 +214,14 @@ function loadProductPrice(index) {
     
     azad.showLoading();
     
+    // Stock is scoped to the warehouse selected on the invoice.
+    const warehouseId = $('#warehouse_id').val();
     $.ajax({
         url: '/sales/api/get-price',
         data: { 
             product_id: productId, 
-            customer_id: customerId 
+            customer_id: customerId,
+            warehouse_id: warehouseId || ''
         },
         success: function(data) {
             // Store base price in AED
@@ -240,11 +243,12 @@ function loadProductPrice(index) {
             }
 
             if (data.current_stock !== undefined) {
-                $(`#stock_${index}`).text(data.current_stock + ' ' + (data.unit || ''));
-                
-                if (data.current_stock < 1) {
+                const qty = parseFloat($(`input[name="lines[${index}][quantity]"]`).val()) || 1;
+                $(`#stock_${index}`).text(data.current_stock + ' ' + (data.unit || '') + ' (' + t('Warehouse') + ')');
+                $(`#stock_${index}`).removeClass('text-danger font-weight-bold');
+                if (data.current_stock < qty) {
                     $(`#stock_${index}`).addClass('text-danger font-weight-bold');
-                    azad.showError(` تنبيه: المخزون منخفض للمنتج`);
+                    azad.showError(`${t('Insufficient stock in this warehouse')} (${t('Available')}: ${data.current_stock})`);
                 }
             }
             
@@ -259,7 +263,7 @@ function loadProductPrice(index) {
         },
         error: function() {
             azad.hideLoading();
-            azad.showError('فشل تحميل السعر');
+            azad.showError(t('Failed to load price'));
         }
     });
 }
@@ -348,7 +352,7 @@ async function calculateTotals() {
         
         if (sequence !== calculationSequence) return;
         if (result.success) {
-            $('#totals_calculation_status').text('الإجمالي محسوب بواسطة الخادم.');
+            $('#totals_calculation_status').text(t('Total calculated by server.'));
             // تحديث الواجهة
             $('#subtotal').text(azad.formatNumber(result.subtotal));
             $('#total').text(azad.formatNumber(result.total));
@@ -376,7 +380,7 @@ async function calculateTotals() {
 
 // Fallback: حساب محلي في حالة فشل الـ backend
 function calculateTotalsClientSide() {
-    $('#totals_calculation_status').text('معاينة تقريبية: تعذر الوصول إلى الخادم. القيمة النهائية يحددها الخادم عند الحفظ.');
+    $('#totals_calculation_status').text(t('Approximate preview: Unable to reach the server. The final value is determined by the server on save.'));
     let subtotal = 0;
     let lineCount = 0;
     const buckets = {standard: 0, zero: 0, exempt: 0};
@@ -446,7 +450,7 @@ $('#currency').on('change', function() {
         serverExchangeRate = 1;
         $rateInput.prop('readonly', false);
         $rateInput.css('background-color', '#e9ecef');
-        azad.showInfo(' العملة: درهم - الأسعار والمدفوع بالدرهم');
+        azad.showInfo(' ' + t('Currency: AED - Prices and payment in AED'));
         return;
     }
     
@@ -464,7 +468,7 @@ $('#currency').on('change', function() {
                 const examplePayment = 100;
                 const exampleAED = (examplePayment * data.rate).toFixed(2);
                 const _base = window.BASE_CURRENCY || 'AED';
-                azad.showSuccess(` سعر الصرف: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n التوضيح:\n• الفاتورة: بالدرهم (${_base})\n• المدفوع: بالـ ${currency}\n• مثال: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
+                azad.showSuccess(` ${t('Exchange rate')}: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n ${t('Explanation')}:\n• ${t('Invoice')}: ${t('in AED')} (${_base})\n• ${t('Paid')}: ${t('in')} ${currency}\n• ${t('Example')}: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
                 updateLinePrices();
             } else if (data.manual_input_required) {
                 serverExchangeRate = null;
@@ -472,7 +476,7 @@ $('#currency').on('change', function() {
                 $rateInput.prop('readonly', false);
                 $rateInput.css('background-color', '#fff3cd');
                 $rateInput.focus();
-                azad.showError(' يرجى إدخال سعر الصرف يدوياً');
+                azad.showError(' ' + t('Please enter the exchange rate manually'));
             }
         },
         error: function() {
@@ -480,7 +484,7 @@ $('#currency').on('change', function() {
             $rateInput.val('');
             $rateInput.prop('readonly', false);
             $rateInput.css('background-color', '#f8d7da');
-            azad.showError(' فشل تحميل سعر الصرف - يرجى الإدخال يدوياً');
+            azad.showError(' ' + t('Failed to load exchange rate - please enter manually'));
         }
     });
 });
@@ -491,7 +495,7 @@ $('#exchange_rate').on('change', function() {
     const serverRate = parseFloat($(this).data('server-rate')) || serverExchangeRate;
     
     if (!manualRate || manualRate <= 0) {
-        azad.showError(' سعر الصرف يجب أن يكون أكبر من صفر');
+        azad.showError(' ' + t('Exchange rate must be greater than zero'));
         if (serverRate) {
             $(this).val(serverRate.toFixed(6));
         }
@@ -506,8 +510,8 @@ $('#exchange_rate').on('change', function() {
             // Manual rate is lower than server rate - requires documentation
             $(this).css('background-color', '#f8d7da');
             azad.showWarning(
-                ` تحذير: سعر الصرف المدخل (${manualRate.toFixed(6)}) أقل من سعر السيرفر (${serverRate.toFixed(6)}) بنسبة ${diffText}` +
-                `\nسيتم توثيق هذا التغيير في سجل العمليات`
+                ` ${t('Warning')}: ${t('Entered exchange rate')} (${manualRate.toFixed(6)}) ${t('is lower than server rate')} (${serverRate.toFixed(6)}) ${t('by')} ${diffText}` +
+                `\n${t('This change will be documented in the operation log')}`
             );
             
             // Add hidden field to track manual override
@@ -519,7 +523,7 @@ $('#exchange_rate').on('change', function() {
             `);
         } else if (manualRate > serverRate) {
             $(this).css('background-color', '#d1ecf1');
-            azad.showInfo(`ℹ سعر الصرف المدخل أعلى من السيرفر بنسبة ${diffText}`);
+            azad.showInfo(`ℹ ${t('Entered exchange rate')} ${t('is higher than server')} ${t('by')} ${diffText}`);
         } else {
             $(this).css('background-color', '#d4edda');
         }
@@ -559,7 +563,7 @@ $('#payment_method').on('change', function() {
         success: function(data) {
             if (data.fields && data.fields.length > 0) {
                 let html = '<hr class="my-3">';
-                html += `<h6 class="mb-3">${data.ar_title || 'تفاصيل الدفع'}</h6>`;
+                html += `<h6 class="mb-3">${data.ar_title || t('Payment details')}</h6>`;
                 
                 data.fields.forEach(field => {
                     const label = field.label_ar || field.label || field.name;
@@ -573,7 +577,7 @@ $('#payment_method').on('change', function() {
                     
                     if (field.type === 'select' && field.options) {
                         html += `<select name="${field.name}" class="form-control" ${required}>`;
-                        html += '<option value="">اختر...</option>';
+                        html += '<option value="">' + t('Select...') + '</option>';
                         field.options.forEach(opt => {
                             html += `<option value="${opt.value}">${opt.label_ar || opt.label_en}</option>`;
                         });
@@ -596,7 +600,7 @@ $('#payment_method').on('change', function() {
             }
         },
         error: function() {
-            azad.showError(' فشل تحميل حقول الدفع');
+            azad.showError(' ' + t('Failed to load payment fields'));
         }
     });
 });
@@ -606,7 +610,7 @@ $('#payment_method').on('change', function() {
  */
 $(document).ready(function() {
     $('#customer_id').select2({
-        placeholder: 'ابحث عن زبون...',
+        placeholder: t('Search for a customer...'),
         language: 'ar',
         dir: 'rtl',
         width: '100%',
@@ -652,14 +656,14 @@ $(document).ready(function() {
         
         if (totals.lineCount === 0) {
             e.preventDefault();
-            azad.showError(' يجب إضافة منتج واحد على الأقل');
+            azad.showError(' ' + t('Please add at least one product'));
             return false;
         }
         
         // Don't block if total is 0 - could be all free items
         if (totals.total < 0) {
             e.preventDefault();
-            azad.showError(' الإجمالي لا يمكن أن يكون سالب');
+            azad.showError(' ' + t('Total cannot be negative'));
             return false;
         }
         
@@ -669,13 +673,13 @@ $(document).ready(function() {
         whEl.toggleClass('is-invalid', !whEl.val()).toggleClass('is-valid', !!whEl.val());
         if (!custEl.val()) {
             e.preventDefault();
-            azad.showError(' يجب اختيار زبون');
+            azad.showError(' ' + t('Please select a customer'));
             custEl.select2('open');
             return false;
         }
         if (!whEl.val()) {
             e.preventDefault();
-            azad.showError(' يجب اختيار مستودع');
+            azad.showError(' ' + t('Please select a warehouse'));
             whEl.focus();
             return false;
         }

@@ -167,7 +167,7 @@
     {% set _back_url = back_url if (back_url is defined and back_url) else _auto_back %}
     <header class="no-print print-header-bar">
       <div class="template-selector selector-wrapper">
-        <span class="template-label">القالب:</span>
+        <span class="template-label">{{ t('Template') }}:</span>
         <div class="template-buttons">
           {% for tpl_key, tpl_name in available_templates %}
             <button type="button" 
@@ -180,11 +180,11 @@
         </div>
         {% if _back_url %}
         <a href="{{ _back_url }}" class="print-btn-fixed" style="text-decoration:none;">
-          <i class="fas fa-arrow-right"></i> {{ back_label if back_label is defined and back_label else 'رجوع' }}
+          <i class="fas fa-arrow-right"></i> {{ back_label if back_label is defined and back_label else t('Back') }}
         </a>
         {% endif %}
         <button type="button" class="print-btn-fixed" onclick="window.print()">
-          <i class="fas fa-print"></i> طباعة
+          <i class="fas fa-print"></i> {{ t('Print') }}
         </button>
       </div>
     </header>

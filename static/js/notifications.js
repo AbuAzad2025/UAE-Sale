@@ -270,19 +270,19 @@ toast.innerHTML = `
         return toast;
     }
 
-    success(message, title = 'نجح!') {
+    success(message, title = t('Success!')) {
         return this.show({ type: 'success', title, message });
     }
 
-    error(message, title = 'خطأ!') {
+    error(message, title = t('Error!')) {
         return this.show({ type: 'error', title, message, duration: 20000 });
     }
 
-    warning(message, title = 'تحذير!') {
+    warning(message, title = t('Warning!')) {
         return this.show({ type: 'warning', title, message });
     }
 
-    info(message, title = 'معلومة') {
+    info(message, title = t('Info')) {
         return this.show({ type: 'info', title, message });
     }
 }

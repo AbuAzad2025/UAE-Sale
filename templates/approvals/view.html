@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}طلب موافقة {{ req.request_number }}{% endblock %}
-{% block page_title %}طلب موافقة #{{ req.request_number }}{% endblock %}
+{% block title %}{{ t('Approval Request') }} {{ req.request_number }}{% endblock %}
+{% block page_title %}{{ t('Approval Request') }} #{{ req.request_number }}{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -9,60 +9,60 @@
     <div class="card">
       <div class="card-header">
         <h4 class="card-title mb-0">
-          <i class="fas fa-file-alt mr-2"></i>تفاصيل الطلب
+          <i class="fas fa-file-alt mr-2"></i>{{ t('Request Details') }}
           {% if req.status == 'pending' %}
-            <span class="badge badge-warning float-left">معلق</span>
+            <span class="badge badge-warning float-left">{{ t('Pending') }}</span>
           {% elif req.status == 'approved' %}
-            <span class="badge badge-success float-left">موافق عليه</span>
+            <span class="badge badge-success float-left">{{ t('Approved') }}</span>
           {% elif req.status == 'rejected' %}
-            <span class="badge badge-danger float-left">مرفوض</span>
+            <span class="badge badge-danger float-left">{{ t('Rejected') }}</span>
           {% endif %}
         </h4>
       </div>
       <div class="card-body">
         <table class="table table-borderless">
           <tr>
-            <th style="width:200px">رقم الطلب:</th>
+            <th style="width:200px">{{ t('Request Number') }}:</th>
             <td><strong>{{ req.request_number }}</strong></td>
           </tr>
           <tr>
-            <th>نوع الكيان:</th>
+            <th>{{ t('Entity Type') }}:</th>
             <td>
-              {% if req.entity_type == 'sale' %}مبيعات
-              {% elif req.entity_type == 'payment' %}مدفوعات
-              {% elif req.entity_type == 'purchase' %}مشتريات
+              {% if req.entity_type == 'sale' %}{{ t('Sales') }}
+              {% elif req.entity_type == 'payment' %}{{ t('Payments') }}
+              {% elif req.entity_type == 'purchase' %}{{ t('Purchases') }}
               {% endif %} #{{ req.entity_id }}
             </td>
           </tr>
           <tr>
-            <th>المبلغ:</th>
+            <th>{{ t('Amount') }}:</th>
             <td class="font-weight-bold text-primary">{{ "{:,.2f}".format(req.amount) }} {{ req.currency }}</td>
           </tr>
           <tr>
-            <th>سير العمل:</th>
-            <td>{{ workflow.name_ar or workflow.name }} ({{ workflow.levels_required }} خطوة)</td>
+            <th>{{ t('Workflow') }}:</th>
+            <td>{{ workflow.name_ar or workflow.name }} ({{ workflow.levels_required }} {{ t('steps') }})</td>
           </tr>
           <tr>
-            <th>الخطوة الحالية:</th>
+            <th>{{ t('Current Step') }}:</th>
             <td>{{ req.current_level }} / {{ workflow.levels_required }}</td>
           </tr>
           <tr>
-            <th>المتقدم:</th>
+            <th>{{ t('Submitter') }}:</th>
             <td>{{ req.requester.username if req.requester else '-' }}</td>
           </tr>
           <tr>
-            <th>التاريخ:</th>
+            <th>{{ t('Date') }}:</th>
             <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
           </tr>
           {% if req.description %}
           <tr>
-            <th>ملاحظات:</th>
+            <th>{{ t('Notes') }}:</th>
             <td>{{ req.description }}</td>
           </tr>
           {% endif %}
           {% if req.resolved_at %}
           <tr>
-            <th>تاريخ البت:</th>
+            <th>{{ t('Decision Date') }}:</th>
             <td>{{ req.resolved_at.strftime('%Y-%m-%d %H:%M') }}</td>
           </tr>
           {% endif %}
@@ -74,19 +74,19 @@
     <div class="card mt-3">
       <div class="card-header">
         <h4 class="card-title mb-0">
-          <i class="fas fa-list-ol mr-2"></i>خطوات الموافقة
+          <i class="fas fa-list-ol mr-2"></i>{{ t('Approval Steps') }}
         </h4>
       </div>
       <div class="card-body p-0">
         <table class="table table-bordered mb-0">
           <thead>
             <tr>
-              <th>الخطوة</th>
-              <th>المستوى المطلوب</th>
-              <th>الحالة</th>
-              <th>الموافق</th>
-              <th>التاريخ</th>
-              <th>ملاحظات</th>
+              <th>{{ t('Step') }}</th>
+              <th>{{ t('Required Role') }}</th>
+              <th>{{ t('Status') }}</th>
+              <th>{{ t('Approver') }}</th>
+              <th>{{ t('Date') }}</th>
+              <th>{{ t('Notes') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -95,22 +95,22 @@
               <td>{{ level.level }}</td>
               <td>
                 {% if level.required_role == 'owner' %}
-                  <span class="badge badge-dark">مالك</span>
+                  <span class="badge badge-dark">{{ t('Owner') }}</span>
                 {% elif level.required_role == 'admin' %}
-                  <span class="badge badge-primary">مدير</span>
+                  <span class="badge badge-primary">{{ t('Admin') }}</span>
                 {% elif level.required_role == 'manager' %}
-                  <span class="badge badge-info">مدير قسم</span>
+                  <span class="badge badge-info">{{ t('Department Manager') }}</span>
                 {% else %}
                   <span class="badge badge-secondary">{{ level.required_role }}</span>
                 {% endif %}
               </td>
               <td>
                 {% if level.status == 'pending' %}
-                  <span class="badge badge-warning">معلق</span>
+                  <span class="badge badge-warning">{{ t('Pending') }}</span>
                 {% elif level.status == 'approved' %}
-                  <span class="badge badge-success">موافق</span>
+                  <span class="badge badge-success">{{ t('Approved') }}</span>
                 {% elif level.status == 'rejected' %}
-                  <span class="badge badge-danger">مرفوض</span>
+                  <span class="badge badge-danger">{{ t('Rejected') }}</span>
                 {% endif %}
               </td>
               <td>{{ level.approver.username if level.approver else '-' }}</td>
@@ -130,7 +130,7 @@
     <div class="card border-warning">
       <div class="card-header bg-warning">
         <h4 class="card-title text-dark mb-0">
-          <i class="fas fa-gavel mr-2"></i>الإجراءات
+          <i class="fas fa-gavel mr-2"></i>{{ t('Actions') }}
         </h4>
       </div>
       <div class="card-body">
@@ -138,10 +138,10 @@
         <form method="POST" action="{{ url_for('approvals.approve', request_id=req.id) }}" class="mb-3">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
-            <textarea name="notes" class="form-control form-control-sm" placeholder="ملاحظات (اختياري)" rows="2"></textarea>
+            <textarea name="notes" class="form-control form-control-sm" placeholder="{{ t('Notes (optional)') }}" rows="2"></textarea>
           </div>
-          <button type="submit" class="btn btn-success btn-block" onclick="return confirm('هل أنت متأكد من الموافقة؟')">
-            <i class="fas fa-check mr-1"></i>موافقة
+          <button type="submit" class="btn btn-success btn-block" onclick="return confirm('{{ t('Are you sure you want to approve?') }}')">
+            <i class="fas fa-check mr-1"></i>{{ t('Approve') }}
           </button>
         </form>
 
@@ -149,10 +149,10 @@
         <form method="POST" action="{{ url_for('approvals.reject', request_id=req.id) }}" class="mb-3">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
-            <textarea name="notes" class="form-control form-control-sm" placeholder="سبب الرفض (مطلوب)" rows="2" required></textarea>
+            <textarea name="notes" class="form-control form-control-sm" placeholder="{{ t('Rejection reason (required)') }}" rows="2" required></textarea>
           </div>
-          <button type="submit" class="btn btn-danger btn-block" onclick="return confirm('هل أنت متأكد من رفض الطلب؟')">
-            <i class="fas fa-times mr-1"></i>رفض
+          <button type="submit" class="btn btn-danger btn-block" onclick="return confirm('{{ t('Are you sure you want to reject the request?') }}')">
+            <i class="fas fa-times mr-1"></i>{{ t('Reject') }}
           </button>
         </form>
 
@@ -162,7 +162,7 @@
         <form method="POST" action="{{ url_for('approvals.cancel', request_id=req.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline-secondary btn-block btn-sm">
-            <i class="fas fa-ban mr-1"></i>إلغاء الطلب
+            <i class="fas fa-ban mr-1"></i>{{ t('Cancel Request') }}
           </button>
         </form>
       </div>
@@ -182,18 +182,18 @@
     
     <div class="card mt-3">
       <div class="card-body">
-        <h6>العمليات المرتبطة:</h6>
+        <h6>{{ t('Related Operations') }}:</h6>
         {% if req.entity_type == 'sale' %}
           <a href="{{ url_for('sales.view', id=req.entity_id) }}" class="btn btn-outline-primary btn-sm btn-block">
-            <i class="fas fa-file-invoice mr-1"></i>عرض الفاتورة
+            <i class="fas fa-file-invoice mr-1"></i>{{ t('View Invoice') }}
           </a>
         {% elif req.entity_type == 'payment' %}
           <a href="{{ url_for('payments.receipts') }}" class="btn btn-outline-success btn-sm btn-block">
-            <i class="fas fa-money-bill mr-1"></i>عرض المدفوعات
+            <i class="fas fa-money-bill mr-1"></i>{{ t('View Payments') }}
           </a>
         {% elif req.entity_type == 'purchase' %}
           <a href="{{ url_for('purchases.index') }}" class="btn btn-outline-info btn-sm btn-block">
-            <i class="fas fa-shopping-bag mr-1"></i>عرض المشتريات
+            <i class="fas fa-shopping-bag mr-1"></i>{{ t('View Purchases') }}
           </a>
         {% endif %}
       </div>

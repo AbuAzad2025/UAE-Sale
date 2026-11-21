@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-  <div class="card-header"><h3>ضريبة الشركات (CT) — {{ tenant.name_ar or tenant.name if tenant else 'الشركة الحالية' }}</h3></div>
+  <div class="card-header"><h3>{{ t('Corporate Tax') }} (CT) — {{ tenant.name_ar or tenant.name if tenant else t('Current Company') }}</h3></div>
   <div class="card-body">
-    <p>الإيرادات (دفتر الأستاذ): <strong>{{ "{:,.2f}".format(total_revenue) }}</strong></p>
-    <p>المصروفات: <strong>{{ "{:,.2f}".format(total_expense) }}</strong></p>
-    <p>صافي الربح: <strong>{{ "{:,.2f}".format(net_profit) }}</strong></p>
+    <p>{{ t('Revenue') }} ({{ t('Ledger') }}): <strong>{{ "{:,.2f}".format(total_revenue) }}</strong></p>
+    <p>{{ t('Expenses') }}: <strong>{{ "{:,.2f}".format(total_expense) }}</strong></p>
+    <p>{{ t('Net Profit') }}: <strong>{{ "{:,.2f}".format(net_profit) }}</strong></p>
     {% if tenant and tenant.corp_tax_enabled %}
-      <p>النسبة: {{ tenant.corp_tax_rate }}% — الحد المعفى: {{ "{:,.0f}".format(tenant.corp_tax_threshold or 0) }}</p>
-      <p>الضريبة المستحقة: <strong class="text-danger">{{ "{:,.2f}".format(ct_due) }}</strong></p>
+      <p>{{ t('Rate') }}: {{ tenant.corp_tax_rate }}% — {{ t('Exempt Threshold') }}: {{ "{:,.0f}".format(tenant.corp_tax_threshold or 0) }}</p>
+      <p>{{ t('Tax Due') }}: <strong class="text-danger">{{ "{:,.2f}".format(ct_due) }}</strong></p>
       <form method="POST" action="{{ url_for('ledger.corporate_tax_post') }}" class="mt-2">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="btn btn-primary btn-sm">ترحيل قيد الاستحقاق (مدين مصروف/دائن مستحق)</button>
+        <button type="submit" class="btn btn-primary btn-sm">{{ t('Post Accrual Entry (Dr Expense/Cr Payable)') }}</button>
       </form>
     {% else %}
-      <p class="text-muted">ضريبة الشركات غير مفعّلة لهذه الشركة (من إعدادات المالك).</p>
+      <p class="text-muted">{{ t('Corporate tax is not enabled for this company (from owner settings).') }}</p>
     {% endif %}
   </div>
 </div>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}فاتورة صيانة - {{ order.order_no }}{% endblock %}
-{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>فاتورة صيانة - {{ order.order_no }}{% endblock %}
+{% block title %}{{ t('Maintenance Invoice') }} - {{ order.order_no }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>{{ t('Maintenance Invoice') }} - {{ order.order_no }}{% endblock %}
 {% block content %}
 <style>
   .invoice-wrapper { max-width: 800px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -19,50 +19,50 @@
   @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
 </style>
 <div class="invoice-wrapper">
-  <div class="alert alert-info"><strong>فاتورة صيانة مُرحَّلة.</strong>
-    المبالغ هي لقطة لحظة إصدار الفاتورة؛ أي تعديل لاحق على الأمر لا يغيّر هذه الوثيقة.</div>
+  <div class="alert alert-info"><strong>{{ t('Posted maintenance invoice.') }}</strong>
+    {{ t('Amounts are a snapshot at invoice issuance; later changes to the order do not affect this document.') }}</div>
   <div class="invoice-header">
     <div class="invoice-logo">
       <h2>{{ tenant.name_ar or tenant.name }}</h2>
-      <p>سجل فاتورة صيانة تاريخي</p>
+      <p>{{ t('Historical Maintenance Invoice Record') }}</p>
     </div>
     <div class="invoice-meta">
-      <p><strong>رقم الفاتورة:</strong> {{ order.invoice.invoice_no if order.invoice else '-' }}</p>
-      <p><strong>رقم الأمر:</strong> {{ order.order_no }}</p>
-      <p><strong>تاريخ الفاتورة:</strong> {{ order.invoice.posted_at.strftime('%Y-%m-%d %H:%M') if order.invoice and order.invoice.posted_at else '-' }}</p>
-      <p><strong>طريقة الدفع:</strong> {{ order.payment_mode }}</p>
+      <p><strong>{{ t('Invoice Number:') }}</strong> {{ order.invoice.invoice_no if order.invoice else '-' }}</p>
+      <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
+      <p><strong>{{ t('Invoice Date:') }}</strong> {{ order.invoice.posted_at.strftime('%Y-%m-%d %H:%M') if order.invoice and order.invoice.posted_at else '-' }}</p>
+      <p><strong>{{ t('Payment Method:') }}</strong> {{ order.payment_mode }}</p>
     </div>
   </div>
 
   <div class="invoice-body">
     <div class="customer-info">
-      <h4>بيانات العميل:</h4>
-      <p><strong>الاسم:</strong> {{ order.customer.name if order.customer else '-' }}</p>
-      <p><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+      <h4>{{ t('Customer Details:') }}</h4>
+      <p><strong>{{ t('Name:') }}</strong> {{ order.customer.name if order.customer else '-' }}</p>
+      <p><strong>{{ t('Phone:') }}</strong> {{ order.customer.phone if order.customer else '-' }}</p>
     </div>
 
     <div class="device-info">
-      <h4>بيانات الجهاز:</h4>
-      <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
-      <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
-      <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
-      <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
-      <p><strong>المشكلة:</strong> {{ order.device_problem or '-' }}</p>
+      <h4>{{ t('Device Details:') }}</h4>
+      <p><strong>{{ t('Make') }}:</strong> {{ order.device_brand or '-' }}</p>
+      <p><strong>{{ t('Model') }}:</strong> {{ order.device_model or '-' }}</p>
+      <p><strong>{{ t('Serial Number') }}:</strong> {{ order.device_serial or '-' }}</p>
+      <p><strong>{{ t('IMEI') }}:</strong> {{ order.device_imei or '-' }}</p>
+      <p><strong>{{ t('Problem:') }}</strong> {{ order.device_problem or '-' }}</p>
     </div>
 
     <table class="invoice-table">
       <thead>
         <tr>
-          <th>الوصف</th>
-          <th class="text-right">الكمية</th>
-          <th class="text-right">السعر</th>
-          <th class="text-right">الإجمالي</th>
+          <th>{{ t('Description') }}</th>
+          <th class="text-right">{{ t('Quantity') }}</th>
+          <th class="text-right">{{ t('Price') }}</th>
+          <th class="text-right">{{ t('Total') }}</th>
         </tr>
       </thead>
       <tbody>
         {% for it in order.items %}
         <tr>
-          <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else 'قطعة غير محددة' }}</td>
+          <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else t('Unspecified Part') }}</td>
           <td class="text-right">{{ it.quantity }}</td>
           <td class="text-right">{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
           <td class="text-right">{{ "{:,.3f}".format(it.line_total or 0) }}</td>
@@ -77,19 +77,19 @@
         </tr>
         {% endfor %}
         <tr>
-          <td>المجموع الفرعي</td>
+          <td>{{ t('Subtotal') }}</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
           <td class="text-right">{{ "{:,.3f}".format(order.invoice.subtotal or 0) }}</td>
         </tr>
         <tr>
-          <td>الخصم</td>
+          <td>{{ t('Discount') }}</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
           <td class="text-right">- {{ "{:,.3f}".format(order.invoice.discount_total or 0) }}</td>
         </tr>
         <tr>
-          <td>الضريبة</td>
+          <td>{{ t('Tax') }}</td>
           <td class="text-right"></td>
           <td class="text-right"></td>
           <td class="text-right">{{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</td>
@@ -97,19 +97,19 @@
       </tbody>
       <tfoot>
         <tr>
-          <th>الإجمالي النهائي</th>
+          <th>{{ t('Grand Total') }}</th>
           <th class="text-right"></th>
           <th class="text-right"></th>
           <td class="text-right" style="font-size: 1.2em; font-weight: bold;">{{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</td>
         </tr>
         <tr>
-          <th>المدفوع عند إصدار السجل</th>
+          <th>{{ t('Paid at Record Issuance') }}</th>
           <td class="text-right"></td>
           <td class="text-right"></td>
           <td class="text-right">{{ "{:,.3f}".format(order.invoice.paid_amount or 0) }}</td>
         </tr>
         <tr>
-          <th>المتبقي عند إصدار السجل</th>
+          <th>{{ t('Balance at Record Issuance') }}</th>
           <td class="text-right"></td>
           <td class="text-right"></td>
           <td class="text-right">{{ "{:,.3f}".format(order.invoice.balance_due or 0) }}</td>
@@ -119,9 +119,9 @@
   </div>
 
   <div class="invoice-footer">
-    <p><strong>حالة الضمان:</strong> {{ order.warranty_status or '-' }}</p>
-    <p><strong>ملاحظات الضمان:</strong> {{ order.warranty_notes or '-' }}</p>
-    <p class="text-muted small">شكراً لتعاملكم معنا. الضمان ساري وفقاً للشروط المتفق عليها.</p>
+    <p><strong>{{ t('Warranty Status:') }}</strong> {{ order.warranty_status or '-' }}</p>
+    <p><strong>{{ t('Warranty Notes:') }}</strong> {{ order.warranty_notes or '-' }}</p>
+    <p class="text-muted small">{{ t('Thank you for doing business with us. The warranty is valid per the agreed terms.') }}</p>
   </div>
 </div>
 

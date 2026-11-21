@@ -42,6 +42,13 @@ _STATUS_BADGE_MAP = {
     "void": ("secondary", "ملغي"),
     "bounced": ("danger", "مرتد"),
 }
+_STATUS_BADGE_EN = {
+    "unpaid": "Unpaid",
+    "partial": "Partial",
+    "paid": "Paid",
+    "void": "Void",
+    "bounced": "Bounced",
+}
 
 
 def _to_decimal(value):
@@ -82,10 +89,15 @@ def _status_badge(status):
     badge class comes from a hardcoded allowlist map (never user input),
     so there is no XSS vector. nosec B704.
     """
+    from utils.i18n import get_current_language, t as _t
+
     key = str(status or "").strip().lower()
     cls, label = _STATUS_BADGE_MAP.get(key, (None, None))
     if cls is None:
         cls, label = "secondary", str(status or "")
+    elif get_current_language() == "en":
+        # Translate the Arabic label via its English key (single source).
+        label = _t(_STATUS_BADGE_EN.get(key, label))
     return Markup(
         '<span class="badge badge-{}">{}</span>'.format(  # nosec B704
             escape(cls), escape(label)
@@ -397,6 +409,32 @@ def create_app(config_class=Config):  # noqa: C901
                     return data.get("symbol", code)
             return code
 
+        def _company_address():
+            raw = str(app.config.get("COMPANY_ADDRESS", "") or "")
+            parts = [p.strip() for p in raw.split("|") if p.strip()]
+            if get_current_language() == "en" and len(parts) > 1:
+                return parts[1]
+            return parts[0] if parts else raw
+
+        def _display_name(entity):
+            """اسم الكائن بلغة الواجهة الحالية (عربي/إنجليزي).
+
+            كل النماذج التي تعرض أسماءً للمستخدم توفّر get_display_name(lang).
+            إذا لم يتوفّر، نختار الحقل المناسب من name_ar/name حسب اللغة.
+            """
+            if entity is None:
+                return ""
+            lang = get_current_language()
+            getter = getattr(entity, "get_display_name", None)
+            if callable(getter):
+                try:
+                    return getter(lang)
+                except TypeError:
+                    pass
+            name_ar = getattr(entity, "name_ar", None)
+            name = getattr(entity, "name", None)
+            return (name_ar if lang == "ar" else name) or name_ar or name or ""
+
         owner_tenants: list = []
         impersonate_tenant = None
         try:
@@ -425,6 +463,8 @@ def create_app(config_class=Config):  # noqa: C901
             "format_currency": format_currency,
             "timeago": timeago,
             "t": t,
+            "display_name": _display_name,
+            "company_address": _company_address(),
             "is_rtl": is_rtl(),
             "current_language": get_current_language(),
             "get_current_language": get_current_language,
@@ -586,7 +626,7 @@ def create_app(config_class=Config):  # noqa: C901
             base = CurrencyService.get_base_currency()
         except Exception:
             base = "ILS"
-        names = {
+        names_ar = {
             "ILS": "شيقل",
             "JOD": "دينار أردني",
             "AED": "درهم إماراتي",
@@ -599,6 +639,22 @@ def create_app(config_class=Config):  # noqa: C901
             "OMR": "ريال عماني",
             "BHD": "دينار بحريني",
         }
+        names_en = {
+            "ILS": "Shekel",
+            "JOD": "Jordanian Dinar",
+            "AED": "UAE Dirham",
+            "SAR": "Saudi Riyal",
+            "USD": "US Dollar",
+            "EUR": "Euro",
+            "GBP": "British Pound",
+            "KWD": "Kuwaiti Dinar",
+            "QAR": "Qatari Riyal",
+            "OMR": "Omani Rial",
+            "BHD": "Bahraini Dinar",
+        }
+        from utils.i18n import get_current_language
+
+        names = names_en if get_current_language() == "en" else names_ar
         return {"base_currency": base, "base_currency_name": names.get(base, base)}
 
     app.template_filter("money")(_format_money)
@@ -606,19 +662,19 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter("status_badge")(_status_badge)
     app.template_filter("page_title_text")(_page_title_text)
 
-    try:
-        from models.tenant_scope import (
-            install_builtin_tenant_scoping,
-            install_tenant_filter_events,
-            install_tenant_loader_criteria,
-        )
+    # Tenant isolation is a hard security requirement: if any hook fails to
+    # install, the app must NOT serve requests — otherwise every report could
+    # leak every tenant's data. Fail closed instead of warning and continuing.
+    from models.tenant_scope import (
+        install_builtin_tenant_scoping,
+        install_tenant_filter_events,
+        install_tenant_loader_criteria,
+    )
 
-        install_builtin_tenant_scoping()
-        install_tenant_filter_events()
-        install_tenant_loader_criteria()
-        app.logger.info("[OK] Tenant filter events installed")
-    except Exception as e:
-        app.logger.warning(f"Tenant filter events not installed: {e}")
+    install_builtin_tenant_scoping()
+    install_tenant_filter_events()
+    install_tenant_loader_criteria()
+    app.logger.info("[OK] Tenant filter events installed")
 
     try:
         from models.events import register_all_listeners

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - سند قبض #{{ receipt.receipt_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Receipt Voucher') }} #{{ receipt.receipt_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap">
   <div>
@@ -12,36 +12,36 @@
     
     <div class="btn-group d-flex align-items-center" role="group">
       <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-        <i class="fas fa-file-alt mr-1"></i> قالب الطباعة
+        <i class="fas fa-file-alt mr-1"></i> {{ t('Print Template') }}
       </button>
       <div class="dropdown-menu dropdown-menu-right">
-        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='modern') }}"><i class="fas fa-file-alt mr-2"></i> مودرن</a>
-        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='classic') }}"><i class="fas fa-file-alt mr-2"></i> كلاسيك</a>
-        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='gulf') }}"><i class="fas fa-file-alt mr-2"></i> خليجي</a>
-        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='minimal') }}"><i class="fas fa-file-alt mr-2"></i> بسيط</a>
-        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='simple') }}"><i class="fas fa-file-alt mr-2"></i> مبسط</a>
+        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='modern') }}"><i class="fas fa-file-alt mr-2"></i> {{ t('Modern') }}</a>
+        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='classic') }}"><i class="fas fa-file-alt mr-2"></i> {{ t('Classic') }}</a>
+        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='gulf') }}"><i class="fas fa-file-alt mr-2"></i> {{ t('Gulf') }}</a>
+        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='minimal') }}"><i class="fas fa-file-alt mr-2"></i> {{ t('Simple') }}</a>
+        <a class="dropdown-item" href="{{ url_for('payments.print_receipt', id=receipt.id, template='simple') }}"><i class="fas fa-file-alt mr-2"></i> {{ t('Minimal') }}</a>
       </div>
     </div>
     <a href="{{ url_for('payments.print_receipt', id=receipt.id) }}" class="btn btn-secondary" target="_blank">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </a>
     {% if is_payment %}
-    <form action="{{ url_for('payments.delete_payment', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند الصرف هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+    <form action="{{ url_for('payments.delete_payment', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ t('Are you sure you want to delete this payment voucher?\\n\\nNote: the voucher will be archived if it is linked to cheques, or permanently deleted otherwise.') }}');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">
-        <i class="fas fa-trash mr-2"></i>حذف
+        <i class="fas fa-trash mr-2"></i>{{ t('Delete') }}
       </button>
     </form>
     {% else %}
-    <form action="{{ url_for('payments.delete_receipt', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند القبض هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان له تخصيصات أو مرتبط بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+    <form action="{{ url_for('payments.delete_receipt', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ t('Are you sure you want to delete this receipt voucher?\\n\\nNote: the voucher will be archived if it has allocations or is linked to cheques, or permanently deleted otherwise.') }}');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">
-        <i class="fas fa-trash mr-2"></i>حذف
+        <i class="fas fa-trash mr-2"></i>{{ t('Delete') }}
       </button>
     </form>
     {% endif %}
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-info">
-      <i class="fas fa-arrow-right mr-2"></i>العودة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
     </a>
   </div>
 </div>
@@ -51,27 +51,27 @@
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('payments.print_receipt', id=receipt.id) }}" class="btn btn-secondary" target="_blank">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </a>
     
     {% if is_payment %}
-    <form action="{{ url_for('payments.delete_payment', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند الصرف هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+    <form action="{{ url_for('payments.delete_payment', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ t('Are you sure you want to delete this payment voucher?\\n\\nNote: the voucher will be archived if it is linked to cheques, or permanently deleted otherwise.') }}');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">
-        <i class="fas fa-trash mr-2"></i>حذف
+        <i class="fas fa-trash mr-2"></i>{{ t('Delete') }}
       </button>
     </form>
     {% else %}
-    <form action="{{ url_for('payments.delete_receipt', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف سند القبض هذا؟\n\nتنبيه: سيتم أرشفة السند إذا كان له تخصيصات أو مرتبط بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.');">
+    <form action="{{ url_for('payments.delete_receipt', id=receipt.id) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ t('Are you sure you want to delete this receipt voucher?\\n\\nNote: the voucher will be archived if it has allocations or is linked to cheques, or permanently deleted otherwise.') }}');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-danger">
-        <i class="fas fa-trash mr-2"></i>حذف
+        <i class="fas fa-trash mr-2"></i>{{ t('Delete') }}
       </button>
     </form>
     {% endif %}
 
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-info">
-      <i class="fas fa-arrow-right mr-2"></i>العودة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
     </a>
   </div>
 </div>
@@ -80,11 +80,11 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-header bg-gradient-success">
-        <h3 class="card-title text-white">تفاصيل السند</h3>
+        <h3 class="card-title text-white">{{ t('Voucher Details') }}</h3>
       </div>
       <div class="card-body">
         <dl class="row">
-          <dt class="col-sm-5">رقم السند:</dt>
+          <dt class="col-sm-5">{{ t('Voucher Number:') }}</dt>
           <dd class="col-sm-7"><strong>
             {% if is_payment %}
               {{ receipt.payment_number }}
@@ -93,7 +93,7 @@
             {% endif %}
           </strong></dd>
           
-          <dt class="col-sm-5">الزبون:</dt>
+          <dt class="col-sm-5">{{ t('Customer:') }}</dt>
           <dd class="col-sm-7">
             {% if is_payment %}
               {% if receipt.customer %}
@@ -106,7 +106,7 @@
             {% endif %}
           </dd>
           
-          <dt class="col-sm-5">التاريخ:</dt>
+          <dt class="col-sm-5">{{ t('Date:') }}</dt>
                 <dd class="col-sm-7">
                   {% if is_payment %}
                     {{ receipt.payment_date.strftime('%Y-%m-%d %H:%M') }}
@@ -115,31 +115,31 @@
                   {% endif %}
                 </dd>
           
-          <dt class="col-sm-5">المبلغ:</dt>
+          <dt class="col-sm-5">{{ t('Amount:') }}</dt>
           <dd class="col-sm-7"><h4 class="text-success">{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</h4></dd>
           
           {% if receipt.currency != base_currency %}
-          <dt class="col-sm-5">المبلغ بـ {{ base_currency }}:</dt>
+          <dt class="col-sm-5">{{ t('Amount in') }} {{ base_currency }}:</dt>
           <dd class="col-sm-7">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</dd>
           {% endif %}
           
-          <dt class="col-sm-5">طريقة الدفع:</dt>
+          <dt class="col-sm-5">{{ t('Payment Method:') }}</dt>
           <dd class="col-sm-7"><span class="badge badge-success">{{ receipt.payment_method }}</span></dd>
           
           {% if receipt.reference_number %}
-          <dt class="col-sm-5">رقم المرجع:</dt>
+          <dt class="col-sm-5">{{ t('Reference Number:') }}</dt>
           <dd class="col-sm-7">{{ receipt.reference_number }}</dd>
           {% endif %}
           
           {% if receipt.cheque_number %}
-          <dt class="col-sm-5">رقم الشيك:</dt>
+          <dt class="col-sm-5">{{ t('Cheque Number:') }}</dt>
           <dd class="col-sm-7">{{ receipt.cheque_number }}</dd>
           
-          <dt class="col-sm-5">البنك:</dt>
+          <dt class="col-sm-5">{{ t('Bank:') }}</dt>
           <dd class="col-sm-7">{{ receipt.bank_name }}</dd>
           
           {% if receipt.cheque_date %}
-          <dt class="col-sm-5">تاريخ استحقاق الشيك:</dt>
+          <dt class="col-sm-5">{{ t('Cheque Due Date:') }}</dt>
           <dd class="col-sm-7"><span class="badge badge-info">{{ receipt.cheque_date.strftime('%Y-%m-%d') }}</span></dd>
           {% endif %}
           {% endif %}
@@ -147,7 +147,7 @@
 
         {% if receipt.notes %}
         <div class="alert alert-warning">
-          <strong> ملاحظات:</strong> {{ receipt.notes }}
+          <strong> {{ t('Notes:') }}</strong> {{ receipt.notes }}
         </div>
         {% endif %}
       </div>
@@ -157,14 +157,14 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">التخصيصات</h3>
+        <h3 class="card-title">{{ t('Allocations') }}</h3>
       </div>
       <div class="card-body p-0">
         <table class="table table-sm">
           <thead>
             <tr>
-              <th>الفاتورة</th>
-              <th>المبلغ المخصص</th>
+              <th>{{ t('Invoice') }}</th>
+              <th>{{ t('Allocated Amount') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -176,7 +176,7 @@
               </tr>
             {% else %}
               <tr>
-                <td colspan="2" class="text-center text-muted">لا توجد تخصيصات (دفعة عامة)</td>
+                <td colspan="2" class="text-center text-muted">{{ t('No allocations (general payment)') }}</td>
               </tr>
             {% endif %}
           </tbody>

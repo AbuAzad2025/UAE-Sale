@@ -334,7 +334,9 @@ def print_purchase(id):
     if template not in _ALLOWED_TEMPLATES:
         template = "simple"
 
-    template_labels = {"simple": "مبسط"}
+    from utils.i18n import t as _t
+
+    template_labels = {"simple": _t("Basic")}
     available_templates = [(k, v) for k, v in template_labels.items()]
 
     from utils.amount_in_words import amount_in_words

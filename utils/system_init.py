@@ -369,6 +369,8 @@ OPERATIONAL_ROLES = {
             "manage_settings",
             "manage_approvals",
             "manage_budget",
+            "manage_hr",
+            "manage_ledger",
             "maintenance_view",
             "maintenance_receive",
             "maintenance_work",

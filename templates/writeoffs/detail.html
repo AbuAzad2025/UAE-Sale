@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تفاصيل المشطوبة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Write-off Details') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>مشطوبة ديون #{{ write_off.id }}</h1>
+    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>{{ t('Debt Write-off') }} #{{ write_off.id }}</h1>
     <p class="text-muted">{{ write_off.customer.name if write_off.customer else '-' }} — {{ write_off.reason }}</p>
   </div>
   <div>
     <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة لقائمة المشطوبات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Write-offs') }}
     </a>
   </div>
 </div>
@@ -19,31 +19,31 @@
   <div class="col-md-8">
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>بيانات المشطوبة</h3>
+        <h3 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>{{ t('Write-off Data') }}</h3>
       </div>
       <div class="card-body">
         <table class="table table-bordered table-striped mb-0">
           <tbody>
             <tr>
-              <th style="width: 30%;">العميل</th>
+              <th style="width: 30%;">{{ t('Client') }}</th>
               <td>{{ write_off.customer.name if write_off.customer else '-' }}</td>
             </tr>
             <tr>
-              <th>المبلغ المشطوب</th>
+              <th>{{ t('Written-off Amount') }}</th>
               <td>
                 <strong style="color: #007A3D;">{{ "{:,.3f}".format(write_off.amount) }}</strong>
                 <span class="text-muted">{{ write_off.currency }}</span>
               </td>
             </tr>
             <tr>
-              <th>القيمة بالعملة الأساسية</th>
+              <th>{{ t('Value in Base Currency') }}</th>
               <td>
                 <strong class="text-success">{{ "{:,.3f}".format(write_off.amount_base) }}</strong>
                 <span class="text-muted">{{ base_currency }}</span>
               </td>
             </tr>
             <tr>
-              <th>الفاتورة</th>
+              <th>{{ t('Invoice') }}</th>
               <td>
                 {% if write_off.sale %}
                   {{ write_off.sale.sale_number }}
@@ -53,35 +53,35 @@
               </td>
             </tr>
             <tr>
-              <th>السبب</th>
+              <th>{{ t('Reason') }}</th>
               <td>{{ write_off.reason }}</td>
             </tr>
             <tr>
-              <th>الحالة</th>
+              <th>{{ t('Status') }}</th>
               <td>
                 {% if write_off.status == 'posted' %}
-                  <span class="badge badge-success px-3"><i class="fas fa-check mr-1"></i>مُرحَّلة</span>
+                  <span class="badge badge-success px-3"><i class="fas fa-check mr-1"></i>{{ t('Posted') }}</span>
                 {% elif write_off.status == 'void' %}
-                  <span class="badge badge-secondary px-3"><i class="fas fa-ban mr-1"></i>ملغاة</span>
+                  <span class="badge badge-secondary px-3"><i class="fas fa-ban mr-1"></i>{{ t('Void') }}</span>
                 {% else %}
-                  <span class="badge badge-warning px-3"><i class="fas fa-clock mr-1"></i>مسودة</span>
+                  <span class="badge badge-warning px-3"><i class="fas fa-clock mr-1"></i>{{ t('Draft') }}</span>
                 {% endif %}
               </td>
             </tr>
             <tr>
-              <th>تاريخ الإنشاء</th>
+              <th>{{ t('Created Date') }}</th>
               <td>{{ write_off.created_at.strftime('%Y-%m-%d %H:%M') if write_off.created_at else '-' }}</td>
             </tr>
             <tr>
-              <th>تاريخ الترحيل</th>
+              <th>{{ t('Posted Date') }}</th>
               <td>{{ write_off.posted_at.strftime('%Y-%m-%d %H:%M') if write_off.posted_at else '-' }}</td>
             </tr>
             <tr>
-              <th>تاريخ الإلغاء</th>
+              <th>{{ t('Voided Date') }}</th>
               <td>{{ write_off.voided_at.strftime('%Y-%m-%d %H:%M') if write_off.voided_at else '-' }}</td>
             </tr>
             <tr>
-              <th>القيد المحاسبي</th>
+              <th>{{ t('GL Entry') }}</th>
               <td>
                 {% if write_off.gl_entry_id %}
                   <span class="badge badge-info">#{{ write_off.gl_entry_id }}</span>
@@ -91,7 +91,7 @@
               </td>
             </tr>
             <tr>
-              <th>ملاحظات</th>
+              <th>{{ t('Notes') }}</th>
               <td>{{ write_off.notes or '-' }}</td>
             </tr>
           </tbody>
@@ -104,20 +104,20 @@
     {% if write_off.status == 'posted' %}
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title mb-0"><i class="fas fa-ban mr-2"></i>إلغاء المشطوبة</h3>
+        <h3 class="card-title mb-0"><i class="fas fa-ban mr-2"></i>{{ t('Void Write-off') }}</h3>
       </div>
       <div class="card-body">
         <p class="text-muted">
-          يُعكس القيد المحاسبي المرتبط وتعود قيمة المبلغ إلى رصيد العميل.
+          {{ t("The related GL entry is reversed and the amount is returned to the customer's balance.") }}
         </p>
         <form method="POST" action="{{ url_for('writeoffs.void', write_off_id=write_off.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-group">
-            <label for="void_reason"><i class="fas fa-comment mr-2"></i> سبب الإلغاء</label>
-            <textarea name="reason" id="void_reason" class="form-control" rows="3" placeholder="سبب إلغاء المشطوبة..."></textarea>
+            <label for="void_reason"><i class="fas fa-comment mr-2"></i> {{ t('Reason for Void') }}</label>
+            <textarea name="reason" id="void_reason" class="form-control" rows="3" placeholder="{{ t('Reason for voiding the write-off...') }}"></textarea>
           </div>
           <button type="submit" class="btn btn-danger btn-block">
-            <i class="fas fa-ban mr-2"></i>إلغاء المشطوبة
+            <i class="fas fa-ban mr-2"></i>{{ t('Void Write-off') }}
           </button>
         </form>
       </div>
@@ -125,7 +125,7 @@
     {% else %}
     <div class="alert alert-secondary">
       <i class="fas fa-info-circle mr-2"></i>
-      هذه المشطوبة ملغاة — لا يمكن إلغاؤها مرة أخرى.
+      {{ t('This write-off is void - it cannot be voided again.') }}
     </div>
     {% endif %}
   </div>

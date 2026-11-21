@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}تقرير ضريبة القيمة المضافة — VAT Report ({{ vat_label }}){% endblock %}
-{% block page_title %}تقرير ضريبة القيمة المضافة ({{ vat_label }}){% endblock %}
+{% block title %}{{ t('VAT Report') }} ({{ vat_label }}){% endblock %}
+{% block page_title %}{{ t('VAT Report') }} ({{ vat_label }}){% endblock %}
 
 {% block content %}
 
@@ -10,15 +10,15 @@
       <div class="card-body">
         <form method="GET" class="form-inline">
           <div class="form-group mr-2">
-            <label class="mr-1">من تاريخ:</label>
+            <label class="mr-1">{{ t('From Date') }}:</label>
             <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
           </div>
           <div class="form-group mr-2">
-            <label class="mr-1">إلى تاريخ:</label>
+            <label class="mr-1">{{ t('To Date') }}:</label>
             <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
           </div>
           <button type="submit" class="btn btn-sm btn-primary">
-            <i class="fas fa-filter"></i> تصفية
+            <i class="fas fa-filter"></i> {{ t('Apply Filter') }}
           </button>
           <div class="btn-group ml-2">
             <a href="{{ url_for('reports.export_vat_report', format='xlsx', date_from=date_from, date_to=date_to) }}" class="btn btn-sm btn-success">
@@ -31,7 +31,7 @@
               <i class="fas fa-file-csv"></i> CSV
             </a>
             <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary">
-              <i class="fas fa-print"></i> طباعة
+              <i class="fas fa-print"></i> {{ t('Print') }}
             </button>
           </div>
         </form>
@@ -45,7 +45,7 @@
     <div class="info-box bg-gradient-danger">
       <span class="info-box-icon"><i class="fas fa-file-invoice"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">ضريبة المبيعات (Output VAT)</span>
+        <span class="info-box-text">{{ t('Output VAT') }}</span>
         <span class="info-box-number">{{ "{:,.2f}".format(summary.total_output_vat) }}</span>
       </div>
     </div>
@@ -54,7 +54,7 @@
     <div class="info-box bg-gradient-success">
       <span class="info-box-icon"><i class="fas fa-receipt"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">ضريبة المشتريات (Input VAT)</span>
+        <span class="info-box-text">{{ t('Input VAT') }}</span>
         <span class="info-box-number">{{ "{:,.2f}".format(summary.total_input_vat) }}</span>
       </div>
     </div>
@@ -63,12 +63,12 @@
     <div class="info-box bg-gradient-warning">
       <span class="info-box-icon"><i class="fas fa-balance-scale"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">الرصيد الضريبي</span>
+        <span class="info-box-text">{{ t('Tax Balance') }}</span>
         <span class="info-box-number">
           {% if summary.net_vat > 0 %}
-            {{ "{:,.2f}".format(summary.net_vat) }} (مستحق)
+            {{ "{:,.2f}".format(summary.net_vat) }} ({{ t('Due') }})
           {% elif summary.net_vat < 0 %}
-            {{ "{:,.2f}".format(summary.vat_refund) }} (مسترد)
+            {{ "{:,.2f}".format(summary.vat_refund) }} ({{ t('Refunded') }})
           {% else %}
             0.00
           {% endif %}
@@ -80,7 +80,7 @@
     <div class="info-box bg-gradient-info">
       <span class="info-box-icon"><i class="fas fa-percent"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">النسب المطبّقة</span>
+        <span class="info-box-text">{{ t('Applied Rates') }}</span>
         <span class="info-box-number">
           {% if by_rate %}{% for r in by_rate %}{{ '%g'|format(r.rate) }}%{{ ', ' if not loop.last }}{% endfor %}{% else %}—{% endif %}
         </span>
@@ -93,7 +93,7 @@
     <div class="info-box bg-gradient-secondary">
       <span class="info-box-icon"><i class="fas fa-file-invoice-dollar"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">مصروفات خاضعة — ضريبة مدخلات</span>
+        <span class="info-box-text">{{ t('Taxable Expenses — Input VAT') }}</span>
         <span class="info-box-number">{{ "{:,.2f}".format(summary.total_expense_input_vat) }}</span>
       </div>
     </div>
@@ -102,7 +102,7 @@
     <div class="info-box bg-gradient-secondary">
       <span class="info-box-icon"><i class="fas fa-ban"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">مصروفات غير قابلة للاسترداد (تكلفة)</span>
+        <span class="info-box-text">{{ t('Non-Recoverable Expenses') }}</span>
         <span class="info-box-number">{{ "{:,.2f}".format(summary.total_expense_non_recoverable_vat) }}</span>
       </div>
     </div>
@@ -111,7 +111,7 @@
     <div class="info-box bg-gradient-info">
       <span class="info-box-icon"><i class="fas fa-exchange-alt"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">مصروفات Reverse Charge (ذاتي التقييم)</span>
+        <span class="info-box-text">{{ t('Reverse Charge Expenses (Self-Assessed)') }}</span>
         <span class="info-box-number">{{ "{:,.2f}".format(summary.total_expense_reverse_charge_vat) }}</span>
       </div>
     </div>
@@ -122,8 +122,8 @@
     <div class="info-box bg-gradient-secondary">
       <span class="info-box-icon"><i class="fas fa-ban"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">مشتريات غير قابلة لاسترداد الضريبة (تكلفة)</span>
-        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_non_recoverable_vat) }} — {{ "{:,.2f}".format(summary.total_non_recoverable_base) }} أساس</span>
+        <span class="info-box-text">{{ t('Non-Recoverable Purchases') }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_non_recoverable_vat) }} — {{ "{:,.2f}".format(summary.total_non_recoverable_base) }} {{ t('Basis') }}</span>
       </div>
     </div>
   </div>
@@ -131,8 +131,8 @@
     <div class="info-box bg-gradient-info">
       <span class="info-box-icon"><i class="fas fa-exchange-alt"></i></span>
       <div class="info-box-content">
-        <span class="info-box-text">Reverse Charge — ضريبة ذاتية التقييم</span>
-        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_reverse_charge_vat) }} — {{ "{:,.2f}".format(summary.total_reverse_charge_base) }} أساس</span>
+        <span class="info-box-text">{{ t('Reverse Charge — Self-Assessed VAT') }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.total_reverse_charge_vat) }} — {{ "{:,.2f}".format(summary.total_reverse_charge_base) }} {{ t('Basis') }}</span>
       </div>
     </div>
   </div>
@@ -143,37 +143,37 @@
     <div class="card">
       <div class="card-header bg-danger">
         <h4 class="card-title text-white mb-0">
-          <i class="fas fa-shopping-cart mr-2"></i>المبيعات الخاضعة للضريبة
+          <i class="fas fa-shopping-cart mr-2"></i>{{ t('Taxable Sales') }}
         </h4>
       </div>
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المبيعات الخاضعة (بدون ضريبة):</span>
+          <span>{{ t('Total Taxable Sales (excluding VAT)') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_taxable_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>صفرية 0% (خاضعة بصفر):</span>
+          <span>{{ t('Zero-Rated 0% (taxable at zero)') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_zero_rated_sales if summary.total_zero_rated_sales is not none else 0) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المبيعات المعفاة:</span>
+          <span>{{ t('Total Exempt Sales') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_exempt_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>مبيعات بنسبة صفر دون تصنيف واضح (تحتاج مراجعة):</span>
+          <span>{{ t('Zero-Rated Sales Without Clear Classification') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_unclassified_sales) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>إشعارات الدائنة (المرتجعات) — أساس:</span>
+          <span>{{ t('Credit Notes (Returns) — Basis') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_credit_notes_net) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>ضريبة إشعارات الدائنة (خصم):</span>
+          <span>{{ t('Credit Note VAT (Deduction)') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_credit_notes_vat) }} {{ base_currency }}</strong>
         </div>
         <hr>
         <div class="d-flex justify-content-between">
-          <span class="font-weight-bold">ضريبة المبيعات (Output VAT):</span>
+          <span class="font-weight-bold">{{ t('Output VAT') }}:</span>
           <strong class="text-danger">{{ "{:,.2f}".format(summary.total_output_vat) }} {{ base_currency }}</strong>
         </div>
       </div>
@@ -183,29 +183,29 @@
     <div class="card">
       <div class="card-header bg-success">
         <h4 class="card-title text-white mb-0">
-          <i class="fas fa-shopping-bag mr-2"></i>المشتريات الخاضعة للضريبة
+          <i class="fas fa-shopping-bag mr-2"></i>{{ t('Taxable Purchases') }}
         </h4>
       </div>
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المشتريات الخاضعة (بدون ضريبة):</span>
+          <span>{{ t('Total Taxable Purchases (excluding VAT)') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_taxable_purchases) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المشتريات الصفرية:</span>
+          <span>{{ t('Total Zero-Rated Purchases') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_zero_rated_purchases) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>إجمالي المشتريات المعفاة:</span>
+          <span>{{ t('Total Exempt Purchases') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_exempt_purchases) }} {{ base_currency }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2">
-          <span>مشتريات بنسبة صفر بلا تصنيف (تحتاج مراجعة):</span>
+          <span>{{ t('Zero-Rated Purchases Without Classification') }}:</span>
           <strong>{{ "{:,.2f}".format(summary.total_unclassified_purchases) }} {{ base_currency }}</strong>
         </div>
         <hr>
         <div class="d-flex justify-content-between">
-          <span class="font-weight-bold">ضريبة المشتريات (Input VAT):</span>
+          <span class="font-weight-bold">{{ t('Input VAT') }}:</span>
           <strong class="text-success">{{ "{:,.2f}".format(summary.total_input_vat) }} {{ base_currency }}</strong>
         </div>
       </div>
@@ -216,7 +216,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-file-invoice mr-2"></i>تفاصيل المبيعات الخاضعة للضريبة
+      <i class="fas fa-file-invoice mr-2"></i>{{ t('Taxable Sales Details') }}
       <span class="badge badge-danger ml-2">{{ taxable_sales | length }}</span>
     </h4>
   </div>
@@ -224,12 +224,12 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العميل</th>
-          <th class="text-right num-cell">الأساس الخاضع</th>
-          <th class="text-center">نسبة الضريبة</th>
-          <th class="text-right num-cell">الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th class="text-right num-cell">{{ t('Taxable Base') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
+          <th class="text-right num-cell">{{ t('Tax') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -246,7 +246,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_taxable_sales|money }}</td>
           <td></td>
           <td class="text-right num-cell">{{ summary.total_output_vat|money }}</td>
@@ -259,7 +259,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-undo mr-2"></i>إشعارات الدائنة (المرتجعات)
+      <i class="fas fa-undo mr-2"></i>{{ t('Credit Notes (Returns)') }}
       <span class="badge badge-secondary ml-2">{{ credit_notes | length }}</span>
     </h4>
   </div>
@@ -267,12 +267,12 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الإشعار</th>
-          <th>التاريخ</th>
-          <th>العميل</th>
-          <th class="text-right num-cell">الأساس الخاضع</th>
-          <th class="text-center">نسبة الضريبة</th>
-          <th class="text-right num-cell">الضريبة</th>
+          <th>{{ t('Note Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th class="text-right num-cell">{{ t('Taxable Base') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
+          <th class="text-right num-cell">{{ t('Tax') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -289,7 +289,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_credit_notes_net|money }}</td>
           <td></td>
           <td class="text-right num-cell">{{ summary.total_credit_notes_vat|money }}</td>
@@ -302,7 +302,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-ban mr-2"></i>المبيعات المعفاة من الضريبة
+      <i class="fas fa-ban mr-2"></i>{{ t('Exempt Sales') }}
       <span class="badge badge-secondary ml-2">{{ exempt_sales | length }}</span>
     </h4>
   </div>
@@ -310,11 +310,11 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العميل</th>
-          <th class="text-right num-cell">المبلغ</th>
-          <th class="text-center">نسبة الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th class="text-right num-cell">{{ t('Amount') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -330,7 +330,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_exempt_sales|money }}</td>
           <td></td>
         </tr>
@@ -342,7 +342,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-circle-o mr-2"></i>المبيعات الخاضعة بصفر 0%
+      <i class="fas fa-circle-o mr-2"></i>{{ t('Zero-Rated Sales 0%') }}
       <span class="badge badge-secondary ml-2">{{ zero_rated_sales | length }}</span>
     </h4>
   </div>
@@ -350,11 +350,11 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العميل</th>
-          <th class="text-right num-cell">الأساس الخاضع</th>
-          <th class="text-center">نسبة الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th class="text-right num-cell">{{ t('Taxable Base') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -370,7 +370,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_zero_rated_sales|money }}</td>
           <td></td>
         </tr>
@@ -382,7 +382,7 @@
 <div class="card mb-4">
   <div class="card-header bg-warning">
     <h4 class="card-title mb-0">
-      <i class="fas fa-exclamation-triangle mr-2"></i>فواتير بنسبة صفر بلا تصنيف (تحتاج مراجعة)
+      <i class="fas fa-exclamation-triangle mr-2"></i>{{ t('Zero-Rated Invoices Without Classification') }}
       <span class="badge badge-light ml-2">{{ unclassified_sales | length }}</span>
     </h4>
   </div>
@@ -390,10 +390,10 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>العميل</th>
-          <th class="text-right num-cell">الأساس الخاضع</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th class="text-right num-cell">{{ t('Taxable Base') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -408,7 +408,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_unclassified_sales|money }}</td>
         </tr>
       </tfoot>
@@ -419,7 +419,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-shopping-bag mr-2"></i>تفاصيل المشتريات الخاضعة للضريبة
+      <i class="fas fa-shopping-bag mr-2"></i>{{ t('Taxable Purchases Details') }}
       <span class="badge badge-success ml-2">{{ taxable_purchases | length }}</span>
     </h4>
   </div>
@@ -427,12 +427,12 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>المورد</th>
-          <th class="text-right num-cell">الأساس الخاضع</th>
-          <th class="text-center">نسبة الضريبة</th>
-          <th class="text-right num-cell">الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Supplier') }}</th>
+          <th class="text-right num-cell">{{ t('Taxable Base') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
+          <th class="text-right num-cell">{{ t('Tax') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -449,7 +449,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_taxable_purchases|money }}</td>
           <td></td>
           <td class="text-right num-cell">{{ summary.total_input_vat|money }}</td>
@@ -462,7 +462,7 @@
 <div class="card mb-4">
   <div class="card-header bg-info text-white">
     <h4 class="card-title text-white mb-0">
-      <i class="fas fa-circle-o mr-2"></i>المشتريات الصفرية (0%)
+      <i class="fas fa-circle-o mr-2"></i>{{ t('Zero-Rated Purchases (0%)') }}
       <span class="badge badge-light ml-2">{{ zero_rated_purchases | length }}</span>
     </h4>
   </div>
@@ -470,8 +470,8 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th>
-          <th class="text-right num-cell">المبلغ</th><th class="text-center">نسبة الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Supplier') }}</th>
+          <th class="text-right num-cell">{{ t('Amount') }}</th><th class="text-center">{{ t('Tax Rate') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -487,7 +487,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_zero_rated_purchases|money }}</td>
           <td></td>
         </tr>
@@ -499,7 +499,7 @@
 <div class="card mb-4">
   <div class="card-header bg-warning">
     <h4 class="card-title mb-0">
-      <i class="fas fa-exclamation-triangle mr-2"></i>مشتريات بنسبة صفر بلا تصنيف (تحتاج مراجعة)
+      <i class="fas fa-exclamation-triangle mr-2"></i>{{ t('Zero-Rated Purchases Without Classification') }}
       <span class="badge badge-light ml-2">{{ unclassified_purchases | length }}</span>
     </h4>
   </div>
@@ -507,8 +507,8 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th>
-          <th class="text-right num-cell">المبلغ</th>
+          <th>{{ t('Invoice Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Supplier') }}</th>
+          <th class="text-right num-cell">{{ t('Amount') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -523,7 +523,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_unclassified_purchases|money }}</td>
         </tr>
       </tfoot>
@@ -534,7 +534,7 @@
 <div class="card mb-4">
   <div class="card-header">
     <h4 class="card-title mb-0">
-      <i class="fas fa-ban mr-2"></i>المشتريات المعفاة من الضريبة
+      <i class="fas fa-ban mr-2"></i>{{ t('Exempt Purchases') }}
       <span class="badge badge-secondary ml-2">{{ exempt_purchases | length }}</span>
     </h4>
   </div>
@@ -542,11 +542,11 @@
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
-          <th>رقم الفاتورة</th>
-          <th>التاريخ</th>
-          <th>المورد</th>
-          <th class="text-right num-cell">المبلغ</th>
-          <th class="text-center">نسبة الضريبة</th>
+          <th>{{ t('Invoice Number') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Supplier') }}</th>
+          <th class="text-right num-cell">{{ t('Amount') }}</th>
+          <th class="text-center">{{ t('Tax Rate') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -562,7 +562,7 @@
       </tbody>
       <tfoot>
         <tr class="font-weight-bold">
-          <td colspan="3">المجموع</td>
+          <td colspan="3">{{ t('Total') }}</td>
           <td class="text-right num-cell">{{ summary.total_exempt_purchases|money }}</td>
           <td></td>
         </tr>
@@ -574,7 +574,7 @@
 <div class="card">
   <div class="card-header bg-primary">
     <h4 class="card-title text-white mb-0">
-      <i class="fas fa-calculator mr-2"></i>حساب الرصيد الضريبي النهائي
+      <i class="fas fa-calculator mr-2"></i>{{ t('Final Tax Balance Calculation') }}
     </h4>
   </div>
   <div class="card-body">
@@ -582,15 +582,15 @@
       <div class="col-md-6">
         <table class="table">
           <tr>
-            <td>ضريبة المبيعات (Output VAT)</td>
+            <td>{{ t('Output VAT') }}</td>
             <td class="text-right num-cell font-weight-bold">{{ summary.total_output_vat|money }}</td>
           </tr>
           <tr>
-            <td>ضريبة المشتريات (Input VAT)</td>
+            <td>{{ t('Input VAT') }}</td>
             <td class="text-right num-cell font-weight-bold">({{ summary.total_input_vat|money }})</td>
           </tr>
           <tr class="font-weight-bold">
-            <td>الرصيد النهائي</td>
+            <td>{{ t('Final Balance') }}</td>
             <td class="text-right num-cell {{ 'money-neg' if summary.net_vat > 0 else ('money-pos' if summary.net_vat < 0 else '') }}">
               {{ summary.net_vat|money }}
             </td>
@@ -600,18 +600,18 @@
       <div class="col-md-6">
         {% if summary.vat_payable > 0 %}
         <div class="alert alert-danger mb-0">
-          <h5><i class="fas fa-exclamation-circle"></i> مبلغ مستحق للVERN</h5>
+          <h5><i class="fas fa-exclamation-circle"></i> {{ t('Amount Due to Tax Authority') }}</h5>
           <h3>{{ "{:,.2f}".format(summary.vat_payable) }} {{ base_currency }}</h3>
         </div>
         {% elif summary.vat_refund > 0 %}
         <div class="alert alert-success mb-0">
-          <h5><i class="fas fa-check-circle"></i> مبلغ مسترد من هيئة الضرائب</h5>
+          <h5><i class="fas fa-check-circle"></i> {{ t('Amount Refunded by Tax Authority') }}</h5>
           <h3>{{ "{:,.2f}".format(summary.vat_refund) }} {{ base_currency }}</h3>
         </div>
         {% else %}
         <div class="alert alert-info mb-0">
-          <h5><i class="fas fa-info-circle"></i> لا يوجد مبلغ مستحق</h5>
-          <p>الرصيد الضريبي = صفر</p>
+          <h5><i class="fas fa-info-circle"></i> {{ t('No Amount Due') }}</h5>
+          <p>{{ t('Tax balance = zero') }}</p>
         </div>
         {% endif %}
       </div>
@@ -622,12 +622,12 @@
 {% if by_rate %}
 <div class="card mt-3">
   <div class="card-header">
-    <h4 class="mb-0"><i class="fas fa-percent mr-2"></i>التجميع حسب النسبة</h4>
+    <h4 class="mb-0"><i class="fas fa-percent mr-2"></i>{{ t('Grouping by Rate') }}</h4>
   </div>
   <div class="card-body p-0">
     <table class="table table-striped mb-0">
       <thead class="thead-light">
-        <tr><th>النسبة</th><th>مبيعات خاضعة (أساس)</th><th>ضريبة مبيعات</th><th>مشتريات خاضعة (أساس)</th><th>ضريبة مشتريات</th><th>Reverse Charge VAT</th></tr>
+        <tr><th>{{ t('Rate') }}</th><th>{{ t('Taxable Sales (Base)') }}</th><th>{{ t('Sales VAT') }}</th><th>{{ t('Taxable Purchases (Base)') }}</th><th>{{ t('Purchase VAT') }}</th><th>{{ t('Reverse Charge VAT') }}</th></tr>
       </thead>
       <tbody>
         {% for r in by_rate %}
@@ -649,12 +649,12 @@
 {% if reverse_charge_purchases %}
 <div class="card mt-3">
   <div class="card-header">
-    <h4 class="mb-0"><i class="fas fa-exchange-alt mr-2"></i>عكس الضريبة (Reverse Charge) — ضريبة ذاتية التقييم</h4>
+    <h4 class="mb-0"><i class="fas fa-exchange-alt mr-2"></i>{{ t('Reverse Charge (Self-Assessed VAT)') }}</h4>
   </div>
   <div class="card-body p-0">
     <table class="table table-striped mb-0">
       <thead class="thead-light">
-        <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة (ذاتية)</th></tr>
+        <tr><th>{{ t('Invoice Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Supplier') }}</th><th>{{ t('Basis') }}</th><th>{{ t('Rate') }}</th><th>{{ t('VAT (Self-Assessed)') }}</th></tr>
       </thead>
       <tbody>
         {% for r in reverse_charge_purchases %}
@@ -676,12 +676,12 @@
 {% if non_recoverable_purchases %}
 <div class="card mt-3">
   <div class="card-header">
-    <h4 class="mb-0"><i class="fas fa-ban mr-2"></i>مشتريات غير قابلة للاسترداد — الضريبة تُحمّل على التكلفة</h4>
+    <h4 class="mb-0"><i class="fas fa-ban mr-2"></i>{{ t('Non-Recoverable Purchases — VAT Charged to Cost') }}</h4>
   </div>
   <div class="card-body p-0">
     <table class="table table-striped mb-0">
       <thead class="thead-light">
-        <tr><th>رقم الفاتورة</th><th>التاريخ</th><th>المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة (تكلفة)</th></tr>
+        <tr><th>{{ t('Invoice Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Supplier') }}</th><th>{{ t('Basis') }}</th><th>{{ t('Rate') }}</th><th>{{ t('VAT (Cost)') }}</th></tr>
       </thead>
       <tbody>
         {% for r in non_recoverable_purchases %}
@@ -703,12 +703,12 @@
 {% if expense_taxable %}
 <div class="card mt-3">
   <div class="card-header">
-    <h4 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>المصروفات الخاضعة للضريبة (مدخلات)</h4>
+    <h4 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>{{ t('Taxable Expenses (Input)') }}</h4>
   </div>
   <div class="card-body p-0">
     <table class="table table-striped mb-0">
       <thead class="thead-light">
-        <tr><th>رقم السند</th><th>التاريخ</th><th>الوصف/المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة (مدخلات)</th></tr>
+        <tr><th>{{ t('Voucher Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Description/Supplier') }}</th><th>{{ t('Basis') }}</th><th>{{ t('Rate') }}</th><th>{{ t('VAT (Input)') }}</th></tr>
       </thead>
       <tbody>
         {% for r in expense_taxable %}
@@ -730,12 +730,12 @@
 {% if expense_non_recoverable or expense_reverse_charge %}
 <div class="card mt-3">
   <div class="card-header">
-    <h4 class="mb-0"><i class="fas fa-ban mr-2"></i>مصروفات غير قابلة للاسترداد + عكس الضريبة</h4>
+    <h4 class="mb-0"><i class="fas fa-ban mr-2"></i>{{ t('Non-Recoverable Expenses + Reverse Charge') }}</h4>
   </div>
   <div class="card-body p-0">
     <table class="table table-striped mb-0">
       <thead class="thead-light">
-        <tr><th>رقم السند</th><th>التاريخ</th><th>الوصف/المورد</th><th>الأساس</th><th>النسبة</th><th>الضريبة</th><th>نوع</th></tr>
+        <tr><th>{{ t('Voucher Number') }}</th><th>{{ t('Date') }}</th><th>{{ t('Description/Supplier') }}</th><th>{{ t('Basis') }}</th><th>{{ t('Rate') }}</th><th>{{ t('Tax') }}</th><th>{{ t('Type') }}</th></tr>
       </thead>
       <tbody>
         {% for r in expense_non_recoverable %}

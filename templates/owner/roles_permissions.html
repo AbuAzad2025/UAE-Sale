@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة الأدوار والصلاحيات المتقدمة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced Roles and Permissions Management') }}{% endblock %}
 
 {% block content %}
 <div class="content-header">
   <div class="container-fluid">
     <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
-        <h1 class="m-0"> الأدوار والصلاحيات</h1>
+        <h1 class="m-0"> {{ t('Roles and Permissions') }}</h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+            <i class="fas fa-arrow-right mr-1"></i> {{ t('Return to Owner Dashboard') }}
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
-            <li class="breadcrumb-item active">الأدوار والصلاحيات</li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a></li>
+            <li class="breadcrumb-item active">{{ t('Roles and Permissions') }}</li>
           </ol>
         </div>
       </div>
@@ -27,13 +27,13 @@
 <div class="container-fluid mb-3">
   <div class="btn-group quick-nav" role="group">
     <a href="{{ url_for('owner.roles_permissions') }}" class="btn btn-primary">
-      <i class="fas fa-user-shield"></i> الأدوار والصلاحيات
+      <i class="fas fa-user-shield"></i> {{ t('Roles and Permissions') }}
     </a>
     <a href="{{ url_for('users.index') }}" class="btn btn-outline-primary">
-      <i class="fas fa-users"></i> إدارة المستخدمين
+      <i class="fas fa-users"></i> {{ t('User Management') }}
     </a>
     <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-history"></i> سجل التدقيق
+      <i class="fas fa-history"></i> {{ t('Audit Log') }}
     </a>
   </div>
 </div>
@@ -43,24 +43,24 @@
     
     
     <div class="alert alert-info">
-      <h5><i class="fas fa-info-circle"></i> نظام الصلاحيات</h5>
-      <p>يتحكم النظام بـ {{ roles|length + 1 }} أدوار رئيسية. كل دور له صلاحيات محددة لضمان الأمان والتنظيم.</p>
-      <p class="mb-0"><i class="fas fa-sliders-h"></i> استخدم <strong>محرر الصلاحيات التفاعلي</strong> أدناه لمنح أو سحب صلاحيات أي دور — كل تغيير يُسجَّل في سجل التدقيق.</p>
+      <h5><i class="fas fa-info-circle"></i> {{ t('Permissions System') }}</h5>
+      <p>{{ t('The system controls') }} {{ roles|length + 1 }} {{ t('main roles. Each role has specific permissions to ensure security and organization.') }}</p>
+      <p class="mb-0"><i class="fas fa-sliders-h"></i> {{ t('Use') }} <strong>{{ t('Interactive Permissions Editor') }}</strong> {{ t('below to grant or revoke permissions for any role - every change is recorded in the audit log.') }}</p>
     </div>
     
     
     <div class="card card-primary card-outline">
       <div class="card-header bg-gradient-primary">
         <h3 class="card-title text-white">
-          <i class="fas fa-tasks mr-2"></i>محرر صلاحيات الأدوار
+          <i class="fas fa-tasks mr-2"></i>{{ t('Role Permissions Editor') }}
         </h3>
       </div>
       <div class="card-body">
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle"></i>
-          <strong>تنبيه أمني:</strong> صلاحية <code>view_costs</code> تتحكم في رؤية أسعار التكلفة والهوامش وتقييم المخزون
-          (عبر <code>can_see_costs()</code>)، ولا تُمنح إلا للأدوار المالية. صلاحيات دور <strong>المالك (Owner)</strong>
-          غير قابلة للتعديل لأنه يتجاوز جميع الفحوصات.
+          <strong>{{ t('Security Notice:') }}</strong> {{ t('Permission') }} <code>view_costs</code> {{ t('controls visibility of cost prices, margins, and inventory valuation') }}
+          {{ t('(via <code>can_see_costs()</code>), and is only granted to financial roles.') }} {{ t('Permissions of role') }} <strong>{{ t('Owner') }} (Owner)</strong>
+          {{ t('cannot be modified because it bypasses all checks.') }}
         </div>
 
         {% for role in roles %}
@@ -97,7 +97,7 @@
                   <small class="text-muted">({{ perm.code }})</small>
                   {% if is_cost_perm %}
                   <i class="fas fa-coins text-warning"
-                     title="تتحكم في رؤية أسعار التكلفة والهوامش وتقييم المخزون"></i>
+                     title="{{ t('controls visibility of cost prices, margins, and inventory valuation') }}"></i>
                   {% endif %}
                 </label>
               </div>
@@ -108,12 +108,12 @@
 
           <div class="d-flex justify-content-end">
             <button type="submit" class="btn btn-primary btn-sm" disabled>
-              <i class="fas fa-save"></i> حفظ التغييرات
+              <i class="fas fa-save"></i> {{ t('Save Changes') }}
             </button>
           </div>
         </form>
         {% else %}
-        <div class="alert alert-secondary mb-0">لا توجد أدوار قابلة للتعديل.</div>
+        <div class="alert alert-secondary mb-0">{{ t('No editable roles.') }}</div>
         {% endfor %}
       </div>
     </div>
@@ -126,26 +126,26 @@
         <div class="card card-danger card-outline">
           <div class="card-header">
             <h3 class="card-title">
-              <i class="fas fa-crown text-warning"></i> <strong>Owner - المالك</strong>
+              <i class="fas fa-crown text-warning"></i> <strong>{{ t('Owner') }}</strong>
             </h3>
-            <span class="badge badge-danger float-left">صلاحيات كاملة</span>
+            <span class="badge badge-danger float-left">{{ t('Full Permissions') }}</span>
           </div>
           <div class="card-body">
-            <h5>الصلاحيات الكاملة:</h5>
+            <h5>{{ t('Full Permissions:') }}</h5>
             <ul>
-              <li> <strong>كل شيء بدون قيود</strong></li>
-              <li> الوصول لـ Owner Mode</li>
-              <li> إدارة المستخدمين والأدوار</li>
-              <li> إدارة قاعدة البيانات</li>
-              <li> تصدير واستيراد البيانات</li>
-              <li> عرض وتعديل كل شيء</li>
-              <li> إدارة النظام والإعدادات</li>
-              <li> الوصول للبطاقات المحفوظة</li>
+              <li> <strong>{{ t('Everything without restrictions') }}</strong></li>
+              <li> {{ t('Access to Owner Mode') }}</li>
+              <li> {{ t('Manage users and roles') }}</li>
+              <li> {{ t('Manage the database') }}</li>
+              <li> {{ t('Export and import data') }}</li>
+              <li> {{ t('View and edit everything') }}</li>
+              <li> {{ t('Manage the system and settings') }}</li>
+              <li> {{ t('Access to saved cards') }}</li>
             </ul>
             
             <div class="alert alert-danger mt-3">
               <i class="fas fa-exclamation-triangle"></i>
-              <strong>تحذير:</strong> لا تمنح هذا الدور إلا لمن تثق به تماماً!
+              <strong>{{ t('Warning:') }}</strong> {{ t('Only grant this role to people you fully trust!') }}
             </div>
           </div>
         </div>
@@ -156,26 +156,26 @@
         <div class="card card-primary card-outline">
           <div class="card-header">
             <h3 class="card-title">
-              <i class="fas fa-user-shield"></i> <strong>Super Admin - مدير عام</strong>
+              <i class="fas fa-user-shield"></i> <strong>Super Admin</strong>
             </h3>
-            <span class="badge badge-primary float-left">إدارة عالية</span>
+            <span class="badge badge-primary float-left">{{ t('High-level Management') }}</span>
           </div>
           <div class="card-body">
-            <h5>الصلاحيات:</h5>
+            <h5>{{ t('Permissions:') }}</h5>
             <ul>
-              <li> إدارة المبيعات والمشتريات</li>
-              <li> إدارة الزبائن والمنتجات</li>
-              <li> إدارة المدفوعات والمخزون</li>
-              <li> عرض جميع التقارير</li>
-              <li> إدارة المصروفات</li>
-              <li> عرض دفتر الأستاذ</li>
-              <li> إلغاء وتعديل الفواتير</li>
-              <li> لا يمكنه الوصول لـ Owner Mode</li>
+              <li> {{ t('Manage sales and purchases') }}</li>
+              <li> {{ t('Manage customers and products') }}</li>
+              <li> {{ t('Manage payments and inventory') }}</li>
+              <li> {{ t('View all reports') }}</li>
+              <li> {{ t('Manage expenses') }}</li>
+              <li> {{ t('View the ledger') }}</li>
+              <li> {{ t('Cancel and edit invoices') }}</li>
+              <li> {{ t('Cannot access Owner Mode') }}</li>
             </ul>
             
             <div class="alert alert-info mt-3">
               <i class="fas fa-info-circle"></i>
-              الدور المناسب لمدير الفرع أو المدير التنفيذي
+              {{ t('Suitable role for a branch manager or executive manager') }}
             </div>
           </div>
         </div>
@@ -186,26 +186,26 @@
         <div class="card card-info card-outline">
           <div class="card-header">
             <h3 class="card-title">
-              <i class="fas fa-user-tie"></i> <strong>Manager - مدير</strong>
+              <i class="fas fa-user-tie"></i> <strong>Manager</strong>
             </h3>
-            <span class="badge badge-info float-left">إدارة متوسطة</span>
+            <span class="badge badge-info float-left">{{ t('Mid-level Management') }}</span>
           </div>
           <div class="card-body">
-            <h5>الصلاحيات:</h5>
+            <h5>{{ t('Permissions:') }}</h5>
             <ul>
-              <li> إنشاء وعرض المبيعات</li>
-              <li> إنشاء وعرض المشتريات</li>
-              <li> إدارة الزبائن والمنتجات</li>
-              <li> إنشاء المدفوعات</li>
-              <li> عرض بعض التقارير</li>
-              <li> إدارة المخزون</li>
-              <li> لا يمكنه حذف المستخدمين</li>
-              <li> لا يمكنه عرض دفتر الأستاذ</li>
+              <li> {{ t('Create and view sales') }}</li>
+              <li> {{ t('Create and view purchases') }}</li>
+              <li> {{ t('Manage customers and products') }}</li>
+              <li> {{ t('Create payments') }}</li>
+              <li> {{ t('View some reports') }}</li>
+              <li> {{ t('Manage inventory') }}</li>
+              <li> {{ t('Cannot delete users') }}</li>
+              <li> {{ t('Cannot view the ledger') }}</li>
             </ul>
             
             <div class="alert alert-success mt-3">
               <i class="fas fa-check-circle"></i>
-              الدور المناسب لمدير المخزون أو مدير المبيعات
+              {{ t('Suitable role for an inventory manager or sales manager') }}
             </div>
           </div>
         </div>
@@ -216,26 +216,26 @@
         <div class="card card-secondary card-outline">
           <div class="card-header">
             <h3 class="card-title">
-              <i class="fas fa-user"></i> <strong>Seller - بائع</strong>
+              <i class="fas fa-user"></i> <strong>Seller</strong>
             </h3>
-            <span class="badge badge-secondary float-left">صلاحيات محدودة</span>
+            <span class="badge badge-secondary float-left">{{ t('Limited Permissions') }}</span>
           </div>
           <div class="card-body">
-            <h5>الصلاحيات:</h5>
+            <h5>{{ t('Permissions:') }}</h5>
             <ul>
-              <li> إنشاء فواتير بيع فقط</li>
-              <li> عرض فواتيره الخاصة فقط</li>
-              <li> البحث عن المنتجات والزبائن</li>
-              <li> طباعة الفواتير</li>
-              <li> لا يمكنه حذف أو إلغاء</li>
-              <li> لا يمكنه عرض التقارير</li>
-              <li> لا يمكنه إدارة المخزون</li>
-              <li> لا يمكنه عرض أسعار التكلفة</li>
+              <li> {{ t('Create sales invoices only') }}</li>
+              <li> {{ t('View only his own invoices') }}</li>
+              <li> {{ t('Search products and customers') }}</li>
+              <li> {{ t('Print invoices') }}</li>
+              <li> {{ t('Cannot delete or cancel') }}</li>
+              <li> {{ t('Cannot view reports') }}</li>
+              <li> {{ t('Cannot manage inventory') }}</li>
+              <li> {{ t('Cannot view cost prices') }}</li>
             </ul>
             
             <div class="alert alert-secondary mt-3">
               <i class="fas fa-shopping-cart"></i>
-              الدور المناسب للبائعين والموظفين الميدانيين
+              {{ t('Suitable role for sellers and field staff') }}
             </div>
           </div>
         </div>
@@ -247,7 +247,7 @@
     <div class="card">
       <div class="card-header bg-gradient-primary">
         <h3 class="card-title text-white">
-          <i class="fas fa-table mr-2"></i>جدول الصلاحيات المفصل
+          <i class="fas fa-table mr-2"></i>{{ t('Detailed Permissions Table') }}
         </h3>
       </div>
       <div class="card-body p-0">
@@ -255,7 +255,7 @@
           <table class="table table-hover">
             <thead class="bg-light">
               <tr>
-                <th style="width: 30%;">الوظيفة / الصلاحية</th>
+                <th style="width: 30%;">{{ t('Function / Permission') }}</th>
                 <th class="text-center" style="background: #dc3545; color: white;">
                   <i class="fas fa-crown"></i><br>Owner
                 </th>
@@ -279,7 +279,7 @@
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>إلغاء/حذف المبيعات</strong></td>
+                <td><strong>{{ t('Cancel/Delete Sales') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-warning fa-2x"></i></td>
@@ -293,21 +293,21 @@
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>الزبائن (إضافة/تعديل)</strong></td>
+                <td><strong>{{ t('Customers (Add/Edit)') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-warning fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>المنتجات (إضافة/تعديل)</strong></td>
+                <td><strong>{{ t('Products (Add/Edit)') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>المخزون (تعديل الكميات)</strong></td>
+                <td><strong>{{ t('Inventory (Edit Quantities)') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
@@ -321,7 +321,7 @@
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>التقارير المالية</strong></td>
+                <td><strong>{{ t('Financial Reports') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-warning fa-2x"></i></td>
@@ -342,14 +342,14 @@
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>أسعار التكلفة والأرباح (view_costs)</strong></td>
+                <td><strong>{{ t('Cost Prices and Profits (view_costs)') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
               </tr>
               <tr>
-                <td><strong>إدارة المستخدمين</strong></td>
+                <td><strong>{{ t('User Management') }}</strong></td>
                 <td class="text-center"><i class="fas fa-check text-success fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
                 <td class="text-center"><i class="fas fa-times text-danger fa-2x"></i></td>
@@ -372,30 +372,30 @@
     <div class="card card-warning">
       <div class="card-header">
         <h3 class="card-title" style="color: #000;">
-          <i class="fas fa-shield-alt mr-2"></i>معايير الأمان
+          <i class="fas fa-shield-alt mr-2"></i>{{ t('Security Standards') }}
         </h3>
       </div>
       <div class="card-body" style="color: #000;">
         <div class="row">
           <div class="col-md-6">
-            <h5> ما يُسمح به:</h5>
+            <h5> {{ t('What is allowed:') }}</h5>
             <ul>
-              <li>كل مستخدم يرى بياناته فقط (ما لم يكن مديراً)</li>
-              <li>البائع لا يرى أسعار التكلفة</li>
-              <li>رؤية التكلفة تُدار بصلاحية <code>view_costs</code> من المحرر أعلاه</li>
-              <li>البائع لا يرى أرباح الفواتير</li>
-              <li>المدير يرى تقارير محدودة</li>
-              <li>فقط Owner يرى البطاقات المحفوظة</li>
+              <li>{{ t('Each user sees only their own data (unless a manager)') }}</li>
+              <li>{{ t('The seller cannot see cost prices') }}</li>
+              <li>{{ t('Cost visibility is managed by the <code>view_costs</code> permission in the editor above') }}</li>
+              <li>{{ t('The seller cannot see invoice profits') }}</li>
+              <li>{{ t('The manager sees limited reports') }}</li>
+              <li>{{ t('Only the Owner can see saved cards') }}</li>
             </ul>
           </div>
           <div class="col-md-6">
-            <h5> ما لا يُسمح به:</h5>
+            <h5> {{ t('What is not allowed:') }}</h5>
             <ul>
-              <li>البائع لا يمكنه حذف أو إلغاء</li>
-              <li>البائع لا يمكنه تعديل الأسعار</li>
-              <li>المدير لا يمكنه إدارة المستخدمين</li>
-              <li>Super Admin لا يمكنه الوصول لـ Owner Mode</li>
-              <li>لا أحد يمكنه حذف بيانات Owner</li>
+              <li>{{ t('The seller') }} {{ t('Cannot delete or cancel') }}</li>
+              <li>{{ t('The seller cannot edit prices') }}</li>
+              <li>{{ t('The manager cannot manage users') }}</li>
+              <li>Super Admin {{ t('Cannot access Owner Mode') }}</li>
+              <li>{{ t('No one can delete Owner data') }}</li>
             </ul>
           </div>
         </div>
@@ -406,24 +406,24 @@
     <div class="card card-success">
       <div class="card-header">
         <h3 class="card-title text-white">
-          <i class="fas fa-lightbulb mr-2"></i>إرشادات الاستخدام
+          <i class="fas fa-lightbulb mr-2"></i>{{ t('Usage Guidelines') }}
         </h3>
       </div>
       <div class="card-body">
-        <h5> نصائح مهمة:</h5>
+        <h5> {{ t('Important Tips:') }}</h5>
         <ol>
-          <li><strong>لا تمنح Owner إلا لشخص واحد موثوق</strong></li>
-          <li>استخدم Super Admin للمدير التنفيذي</li>
-          <li>استخدم Manager لمدراء الأقسام</li>
-          <li>استخدم Seller للبائعين العاديين</li>
-          <li>راجع الصلاحيات دورياً</li>
-          <li>غيّر كلمات المرور الافتراضية فوراً</li>
-          <li>عطّل المستخدمين غير النشطين بدلاً من حذفهم</li>
+          <li><strong>{{ t('Grant Owner only to one trusted person') }}</strong></li>
+          <li>{{ t('Use Super Admin for the executive manager') }}</li>
+          <li>{{ t('Use Manager for department managers') }}</li>
+          <li>{{ t('Use Seller for regular sellers') }}</li>
+          <li>{{ t('Review permissions periodically') }}</li>
+          <li>{{ t('Change default passwords immediately') }}</li>
+          <li>{{ t('Deactivate inactive users instead of deleting them') }}</li>
         </ol>
         
         <div class="alert alert-warning mt-3" style="color: #000;">
           <i class="fas fa-exclamation-triangle"></i>
-          <strong>تذكر:</strong> النظام يسجل كل العمليات في سجل التدقيق!
+          <strong>{{ t('Remember:') }}</strong> {{ t('The system records all operations in the audit log!') }}
         </div>
       </div>
     </div>
@@ -432,10 +432,10 @@
     <div class="row">
       <div class="col-12">
         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
-          <i class="fas fa-arrow-left mr-2"></i>العودة للوحة المالك
+          <i class="fas fa-arrow-left mr-2"></i>{{ t('Go Back to Owner Dashboard') }}
         </a>
         <a href="{{ url_for('users.index') }}" class="btn btn-primary btn-lg">
-          <i class="fas fa-users mr-2"></i>إدارة المستخدمين
+          <i class="fas fa-users mr-2"></i>{{ t('User Management') }}
         </a>
       </div>
     </div>
@@ -470,7 +470,7 @@
         if (!cb.disabled && cb.checked !== initial[cb.id]) changed++;
       });
       if (changed > 0) {
-        badge.textContent = changed + ' تغيير';
+        badge.textContent = changed + ' ' + {{ t('change')|tojson }};
         badge.hidden = false;
         saveBtn.disabled = false;
       } else {

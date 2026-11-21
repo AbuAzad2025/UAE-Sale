@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إحصائيات النظام والأداء{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('System and Performance Statistics') }}{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,15 +8,15 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><i class="fas fa-chart-bar mr-2"></i>إحصائيات النظام</h1>
+                    <h1 class="m-0"><i class="fas fa-chart-bar mr-2"></i>{{ t('System Statistics') }}</h1>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-left">
                         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+                            <i class="fas fa-arrow-right mr-2"></i>{{ t('Owner Dashboard') }}
                         </a>
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home mr-2"></i>الرئيسية
+                            <i class="fas fa-home mr-2"></i>{{ t('Home') }}
                         </a>
                     </div>
                 </div>
@@ -30,7 +30,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">إحصائيات قاعدة البيانات</h3>
+                            <h3 class="card-title">{{ t('Database Statistics') }}</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -38,7 +38,7 @@
                                     <thead>
                                         <tr>
                                             <th>{{ t('Table') }}</th>
-                                            <th>عدد السجلات</th>
+                                            <th>{{ t('Record Count') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>

@@ -54,22 +54,22 @@ class KeyboardShortcuts {
         // Navigation
         this.register('alt+h', () => {
             window.location.href = '/';
-        }, 'الذهاب للرئيسية');
+        }, t('Go to Home'));
 
         this.register('alt+s', () => {
             const salesBtn = document.querySelector('a[href*="sales"]');
             if (salesBtn) salesBtn.click();
-        }, 'فتح المبيعات');
+        }, t('Open Sales'));
 
         this.register('alt+c', () => {
             const customersBtn = document.querySelector('a[href*="customers"]');
             if (customersBtn) customersBtn.click();
-        }, 'فتح الزبائن');
+        }, t('Open Customers'));
 
         this.register('alt+p', () => {
             const productsBtn = document.querySelector('a[href*="products"]');
             if (productsBtn) productsBtn.click();
-        }, 'فتح المنتجات');
+        }, t('Open Products'));
 
         // Actions
         this.register('ctrl+n', () => {
@@ -77,16 +77,16 @@ class KeyboardShortcuts {
             if (createBtn) {
                 createBtn.click();
             } else {
-                notify.info('لا يوجد زر إنشاء في هذه الصفحة');
+                notify.info(t('No create button on this page'));
             }
-        }, 'إنشاء جديد');
+        }, t('Create New'));
 
         this.register('ctrl+s', (e) => {
             const form = document.querySelector('form');
             if (form) {
                 form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
             }
-        }, 'حفظ النموذج');
+        }, t('Save Form'));
 
         this.register('escape', () => {
             // Close modals
@@ -99,7 +99,7 @@ class KeyboardShortcuts {
             // Close notifications
             const toasts = document.querySelectorAll('.toast');
             toasts.forEach(toast => toast.remove());
-        }, 'إغلاق/إلغاء');
+        }, t('Close/Cancel'));
 
         // Search
         this.register('ctrl+k', () => {
@@ -108,34 +108,34 @@ class KeyboardShortcuts {
                 searchInput.focus();
                 searchInput.select();
             }
-        }, 'البحث السريع');
+        }, t('Quick Search'));
 
         // DataTable shortcuts
         this.register('ctrl+e', () => {
             const exportBtn = document.querySelector('.buttons-excel, .buttons-csv');
             if (exportBtn) {
                 exportBtn.click();
-                notify.success('جاري تصدير البيانات...');
+                notify.success(t('Exporting data...'));
             }
-        }, 'تصدير البيانات');
+        }, t('Export Data'));
 
         this.register('ctrl+p', () => {
             window.print();
-        }, 'طباعة');
+        }, t('Print'));
 
         // Help
         this.register('?', () => {
             this.showHelp();
-        }, 'عرض المساعدة');
+        }, t('Show Help'));
 
         this.register('ctrl+/', () => {
             this.showHelp();
-        }, 'عرض الاختصارات');
+        }, t('Show Shortcuts'));
 
         // Sidebar toggle
         this.register('ctrl+b', () => {
             $('[data-widget="pushmenu"]').trigger('click');
-        }, 'إخفاء/إظهار القائمة');
+        }, t('Hide/Show Menu'));
     }
 
     showHelpButton() {
@@ -145,7 +145,7 @@ class KeyboardShortcuts {
         btn.id = 'shortcuts-help-btn';
         btn.className = 'btn btn-sm btn-info';
         btn.innerHTML = '<i class="fas fa-keyboard"></i>';
-        btn.title = 'اختصارات لوحة المفاتيح (?)';
+        btn.title = t('Keyboard Shortcuts (?)');
         btn.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -177,7 +177,7 @@ class KeyboardShortcuts {
                         <div class="modal-header bg-info text-white">
                             <h5 class="modal-title">
                                 <i class="fas fa-keyboard mr-2"></i>
-                                اختصارات لوحة المفاتيح
+                                ${t('Keyboard Shortcuts')}
                             </h5>
                             <button type="button" class="close text-white" data-dismiss="modal">
                                 <span>×</span>
@@ -187,8 +187,8 @@ class KeyboardShortcuts {
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th style="width: 200px">الاختصار</th>
-                                        <th>الوصف</th>
+                                        <th style="width: 200px">${t('Shortcut')}</th>
+                                        <th>${t('Description')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -197,7 +197,7 @@ class KeyboardShortcuts {
                             </table>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">إغلاق</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">${t('Close')}</button>
                         </div>
                     </div>
                 </div>
@@ -240,7 +240,7 @@ window.shortcuts = new KeyboardShortcuts();
 $(document).ready(function() {
     if (!localStorage.getItem('shortcuts-shown')) {
         setTimeout(() => {
-            notify.info('اضغط ? لعرض اختصارات لوحة المفاتيح', 'نصيحة سريعة');
+            notify.info(t('Press ? to show keyboard shortcuts'), t('Quick Tip'));
             localStorage.setItem('shortcuts-shown', 'true');
         }, 2000);
     }

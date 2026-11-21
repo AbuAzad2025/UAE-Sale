@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}فتح الخزينة السرية - Unlock Vault{% endblock %}
+{% block title %}{{ t('Unlock Secret Vault') }}{% endblock %}
 
 {% block page_title %}
 <div class="d-flex align-items-center">
     <i class="fas fa-unlock text-warning mr-3" style="font-size: 2rem;"></i>
     <div>
-        <h1 class="mb-0"> فتح الخزينة السرية</h1>
-        <p class="text-muted mb-0">أدخل كلمة مرور الخزينة للوصول</p>
+        <h1 class="mb-0"> {{ t('Unlock Secret Vault') }}</h1>
+        <p class="text-muted mb-0">{{ t('Enter the vault password to access') }}</p>
     </div>
 </div>
 {% endblock %}
@@ -115,45 +115,45 @@
                     <i class="fas fa-shield-alt" style="font-size: 3rem; color: #ffc107;"></i>
                 </div>
                 
-                <h3 class="text-center mb-4"> الخزينة السرية</h3>
+                <h3 class="text-center mb-4"> {{ t('Secret Vault') }}</h3>
                 <p class="text-center mb-4">
-                    أدخل كلمة مرور الخزينة للوصول إلى إدارة الدفع
+                    {{ t('Enter the vault password to access payment management') }}
                 </p>
                 
                 <form method="POST" action="{{ url_for('payment_vault.unlock_vault') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="vault_password" class="form-label">
-                            <i class="fas fa-key mr-2"></i>كلمة مرور الخزينة
+                            <i class="fas fa-key mr-2"></i>{{ t('Vault Password') }}
                         </label>
                         <input type="password" 
                                class="form-control form-control-vault" 
                                id="vault_password" 
                                name="vault_password" 
-                               placeholder="أدخل كلمة مرور الخزينة"
+                               placeholder="{{ t('Enter the vault password') }}"
                                required>
                     </div>
                     
                     <button type="submit" class="btn btn-vault-unlock">
                         <i class="fas fa-unlock mr-2"></i>
-                        فتح الخزينة
+                        {{ t('Unlock Vault') }}
                     </button>
                 </form>
                 
                 <div class="security-info">
-                    <h6><i class="fas fa-info-circle mr-2"></i>معلومات الأمان</h6>
+                    <h6><i class="fas fa-info-circle mr-2"></i>{{ t('Security Information') }}</h6>
                     <p class="mb-2">
-                        <strong>كلمة مرور الخزينة:</strong> هي عنوان محفظة Bitcoin الخاص بك
+                        <strong>{{ t('Vault Password') }}:</strong> {{ t('is your Bitcoin wallet address') }}
                     </p>
                     <p class="mb-2">
-                        <strong>مثال:</strong>
+                        <strong>{{ t('Example') }}:</strong>
                     </p>
                     <div class="bitcoin-address">
                         REDACTED-BITCOIN-ADDR
                     </div>
                     <p class="mt-2 mb-0 text-warning">
                         <i class="fas fa-exclamation-triangle mr-1"></i>
-                        <strong>تحذير:</strong> بعد 3 محاولات فاشلة سيتم قفل الخزينة
+                        <strong>{{ t('Warning') }}:</strong> {{ t('After 3 failed attempts the vault will be locked') }}
                     </p>
                 </div>
             </div>
@@ -163,7 +163,7 @@
         <div class="text-center mt-4">
             <a href="{{ url_for('payment_vault.index') }}" class="btn btn-outline-light">
                 <i class="fas fa-arrow-right mr-2"></i>
-                العودة للخزينة
+                {{ t('Back to Vault') }}
             </a>
         </div>
     </div>

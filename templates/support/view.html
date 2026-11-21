@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}التذكرة #{{ ticket.id }}{% endblock %}
+{% block title %}{{ t('Ticket') }} #{{ ticket.id }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
-    <a href="{{ url_for('support.tickets_list') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للتذاكر</a>
+    <a href="{{ url_for('support.tickets_list') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Tickets') }}</a>
   </div>
 
   <div class="card">
@@ -21,12 +21,12 @@
       <pre style="white-space: pre-wrap; font-family: inherit; background: #f7faf8; border-radius: 10px; padding: 16px;">{{ ticket.description }}</pre>
 
       {% if ticket.resolution_notes %}
-      <h5 class="mt-3">ردّ الفريق / الحل:</h5>
+      <h5 class="mt-3">{{ t('Team Response / Solution') }}:</h5>
       <pre style="white-space: pre-wrap; font-family: inherit; background: #eef7ef; border-radius: 10px; padding: 16px; border-right: 4px solid #2e7d32;">{{ ticket.resolution_notes }}</pre>
       {% endif %}
 
-      <h5 class="mt-3">مؤشرات SLA</h5>
-      <p class="text-muted small mb-0">الحالة: <strong>{{ ticket.sla_status() }}</strong> — الرد الأول والتحديثات حسب أولوية التذكرة الموثقة في <a href="{{ url_for('public.sla') }}">وثيقة SLA</a>.</p>
+      <h5 class="mt-3">{{ t('SLA Indicators') }}</h5>
+      <p class="text-muted small mb-0">{{ t('Status') }}: <strong>{{ ticket.sla_status() }}</strong> — {{ t('First response and updates according to the ticket priority documented in') }} <a href="{{ url_for('public.sla') }}">{{ t('SLA Document') }}</a>.</p>
     </div>
   </div>
 </div>

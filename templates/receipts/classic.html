@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>سند قبض - {{ receipt.receipt_number }}</title>
+  <title>{{ t("Receipt") }} - {{ receipt.receipt_number }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
@@ -205,7 +205,7 @@
 <body class="receipt-print classic-receipt">
   <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
     <button onclick="window.print()" style="background: #333; color: white; border: none; padding: 10px 25px; border-radius: 5px; font-size: 9px; cursor: pointer;">
-      طباعة
+      {{ t("Print") }}
     </button>
   </div>
 
@@ -219,31 +219,31 @@
         <div>{{ settings.address_ar or '' }}</div>
         <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
         <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
-        {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
+        {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 
     <div class="receipt-title">
-      <h2>سند قبض</h2>
-      <div class="receipt-number">رقم: {{ receipt.receipt_number }}</div>
+      <h2>{{ t("Receipt") }}</h2>
+      <div class="receipt-number">{{ t("Number") }}: {{ receipt.receipt_number }}</div>
     </div>
 
     <div class="info-section">
       <div class="info-box">
-        <h3>بيانات العميل</h3>
-        <p><strong>الاسم:</strong> {{ receipt.customer.name }}</p>
-        {% if receipt.customer.phone %}<p><strong>الهاتف:</strong> {{ receipt.customer.phone }}</p>{% endif %}
-        {% if receipt.customer.email %}<p><strong>البريد:</strong> {{ receipt.customer.email }}</p>{% endif %}
+        <h3>{{ t("Customer Details") }}</h3>
+        <p><strong>{{ t("Name") }}:</strong> {{ receipt.customer.name }}</p>
+        {% if receipt.customer.phone %}<p><strong>{{ t("Phone") }}:</strong> {{ receipt.customer.phone }}</p>{% endif %}
+        {% if receipt.customer.email %}<p><strong>{{ t("Email") }}:</strong> {{ receipt.customer.email }}</p>{% endif %}
       </div>
       <div class="info-box">
-        <h3>بيانات السند</h3>
-        <p><strong>التاريخ:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}</p>
-        <p><strong>المحصل:</strong> {{ receipt.user.full_name if receipt.user else 'النظام' }}</p>
+        <h3>{{ t("Receipt Details") }}</h3>
+        <p><strong>{{ t("Date") }}:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}</p>
+        <p><strong>{{ t("Cashier") }}:</strong> {{ receipt.user.full_name if receipt.user else t('System') }}</p>
       </div>
     </div>
 
     <div class="amount-section">
-      <div class="amount-label">المبلغ المستلم</div>
+      <div class="amount-label">{{ t("Amount Received") }}</div>
       <div class="amount-value">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
       <div class="amount-words" style="margin-top:6px; font-size:9px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
         {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
@@ -257,39 +257,39 @@
     </div>
 
     <div class="payment-details">
-      <h4>طريقة الدفع</h4>
+      <h4>{{ t("Payment Method") }}</h4>
       <p style="font-size: 9px; font-weight: 700;">
-        {% if receipt.payment_method == 'cash' %}نقدي
-        {% elif receipt.payment_method == 'card' %}بطاقة
-        {% elif receipt.payment_method == 'bank_transfer' %}تحويل بنكي
-        {% elif receipt.payment_method == 'cheque' %}شيك
-        {% else %}محفظة إلكترونية{% endif %}
+        {% if receipt.payment_method == 'cash' %}{{ t("Cash") }}
+        {% elif receipt.payment_method == 'card' %}{{ t("Card") }}
+        {% elif receipt.payment_method == 'bank_transfer' %}{{ t("Bank Transfer") }}
+        {% elif receipt.payment_method == 'cheque' %}{{ t("Cheque") }}
+        {% else %}{{ t("E-Wallet") }}{% endif %}
       </p>
       
       {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
       <div class="cheque-info">
         <div class="cheque-row">
-          <label>رقم الشيك:</label>
+          <label>{{ t("Cheque Number") }}:</label>
           <value>{{ receipt.cheque_number }}</value>
         </div>
         <div class="cheque-row">
-          <label>تاريخ الاستحقاق:</label>
+          <label>{{ t("Due Date") }}:</label>
           <value>{{ receipt.cheque_date.strftime('%Y-%m-%d') if receipt.cheque_date else '-' }}</value>
         </div>
         <div class="cheque-row">
-          <label>البنك:</label>
+          <label>{{ t("Bank") }}:</label>
           <value>{{ receipt.bank_name or '-' }}</value>
         </div>
       </div>
       {% elif receipt.reference_number %}
-      <p style="margin-top: 8px; font-size: 8px;"><strong>رقم المرجع:</strong> {{ receipt.reference_number }}</p>
+      <p style="margin-top: 8px; font-size: 8px;"><strong>{{ t("Reference Number") }}:</strong> {{ receipt.reference_number }}</p>
       {% endif %}
     </div>
 
     {% set source_info = receipt.get_source_info() %}
     {% if source_info %}
     <div class="allocations">
-      <h4>تفاصيل الفاتورة</h4>
+      <h4>{{ t("Invoice Details") }}</h4>
       <div class="allocation-row">
         <div><strong>{{ source_info.number }}</strong> - {{ source_info.date }}</div>
         <div style="font-weight: 700;">{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</div>
@@ -299,7 +299,7 @@
 
     {% if receipt.notes %}
     <div class="notes">
-      <h4>ملاحظات وسبب الدفع</h4>
+      <h4>{{ t("Notes and Payment Reason") }}</h4>
       <p>{{ receipt.notes }}</p>
     </div>
     {% endif %}
@@ -308,7 +308,7 @@
       
       {% if settings and (settings.bank_name or settings.iban) %}
       <div style="margin-bottom: 10px; padding: 8px; border: 1px solid #333; background: #f5f5f5;">
-        <p style="font-weight: 700; font-size: 9px; margin-bottom: 4px; text-align: center;"> معلومات التحويل</p>
+        <p style="font-weight: 700; font-size: 9px; margin-bottom: 4px; text-align: center;"> {{ t("Transfer Information") }}</p>
         <div style="font-size: 8px; text-align: center;">
           {% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% endif %}
           {% if settings.bank_name and settings.iban %} - {% endif %}
@@ -320,9 +320,9 @@
       
       {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
       <p style="font-size: 8px; color: #666; margin-bottom: 5px; text-align: center;">
-        {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
+        {% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t("CR No:") }} {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} | {% endif %}
-        {% if settings.license_number and settings.license_number != 'None' %}رخصة: {{ settings.license_number }}{% endif %}
+        {% if settings.license_number and settings.license_number != 'None' %}{{ t("License") }}: {{ settings.license_number }}{% endif %}
       </p>
       {% endif %}
       
@@ -334,7 +334,7 @@
       {% endif %}
       
       <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'نرجو الالتزام بمواعيد الدفع' }}</p>
-      <p style="margin-top: 8px;">شكراً لتعاملكم معنا</p>
+      <p style="margin-top: 8px;">{{ t("Thank you for dealing with us") }}</p>
       {% if settings and settings.website and settings.website != 'None' %}<p style="margin-top: 5px;"> {{ settings.website }}</p>{% endif %}
       
       
@@ -348,8 +348,8 @@
     </div>
 
     <div class="signature">
-      <div>المحصل</div>
-      <div>العميل</div>
+      <div>{{ t("Cashier") }}</div>
+      <div>{{ t("Customer") }}</div>
     </div>
     
     
@@ -364,7 +364,7 @@
         </div>
       {% endif %}
     {% endif %}
-<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
+<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 </body>
 </html>

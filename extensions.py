@@ -144,6 +144,35 @@ class _CurrentStreamHandler(logging.StreamHandler):
         # Ignore StreamHandler's one-time assignment; the property is dynamic.
         pass
 
+    def emit(self, record):
+        """Write a log record, tolerating streams with non-UTF-8 encodings.
+
+        On Windows the console stream may use cp1252; writing Arabic text to it
+        raises UnicodeEncodeError. Format to UTF-8-safe text first so logging
+        never crashes a request just because a message contains non-ASCII.
+        """
+        try:
+            msg = self.format(record)
+        except Exception:
+            self.handleError(record)
+            return
+        stream = self.stream
+        if stream is None:
+            return
+        try:
+            stream.write(msg + self.terminator)
+            stream.flush()
+        except UnicodeEncodeError:
+            # Fall back to ASCII-safe rendering for this console stream only.
+            safe = msg.encode("ascii", errors="replace").decode("ascii")
+            try:
+                stream.write(safe + self.terminator)
+                stream.flush()
+            except Exception:
+                self.handleError(record)
+        except Exception:
+            self.handleError(record)
+
 
 def setup_logging(app):
     """Configure application logging with UTF-8 support"""

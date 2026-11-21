@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}تقرير الشركاء والتجار{% endblock %}
+{% block title %}{{ t('Partners & Merchants Report') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-handshake fa-fw me-2 text-primary"></i>تقرير الشركاء والتجار
+            <i class="fas fa-handshake fa-fw me-2 text-primary"></i>{{ t('Partners & Merchants Report') }}
         </h1>
         <div class="d-flex gap-2">
             <button onclick="window.print()" class="btn btn-outline-secondary">
-                <i class="fas fa-print me-1"></i> طباعة
+                <i class="fas fa-print me-1"></i> {{ t('Print') }}
             </button>
         </div>
     </div>
@@ -18,24 +18,24 @@
     
     <div class="card shadow mb-4 border-bottom-primary">
         <div class="card-header py-3 bg-gradient-dark text-white d-flex justify-content-between align-items-center">
-            <h6 class="m-0 font-weight-bold"><i class="fas fa-search me-2"></i>بحث تفصيلي (Statement of Account)</h6>
-            <small class="text-white-50">بحث عن مورد، زبون، شريك، أو تاجر</small>
+            <h6 class="m-0 font-weight-bold"><i class="fas fa-search me-2"></i>{{ t('Detailed Search') }}</h6>
+            <small class="text-white-50">{{ t('Search for a supplier, customer, partner or merchant') }}</small>
         </div>
         <div class="card-body">
             <div class="row g-3 align-items-center">
                 <div class="col-md-3">
-                    <label class="form-label fw-bold">نوع الحساب</label>
+                    <label class="form-label fw-bold">{{ t('Account Type') }}</label>
                     <select class="form-control select2" id="searchType">
                         {% for code, meta in lookups.get('search_partner_types', []) %}
-                        <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
+                        <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-9 position-relative">
-                    <label class="form-label fw-bold">بحث بالاسم أو الهاتف</label>
+                    <label class="form-label fw-bold">{{ t('Search by name or phone') }}</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" class="form-control" id="searchInput" placeholder="ابدأ بالكتابة للبحث..." autocomplete="off">
+                        <input type="text" class="form-control" id="searchInput" placeholder="{{ t('Start typing to search...') }}" autocomplete="off">
                     </div>
                     <div id="searchResults" class="list-group position-absolute w-100 shadow mt-1" style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;"></div>
                 </div>
@@ -50,21 +50,21 @@
     
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">تصفية التقرير</h6>
+            <h6 class="m-0 font-weight-bold text-primary">{{ t('Report Filter') }}</h6>
         </div>
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-4">
-                    <label class="form-label">من تاريخ</label>
+                    <label class="form-label">{{ t('From Date') }}</label>
                     <input type="date" name="date_from" class="form-control" value="{{ request.args.get('date_from', '') }}">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">إلى تاريخ</label>
+                    <label class="form-label">{{ t('To Date') }}</label>
                     <input type="date" name="date_to" class="form-control" value="{{ request.args.get('date_to', '') }}">
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i> عرض النتائج
+                        <i class="fas fa-filter me-1"></i> {{ t('Show Results') }}
                     </button>
                 </div>
             </form>
@@ -75,17 +75,17 @@
     <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="partners-tab" data-toggle="tab" data-target="#partners" type="button" role="tab">
-                <i class="fas fa-users me-2"></i>حصص الشركاء (Partners)
+                <i class="fas fa-users me-2"></i>{{ t('Partner Shares') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="merchants-tab" data-toggle="tab" data-target="#merchants" type="button" role="tab">
-                <i class="fas fa-store me-2"></i>منتجات التجار (Merchants)
+                <i class="fas fa-store me-2"></i>{{ t('Merchant Products') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="suppliers-tab" data-toggle="tab" data-target="#suppliers" type="button" role="tab">
-                <i class="fas fa-truck me-2"></i>الموردين (Suppliers)
+                <i class="fas fa-truck me-2"></i>{{ t('Suppliers') }}
             </button>
         </li>
     </ul>
@@ -97,24 +97,24 @@
             
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-gradient-info text-white">
-                    <h6 class="m-0 font-weight-bold"><i class="fas fa-file-invoice-dollar me-2"></i>الملخص المالي للشركاء</h6>
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-file-invoice-dollar me-2"></i>{{ t('Partner Financial Summary') }}</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover text-center">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th>الشريك</th>
-                                    <th>إجمالي الحصص المستحقة (Revenue)</th>
-                                    <th>مقبوضات من الشريك (Received)</th>
-                                    <th>مدفوعات للشريك (Paid To)</th>
-                                    <th>صافي الرصيد (Net Balance)</th>
+                                    <th>{{ t('Partner') }}</th>
+                                    <th>{{ t('Total Entitlements') }}</th>
+                                    <th>{{ t('Received from Partner') }}</th>
+                                    <th>{{ t('Paid to Partner') }}</th>
+                                    <th>{{ t('Net Balance') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for partner in partners_summary %}
                                 <tr>
-                                    <td class="fw-bold">{{ partner.name }}</td>
+                                    <td class="fw-bold">{{ display_name(partner) }}</td>
                                     <td class="num-cell text-success">{{ partner.total_share|money }}</td>
                                     <td class="num-cell text-primary">{{ partner.received_from|money }}</td>
                                     <td class="num-cell text-danger">{{ partner.paid_to|money }}</td>
@@ -124,32 +124,32 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-muted">لا توجد حركات مالية للشركاء في الفترة المحددة</td>
+                                    <td colspan="5" class="text-muted">{{ t('No partner financial movements in the selected period') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <small class="text-muted">* صافي الرصيد = (الحصص المستحقة + المقبوضات) - المدفوعات</small>
+                    <small class="text-muted">* {{ t('Net balance = (entitlements + receipts) - payments') }}</small>
                 </div>
             </div>
 
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-gradient-primary text-white">
-                    <h6 class="m-0 font-weight-bold">تفاصيل حصص الشركاء من المبيعات (حسب المنتج)</h6>
+                    <h6 class="m-0 font-weight-bold">{{ t('Partner Sales Share Details (by Product)') }}</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" width="100%" cellspacing="0">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>المنتج</th>
-                                    <th>الشريك</th>
-                                    <th>نسبة الشراكة</th>
-                                    <th>سعر الوحدة (Avg)</th>
-                                    <th>الكمية المباعة</th>
-                                    <th>إجمالي المبيعات ({{ base_currency }})</th>
-                                    <th>حصة الشريك المستحقة ({{ base_currency }})</th>
+                                    <th>{{ t('Product') }}</th>
+                                    <th>{{ t('Partner') }}</th>
+                                    <th>{{ t('Partnership Ratio') }}</th>
+                                    <th>{{ t('Unit Price') }}</th>
+                                    <th>{{ t('Quantity Sold') }}</th>
+                                    <th>{{ t('Total Sales') }} ({{ base_currency }})</th>
+                                    <th>{{ t('Partner Share Entitled') }} ({{ base_currency }})</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -165,14 +165,14 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">لا توجد مبيعات لمنتجات مشتركة في الفترة المحددة</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">{{ t('No sales of partner products in the selected period') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             {% if partners_data %}
                             <tfoot class="table-light fw-bold">
                                 <tr>
-                                    <td colspan="5" class="text-end">الإجمالي الكلي:</td>
+                                    <td colspan="5" class="text-end">{{ t('Grand Total:') }}</td>
                                     <td class="num-cell">{{ partners_data|sum(attribute='total_revenue')|money }}</td>
                                     <td class="num-cell text-success">{{ partners_data|sum(attribute='partner_share_amount')|money }}</td>
                                 </tr>
@@ -190,24 +190,24 @@
             
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-gradient-info text-white">
-                    <h6 class="m-0 font-weight-bold"><i class="fas fa-file-invoice-dollar me-2"></i>الملخص المالي للتجار</h6>
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-file-invoice-dollar me-2"></i>{{ t('Merchant Financial Summary') }}</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover text-center">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th>التاجر</th>
-                                    <th>إجمالي المستحقات من المبيعات (Revenue)</th>
-                                    <th>مقبوضات من التاجر (Received)</th>
-                                    <th>مدفوعات للتاجر (Paid To)</th>
-                                    <th>صافي الرصيد (Net Balance)</th>
+                                    <th>{{ t('Merchant') }}</th>
+                                    <th>{{ t('Total Entitlements from Sales') }}</th>
+                                    <th>{{ t('Received from Merchant') }}</th>
+                                    <th>{{ t('Paid to Merchant') }}</th>
+                                    <th>{{ t('Net Balance') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for merchant in merchants_summary %}
                                 <tr>
-                                    <td class="fw-bold">{{ merchant.name }}</td>
+                                    <td class="fw-bold">{{ display_name(merchant) }}</td>
                                     <td class="num-cell text-success">{{ merchant.total_share|money }}</td>
                                     <td class="num-cell text-primary">{{ merchant.received_from|money }}</td>
                                     <td class="num-cell text-danger">{{ merchant.paid_to|money }}</td>
@@ -217,32 +217,32 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-muted">لا توجد حركات مالية للتجار في الفترة المحددة</td>
+                                    <td colspan="5" class="text-muted">{{ t('No merchant financial movements in the selected period') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <small class="text-muted">* صافي الرصيد = (المستحقات + المقبوضات) - المدفوعات</small>
+                    <small class="text-muted">* {{ t('Net balance = (entitlements + receipts) - payments') }}</small>
                 </div>
             </div>
 
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-gradient-success text-white">
-                    <h6 class="m-0 font-weight-bold">تفاصيل مستحقات التجار (المنتجات الخارجية)</h6>
+                    <h6 class="m-0 font-weight-bold">{{ t('Merchant Entitlement Details (External Products)') }}</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" width="100%" cellspacing="0">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>المنتج</th>
-                                    <th>التاجر المورد</th>
-                                    <th>النسبة المتفق عليها</th>
-                                    <th>سعر الوحدة (Avg)</th>
-                                    <th>الكمية المباعة</th>
-                                    <th>إجمالي المبيعات ({{ base_currency }})</th>
-                                    <th>حصة التاجر المستحقة ({{ base_currency }})</th>
+                                    <th>{{ t('Product') }}</th>
+                                    <th>{{ t('Supplier Merchant') }}</th>
+                                    <th>{{ t('Agreed Ratio') }}</th>
+                                    <th>{{ t('Unit Price') }}</th>
+                                    <th>{{ t('Quantity Sold') }}</th>
+                                    <th>{{ t('Total Sales') }} ({{ base_currency }})</th>
+                                    <th>{{ t('Merchant Share Entitled') }} ({{ base_currency }})</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -258,14 +258,14 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">لا توجد مبيعات لمنتجات تجار في الفترة المحددة</td>
+                                    <td colspan="7" class="text-center py-4 text-muted">{{ t('No sales of merchant products in the selected period') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             {% if merchants_data %}
                             <tfoot class="table-light fw-bold">
                                 <tr>
-                                    <td colspan="5" class="text-end">الإجمالي الكلي:</td>
+                                    <td colspan="5" class="text-end">{{ t('Grand Total:') }}</td>
                                     <td class="num-cell">{{ merchants_data|sum(attribute='total_revenue')|money }}</td>
                                     <td class="num-cell text-success">{{ merchants_data|sum(attribute='merchant_share_amount')|money }}</td>
                                 </tr>
@@ -281,24 +281,24 @@
         <div class="tab-pane fade" id="suppliers" role="tabpanel">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 bg-gradient-warning text-dark">
-                    <h6 class="m-0 font-weight-bold"><i class="fas fa-truck me-2"></i>ملخص حسابات الموردين</h6>
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-truck me-2"></i>{{ t('Supplier Account Summary') }}</h6>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped" width="100%" cellspacing="0">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>المورد</th>
-                                    <th>إجمالي المشتريات (Purchases)</th>
-                                    <th>المدفوع للمورد (Paid To)</th>
-                                    <th>مرتجع من المورد (Refunds)</th>
-                                    <th>الرصيد المستحق للمورد (Balance Due)</th>
+                                    <th>{{ t('Supplier') }}</th>
+                                    <th>{{ t('Total Purchases') }}</th>
+                                    <th>{{ t('Paid to Supplier') }}</th>
+                                    <th>{{ t('Refunds from Supplier') }}</th>
+                                    <th>{{ t('Supplier Balance Due') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for supplier in suppliers_summary %}
                                 <tr>
-                                    <td class="fw-bold">{{ supplier.name }}</td>
+                                    <td class="fw-bold">{{ display_name(supplier) }}</td>
                                     <td class="num-cell">{{ supplier.total_purchases|money }}</td>
                                     <td class="num-cell text-success">{{ supplier.paid_to|money }}</td>
                                     <td class="num-cell text-primary">{{ supplier.received_from|money }}</td>
@@ -308,14 +308,14 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">لا توجد بيانات موردين في الفترة المحددة</td>
+                                    <td colspan="5" class="text-center py-4 text-muted">{{ t('No supplier data in the selected period') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             {% if suppliers_summary %}
                             <tfoot class="table-light fw-bold">
                                 <tr>
-                                    <td class="text-end">الإجمالي الكلي:</td>
+                                    <td class="text-end">{{ t('Grand Total:') }}</td>
                                     <td class="num-cell">{{ suppliers_summary|sum(attribute='total_purchases')|money }}</td>
                                     <td class="num-cell text-success">{{ suppliers_summary|sum(attribute='paid_to')|money }}</td>
                                     <td class="num-cell text-primary">{{ suppliers_summary|sum(attribute='received_from')|money }}</td>
@@ -368,10 +368,10 @@
                     if (data.length > 0) {
                         data.forEach(item => {
                             let typeLabel = item.type;
-                            if (item.type === 'supplier') typeLabel = 'مورد';
-                            else if (item.type === 'partner') typeLabel = 'شريك';
-                            else if (item.type === 'merchant') typeLabel = 'تاجر';
-                            else if (item.type === 'regular' || item.type === 'customer') typeLabel = 'زبون';
+                            if (item.type === 'supplier') typeLabel = {{ t('Supplier')|tojson }};
+                            else if (item.type === 'partner') typeLabel = {{ t('Partner')|tojson }};
+                            else if (item.type === 'merchant') typeLabel = {{ t('Merchant')|tojson }};
+                            else if (item.type === 'regular' || item.type === 'customer') typeLabel = {{ t('Customer')|tojson }};
                             
                             
                             searchResults.append(`
@@ -387,7 +387,7 @@
                         });
                         searchResults.show();
                     } else {
-                        searchResults.append('<div class="list-group-item text-muted">لا توجد نتائج</div>');
+                        searchResults.append('<div class="list-group-item text-muted">{{ t('No results') }}</div>');
                         searchResults.show();
                     }
                 });
@@ -404,13 +404,13 @@
             searchResults.hide();
             searchInput.val(name); 
             
-            detailsContainer.html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">جاري تحميل التقرير التفصيلي...</p></div>');
+            detailsContainer.html('<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">{{ t('Loading detailed report...') }}</p></div>');
             
             $.get(`/reports/entity_report_fragment/${type}/${id}`, function(html) {
                 detailsContainer.html(html);
             }).fail(function(err) {
                 console.error(err);
-                detailsContainer.html('<div class="alert alert-danger">حدث خطأ أثناء تحميل التقرير. يرجى المحاولة مرة أخرى.</div>');
+                detailsContainer.html('<div class="alert alert-danger">{{ t('An error occurred while loading the report. Please try again.') }}</div>');
             });
         };
     });

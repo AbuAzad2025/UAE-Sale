@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل المستخدم - {{ user.username }}{% endblock %}
-{% block page_title %}<i class="fas fa-user-edit mr-2"></i> تعديل المستخدم - {{ user.username }}{% endblock %}
+{% block title %}{{ t("Edit User") }} - {{ user.username }}{% endblock %}
+{% block page_title %}<i class="fas fa-user-edit mr-2"></i> {{ t("Edit User") }} - {{ user.username }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,7 +9,7 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title"><i class="fas fa-user-cog"></i> بيانات المستخدم</h3>
+          <h3 class="card-title"><i class="fas fa-user-cog"></i> {{ t("User Data") }}</h3>
         </div>
         <div class="card-body">
           <form id="user-edit-form" method="post" action="{{ url_for('users.edit', id=user.id) }}">
@@ -18,13 +18,13 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>اسم المستخدم</label>
+                  <label>{{ t("Username") }}</label>
                   <input type="text" class="form-control" value="{{ user.username }}" disabled>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم الكامل</label>
+                  <label>{{ t("Full Name") }}</label>
                   <input type="text" name="full_name" class="form-control" value="{{ user.full_name or '' }}">
                 </div>
               </div>
@@ -33,13 +33,13 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم الكامل بالعربية</label>
+                  <label>{{ t("Full Name in Arabic") }}</label>
                   <input type="text" name="full_name_ar" class="form-control" value="{{ user.full_name_ar or '' }}">
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>البريد الإلكتروني</label>
+                  <label>{{ t("Email") }}</label>
                   <input type="email" name="email" class="form-control" value="{{ user.email or '' }}">
                 </div>
               </div>
@@ -48,13 +48,13 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>رقم الهاتف</label>
+                  <label>{{ t("Phone Number") }}</label>
                   <input type="text" name="phone" class="form-control" value="{{ user.phone or '' }}">
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الدور</label>
+                  <label>{{ t("Role") }}</label>
                   <select name="role_id" class="form-control select2">
                     {% for r in roles %}
                       <option value="{{ r.id }}" {% if user.role_id == r.id %}selected{% endif %}>
@@ -71,14 +71,14 @@
               <div class="col-md-6">
                 <div class="custom-control custom-checkbox mt-4">
                   <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner" value="on" {% if user.is_owner %}checked{% endif %} {% if user.id == current_user.id %}disabled{% endif %}>
-                  <label class="custom-control-label text-danger font-weight-bold" for="is_owner">حساب مالك منصة</label>
+                  <label class="custom-control-label text-danger font-weight-bold" for="is_owner">{{ t("Platform Owner Account") }}</label>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>المستأجر الحالي</label>
+                  <label>{{ t("Current Tenant") }}</label>
                   <input type="text" class="form-control" value="{{ user.tenant.name_ar if user.tenant else '—' }}" disabled>
-                  <small class="form-text text-muted">نقل المستخدم بين المستأجرين يتم من بطاقة المستأجر.</small>
+                  <small class="form-text text-muted">{{ t("Moving users between tenants is done from the tenant card.") }}</small>
                 </div>
               </div>
             </div>
@@ -87,27 +87,27 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>كلمة المرور الجديدة</label>
+                  <label>{{ t("New Password") }}</label>
                   <input type="password" name="new_password" id="new_password" class="form-control" minlength="10" autocomplete="new-password">
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>تأكيد كلمة المرور</label>
+                  <label>{{ t("Confirm Password") }}</label>
                   <input type="password" id="confirm_password" class="form-control" minlength="10" autocomplete="new-password">
                 </div>
               </div>
             </div>
 
             <div class="d-flex align-items-center" style="gap:10px;">
-              <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> حفظ التعديلات</button>
-              <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-secondary"><i class="fas fa-times"></i> إلغاء</a>
+              <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> {{ t("Save Changes") }}</button>
+              <a href="{{ url_for('users.view', id=user.id) }}" class="btn btn-secondary"><i class="fas fa-times"></i> {{ t("Cancel") }}</a>
               <form method="post" action="{{ url_for('users.toggle_active', id=user.id) }}" style="display:inline;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if user.is_active %}
-                  <button type="submit" class="btn btn-warning"><i class="fas fa-user-slash"></i> إلغاء تفعيل</button>
+                  <button type="submit" class="btn btn-warning"><i class="fas fa-user-slash"></i> {{ t("Deactivate") }}</button>
                 {% else %}
-                  <button type="submit" class="btn btn-primary"><i class="fas fa-user-check"></i> تفعيل</button>
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-user-check"></i> {{ t("Activate") }}</button>
                 {% endif %}
               </form>
             </div>
@@ -137,7 +137,7 @@ $(function() {
     if (!validatePassword()) {
       e.preventDefault();
       if (typeof hideLoading === 'function') hideLoading();
-      Swal.fire({icon:'warning',title:'تحقق من كلمة المرور',text:'يجب أن تكون 10 أحرف على الأقل وتحتوي على حرف كبير ورقم ورمز خاص، ويجب أن تتطابق مع التأكيد'});
+      Swal.fire({icon:'warning',title:'{{ t("Check Password") }}',text:'{{ t("Must be at least 10 characters with uppercase, number and special character, and match the confirmation.") }}'});
     }
   });
 });

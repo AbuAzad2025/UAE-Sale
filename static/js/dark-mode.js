@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButton = document.createElement('button');
     toggleButton.className = 'theme-toggle';
     toggleButton.innerHTML = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
-    toggleButton.title = 'تبديل الوضع الليلي';
+    toggleButton.title = t('Toggle dark mode');
     document.body.appendChild(toggleButton);
     
     toggleButton.addEventListener('click', function() {

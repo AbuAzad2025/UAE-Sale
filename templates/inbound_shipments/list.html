@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}الشحنات الواردة{% endblock %}
+{% block title %}{{ t('Inbound Shipments') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>الشحنات الواردة</h3>
-    <a href="{{ url_for('inbound_shipments.create_inbound') }}" class="btn btn-primary"><i class="fas fa-plus"></i> شحنة واردة جديدة</a>
+    <h3>{{ t('Inbound Shipments') }}</h3>
+    <a href="{{ url_for('inbound_shipments.create_inbound') }}" class="btn btn-primary"><i class="fas fa-plus"></i> {{ t('New Inbound Shipment') }}</a>
   </div>
   <div class="card"><div class="card-body p-0">
-    <table class="table table-hover mb-0"><thead><tr><th>رقم الشحنة</th><th>المورد</th><th>المستودع</th><th>التتبع</th><th>الحالة</th><th>تاريخ</th></tr></thead>
+    <table class="table table-hover mb-0"><thead><tr><th>{{ t('Shipment Number') }}</th><th>{{ t('Supplier') }}</th><th>{{ t('Warehouse') }}</th><th>{{ t('Tracking') }}</th><th>{{ t('Status') }}</th><th>{{ t('Date') }}</th></tr></thead>
     <tbody>
     {% for s in shipments %}
       <tr>
@@ -19,7 +19,7 @@
         <td>{{ s.created_at.strftime('%Y-%m-%d') if s.created_at else '' }}</td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="text-center text-muted">لا توجد شحنات واردة</td></tr>
+      <tr><td colspan="6" class="text-center text-muted">{{ t('No inbound shipments') }}</td></tr>
     {% endfor %}
     </tbody></table>
   </div></div>

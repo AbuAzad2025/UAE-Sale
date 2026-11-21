@@ -1,20 +1,20 @@
 {% extends 'base.html' %}
-{% block title %}إضافة قسم{% endblock %}
-{% block page_title %}<i class="fas fa-building mr-2"></i>إضافة قسم جديد{% endblock %}
+{% block title %}{{ t('Add Department') }}{% endblock %}
+{% block page_title %}<i class="fas fa-building mr-2"></i>{{ t('Add New Department') }}{% endblock %}
 
 {% block content %}
 <div class="row">
   <div class="col-lg-8">
     <div class="card">
-      <div class="card-header"><h5 class="card-title mb-0">بيانات القسم</h5></div>
+      <div class="card-header"><h5 class="card-title mb-0">{{ t('Department Details') }}</h5></div>
       <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
           {% include 'hr/_department_fields.html' %}
         </div>
         <div class="card-footer">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ</button>
-          <a href="{{ url_for('hr.departments') }}" class="btn btn-secondary">إلغاء</a>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ t('Save') }}</button>
+          <a href="{{ url_for('hr.departments') }}" class="btn btn-secondary">{{ t('Cancel') }}</a>
         </div>
       </form>
     </div>

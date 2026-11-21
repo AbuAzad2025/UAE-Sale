@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دليل المستخدم — {{ config.COMPANY_NAME_AR }}</title>
+    <title>{{ t('User Guide') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <style>
@@ -59,208 +59,208 @@
 <body>
 
 <nav class="navbar">
-    <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+    <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</div>
     <div>
-        <a href="{{ url_for('public.landing') }}">الرئيسية</a>
-        <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+        <a href="{{ url_for('public.landing') }}">{{ t('Home') }}</a>
+        <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> {{ t('Sign In') }}</a>
     </div>
 </nav>
 
 <header class="header">
-    <h1>دليل المستخدم</h1>
-    <p>دليل شامل لاستخدام النظام — من إنشاء الحساب إلى إدارة المبيعات والمخزون والمحاسبة</p>
+    <h1>{{ t('User Guide') }}</h1>
+    <p>{{ t('A complete guide to using the system — from creating an account to managing sales, inventory and accounting') }}</p>
 </header>
 
 <div class="container">
     <aside class="sidebar">
-        <h3>المحتويات</h3>
+        <h3>{{ t('Contents') }}</h3>
         <ul>
-            <li class="active" onclick="scrollToSection('start')"><i class="fas fa-rocket"></i> البدء السريع</li>
-            <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</li>
-            <li onclick="scrollToSection('dashboard')"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</li>
-            <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> المبيعات</li>
-            <li onclick="scrollToSection('purchases')"><i class="fas fa-shopping-cart"></i> المشتريات</li>
-            <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> العملاء</li>
-            <li onclick="scrollToSection('suppliers')"><i class="fas fa-truck"></i> الموردين</li>
-            <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> المنتجات والمخزون</li>
-            <li onclick="scrollToSection('warehouse')"><i class="fas fa-warehouse"></i> المستودعات</li>
-            <li onclick="scrollToSection('accounting')"><i class="fas fa-book"></i> المحاسبة</li>
-            <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> المدفوعات</li>
-            <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> التقارير</li>
-            <li onclick="scrollToSection('hr')"><i class="fas fa-id-badge"></i> الموارد البشرية</li>
-            <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> الذكاء الاصطناعي</li>
+            <li class="active" onclick="scrollToSection('start')"><i class="fas fa-rocket"></i> {{ t('Quick Start') }}</li>
+            <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> {{ t('Login') }}</li>
+            <li onclick="scrollToSection('dashboard')"><i class="fas fa-tachometer-alt"></i> {{ t('Dashboard') }}</li>
+            <li onclick="scrollToSection('sales')"><i class="fas fa-cash-register"></i> {{ t('Sales') }}</li>
+            <li onclick="scrollToSection('purchases')"><i class="fas fa-shopping-cart"></i> {{ t('Purchases') }}</li>
+            <li onclick="scrollToSection('customers')"><i class="fas fa-users"></i> {{ t('Customers') }}</li>
+            <li onclick="scrollToSection('suppliers')"><i class="fas fa-truck"></i> {{ t('Suppliers') }}</li>
+            <li onclick="scrollToSection('products')"><i class="fas fa-boxes"></i> {{ t('Products & Inventory') }}</li>
+            <li onclick="scrollToSection('warehouse')"><i class="fas fa-warehouse"></i> {{ t('Warehouses') }}</li>
+            <li onclick="scrollToSection('accounting')"><i class="fas fa-book"></i> {{ t('Accounting') }}</li>
+            <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> {{ t('Payments') }}</li>
+            <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> {{ t('Reports') }}</li>
+            <li onclick="scrollToSection('hr')"><i class="fas fa-id-badge"></i> {{ t('Human Resources') }}</li>
+            <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> {{ t('Artificial Intelligence') }}</li>
         </ul>
     </aside>
 
     <main class="content">
 
         <section id="start">
-            <h2><i class="fas fa-rocket"></i> البدء السريع</h2>
-            <p>نظام إدارة المبيعات والمستودعات والمحاسبة — متكامل وسهل الاستخدام.</p>
+            <h2><i class="fas fa-rocket"></i> {{ t('Quick Start') }}</h2>
+            <p>{{ t('A sales, warehouse and accounting management system — integrated and easy to use.') }}</p>
             <div class="step-box">
-                <h4>الخطوة 1: تسجيل الدخول</h4>
-                <p>أدخل اسم المستخدم وكلمة المرور من صفحة تسجيل الدخول.</p>
+                <h4>{{ t('Step 1:') }} {{ t('Login') }}</h4>
+                <p>{{ t('Enter your username and password on the login page.') }}</p>
             </div>
             <div class="step-box">
-                <h4>الخطوة 2: لوحة التحكم</h4>
-                <p>ستظهر لوحة التحكم مع إحصائيات اليوم والشهر والإيرادات.</p>
+                <h4>{{ t('Step 2:') }} {{ t('Dashboard') }}</h4>
+                <p>{{ t("The dashboard appears with today's and this month's revenue statistics.") }}</p>
             </div>
             <div class="step-box">
-                <h4>الخطوة 3: إنشاء أول مبيعة</h4>
-                <p>انتقل إلى <strong>المبيعات ← إنشاء مبيعة</strong> واختر العميل والمنتجات.</p>
+                <h4>{{ t('Step 3:') }} {{ t('Create your first sale') }}</h4>
+                <p>{{ t('Go to') }} <strong>{{ t('Sales → Create Sale') }}</strong> {{ t('and choose the customer and products.') }}</p>
             </div>
         </section>
 
         <section id="login">
-            <h2><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</h2>
-            <p>من صفحة تسجيل الدخول:</p>
+            <h2><i class="fas fa-sign-in-alt"></i> {{ t('Login') }}</h2>
+            <p>{{ t('From the login page:') }}</p>
             <ul>
-                <li>أدخل <strong>اسم المستخدم</strong></li>
-                <li>أدخل <strong>كلمة المرور</strong></li>
-                <li>اضغط <strong>تسجيل الدخول</strong></li>
+                <li>{{ t('Enter') }} <strong>{{ t('Username') }}</strong></li>
+                <li>{{ t('Enter') }} <strong>{{ t('Password') }}</strong></li>
+                <li>{{ t('Click') }} <strong>{{ t('Login') }}</strong></li>
             </ul>
-            <div class="tip"><strong> نسيت كلمة المرور؟</strong> اضغط "نسيت كلمة المرور" وأدخل بريدك الإلكتروني.</div>
+            <div class="tip"><strong> {{ t('Forgot your password?') }}</strong> {{ t('Click "Forgot Password" and enter your email.') }}</div>
         </section>
 
         <section id="dashboard">
-            <h2><i class="fas fa-tachometer-alt"></i> لوحة التحكم</h2>
-            <p>لوحة التحكم تعرض:</p>
+            <h2><i class="fas fa-tachometer-alt"></i> {{ t('Dashboard') }}</h2>
+            <p>{{ t('The dashboard shows:') }}</p>
             <ul>
-                <li>مبيعات اليوم والشهر</li>
-                <li>ربح الشهر</li>
-                <li>الذمم المدينة والدائنة</li>
-                <li>إجمالي العملاء والمنتجات والمبيعات</li>
+                <li>{{ t("Today's and this month's sales") }}</li>
+                <li>{{ t('Monthly profit') }}</li>
+                <li>{{ t('Receivables and payables') }}</li>
+                <li>{{ t('Total customers, products and sales') }}</li>
             </ul>
-            <p>يمكنك الضغط على أي بطاقة للانتقال إلى التفاصيل.</p>
+            <p>{{ t('Click any card to view details.') }}</p>
         </section>
 
         <section id="sales">
-            <h2><i class="fas fa-cash-register"></i> المبيعات</h2>
-            <p>إدارة كاملة للفواتير والمبيعات:</p>
+            <h2><i class="fas fa-cash-register"></i> {{ t('Sales') }}</h2>
+            <p>{{ t('Full invoice and sales management:') }}</p>
             <ul>
-                <li><strong>إنشاء مبيعة:</strong> /sales/create</li>
-                <li><strong>القائمة:</strong> /sales/</li>
-                <li><strong>عرض التفاصيل:</strong> /sales/&lt;id&gt;</li>
-                <li><strong>طباعة الفاتورة:</strong> /sales/&lt;id&gt;/print</li>
+                <li><strong>{{ t('Create Sale') }}:</strong> /sales/create</li>
+                <li><strong>{{ t('List') }}:</strong> /sales/</li>
+                <li><strong>{{ t('View Details') }}:</strong> /sales/&lt;id&gt;</li>
+                <li><strong>{{ t('Print Invoice') }}:</strong> /sales/&lt;id&gt;/print</li>
             </ul>
             <div class="step-box">
-                <h4>إنشاء مبيعة:</h4>
+                <h4>{{ t('Create Sale') }}:</h4>
                 <ol>
-                    <li>اختر العميل</li>
-                    <li>أضف المنتجات (الكمية، السعر، الخصم)</li>
-                    <li>اختر المستودع</li>
-                    <li>أدخل الخصم والشحن والضريبة</li>
-                    <li>اختر طريقة الدفع</li>
-                    <li>اضغط <strong>حفظ</strong></li>
+                    <li>{{ t('Select the customer') }}</li>
+                    <li>{{ t('Add products (quantity, price, discount)') }}</li>
+                    <li>{{ t('Select the warehouse') }}</li>
+                    <li>{{ t('Enter discount, shipping and tax') }}</li>
+                    <li>{{ t('Choose the payment method') }}</li>
+                    <li>{{ t('Click') }} <strong>{{ t('Save') }}</strong></li>
                 </ol>
             </div>
         </section>
 
         <section id="purchases">
-            <h2><i class="fas fa-shopping-cart"></i> المشتريات</h2>
-            <p>إدارة المشتريات من الموردين:</p>
+            <h2><i class="fas fa-shopping-cart"></i> {{ t('Purchases') }}</h2>
+            <p>{{ t('Supplier and purchase management:') }}</p>
             <ul>
-                <li><strong>إنشاء مشترى:</strong> /purchases/create</li>
-                <li><strong>القائمة:</strong> /purchases/</li>
-                <li><strong>التفاصيل:</strong> /purchases/&lt;id&gt;</li>
+                <li><strong>{{ t('Create Purchase') }}:</strong> /purchases/create</li>
+                <li><strong>{{ t('List') }}:</strong> /purchases/</li>
+                <li><strong>{{ t('Details') }}:</strong> /purchases/&lt;id&gt;</li>
             </ul>
         </section>
 
         <section id="customers">
-            <h2><i class="fas fa-users"></i> العملاء</h2>
-            <p>إدارة العملاء وكشوفاتهم:</p>
+            <h2><i class="fas fa-users"></i> {{ t('Customers') }}</h2>
+            <p>{{ t('Customer management and statements:') }}</p>
             <ul>
-                <li><strong>إضافة عميل:</strong> /customers/create</li>
-                <li><strong>قائمة العملاء:</strong> /customers/</li>
-                <li><strong>كشف حساب:</strong> /customers/&lt;id&gt;/ledger</li>
-                <li><strong>بيان العميل:</strong> /customers/&lt;id&gt;/statement</li>
+                <li><strong>{{ t('Add Customer') }}:</strong> /customers/create</li>
+                <li><strong>{{ t('Customer List') }}:</strong> /customers/</li>
+                <li><strong>{{ t('Account Statement') }}:</strong> /customers/&lt;id&gt;/ledger</li>
+                <li><strong>{{ t('Customer Statement') }}:</strong> /customers/&lt;id&gt;/statement</li>
             </ul>
         </section>
 
         <section id="suppliers">
-            <h2><i class="fas fa-truck"></i> الموردين</h2>
-            <p>إدارة الموردين والمشتريات:</p>
+            <h2><i class="fas fa-truck"></i> {{ t('Suppliers') }}</h2>
+            <p>{{ t('Supplier and purchase management:') }}</p>
             <ul>
-                <li><strong>إضافة مورد:</strong> /suppliers/create</li>
-                <li><strong>قائمة الموردين:</strong> /suppliers/</li>
-                <li><strong>كشف حساب:</strong> /suppliers/&lt;id&gt;/ledger</li>
+                <li><strong>{{ t('Add Supplier') }}:</strong> /suppliers/create</li>
+                <li><strong>{{ t('Supplier List') }}:</strong> /suppliers/</li>
+                <li><strong>{{ t('Account Statement') }}:</strong> /suppliers/&lt;id&gt;/ledger</li>
             </ul>
         </section>
 
         <section id="products">
-            <h2><i class="fas fa-boxes"></i> المنتجات والمخزون</h2>
-            <p>إدارة المنتجات والمخزون:</p>
+            <h2><i class="fas fa-boxes"></i> {{ t('Products & Inventory') }}</h2>
+            <p>{{ t('Product and inventory management:') }}</p>
             <ul>
-                <li><strong>إضافة منتج:</strong> /products/create</li>
-                <li><strong>قائمة المنتجات:</strong> /products/</li>
-                <li><strong>تعديل المخزون:</strong> /products/&lt;id&gt;/adjust-stock</li>
+                <li><strong>{{ t('Add Product') }}:</strong> /products/create</li>
+                <li><strong>{{ t('Product List') }}:</strong> /products/</li>
+                <li><strong>{{ t('Adjust Stock') }}:</strong> /products/&lt;id&gt;/adjust-stock</li>
             </ul>
-            <div class="note"><strong> ملاحظة:</strong> المخزون يُحدّث تلقائياً مع كل مبيعة أو مشترى.</div>
+            <div class="note"><strong> {{ t('Note:') }}</strong> {{ t('Stock is updated automatically with every sale or purchase.') }}</div>
         </section>
 
         <section id="warehouse">
-            <h2><i class="fas fa-warehouse"></i> المستودعات</h2>
-            <p>إدارة المستودعات وحركات المخزون:</p>
+            <h2><i class="fas fa-warehouse"></i> {{ t('Warehouses') }}</h2>
+            <p>{{ t('Warehouse and stock movement management:') }}</p>
             <ul>
-                <li><strong>المخزون الحالي:</strong> /warehouse/stock</li>
-                <li><strong>حركات المخزون:</strong> /warehouse/movements</li>
-                <li><strong>إضافة مخزون:</strong> /warehouse/add-stock/&lt;id&gt;</li>
+                <li><strong>{{ t('Current Stock') }}:</strong> /warehouse/stock</li>
+                <li><strong>{{ t('Stock Movements') }}:</strong> /warehouse/movements</li>
+                <li><strong>{{ t('Add Stock') }}:</strong> /warehouse/add-stock/&lt;id&gt;</li>
             </ul>
         </section>
 
         <section id="accounting">
-            <h2><i class="fas fa-book"></i> المحاسبة</h2>
-            <p>القيود والحسابات والقوائم المالية:</p>
+            <h2><i class="fas fa-book"></i> {{ t('Accounting') }}</h2>
+            <p>{{ t('Entries, accounts and financial statements:') }}</p>
             <ul>
-                <li><strong>دفتر الأستاذ:</strong> /ledger/</li>
-                <li><strong>شجرة الحسابات:</strong> /ledger/accounts-tree</li>
-                <li><strong>قيود اليومية:</strong> /ledger/journal-entries</li>
-                <li><strong>ميزان المراجعة:</strong> /ledger/trial-balance</li>
-                <li><strong>قائمة الدخل:</strong> /ledger/income-statement</li>
-                <li><strong>الميزانية العمومية:</strong> /ledger/balance-sheet</li>
+                <li><strong>{{ t('Ledger') }}:</strong> /ledger/</li>
+                <li><strong>{{ t('Chart of Accounts') }}:</strong> /ledger/accounts-tree</li>
+                <li><strong>{{ t('Journal Entries') }}:</strong> /ledger/journal-entries</li>
+                <li><strong>{{ t('Trial Balance') }}:</strong> /ledger/trial-balance</li>
+                <li><strong>{{ t('Income Statement') }}:</strong> /ledger/income-statement</li>
+                <li><strong>{{ t('Balance Sheet') }}:</strong> /ledger/balance-sheet</li>
             </ul>
         </section>
 
         <section id="payments">
-            <h2><i class="fas fa-money-bill-wave"></i> المدفوعات والسندات</h2>
-            <p>إدارة المدفوعات والسندات:</p>
+            <h2><i class="fas fa-money-bill-wave"></i> {{ t('Payments and Vouchers') }}</h2>
+            <p>{{ t('Payment and voucher management:') }}</p>
             <ul>
-                <li><strong>قائمة المدفوعات:</strong> /payments/</li>
-                <li><strong>إضافة دفعة:</strong> /payments/create</li>
+                <li><strong>{{ t('Payment List') }}:</strong> /payments/</li>
+                <li><strong>{{ t('Add Payment') }}:</strong> /payments/create</li>
             </ul>
-            <div class="tip"><strong> سندات القبض والصرف:</strong> تستخدم لإدارة التدفقات النقدية.</div>
+            <div class="tip"><strong> {{ t('Receipt and Payment Vouchers') }}:</strong> {{ t('Used to manage cash flows.') }}</div>
         </section>
 
         <section id="reports">
-            <h2><i class="fas fa-chart-line"></i> التقارير</h2>
-            <p>تقارير مالية وتجارية:</p>
+            <h2><i class="fas fa-chart-line"></i> {{ t('Reports') }}</h2>
+            <p>{{ t('Financial and business reports:') }}</p>
             <ul>
-                <li><strong>تقارير المبيعات:</strong> /reports/sales</li>
-                <li><strong>الذمم المدينة:</strong> /reports/receivables</li>
-                <li><strong>التدفقات النقدية:</strong> /reports/cash-flow</li>
-                <li><strong>تقييم المخزون:</strong> /reports/inventory-valuation</li>
+                <li><strong>{{ t('Sales Reports') }}:</strong> /reports/sales</li>
+                <li><strong>{{ t('Receivables') }}:</strong> /reports/receivables</li>
+                <li><strong>{{ t('Cash Flow') }}:</strong> /reports/cash-flow</li>
+                <li><strong>{{ t('Inventory Valuation') }}:</strong> /reports/inventory-valuation</li>
             </ul>
-            <p>جميع التقارير قابلة للتصدير بصيغة Excel/PDF/CSV.</p>
+            <p>{{ t('All reports can be exported to Excel/PDF/CSV.') }}</p>
         </section>
 
         <section id="hr">
-            <h2><i class="fas fa-id-badge"></i> الموارد البشرية</h2>
-            <p>إدارة الموظفين والرواتب:</p>
+            <h2><i class="fas fa-id-badge"></i> {{ t('Human Resources') }}</h2>
+            <p>{{ t('Employee and payroll management:') }}</p>
             <ul>
-                <li><strong>الموظفين:</strong> /hr/employees</li>
-                <li><strong>الرواتب:</strong> /hr/payroll</li>
-                <li><strong>الإجازات:</strong> /hr/leaves</li>
-                <li><strong>الحضور:</strong> /hr/attendance</li>
+                <li><strong>{{ t('Employees') }}:</strong> /hr/employees</li>
+                <li><strong>{{ t('Payroll') }}:</strong> /hr/payroll</li>
+                <li><strong>{{ t('Leaves') }}:</strong> /hr/leaves</li>
+                <li><strong>{{ t('Attendance') }}:</strong> /hr/attendance</li>
             </ul>
         </section>
 
         <section id="ai">
-            <h2><i class="fas fa-brain"></i> الذكاء الاصطناعي</h2>
-            <p>مساعد ذكي لتحليل البيانات:</p>
+            <h2><i class="fas fa-brain"></i> {{ t('Artificial Intelligence') }}</h2>
+            <p>{{ t('A smart assistant for data analysis:') }}</p>
             <ul>
-                <li><strong>محادثة:</strong> /ai/chat</li>
-                <li><strong>التحليلات:</strong> /ai/sales-insights</li>
-                <li><strong>التنبؤ:</strong> /ai/forecasting</li>
+                <li><strong>{{ t('Chat') }}:</strong> /ai/chat</li>
+                <li><strong>{{ t('Analytics') }}:</strong> /ai/sales-insights</li>
+                <li><strong>{{ t('Forecasting') }}:</strong> /ai/forecasting</li>
             </ul>
         </section>
 
@@ -268,7 +268,7 @@
 </div>
 
 <footer>
-    <p>&copy; {{ current_year }} {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
+    <p>&copy; {{ current_year }} {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}. {{ t('All rights reserved.') }}</p>
 </footer>
 
 <script>

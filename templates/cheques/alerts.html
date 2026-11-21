@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تنبيهات الشيكات والاستحقاقات{% endblock %}
-{% block page_title %}<i class="fas fa-bell"></i> تنبيهات الشيكات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Cheque Alerts and Due Dates') }}{% endblock %}
+{% block page_title %}<i class="fas fa-bell"></i> {{ t('Cheque Alerts') }}{% endblock %}
 
 {% block content %}
 
@@ -9,7 +9,7 @@
     <div class="small-box bg-warning">
       <div class="inner">
         <h3>{{ due_soon|length }}</h3>
-        <p>شيكات قريبة الاستحقاق (7 أيام)</p>
+        <p>{{ t('Cheques due soon (7 days)') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-clock"></i>
@@ -21,7 +21,7 @@
     <div class="small-box bg-danger">
       <div class="inner">
         <h3>{{ overdue|length }}</h3>
-        <p>شيكات متأخرة</p>
+        <p>{{ t('Overdue cheques') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-exclamation-triangle"></i>
@@ -33,7 +33,7 @@
     <div class="small-box bg-dark">
       <div class="inner">
         <h3>{{ bounced|length }}</h3>
-        <p>شيكات مرتدة</p>
+        <p>{{ t('Bounced cheques') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-ban"></i>
@@ -46,20 +46,20 @@
 <div class="card card-warning">
   <div class="card-header">
     <h3 class="card-title">
-      <i class="fas fa-clock mr-2"></i>شيكات قريبة الاستحقاق (خلال 7 أيام)
+      <i class="fas fa-clock mr-2"></i>{{ t('Cheques due soon (within 7 days)') }}
     </h3>
   </div>
   <div class="card-body p-0">
     <table class="table table-sm">
       <thead>
         <tr>
-          <th>رقم الشيك</th>
-          <th>النوع</th>
-          <th>البنك</th>
-          <th>المبلغ</th>
-          <th>الاستحقاق</th>
-          <th>متبقي</th>
-          <th>إجراءات</th>
+          <th>{{ t('Cheque Number') }}</th>
+          <th>{{ t('Type') }}</th>
+          <th>{{ t('Bank') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Due Date') }}</th>
+          <th>{{ t('Remaining') }}</th>
+          <th>{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -68,9 +68,9 @@
           <td><strong>{{ cheque.cheque_bank_number }}</strong></td>
           <td>
             {% if cheque.cheque_type == 'incoming' %}
-            <span class="badge badge-success">وارد</span>
+            <span class="badge badge-success">{{ t('Incoming') }}</span>
             {% else %}
-            <span class="badge badge-danger">صادر</span>
+            <span class="badge badge-danger">{{ t('Outgoing') }}</span>
             {% endif %}
           </td>
           <td>{{ cheque.bank_name }}</td>
@@ -78,15 +78,15 @@
           <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
           <td>
             <span class="badge badge-warning">
-              <i class="fas fa-clock mr-1"></i>{{ cheque.days_until_due }} يوم
+              <i class="fas fa-clock mr-1"></i>{{ cheque.days_until_due }} {{ t('days') }}
             </span>
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="عرض">
+              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="{{ t('View') }}">
                 <i class="fas fa-eye"></i>
               </a>
-              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="حذف">
+              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="{{ t('Delete') }}">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -103,20 +103,20 @@
 <div class="card card-danger mt-3">
   <div class="card-header">
     <h3 class="card-title">
-      <i class="fas fa-exclamation-triangle mr-2"></i>شيكات متأخرة - تحتاج متابعة فورية!
+      <i class="fas fa-exclamation-triangle mr-2"></i>{{ t('Overdue cheques - need immediate follow-up!') }}
     </h3>
   </div>
   <div class="card-body p-0">
     <table class="table table-sm">
       <thead>
         <tr>
-          <th>رقم الشيك</th>
-          <th>النوع</th>
-          <th>الطرف</th>
-          <th>المبلغ</th>
-          <th>الاستحقاق</th>
-          <th>التأخير</th>
-          <th>إجراءات</th>
+          <th>{{ t('Cheque Number') }}</th>
+          <th>{{ t('Type') }}</th>
+          <th>{{ t('Party') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Due Date') }}</th>
+          <th>{{ t('Delay') }}</th>
+          <th>{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -125,9 +125,9 @@
           <td><strong>{{ cheque.cheque_bank_number }}</strong></td>
           <td>
             {% if cheque.cheque_type == 'incoming' %}
-            <span class="badge badge-success">وارد</span>
+            <span class="badge badge-success">{{ t('Incoming') }}</span>
             {% else %}
-            <span class="badge badge-danger">صادر</span>
+            <span class="badge badge-danger">{{ t('Outgoing') }}</span>
             {% endif %}
           </td>
           <td>
@@ -144,15 +144,15 @@
           <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
           <td>
             <span class="badge badge-danger">
-              <i class="fas fa-exclamation-circle mr-1"></i>{{ cheque.days_until_due|abs }} يوم
+              <i class="fas fa-exclamation-circle mr-1"></i>{{ cheque.days_until_due|abs }} {{ t('days') }}
             </span>
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="عرض">
+              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="{{ t('View') }}">
                 <i class="fas fa-eye"></i>
               </a>
-              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="حذف">
+              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="{{ t('Delete') }}">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -169,19 +169,19 @@
 <div class="card card-dark mt-3">
   <div class="card-header">
     <h3 class="card-title">
-      <i class="fas fa-ban mr-2"></i>شيكات مرتدة
+      <i class="fas fa-ban mr-2"></i>{{ t('Bounced cheques') }}
     </h3>
   </div>
   <div class="card-body p-0">
     <table class="table table-sm">
       <thead>
         <tr>
-          <th>رقم الشيك</th>
-          <th>البنك</th>
-          <th>الطرف</th>
-          <th>المبلغ</th>
-          <th>سبب الإرتداد</th>
-          <th>إجراءات</th>
+          <th>{{ t('Cheque Number') }}</th>
+          <th>{{ t('Bank') }}</th>
+          <th>{{ t('Party') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Bounce Reason') }}</th>
+          <th>{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -200,15 +200,15 @@
           <td>
             <span class="text-danger">
               <i class="fas fa-info-circle mr-1"></i>
-              {{ cheque.bounce_reason or 'غير محدد' }}
+              {{ cheque.bounce_reason or t('Not specified') }}
             </span>
           </td>
           <td>
             <div class="btn-group btn-group-sm">
-              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="عرض">
+              <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="btn btn-info" title="{{ t('View') }}">
                 <i class="fas fa-eye"></i>
               </a>
-              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="حذف">
+              <button type="button" class="btn btn-danger delete-cheque-btn" data-id="{{ cheque.id }}" title="{{ t('Delete') }}">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -225,8 +225,8 @@
 <div class="card">
   <div class="card-body text-center py-5">
     <i class="fas fa-check-circle fa-5x text-success mb-3"></i>
-    <h4>لا توجد تنبيهات</h4>
-    <p class="text-muted">جميع الشيكات في حالة جيدة!</p>
+    <h4>{{ t('No alerts') }}</h4>
+    <p class="text-muted">{{ t('All cheques are in good condition!') }}</p>
   </div>
 </div>
 {% endif %}

@@ -119,8 +119,25 @@ def index():
         page=page, per_page=per_page, error_out=False
     )
 
+    # Stock health stats over ALL active products (not just this page).
+    all_products = Product.query.filter_by(is_active=True).all()
+    total_products = len(all_products)
+    out_count = sum(1 for p in all_products if (p.current_stock or 0) <= 0)
+    low_count = sum(
+        1
+        for p in all_products
+        if (p.current_stock or 0) > 0 and p.is_low_stock()
+    )
+    good_count = total_products - out_count - low_count
+
     return render_template(
-        "warehouse/index.html", products=pagination.items, pagination=pagination
+        "warehouse/index.html",
+        products=pagination.items,
+        pagination=pagination,
+        total_products=total_products,
+        good_count=good_count,
+        low_count=low_count,
+        out_count=out_count,
     )
 
 

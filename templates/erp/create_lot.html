@@ -1,22 +1,22 @@
 {% extends 'base.html' %}
-{% block title %}إضافة دفعة{% endblock %}
-{% block page_title %}<i class="fas fa-plus mr-2"></i>إضافة دفعة منتج{% endblock %}
+{% block title %}{{ t('Add Lot') }}{% endblock %}
+{% block page_title %}<i class="fas fa-plus mr-2"></i>{{ t('Add Product Lot') }}{% endblock %}
 {% block content %}
 <div class="row"><div class="col-lg-8">
 <div class="card"><div class="card-body">
   <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
-      <div class="col-md-6"><div class="form-group"><label>المنتج <span class="text-danger">*</span></label><select name="product_id" class="form-control" required><option value="">— اختر —</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-6"><div class="form-group"><label>رقم الدفعة <span class="text-danger">*</span></label><input type="text" name="lot_number" class="form-control" required></div></div>
-      <div class="col-md-4"><div class="form-group"><label>المستودع</label><select name="warehouse_id" class="form-control"><option value="">— اختر —</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>الكمية</label><input type="number" name="quantity" class="form-control" step="0.01" value="0"></div></div>
-      {% if current_user.can_see_costs() %}<div class="col-md-4"><div class="form-group"><label>تكلفة الوحدة</label><input type="number" name="cost_price" class="form-control" step="0.01" value="0"></div></div>{% endif %}
-      <div class="col-md-4"><div class="form-group"><label>تاريخ الإنتاج</label><input type="date" name="manufacture_date" class="form-control"></div></div>
-      <div class="col-md-4"><div class="form-group"><label>تاريخ الانتهاء</label><input type="date" name="expiry_date" class="form-control"></div></div>
+      <div class="col-md-6"><div class="form-group"><label>{{ t('Product') }} <span class="text-danger">*</span></label><select name="product_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-6"><div class="form-group"><label>{{ t('Lot Number') }} <span class="text-danger">*</span></label><input type="text" name="lot_number" class="form-control" required></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }}</label><select name="warehouse_id" class="form-control"><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Quantity') }}</label><input type="number" name="quantity" class="form-control" step="0.01" value="0"></div></div>
+      {% if current_user.can_see_costs() %}<div class="col-md-4"><div class="form-group"><label>{{ t('Unit Cost') }}</label><input type="number" name="cost_price" class="form-control" step="0.01" value="0"></div></div>{% endif %}
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Production Date') }}</label><input type="date" name="manufacture_date" class="form-control"></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Expiry Date') }}</label><input type="date" name="expiry_date" class="form-control"></div></div>
     </div>
-    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ</button>
-    <a href="{{ url_for('erp_modules.lots') }}" class="btn btn-secondary">إلغاء</a>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ t('Save') }}</button>
+    <a href="{{ url_for('erp_modules.lots') }}" class="btn btn-secondary">{{ t('Cancel') }}</a>
   </form>
 </div></div>
 </div></div>

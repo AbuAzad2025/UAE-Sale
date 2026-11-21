@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}كشف الحساب - {{ statement.account.full_name }}{% endblock %}
-{% block page_title %}كشف الحساب التفصيلي{% endblock %}
+{% block title %}{{ t('Account Statement') }} - {{ statement.account.full_name }}{% endblock %}
+{% block page_title %}{{ t('Detailed Account Statement') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.accounts_tree') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
     </a>
     <button class="btn btn-primary" onclick="window.print()">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </button>
     <a href="{{ url_for('ledger.account_statement', id=statement.account.id) }}?export=excel" class="btn btn-success">
-      <i class="fas fa-file-excel mr-2"></i>تصدير Excel
+      <i class="fas fa-file-excel mr-2"></i>{{ t('Export Excel') }}
     </a>
   </div>
 </div>
@@ -21,7 +21,7 @@
   <div class="card-header bg-gradient-primary">
     <h3 class="card-title text-white">
       <i class="fas fa-file-invoice mr-2"></i>
-      كشف حساب: {{ statement.account.full_name }}
+      {{ t('Account Statement') }}: {{ statement.account.full_name }}
     </h3>
     <div class="card-tools">
       <span class="badge badge-light">{{ statement.account.type_ar }}</span>
@@ -30,18 +30,18 @@
   <div class="card-body">
     
     <form method="get" class="form-inline mb-3" action="">
-      <label class="ml-2 mr-2">من تاريخ:</label>
+      <label class="ml-2 mr-2">{{ t('From Date') }}:</label>
       <input type="date" name="date_from" class="form-control mr-3" value="{{ date_from or '' }}">
       
-      <label class="ml-2 mr-2">إلى تاريخ:</label>
+      <label class="ml-2 mr-2">{{ t('To Date') }}:</label>
       <input type="date" name="date_to" class="form-control mr-3" value="{{ date_to or '' }}">
       
       <button type="submit" class="btn btn-primary">
-        <i class="fas fa-filter mr-2"></i>فلتر
+        <i class="fas fa-filter mr-2"></i>{{ t('Filter') }}
       </button>
       {% if date_from or date_to %}
       <a href="{{ url_for('ledger.account_statement', id=statement.account.id) }}" class="btn btn-secondary mr-2">
-        <i class="fas fa-times mr-2"></i>إلغاء الفلتر
+        <i class="fas fa-times mr-2"></i>{{ t('Clear Filter') }}
       </a>
       {% endif %}
     </form>
@@ -52,7 +52,7 @@
         <div class="info-box bg-light">
           <span class="info-box-icon bg-primary"><i class="fas fa-calculator"></i></span>
           <div class="info-box-content">
-            <span class="info-box-text">الرصيد الافتتاحي</span>
+            <span class="info-box-text">{{ t('Opening Balance') }}</span>
             <span class="info-box-number">
               {{ "{:,.2f}".format(statement.opening_balance) }} {{ base_currency }}
             </span>
@@ -63,7 +63,7 @@
         <div class="info-box bg-light">
           <span class="info-box-icon bg-success"><i class="fas fa-arrow-up"></i></span>
           <div class="info-box-content">
-            <span class="info-box-text">إجمالي المدين</span>
+            <span class="info-box-text">{{ t('Total Debit') }}</span>
             <span class="info-box-number text-success">
               {{ "{:,.2f}".format(statement.total_debit) }} {{ base_currency }}
             </span>
@@ -74,7 +74,7 @@
         <div class="info-box bg-light">
           <span class="info-box-icon bg-danger"><i class="fas fa-arrow-down"></i></span>
           <div class="info-box-content">
-            <span class="info-box-text">إجمالي الدائن</span>
+            <span class="info-box-text">{{ t('Total Credit') }}</span>
             <span class="info-box-number text-danger">
               {{ "{:,.2f}".format(statement.total_credit) }} {{ base_currency }}
             </span>
@@ -88,20 +88,20 @@
       <table class="table table-bordered table-striped table-hover">
         <thead class="bg-light">
           <tr>
-            <th width="100">التاريخ</th>
-            <th width="120">رقم القيد</th>
-            <th width="100">النوع</th>
-            <th>البيان</th>
-            <th width="100">المرجع</th>
-            <th width="120" class="text-center">مدين</th>
-            <th width="120" class="text-center">دائن</th>
-            <th width="120" class="text-center">الرصيد</th>
+            <th width="100">{{ t('Date') }}</th>
+            <th width="120">{{ t('Entry Number') }}</th>
+            <th width="100">{{ t('Type') }}</th>
+            <th>{{ t('Description') }}</th>
+            <th width="100">{{ t('Reference') }}</th>
+            <th width="120" class="text-center">{{ t('Debit') }}</th>
+            <th width="120" class="text-center">{{ t('Credit') }}</th>
+            <th width="120" class="text-center">{{ t('Balance') }}</th>
           </tr>
         </thead>
         <tbody>
           {% if statement.opening_balance != 0 %}
           <tr class="table-info">
-            <td colspan="7" class="text-center"><strong>الرصيد الافتتاحي</strong></td>
+            <td colspan="7" class="text-center"><strong>{{ t('Opening Balance') }}</strong></td>
             <td class="text-center">
               <strong>{{ "{:,.2f}".format(statement.opening_balance) }}</strong>
             </td>
@@ -135,7 +135,7 @@
         </tbody>
         <tfoot class="bg-light">
           <tr>
-            <th colspan="5" class="text-left">الإجمالي:</th>
+            <th colspan="5" class="text-left">{{ t('Total') }}:</th>
             <th class="text-center text-success">{{ "{:,.2f}".format(statement.total_debit) }}</th>
             <th class="text-center text-danger">{{ "{:,.2f}".format(statement.total_credit) }}</th>
             <th class="text-center">
@@ -151,7 +151,7 @@
     {% if not statement.transactions %}
     <div class="alert alert-info text-center">
       <i class="fas fa-info-circle mr-2"></i>
-      لا توجد حركات على هذا الحساب في الفترة المحددة
+      {{ t('No transactions on this account for the selected period') }}
     </div>
     {% endif %}
   </div>

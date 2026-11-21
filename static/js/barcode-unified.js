@@ -36,7 +36,7 @@
     });
     if (!res.ok) {
       var data = await res.json().catch(function () { return {}; });
-      throw new Error((data && data.error) || 'المنتج غير موجود');
+      throw new Error((data && data.error) || t('Product not found'));
     }
     return res.json();
   }
@@ -52,13 +52,13 @@
           if (qtyEl) {
             qtyEl.value = String((parseFloat(qtyEl.value) || 0) + 1);
             qtyEl.dispatchEvent(new Event('input', { bubbles: true }));
-            showMsg('تمت زيادة الكمية: ' + product.name, 'success');
+            showMsg(t('Quantity increased') + ': ' + product.name, 'success');
             return true;
           }
         }
       }
       window.addItemRow({ product: { id: product.id, text: product.name }, qty: 1, cost: product.cost_price || '' });
-      showMsg('تمت إضافة: ' + product.name, 'success');
+      showMsg(t('Added') + ': ' + product.name, 'success');
       return true;
     }
     // Try sales-style addLine
@@ -72,7 +72,7 @@
             qtyInp.value = String((parseFloat(qtyInp.value) || 0) + 1);
             qtyInp.dispatchEvent(new Event('input', { bubbles: true }));
             if (typeof window.calculateTotals === 'function') window.calculateTotals();
-            showMsg('تمت زيادة الكمية: ' + product.name, 'success');
+            showMsg(t('Quantity increased') + ': ' + product.name, 'success');
             return true;
           }
         }
@@ -92,7 +92,7 @@
           last.value = String(product.id);
           last.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        showMsg('تمت إضافة: ' + product.name, 'success');
+        showMsg(t('Added') + ': ' + product.name, 'success');
         return true;
       }
     }
@@ -106,10 +106,10 @@
         generic.value = String(product.id);
         generic.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      showMsg('تم اختيار: ' + product.name, 'success');
+      showMsg(t('Selected') + ': ' + product.name, 'success');
       return true;
     }
-    showMsg('تم العثور على المنتج: ' + product.name + ' لكن لا يوجد مكان لإضافته', 'info');
+    showMsg(t('Product found') + ': ' + product.name + ' ' + t('but there is nowhere to add it'), 'info');
     return false;
   }
 
@@ -119,7 +119,7 @@
     input.setAttribute('dir', 'ltr');
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('inputmode', 'numeric');
-    input.setAttribute('placeholder', input.getAttribute('placeholder') || 'امسح الباركود ثم Enter');
+    input.setAttribute('placeholder', input.getAttribute('placeholder') || t('Scan barcode then press Enter'));
     input.addEventListener('keydown', async function (e) {
       if (e.key !== 'Enter') return;
       e.preventDefault();
@@ -132,7 +132,7 @@
         input.value = '';
         input.focus();
       } catch (err) {
-        showMsg(err.message || 'الباركود غير موجود', 'danger');
+        showMsg(err.message || t('Barcode not found'), 'danger');
         input.select();
       } finally {
         input.disabled = false;
@@ -155,10 +155,10 @@
     });
     // Also auto-inject a barcode input at top of each multi-line form if none exists
     var forms = [
-      { form: '#saleForm', container: '#linesContainer', label: 'امسح الباركود لإضافة صنف' },
-      { form: '#shipment-form', container: '#items-wrapper', label: 'امسح الباركود لإضافة بند' },
-      { form: 'form[action*="shipments"]', container: '#items-wrapper', label: 'امسح الباركود' },
-      { form: 'form[action*="inbound"]', container: null, label: 'امسح الباركود' }
+      { form: '#saleForm', container: '#linesContainer', label: t('Scan barcode to add an item') },
+      { form: '#shipment-form', container: '#items-wrapper', label: t('Scan barcode to add a line item') },
+      { form: 'form[action*="shipments"]', container: '#items-wrapper', label: t('Scan barcode') },
+      { form: 'form[action*="inbound"]', container: null, label: t('Scan barcode') }
     ];
     forms.forEach(function (cfg) {
       var form = document.querySelector(cfg.form);
@@ -168,7 +168,7 @@
       if (existing) return;
       var wrap = document.createElement('div');
       wrap.className = 'form-group';
-      wrap.innerHTML = '<label class="font-weight-bold"><i class="fas fa-barcode"></i> ' + cfg.label + '</label><div class="input-group"><input type="text" id="barcode-input" data-auto-barcode class="form-control" placeholder="امسح الباركود ثم Enter"><div class="input-group-append"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div></div><small class="form-text text-muted">يدعم قارئ الباركود ولوحة المفاتيح — تعدد بنود تلقائي</small>';
+      wrap.innerHTML = '<label class="font-weight-bold"><i class="fas fa-barcode"></i> ' + cfg.label + '</label><div class="input-group"><input type="text" id="barcode-input" data-auto-barcode class="form-control" placeholder="' + t('Scan barcode then press Enter') + '"><div class="input-group-append"><span class="input-group-text"><i class="fas fa-barcode"></i></span></div></div>';
       var target = cfg.container ? form.querySelector(cfg.container) : null;
       if (target && target.parentNode) target.parentNode.insertBefore(wrap, target);
       else form.insertBefore(wrap, form.firstChild);

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تقرير المخزون{% endblock %}
+{% block title %}{{ t('Inventory Report') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,11 +9,11 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-boxes"></i> تقرير المخزون
+            <i class="fas fa-boxes"></i> {{ t('Inventory Report') }}
           </h3>
           <div class="card-tools">
             <button onclick="window.print()" class="btn btn-primary">
-              <i class="fas fa-print"></i> طباعة
+              <i class="fas fa-print"></i> {{ t('Print') }}
             </button>
           </div>
         </div>
@@ -25,7 +25,7 @@
               <div class="info-box">
                 <span class="info-box-icon bg-info"><i class="fas fa-boxes"></i></span>
                 <div class="info-box-content">
-                  <span class="info-box-text">إجمالي المنتجات</span>
+                  <span class="info-box-text">{{ t('Total Products') }}</span>
                   <span class="info-box-number">{{ stats.total_products }}</span>
                 </div>
               </div>
@@ -34,7 +34,7 @@
               <div class="info-box">
                 <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
                 <div class="info-box-content">
-                  <span class="info-box-text">متوفر</span>
+                  <span class="info-box-text">{{ t('In Stock') }}</span>
                   <span class="info-box-number">{{ stats.in_stock }}</span>
                 </div>
               </div>
@@ -43,7 +43,7 @@
               <div class="info-box">
                 <span class="info-box-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></span>
                 <div class="info-box-content">
-                  <span class="info-box-text">ناقص</span>
+                  <span class="info-box-text">{{ t('Low Stock') }}</span>
                   <span class="info-box-number">{{ stats.low_stock }}</span>
                 </div>
               </div>
@@ -52,7 +52,7 @@
               <div class="info-box">
                 <span class="info-box-icon bg-danger"><i class="fas fa-times"></i></span>
                 <div class="info-box-content">
-                  <span class="info-box-text">نفذ</span>
+                  <span class="info-box-text">{{ t('Out of Stock') }}</span>
                   <span class="info-box-number">{{ stats.out_of_stock }}</span>
                 </div>
               </div>
@@ -64,20 +64,20 @@
           <table class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>المنتج</th>
-                <th>الكود</th>
-                <th class="num-cell">الكمية المتاحة</th>
-                <th class="num-cell">الحد الأدنى</th>
-                {% if can_see_costs %}<th class="num-cell">سعر التكلفة</th>{% endif %}
-                <th class="num-cell">سعر البيع</th>
-                {% if can_see_costs %}<th class="num-cell">القيمة الإجمالية</th>{% endif %}
-                <th>الحالة</th>
+                <th>{{ t('Product') }}</th>
+                <th>{{ t('Code') }}</th>
+                <th class="num-cell">{{ t('Available Quantity') }}</th>
+                <th class="num-cell">{{ t('Minimum Level') }}</th>
+                {% if can_see_costs %}<th class="num-cell">{{ t('Cost Price') }}</th>{% endif %}
+                <th class="num-cell">{{ t('Selling Price') }}</th>
+                {% if can_see_costs %}<th class="num-cell">{{ t('Total Value') }}</th>{% endif %}
+                <th>{{ t('Status') }}</th>
               </tr>
             </thead>
             <tbody>
               {% for product in products %}
               <tr>
-                <td>{{ product.name }}</td>
+                <td>{{ display_name(product) }}</td>
                 <td>{{ product.sku }}</td>
                 <td class="num-cell">{{ product.current_stock|num }}</td>
                 <td class="num-cell">{{ product.min_stock_alert|num }}</td>
@@ -86,17 +86,17 @@
                 {% if can_see_costs %}<td class="num-cell">{{ '%.2f'|format((product.current_stock or 0) * (product.cost_price or 0)) }}</td>{% endif %}
                 <td>
                   {% if product.current_stock == 0 %}
-                    <span class="badge badge-danger">نفذ</span>
+                    <span class="badge badge-danger">{{ t('Out of Stock') }}</span>
                   {% elif product.current_stock <= product.min_stock_alert %}
-                    <span class="badge badge-warning">ناقص</span>
+                    <span class="badge badge-warning">{{ t('Low Stock') }}</span>
                   {% else %}
-                    <span class="badge badge-success">متوفر</span>
+                    <span class="badge badge-success">{{ t('In Stock') }}</span>
                   {% endif %}
                 </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="{{ 8 if can_see_costs else 6 }}" class="text-center">لا توجد منتجات</td>
+                <td colspan="{{ 8 if can_see_costs else 6 }}" class="text-center">{{ t('No Products') }}</td>
               </tr>
               {% endfor %}
             </tbody>

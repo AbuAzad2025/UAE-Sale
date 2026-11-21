@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}429 - طلبات كثيرة{% endblock %}
+{% block title %}429 - {{ t('High Request Volume') }}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -9,16 +9,16 @@
       <div class="card shadow">
         <div class="card-body text-center p-5">
           <h1 class="display-4 text-warning mb-3">429</h1>
-          <h3 class="mb-4">طلبات كثيرة جداً</h3>
+          <h3 class="mb-4">{{ t('Too Many Requests') }}</h3>
           <p class="text-muted mb-4">
-            عذراً، قمت بعدد كبير من الطلبات. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.
+            {{ t('Sorry, you have made too many requests. Please wait a moment and try again.') }}
           </p>
           <div class="mt-4">
             <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
-              العودة للرئيسية
+              {{ t('Back to Home') }}
             </a>
             <a href="javascript:location.reload()" class="btn btn-secondary">
-              إعادة المحاولة
+              {{ t('Retry') }}
             </a>
           </div>
         </div>

@@ -1,24 +1,24 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - أدوات قاعدة البيانات المتقدمة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced Database Tools') }}{% endblock %}
 
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-database mr-2"></i>أدوات قاعدة البيانات المتقدمة</h1>
+    <h1 class="mb-0"><i class="fas fa-database mr-2"></i>{{ t('Advanced Database Tools') }}</h1>
   </div>
   <div>
     {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
       <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+        <i class="fas fa-arrow-right mr-2"></i>{{ t('Owner Dashboard') }}
       </a>
     {% else %}
       <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-right mr-2"></i>لوحة التحكم
+        <i class="fas fa-arrow-right mr-2"></i>{{ t('Dashboard') }}
       </a>
     {% endif %}
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -29,12 +29,12 @@
   <div class="col-md-12">
     <div class="card card-danger">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> منطقة خطرة - Owner فقط</h3>
+        <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> {{ t('Danger Zone - Owner Only') }}</h3>
       </div>
       <div class="card-body">
         <div class="alert alert-danger">
           <i class="fas fa-skull-crossbones"></i>
-          <strong>تحذير:</strong> هذه الأدوات قوية جداً. استخدمها بحذر شديد!
+          <strong>{{ t('Warning') }}:</strong> {{ t('These tools are very powerful. Use them with extreme caution!') }}
         </div>
 
         <div class="row">
@@ -42,7 +42,7 @@
             <div class="small-box bg-info">
               <div class="inner">
                 <h3>{{ tables|length }}</h3>
-                <p>عدد الجداول</p>
+                <p>{{ t('Table Count') }}</p>
               </div>
               <div class="icon">
                 <i class="fas fa-table"></i>
@@ -53,7 +53,7 @@
             <div class="small-box bg-success">
               <div class="inner">
                 <h3>{{ tables|sum(attribute='rows_count')|default(0) }}</h3>
-                <p>إجمالي السجلات</p>
+                <p>{{ t('Total Records') }}</p>
               </div>
               <div class="icon">
                 <i class="fas fa-database"></i>
@@ -64,7 +64,7 @@
             <div class="small-box bg-warning">
               <div class="inner">
                 <h3>PostgreSQL</h3>
-                <p>نوع قاعدة البيانات</p>
+                <p>{{ t('Database Type') }}</p>
               </div>
               <div class="icon">
                 <i class="fas fa-hdd"></i>
@@ -73,15 +73,15 @@
           </div>
         </div>
 
-        <h4 class="mt-4">الجداول</h4>
+        <h4 class="mt-4">{{ t('Tables') }}</h4>
         <div class="table-responsive">
           <table class="table table-striped table-hover">
             <thead>
               <tr>
-                <th>اسم الجدول</th>
-                <th>الوصف</th>
-                <th>عدد السجلات</th>
-                <th>الإجراءات</th>
+                <th>{{ t('Table Name') }}</th>
+                <th>{{ t('Description') }}</th>
+                <th>{{ t('Record Count') }}</th>
+                <th>{{ t('Actions List') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -91,49 +91,49 @@
                 <td>
                   <small class="text-muted">
                     {% if table.name == 'sales' %}
-                       فواتير المبيعات - العمليات التجارية الرئيسية
+                       {{ t('Sales invoices - main business operations') }}
                     {% elif table.name == 'customers' %}
-                       بيانات العملاء - معلومات الزبائن والاتصال
+                       {{ t('Customer data - client information and contact') }}
                     {% elif table.name == 'products' %}
-                       المنتجات - قطع الغيار والخدمات
+                       {{ t('Products - spare parts and services') }}
                     {% elif table.name == 'users' %}
-                       المستخدمين - حسابات الدخول للنظام
+                       {{ t('Users - system login accounts') }}
                     {% elif table.name == 'payments' %}
-                       المدفوعات - سندات القبض والدفع
+                       {{ t('Payments - receipts and payment vouchers') }}
                     {% elif table.name == 'purchases' %}
-                       المشتريات - فواتير الشراء من الموردين
+                       {{ t('Purchases - purchase invoices from suppliers') }}
                     {% elif table.name == 'suppliers' %}
-                       الموردين - بيانات الموردين والتواصل
+                       {{ t('Suppliers - supplier data and contact') }}
                     {% elif table.name == 'expenses' %}
-                       المصروفات - النفقات والتكاليف
+                       {{ t('Expenses - costs and expenditures') }}
                     {% elif table.name == 'cheques' %}
-                       الشيكات - إدارة الشيكات الواردة والصادرة
+                       {{ t('Cheques - incoming and outgoing cheque management') }}
                     {% elif table.name == 'gl_accounts' %}
-                       حسابات الأستاذ - الحسابات المحاسبية
+                       {{ t('Ledger accounts - accounting accounts') }}
                     {% elif table.name == 'gl_entries' %}
-                       القيود المحاسبية - العمليات المالية
+                       {{ t('Journal entries - financial transactions') }}
                     {% elif table.name == 'currencies' %}
-                       العملات - أنواع العملات المستخدمة
+                       {{ t('Currencies - currency types in use') }}
                     {% elif table.name == 'exchange_rates' %}
-                       أسعار الصرف - تحويل العملات
+                       {{ t('Exchange rates - currency conversion') }}
                     {% elif table.name == 'invoice_settings' %}
-                       إعدادات الفواتير - قوالب وترويسات
+                       {{ t('Invoice settings - templates and headers') }}
                     {% elif table.name == 'system_settings' %}
-                       إعدادات النظام - التكوين العام
+                       {{ t('System settings - general configuration') }}
                     {% elif table.name == 'audit_logs' %}
-                       سجل التدقيق - مراقبة العمليات
+                       {{ t('Audit log - operation monitoring') }}
                     {% elif table.name == 'card_vault' %}
-                       خزينة البطاقات - بطاقات مشفرة
+                       {{ t('Card vault - encrypted cards') }}
                     {% elif table.name == 'product_categories' %}
-                       تصنيفات المنتجات - تنظيم القطع
+                       {{ t('Product categories - parts organization') }}
                     {% elif table.name == 'warehouses' %}
-                       المستودعات - مواقع التخزين
+                       {{ t('Warehouses - storage locations') }}
                     {% elif table.name == 'archived_records' %}
-                       السجلات المؤرشفة - بيانات محفوظة
+                       {{ t('Archived records - stored data') }}
                     {% elif table.name == 'alembic_version' %}
-                       إصدار قاعدة البيانات - للتهجيرات
+                       {{ t('Database version - for migrations') }}
                     {% else %}
-                       جدول بيانات
+                       {{ t('Data table') }}
                     {% endif %}
                   </small>
                 </td>
@@ -141,21 +141,21 @@
                 <td>
                   <a href="{{ url_for('owner.browse_table', table_name=table.name) }}" 
                      class="btn btn-sm btn-browse" 
-                     title="عرض البيانات فقط - آمن">
-                    <i class="fas fa-eye"></i> تصفح
+                     title="{{ t('View data only - safe') }}">
+                    <i class="fas fa-eye"></i> {{ t('Browse') }}
                   </a>
                   {% if table.name not in ['alembic_version'] %}
                   <a href="{{ url_for('owner.edit_table_data', table_name=table.name) }}" 
                      class="btn btn-sm btn-edit"
-                     title="تعديل مرئي سهل - متوسط الخطورة">
-                    <i class="fas fa-edit"></i> تعديل مرئي
+                     title="{{ t('Easy visual edit - medium risk') }}">
+                    <i class="fas fa-edit"></i> {{ t('Visual Edit') }}
                   </a>
                   {% endif %}
                   {% if table.name not in ['users', 'alembic_version', 'system_settings'] %}
                   <button class="btn btn-sm btn-danger" 
                           onclick="truncateTable('{{ table.name }}')"
-                          title="حذف كل البيانات - خطير جداً!">
-                    <i class="fas fa-trash"></i> مسح الكل
+                          title="{{ t('Delete all data - very dangerous!') }}">
+                    <i class="fas fa-trash"></i> {{ t('Clear All') }}
                   </button>
                   {% endif %}
                 </td>
@@ -173,13 +173,13 @@
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="format" value="json">
               <button type="submit" class="btn btn-success btn-block btn-lg">
-                <i class="fas fa-file-export"></i> تصدير JSON
+                <i class="fas fa-file-export"></i> {{ t('Export JSON') }}
               </button>
             </form>
           </div>
           <div class="col-md-4">
             <a href="{{ url_for('owner.convert_database') }}" class="btn btn-warning btn-block btn-lg">
-              <i class="fas fa-exchange-alt"></i> تحويل Database
+              <i class="fas fa-exchange-alt"></i> {{ t('Convert Database') }}
             </a>
           </div>
         </div>
@@ -200,12 +200,12 @@
 <script>
 function truncateTable(tableName) {
   Swal.fire({
-    title: 'تحذير خطير!',
+    title: {{ t('Serious Warning!')|tojson }},
     html: `
-      <p>أنت على وشك مسح <strong>جميع</strong> البيانات من جدول:</p>
+      <p>{{ t('You are about to clear') }} <strong>{{ t('all') }}</strong> {{ t('data from the table:') }}</p>
       <h3 style="color: red;">${tableName}</h3>
-      <p>هذا الإجراء <strong>لا يمكن التراجع عنه!</strong></p>
-      <p>اكتب <code>YES_DELETE_ALL</code> للتأكيد:</p>
+      <p>{{ t('This action') }} <strong>{{ t('cannot be undone!') }}</strong></p>
+      <p>{{ t('Type Word') }} <code>YES_DELETE_ALL</code> {{ t('to confirm:') }}</p>
     `,
     input: 'text',
     inputPlaceholder: 'YES_DELETE_ALL',
@@ -213,11 +213,11 @@ function truncateTable(tableName) {
     showCancelButton: true,
     confirmButtonColor: '#d33',
     cancelButtonColor: '#3085d6',
-    confirmButtonText: 'نعم، احذف الكل!',
-    cancelButtonText: 'إلغاء',
+    confirmButtonText: {{ t('Yes, delete all!')|tojson }},
+    cancelButtonText: {{ t('Cancel')|tojson }},
     preConfirm: (value) => {
       if (value !== 'YES_DELETE_ALL') {
-        Swal.showValidationMessage('يجب كتابة YES_DELETE_ALL بالضبط');
+        Swal.showValidationMessage({{ t('You must type YES_DELETE_ALL exactly')|tojson }});
       }
       return value;
     }

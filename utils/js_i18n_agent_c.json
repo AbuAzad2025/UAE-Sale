@@ -1,0 +1,214 @@
+{
+  "Delete customer": {
+    "ar": "حذف زبون",
+    "en": "Delete customer"
+  },
+  "Note: The customer will be archived if it has financial records, or permanently deleted if it is new.": {
+    "ar": "تنبيه: سيتم أرشفة الزبون إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.",
+    "en": "Note: The customer will be archived if it has financial records, or permanently deleted if it is new."
+  },
+  "Delete supplier": {
+    "ar": "حذف مورد",
+    "en": "Delete supplier"
+  },
+  "Note: The supplier will be archived if it has financial records, or permanently deleted if it is new.": {
+    "ar": "تنبيه: سيتم أرشفة المورد إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.",
+    "en": "Note: The supplier will be archived if it has financial records, or permanently deleted if it is new."
+  },
+  "Delete product": {
+    "ar": "حذف منتج",
+    "en": "Delete product"
+  },
+  "Note: The product will be archived if it is linked to sale/purchase operations, or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة المنتج إذا كان مرتبطاً بعمليات بيع/شراء، أو حذفه نهائياً إذا كان غير مرتبط.",
+    "en": "Note: The product will be archived if it is linked to sale/purchase operations, or permanently deleted if it is not linked."
+  },
+  "Delete sales invoice": {
+    "ar": "حذف فاتورة مبيعات",
+    "en": "Delete sales invoice"
+  },
+  "Note: The invoice will be archived if it has financial links (payments/cheques), or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.",
+    "en": "Note: The invoice will be archived if it has financial links (payments/cheques), or permanently deleted if it is not linked."
+  },
+  "Delete purchase invoice": {
+    "ar": "حذف فاتورة شراء",
+    "en": "Delete purchase invoice"
+  },
+  "Note: The invoice will be archived if it has financial links, or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية، أو حذفها نهائياً إذا كانت غير مرتبطة.",
+    "en": "Note: The invoice will be archived if it has financial links, or permanently deleted if it is not linked."
+  },
+  "Delete receipt voucher": {
+    "ar": "حذف سند قبض",
+    "en": "Delete receipt voucher"
+  },
+  "Note: The voucher will be archived if it is linked to cheques, or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.",
+    "en": "Note: The voucher will be archived if it is linked to cheques, or permanently deleted if it is not linked."
+  },
+  "Delete payment voucher": {
+    "ar": "حذف سند صرف",
+    "en": "Delete payment voucher"
+  },
+  "Note: The voucher will be archived if it is linked to other operations, or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بعمليات أخرى، أو حذفه نهائياً إذا كان غير مرتبط.",
+    "en": "Note: The voucher will be archived if it is linked to other operations, or permanently deleted if it is not linked."
+  },
+  "Delete expense": {
+    "ar": "حذف مصروف",
+    "en": "Delete expense"
+  },
+  "Note: The expense will be archived and the accounting entry will be reversed.": {
+    "ar": "تنبيه: سيتم أرشفة المصروف وعكس القيد المحاسبي.",
+    "en": "Note: The expense will be archived and the accounting entry will be reversed."
+  },
+  "Delete cheque": {
+    "ar": "حذف شيك",
+    "en": "Delete cheque"
+  },
+  "Note: The cheque will be archived if it is linked to vouchers, or permanently deleted if it is not linked.": {
+    "ar": "تنبيه: سيتم أرشفة الشيك إذا كان مرتبطاً بسندات، أو حذفه نهائياً إذا كان غير مرتبط.",
+    "en": "Note: The cheque will be archived if it is linked to vouchers, or permanently deleted if it is not linked."
+  },
+  "Delete user": {
+    "ar": "حذف مستخدم",
+    "en": "Delete user"
+  },
+  "The user will be deactivated, not permanently deleted": {
+    "ar": "سيتم إلغاء تفعيل المستخدم وليس حذفه نهائياً",
+    "en": "The user will be deactivated, not permanently deleted"
+  },
+  "Delete warehouse": {
+    "ar": "حذف مستودع",
+    "en": "Delete warehouse"
+  },
+  "Note: The warehouse will be archived if it contains inventory movements, or permanently deleted if it is empty.": {
+    "ar": "تنبيه: سيتم أرشفة المستودع إذا كان يحتوي على حركات مخزنية، أو حذفه نهائياً إذا كان فارغاً.",
+    "en": "Note: The warehouse will be archived if it contains inventory movements, or permanently deleted if it is empty."
+  },
+  "Are you sure you want to delete?": {
+    "ar": "هل أنت متأكد من الحذف؟",
+    "en": "Are you sure you want to delete?"
+  },
+  "Yes, delete": {
+    "ar": "نعم، احذف",
+    "en": "Yes, delete"
+  },
+  "You must select at least one item": {
+    "ar": "يجب اختيار عنصر واحد على الأقل",
+    "en": "You must select at least one item"
+  },
+  "Delete multiple": {
+    "ar": "حذف متعدد",
+    "en": "Delete multiple"
+  },
+  "Will delete": {
+    "ar": "سيتم حذف",
+    "en": "Will delete"
+  },
+  "item(s)": {
+    "ar": "عنصر",
+    "en": "item(s)"
+  },
+  "Items will be archived and financial records will be preserved": {
+    "ar": "سيتم أرشفة العناصر والحفاظ على السجلات المالية",
+    "en": "Items will be archived and financial records will be preserved"
+  },
+  "Yes, delete all": {
+    "ar": "نعم، احذف الكل",
+    "en": "Yes, delete all"
+  },
+  "Unknown error": {
+    "ar": "خطأ غير معروف",
+    "en": "Unknown error"
+  },
+  "Deleted {count} items successfully": {
+    "ar": "تم حذف {count} عنصر بنجاح",
+    "en": "Deleted {count} items successfully"
+  },
+  "Confirm delete": {
+    "ar": "تأكيد الحذف",
+    "en": "Confirm delete"
+  },
+  "Deleted": {
+    "ar": "تم الحذف",
+    "en": "Deleted"
+  },
+  "Restore item": {
+    "ar": "استعادة العنصر",
+    "en": "Restore item"
+  },
+  "Do you want to restore": {
+    "ar": "هل تريد استعادة",
+    "en": "Do you want to restore"
+  },
+  "Yes, restore": {
+    "ar": "نعم، استعد",
+    "en": "Yes, restore"
+  },
+  "Restored": {
+    "ar": "تمت الاستعادة",
+    "en": "Restored"
+  },
+  "Item restored successfully": {
+    "ar": "تم استعادة العنصر بنجاح",
+    "en": "Item restored successfully"
+  },
+  "This item": {
+    "ar": "هذا العنصر",
+    "en": "This item"
+  },
+  "Are you sure you want to delete this row?": {
+    "ar": "هل أنت متأكد من حذف هذا السطر؟",
+    "en": "Are you sure you want to delete this row?"
+  },
+  "Incoming": {
+    "ar": "وارد",
+    "en": "Incoming"
+  },
+  "Outgoing": {
+    "ar": "صادر",
+    "en": "Outgoing"
+  },
+  "Settlement statement": {
+    "ar": "كشف تسوية",
+    "en": "Settlement statement"
+  },
+  "Brief settlement statement": {
+    "ar": "كشف تسوية مختصر",
+    "en": "Brief settlement statement"
+  },
+  "Entity:": {
+    "ar": "الجهة:",
+    "en": "Entity:"
+  },
+  "Type:": {
+    "ar": "النوع:",
+    "en": "Type:"
+  },
+  "Partner": {
+    "ar": "شريك",
+    "en": "Partner"
+  },
+  "Supplier": {
+    "ar": "مورد",
+    "en": "Supplier"
+  },
+  "Current balance:": {
+    "ar": "الرصيد الحالي:",
+    "en": "Current balance:"
+  },
+  "Amount to settle:": {
+    "ar": "المبلغ للتسوية:",
+    "en": "Amount to settle:"
+  },
+  "Direction:": {
+    "ar": "الاتجاه:",
+    "en": "Direction:"
+  },
+  "Method:": {
+    "ar": "الطريقة:",
+    "en": "Method:"
+  }
+}

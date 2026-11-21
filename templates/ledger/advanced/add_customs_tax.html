@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}إضافة ضريبة جمركية{% endblock %}
+{% block title %}{{ t('Add Customs Tax') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,7 +9,7 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-plus"></i> إضافة ضريبة جمركية
+            <i class="fas fa-plus"></i> {{ t('Add Customs Tax') }}
           </h3>
         </div>
         <div class="card-body">
@@ -20,14 +20,14 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم (EN) *</label>
+                  <label>{{ t('Name (EN)') }} *</label>
                   <input type="text" name="name" class="form-control" required value="{{ form_data.get('name', '') }}">
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الاسم (AR) *</label>
+                  <label>{{ t('Name (AR)') }} *</label>
                   <input type="text" name="name_ar" class="form-control" required value="{{ form_data.get('name_ar', '') }}">
                 </div>
               </div>
@@ -36,18 +36,18 @@
             <div class="row">
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>النسبة % *</label>
+                  <label>{{ t('Rate (%)') }} *</label>
                   <input type="number" name="rate" class="form-control" step="0.01" required value="{{ form_data.get('rate', '') }}">
                 </div>
               </div>
               
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>نوع الحساب *</label>
+                  <label>{{ t('Account Type') }} *</label>
                   {% set selected_tax_type = form_data.get('tax_type', 'customs') %}
                   <select name="tax_type" class="form-control select2" required>
                     {% for code, meta in lookups.get('tax_types', []) %}
-                    <option value="{{ code }}" {% if selected_tax_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+                    <option value="{{ code }}" {% if selected_tax_type == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -55,9 +55,9 @@
               
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>الحساب المحاسبي *</label>
+                  <label>{{ t('GL Account') }} *</label>
                   <select name="gl_account_id" class="form-control" required>
-                    <option value="" {% if not form_data.get('gl_account_id') %}selected{% endif %}>بلا</option>
+                    <option value="" {% if not form_data.get('gl_account_id') %}selected{% endif %}>{{ t('None') }}</option>
                     {% for account in accounts %}
                     <option value="{{ account.id }}" {% if form_data.get('gl_account_id') and form_data.get('gl_account_id')|int == account.id %}selected{% endif %}>
                       {{ account.code }} - {{ account.name_ar }}
@@ -73,35 +73,35 @@
                 <div class="form-group">
                   <div class="form-check mt-4">
                     <input type="checkbox" name="is_percentage" id="is_percentage" class="form-check-input" {% if form_data.get('is_percentage') %}checked{% endif %}>
-                    <label class="form-check-label" for="is_percentage">احتساب كنسبة مئوية</label>
+                    <label class="form-check-label" for="is_percentage">{{ t('Calculate as percentage') }}</label>
                   </div>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>ساري من *</label>
+                  <label>{{ t('Effective From') }} *</label>
                   <input type="date" name="effective_from" class="form-control" required value="{{ form_data.get('effective_from', '') }}">
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-group">
-                  <label>ساري إلى</label>
+                  <label>{{ t('Effective To') }}</label>
                   <input type="date" name="effective_to" class="form-control" value="{{ form_data.get('effective_to', '') }}">
                 </div>
               </div>
             </div>
 
             <div class="form-group">
-              <label>الوصف</label>
+              <label>{{ t('Description') }}</label>
               <textarea name="description" class="form-control" rows="3">{{ form_data.get('description', '') }}</textarea>
             </div>
 
             <div class="form-group">
               <button type="submit" class="btn btn-success btn-lg">
-                <i class="fas fa-save"></i> حفظ
+                <i class="fas fa-save"></i> {{ t('Save') }}
               </button>
               <a href="{{ url_for('advanced_ledger.customs_taxes') }}" class="btn btn-secondary btn-lg">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t('Cancel') }}
               </a>
             </div>
           </form>

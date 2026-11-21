@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل فاتورة الشراء #{{ purchase.purchase_number }}{% endblock %}
+{% block title %}{{ t('Edit Purchase Invoice') }} #{{ purchase.purchase_number }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,13 +8,13 @@
     <div class="col-12">
       <div class="alert alert-info">
         <i class="fas fa-info-circle"></i>
-        <strong>ملاحظة:</strong> يمكنك تعديل الملاحظات وتاريخ الاستحقاق والضريبة. عند تغيير الضريبة يُعاد ترحيل القيد المحاسبي وتُحدَّث تكلفة المخزون تلقائياً. لا يمكن تعديل المنتجات أو الكميات.
+        <strong>{{ t('Note:') }}</strong> {{ t('You can edit the notes, due date and tax. Changing the tax reposts the accounting entry and updates the inventory cost automatically. Products and quantities cannot be edited.') }}
       </div>
 
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-edit"></i> تعديل فاتورة شراء #{{ purchase.purchase_number }}
+            <i class="fas fa-edit"></i> {{ t('Edit Purchase Invoice') }} #{{ purchase.purchase_number }}
           </h3>
         </div>
         <div class="card-body">
@@ -24,39 +24,39 @@
             
             <div class="row mb-4">
               <div class="col-md-6">
-                <h5>معلومات الفاتورة</h5>
-                <p><strong>رقم الفاتورة:</strong> {{ purchase.purchase_number }}</p>
-                <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
-                <p><strong>تاريخ الاستحقاق:</strong> {{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}
+                <h5>{{ t('Invoice Information') }}</h5>
+                <p><strong>{{ t('Invoice Number:') }}</strong> {{ purchase.purchase_number }}</p>
+                <p><strong>{{ t('Date:') }}</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>{{ t('Due Date:') }}</strong> {{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}
                   {% if purchase.days_overdue > 0 %}
-                  <span class="badge badge-danger">متأخر {{ purchase.days_overdue }} يوم</span>
+                  <span class="badge badge-danger">{{ t('Overdue') }} {{ purchase.days_overdue }} {{ t('days') }}</span>
                   {% endif %}
                 </p>
-                <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
+                <p><strong>{{ t('Supplier:') }}</strong> {{ purchase.supplier_name }}</p>
                 {% if purchase.warehouse %}
-                <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ purchase.warehouse.name_ar or purchase.warehouse.name }}</p>
+                <p><strong><i class="fas fa-warehouse text-info"></i> {{ t('Warehouse:') }}</strong> {{ purchase.warehouse.name_ar or purchase.warehouse.name }}</p>
                 {% endif %}
               </div>
               <div class="col-md-6">
-                <h5>الإجماليات</h5>
-                <p><strong>المجموع الفرعي:</strong> {{ purchase.subtotal }} {{ purchase.currency }}</p>
-                <p><strong>الضريبة:</strong> {{ purchase.tax_amount }} {{ purchase.currency }}</p>
-                <p><strong>الإجمالي:</strong> {{ purchase.total_amount }} {{ purchase.currency }}</p>
-                <p><strong>المدفوع:</strong> {{ purchase.paid_amount }} {{ base_currency }}</p>
-                <p><strong>المتبقي:</strong> {{ purchase.balance }} {{ base_currency }}</p>
+                <h5>{{ t('Totals') }}</h5>
+                <p><strong>{{ t('Subtotal:') }}</strong> {{ purchase.subtotal }} {{ purchase.currency }}</p>
+                <p><strong>{{ t('Tax:') }}</strong> {{ purchase.tax_amount }} {{ purchase.currency }}</p>
+                <p><strong>{{ t('Total:') }}</strong> {{ purchase.total_amount }} {{ purchase.currency }}</p>
+                <p><strong>{{ t('Paid:') }}</strong> {{ purchase.paid_amount }} {{ base_currency }}</p>
+                <p><strong>{{ t('Remaining:') }}</strong> {{ purchase.balance }} {{ base_currency }}</p>
               </div>
             </div>
 
             
-            <h5>المنتجات</h5>
+            <h5>{{ t('Products') }}</h5>
             <table class="table table-bordered mb-4">
               <thead class="thead-light">
                 <tr>
-                  <th>المنتج</th>
-                  <th>الكمية</th>
-                  <th>سعر الوحدة</th>
-                  <th>الخصم %</th>
-                  <th>الإجمالي</th>
+                  <th>{{ t('Product') }}</th>
+                  <th>{{ t('Quantity') }}</th>
+                  <th>{{ t('Unit Price') }}</th>
+                  <th>{{ t('Discount %') }}</th>
+                  <th>{{ t('Total') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -76,52 +76,52 @@
             <div class="row mb-3">
               <div class="col-md-4">
                 <div class="form-group">
-                  <label for="tax_rate">نسبة الضريبة %</label>
+                  <label for="tax_rate">{{ t('Tax Rate %') }}</label>
                   <input type="number" name="tax_rate" id="tax_rate" class="form-control" step="0.01" min="0" max="100" value="{{ purchase.tax_rate or 0 }}">
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-group">
-                  <label for="tax_treatment">المعاملة الضريبية</label>
+                  <label for="tax_treatment">{{ t('Tax Treatment') }}</label>
                   <select name="tax_treatment" id="tax_treatment" class="form-control">
-                    <option value="standard" {% if (purchase.tax_treatment or 'standard') == 'standard' %}selected{% endif %}>قياسية</option>
-                    <option value="zero" {% if purchase.tax_treatment == 'zero' %}selected{% endif %}>صفرية</option>
-                    <option value="exempt" {% if purchase.tax_treatment == 'exempt' %}selected{% endif %}>معفاة</option>
+                    <option value="standard" {% if (purchase.tax_treatment or 'standard') == 'standard' %}selected{% endif %}>{{ t('Standard') }}</option>
+                    <option value="zero" {% if purchase.tax_treatment == 'zero' %}selected{% endif %}>{{ t('Zero-rated') }}</option>
+                    <option value="exempt" {% if purchase.tax_treatment == 'exempt' %}selected{% endif %}>{{ t('Exempt') }}</option>
                   </select>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="form-check mt-4">
                   <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on" {% if purchase.tax_inclusive %}checked{% endif %}>
-                  <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة</label>
+                  <label class="form-check-label" for="tax_inclusive">{{ t('Prices include tax') }}</label>
                 </div>
                 <div class="form-check">
                   <input type="hidden" name="vat_recoverable" value="0">
                   <input type="checkbox" name="vat_recoverable" class="form-check-input" id="vat_recoverable" value="on" {% if purchase.vat_recoverable %}checked{% endif %}>
-                  <label class="form-check-label" for="vat_recoverable">ضريبة المدخلات قابلة للاسترداد</label>
+                  <label class="form-check-label" for="vat_recoverable">{{ t('Recoverable input tax') }}</label>
                 </div>
               </div>
             </div>
 
             <div class="form-group">
-              <label>تاريخ الاستحقاق</label>
+              <label>{{ t('Due Date') }}</label>
               <input type="date" name="due_date" class="form-control"
                      value="{{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '' }}">
-              <small class="text-muted">اتركه فارغاً ليُحسب من شروط دفع المورد</small>
+              <small class="text-muted">{{ t('Leave empty to calculate from supplier payment terms') }}</small>
             </div>
 
             <div class="form-group">
-              <label>الملاحظات</label>
+              <label>{{ t('Notes') }}</label>
               <textarea name="notes" class="form-control" rows="4">{{ purchase.notes or '' }}</textarea>
-              <small class="text-muted">يمكنك إضافة أو تعديل الملاحظات</small>
+              <small class="text-muted">{{ t('You can add or edit notes') }}</small>
             </div>
 
             <div class="form-group">
               <button type="submit" class="btn btn-success btn-lg">
-                <i class="fas fa-save"></i> حفظ التعديلات
+                <i class="fas fa-save"></i> {{ t('Save Changes') }}
               </button>
               <a href="{{ url_for('purchases.view', id=purchase.id) }}" class="btn btn-secondary btn-lg">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t('Cancel') }}
               </a>
             </div>
           </form>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}ملف الموظف - {{ employee.employee_number }}{% endblock %}
-{% block page_title %}<i class="fas fa-user mr-2"></i>ملف الموظف: {{ employee.user.full_name if employee.user else '' }}{% endblock %}
+{% block title %}{{ t('Employee Profile') }} - {{ employee.employee_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-user mr-2"></i>{{ t('Employee Profile') }}: {{ employee.user.full_name if employee.user else '' }}{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -18,15 +18,15 @@
         </span>
         <hr>
         <div class="text-right">
-          <p><strong>رقم الموظف:</strong> {{ employee.employee_number }}</p>
-          <p><strong>القسم:</strong> {{ employee.department.name if employee.department else '-' }}</p>
-          <p><strong>المسمى:</strong> {{ employee.position or '-' }}</p>
-          <p><strong>تاريخ التعيين:</strong> {{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '-' }}</p>
-          <p><strong>سنوات الخدمة:</strong> {{ employee.years_of_service }} سنة</p>
+          <p><strong>{{ t('Employee Number') }}:</strong> {{ employee.employee_number }}</p>
+          <p><strong>{{ t('Department') }}:</strong> {{ employee.department.name if employee.department else '-' }}</p>
+          <p><strong>{{ t('Position') }}:</strong> {{ employee.position or '-' }}</p>
+          <p><strong>{{ t('Hire Date') }}:</strong> {{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '-' }}</p>
+          <p><strong>{{ t('Years of Service') }}:</strong> {{ employee.years_of_service }} {{ t('years') }}</p>
         </div>
         <hr>
         <a href="{{ url_for('hr.edit_employee', id=employee.id) }}" class="btn btn-warning btn-block">
-          <i class="fas fa-edit mr-2"></i>تعديل البيانات
+          <i class="fas fa-edit mr-2"></i>{{ t('Edit Details') }}
         </a>
       </div>
     </div>
@@ -36,52 +36,52 @@
   <div class="col-lg-8">
     
     <div class="card">
-      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>الراتب والمزايا</h5></div>
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Salary and Allowances') }}</h5></div>
       <div class="card-body">
         <div class="row">
           <div class="col-md-4 text-center p-3">
             <h3 class="text-primary">{{ "{:,.0f}".format(employee.base_salary|float) }} د.إ</h3>
-            <p class="text-muted mb-0">الراتب الأساسي</p>
+            <p class="text-muted mb-0">{{ t('Basic Salary') }}</p>
           </div>
           <div class="col-md-4 text-center p-3">
             <h3 class="text-success">{{ "{:,.0f}".format(employee.total_monthly_compensation|float) }} د.إ</h3>
-            <p class="text-muted mb-0">الإجمالي الشهري</p>
+            <p class="text-muted mb-0">{{ t('Monthly Total') }}</p>
           </div>
           <div class="col-md-4 text-center p-3">
             <h3 class="text-info">{{ employee.payment_frequency or 'monthly' }}</h3>
-            <p class="text-muted mb-0">دورة الدفع</p>
+            <p class="text-muted mb-0">{{ t('Payment Frequency') }}</p>
           </div>
         </div>
         <table class="table table-sm">
-          <tr><td>بدل السكن</td><td class="text-left">{{ "{:,.0f}".format(employee.housing_allowance|float) }} د.إ</td></tr>
-          <tr><td>بدل النقل</td><td class="text-left">{{ "{:,.0f}".format(employee.transport_allowance|float) }} د.إ</td></tr>
-          <tr><td>بدل الهاتف</td><td class="text-left">{{ "{:,.0f}".format(employee.phone_allowance|float) }} د.إ</td></tr>
-          <tr><td>مزايا أخرى</td><td class="text-left">{{ "{:,.0f}".format(employee.other_allowances|float) }} د.إ</td></tr>
+          <tr><td>{{ t('Housing Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.housing_allowance|float) }} د.إ</td></tr>
+          <tr><td>{{ t('Transport Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.transport_allowance|float) }} د.إ</td></tr>
+          <tr><td>{{ t('Phone Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.phone_allowance|float) }} د.إ</td></tr>
+          <tr><td>{{ t('Other Allowances') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.other_allowances|float) }} د.إ</td></tr>
         </table>
       </div>
     </div>
 
     
     <div class="card">
-      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>رصيد الإجازات</h5></div>
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>{{ t('Leave Balances') }}</h5></div>
       <div class="card-body">
         <div class="row text-center">
           <div class="col-md-4">
             <div class="p-3 bg-light rounded">
               <h4 class="text-success">{{ employee.annual_leave_balance or 0 }} / {{ employee.annual_leave_days or 0 }}</h4>
-              <p class="mb-0">إجازة سنوية</p>
+              <p class="mb-0">{{ t('Annual Leave') }}</p>
             </div>
           </div>
           <div class="col-md-4">
             <div class="p-3 bg-light rounded">
               <h4 class="text-warning">{{ employee.sick_leave_balance or 0 }} / {{ employee.sick_leave_days or 0 }}</h4>
-              <p class="mb-0">إجازة مرضية</p>
+              <p class="mb-0">{{ t('Sick Leave') }}</p>
             </div>
           </div>
           <div class="col-md-4">
             <div class="p-3 bg-light rounded">
               <h4 class="text-info">{{ employee.personal_leave_balance or 0 }} / {{ employee.personal_leave_days or 0 }}</h4>
-              <p class="mb-0">إجازة شخصية</p>
+              <p class="mb-0">{{ t('Personal Leave') }}</p>
             </div>
           </div>
         </div>
@@ -90,10 +90,10 @@
 
     
     <div class="card">
-      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>طلبات الإجازة الأخيرة</h5></div>
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>{{ t('Recent Leave Requests') }}</h5></div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0">
-          <thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الأيام</th><th>الحالة</th></tr></thead>
+          <thead><tr><th>{{ t('Type') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Days') }}</th><th>{{ t('Status') }}</th></tr></thead>
           <tbody>
           {% for req in recent_leaves %}
           <tr>
@@ -104,7 +104,7 @@
             <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="text-center text-muted">لا توجد طلبات</td></tr>
+          <tr><td colspan="5" class="text-center text-muted">{{ t('No requests') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -113,10 +113,10 @@
 
     
     <div class="card">
-      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-check-alt mr-2"></i>كشوفات الرواتب الأخيرة</h5></div>
+      <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-check-alt mr-2"></i>{{ t('Recent Payslips') }}</h5></div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0">
-          <thead><tr><th>رقم الكشف</th><th>الفترة</th><th>الصافي</th><th>الحالة</th></tr></thead>
+          <thead><tr><th>{{ t('Payslip Number') }}</th><th>{{ t('Period') }}</th><th>{{ t('Net') }}</th><th>{{ t('Status') }}</th></tr></thead>
           <tbody>
           {% for ps in recent_payslips %}
           <tr>
@@ -126,7 +126,7 @@
             <td><span class="badge badge-{{ ps.status_badge }}">{{ ps.status_ar }}</span></td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="text-center text-muted">لا توجد كشوفات</td></tr>
+          <tr><td colspan="4" class="text-center text-muted">{{ t('No payslips') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>

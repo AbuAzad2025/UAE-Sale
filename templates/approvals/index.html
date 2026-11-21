@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}طلبات الموافقة{% endblock %}
-{% block page_title %}طلبات الموافقة{% endblock %}
+{% block title %}{{ t('Approval Requests') }}{% endblock %}
+{% block page_title %}{{ t('Approval Requests') }}{% endblock %}
 
 {% block content %}
 
@@ -11,22 +11,22 @@
         <form method="GET" class="form-inline">
           <div class="form-group mr-2">
             <select name="status" class="form-control form-control-sm select2">
-              <option value="">الكل</option>
+              <option value="">{{ t('All') }}</option>
               {% for code, meta in lookups.get('approval_statuses', []) %}
-              <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="form-group mr-2">
             <select name="entity_type" class="form-control form-control-sm select2">
-              <option value="">الكل</option>
+              <option value="">{{ t('All') }}</option>
               {% for code, meta in lookups.get('approval_entities', []) %}
-              <option value="{{ code }}" {% if selected_entity == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if selected_entity == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           <button type="submit" class="btn btn-sm btn-primary">
-            <i class="fas fa-filter"></i> تصفية
+            <i class="fas fa-filter"></i> {{ t('Filter') }}
           </button>
         </form>
       </div>
@@ -37,7 +37,7 @@
 {% if pending_count > 0 %}
 <div class="alert alert-warning">
   <i class="fas fa-clock mr-2"></i>
-  <strong>{{ pending_count }}</strong> طلب معلق في انتظار الموافقة
+  <strong>{{ pending_count }}</strong> {{ t('pending approval requests') }}
 </div>
 {% endif %}
 
@@ -46,13 +46,13 @@
     <table class="table table-striped table-bordered">
       <thead>
         <tr>
-          <th>الرقم</th>
-          <th>النوع</th>
-          <th>المبلغ</th>
-          <th>الحالة</th>
-          <th>المتقدم</th>
-          <th>التاريخ</th>
-          <th>إجراء</th>
+          <th>{{ t('Number') }}</th>
+          <th>{{ t('Type') }}</th>
+          <th>{{ t('Amount') }}</th>
+          <th>{{ t('Status') }}</th>
+          <th>{{ t('Submitter') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th>{{ t('Action') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -61,23 +61,23 @@
           <td><a href="{{ url_for('approvals.view', request_id=req.id) }}">{{ req.request_number }}</a></td>
           <td>
             {% if req.entity_type == 'sale' %}
-              <span class="badge badge-primary">مبيعات</span>
+              <span class="badge badge-primary">{{ t('Sales') }}</span>
             {% elif req.entity_type == 'payment' %}
-              <span class="badge badge-success">مدفوعات</span>
+              <span class="badge badge-success">{{ t('Payments') }}</span>
             {% elif req.entity_type == 'purchase' %}
-              <span class="badge badge-info">مشتريات</span>
+              <span class="badge badge-info">{{ t('Purchases') }}</span>
             {% endif %}
           </td>
           <td class="text-right">{{ "{:,.2f}".format(req.amount) }} {{ req.currency }}</td>
           <td>
             {% if req.status == 'pending' %}
-              <span class="badge badge-warning">معلق</span>
+              <span class="badge badge-warning">{{ t('Pending') }}</span>
             {% elif req.status == 'approved' %}
-              <span class="badge badge-success">موافق عليه</span>
+              <span class="badge badge-success">{{ t('Approved') }}</span>
             {% elif req.status == 'rejected' %}
-              <span class="badge badge-danger">مرفوض</span>
+              <span class="badge badge-danger">{{ t('Rejected') }}</span>
             {% elif req.status == 'cancelled' %}
-              <span class="badge badge-secondary">ملغي</span>
+              <span class="badge badge-secondary">{{ t('Cancelled') }}</span>
             {% endif %}
           </td>
           <td>{{ req.requester.username if req.requester else '-' }}</td>
@@ -98,7 +98,7 @@
 <div class="card">
   <div class="card-body text-center text-muted py-5">
     <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
-    <p>لا توجد طلبات موافقة</p>
+    <p>{{ t('No approval requests') }}</p>
   </div>
 </div>
 {% endif %}

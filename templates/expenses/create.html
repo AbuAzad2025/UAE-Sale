@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إضافة مصروف جديد{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Add New Expense') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>إضافة مصروف جديد</h1>
+    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>{{ t('Add New Expense') }}</h1>
   </div>
   <div>
     <a href="{{ url_for('expenses.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للمصروفات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Expenses') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -81,19 +81,19 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-folder text-primary"></i> الفئة 
+              <i class="fas fa-folder text-primary"></i> {{ t('Category') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تصنيف المصروف (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Expense category (required)') }}"></i>
             </label>
             <div class="input-group">
               <select name="category_id" id="expense_category" class="form-control" required style="flex: 1;">
-                <option value="">بلا</option>
+                <option value="">{{ t('None') }}</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}">{{ category.name_ar }} - {{ category.name }}</option>
                 {% endfor %}
               </select>
               <div class="input-group-append">
-                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addExpenseCategoryModal" title="إضافة فئة جديدة">
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#addExpenseCategoryModal" title="{{ t('Add New Category') }}">
                   <i class="fas fa-plus"></i>
                 </button>
               </div>
@@ -104,11 +104,11 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-align-left text-info"></i> الوصف 
+              <i class="fas fa-align-left text-info"></i> {{ t('Description') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="وصف المصروف (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Expense description (required)') }}"></i>
             </label>
-            <input type="text" name="description" class="form-control" placeholder="وصف المصروف..." required>
+            <input type="text" name="description" class="form-control" placeholder="{{ t('Expense description...') }}" required>
           </div>
         </div>
       </div>
@@ -117,9 +117,9 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-money-bill-wave text-success"></i> المبلغ 
+              <i class="fas fa-money-bill-wave text-success"></i> {{ t('Amount') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="قيمة المصروف (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Expense value (required)') }}"></i>
             </label>
             <input type="number" name="amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required>
           </div>
@@ -128,12 +128,12 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-warning"></i> العملة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الدفع (افتراضي: ILS)"></i>
+              <i class="fas fa-dollar-sign text-warning"></i> {{ t('Currency') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Payment currency (default: ILS)') }}"></i>
             </label>
             <select name="currency" id="currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+              <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>
           </div>
@@ -142,8 +142,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-exchange-alt text-secondary"></i> سعر الصرف
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سعر الصرف مقابل {{ base_currency }} (تلقائي)"></i>
+              <i class="fas fa-exchange-alt text-secondary"></i> {{ t('Exchange Rate') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Exchange rate against') }} {{ base_currency }} {{ t('(automatic)') }}"></i>
             </label>
             <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" value="1.00" step="0.000001" readonly>
           </div>
@@ -153,35 +153,35 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label><i class="fas fa-receipt text-warning"></i> المعاملة الضريبية</label>
+            <label><i class="fas fa-receipt text-warning"></i> {{ t('Tax Treatment') }}</label>
             <select name="tax_treatment" class="form-control">
-              <option value="standard" selected>خاضعة (عادية)</option>
-              <option value="zero">صفرية 0%</option>
-              <option value="exempt">معفاة</option>
+              <option value="standard" selected>{{ t('Standard (regular)') }}</option>
+              <option value="zero">{{ t('Zero 0%') }}</option>
+              <option value="exempt">{{ t('Exempt') }}</option>
             </select>
           </div>
         </div>
         <div class="col-md-2">
           <div class="form-group">
-            <label>نسبة الضريبة %</label>
+            <label>{{ t('Tax Rate %') }}</label>
             <input type="number" name="tax_rate" class="form-control" value="0" step="0.01" min="0" max="100">
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-check mt-4">
             <input type="checkbox" name="tax_inclusive" class="form-check-input" id="exp_inclusive" value="on">
-            <label class="form-check-label" for="exp_inclusive">الأسعار شاملة الضريبة</label>
+            <label class="form-check-label" for="exp_inclusive">{{ t('Prices include tax') }}</label>
           </div>
         </div>
         <div class="col-md-4">
           <div class="form-check mt-2">
             <input type="hidden" name="vat_recoverable" value="0">
             <input type="checkbox" name="vat_recoverable" class="form-check-input" id="exp_vat_recoverable" value="on" checked>
-            <label class="form-check-label" for="exp_vat_recoverable">ضريبة قابلة للاسترداد (أزل للتكلفة غير القابلة)</label>
+            <label class="form-check-label" for="exp_vat_recoverable">{{ t('Recoverable tax (uncheck for non-recoverable cost)') }}</label>
           </div>
           <div class="form-check mt-1">
             <input type="checkbox" name="reverse_charge" class="form-check-input" id="exp_reverse_charge" value="on">
-            <label class="form-check-label" for="exp_reverse_charge">مورد أجنبي — Reverse Charge (ضريبة ذاتية التقييم)</label>
+            <label class="form-check-label" for="exp_reverse_charge">{{ t('Foreign supplier - Reverse Charge (self-assessed tax)') }}</label>
           </div>
         </div>
       </div>
@@ -190,13 +190,13 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-credit-card text-primary"></i> طريقة الدفع 
+              <i class="fas fa-credit-card text-primary"></i> {{ t('Payment Method') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="كيف تم الدفع؟ (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('How was it paid? (required)') }}"></i>
             </label>
             <select name="payment_method" id="payment_method" class="form-control select2" required>
               {% for code, meta in lookups.get('payment_methods', []) %}
-              <option value="{{ code }}">{{ meta.ar }}</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -205,10 +205,10 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-user-tie text-info"></i> اسم المورد/الجهة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المستفيد من المصروف (اختياري)"></i>
+              <i class="fas fa-user-tie text-info"></i> {{ t('Supplier / Entity Name') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Expense beneficiary name (optional)') }}"></i>
             </label>
-            <input type="text" name="supplier_name" class="form-control" placeholder="اسم المستفيد...">
+            <input type="text" name="supplier_name" class="form-control" placeholder="{{ t('Beneficiary name...') }}">
           </div>
         </div>
       </div>
@@ -219,15 +219,15 @@
       <div class="form-group">
         <label>
           <i class="fas fa-sticky-note text-secondary"></i> {{ t('Notes') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات إضافية (اختياري)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Additional notes (optional)') }}"></i>
         </label>
-        <textarea name="notes" class="form-control" rows="3" placeholder="أي ملاحظات..."></textarea>
+        <textarea name="notes" class="form-control" rows="3" placeholder="{{ t('Any notes...') }}"></textarea>
       </div>
     </div>
 
     <div class="card-footer">
       <button type="submit" class="btn btn-danger btn-lg">
-        <i class="fas fa-save mr-2"></i>حفظ المصروف
+        <i class="fas fa-save mr-2"></i>{{ t('Save Expense') }}
       </button>
       <a href="{{ url_for('expenses.index') }}" class="btn btn-secondary btn-lg">
         <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
@@ -241,7 +241,7 @@
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title">
-          <i class="fas fa-folder-plus mr-2"></i>إضافة فئة مصروفات جديدة
+          <i class="fas fa-folder-plus mr-2"></i>{{ t('Add New Expense Category') }}
         </h5>
         <button type="button" class="close text-white" data-dismiss="modal">
           <span>&times;</span>
@@ -251,25 +251,25 @@
         <form id="addExpenseCategoryForm" action="">
           <div class="form-group">
             <label>
-              <i class="fas fa-font text-primary"></i> الاسم بالإنجليزية
+              <i class="fas fa-font text-primary"></i> {{ t('English Name') }}
               <span class="text-danger">*</span>
             </label>
-            <input type="text" id="expense_category_name" class="form-control" placeholder="مثال: Salaries, Rent, Utilities..." required>
+            <input type="text" id="expense_category_name" class="form-control" placeholder="{{ t('Example: Salaries, Rent, Utilities...') }}" required>
           </div>
           <div class="form-group">
             <label>
-              <i class="fas fa-font text-info"></i> الاسم بالعربية
+              <i class="fas fa-font text-info"></i> {{ t('Arabic Name') }}
             </label>
-            <input type="text" id="expense_category_name_ar" class="form-control" placeholder="مثال: رواتب، إيجارات، مرافق...">
+            <input type="text" id="expense_category_name_ar" class="form-control" placeholder="{{ t('Example: salaries, rent, utilities...') }}">
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">
-          <i class="fas fa-times mr-2"></i>إلغاء
+          <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
         </button>
         <button type="button" class="btn btn-success" id="saveExpenseCategoryBtn">
-          <i class="fas fa-save mr-2"></i>حفظ الفئة
+          <i class="fas fa-save mr-2"></i>{{ t('Save Category') }}
         </button>
       </div>
     </div>
@@ -300,16 +300,16 @@ $(function () {
         if (data && data.rate) {
           $('#exchange_rate').val(parseFloat(data.rate).toFixed(6));
         } else if (window.toastr) {
-          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning('{{ t('Could not fetch the exchange rate, please enter the value manually.')|tojson }}');
         } else {
-          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert('{{ t('Could not fetch the exchange rate, please enter the value manually.')|tojson }}');
         }
       },
       error: function() {
         if (window.toastr) {
-          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning('{{ t('Could not fetch the exchange rate, please enter the value manually.')|tojson }}');
         } else {
-          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert('{{ t('Could not fetch the exchange rate, please enter the value manually.')|tojson }}');
         }
       }
     });
@@ -325,7 +325,7 @@ $('#saveExpenseCategoryBtn').click(function() {
   const name_ar = $('#expense_category_name_ar').val().trim();
   
   if (!name) {
-    alert('الرجاء إدخال اسم الفئة بالإنجليزية');
+    alert({{ t('Please enter the category name in English.')|tojson }});
     return;
   }
   
@@ -355,17 +355,17 @@ $('#saveExpenseCategoryBtn').click(function() {
         $('#expense_category_name_ar').val('');
         
         if (typeof UI !== 'undefined') {
-          UI.success('تم إضافة الفئة بنجاح!');
+          UI.success({{ t('Category added successfully!')|tojson }});
         } else {
-          alert('تم إضافة الفئة بنجاح!');
+          alert({{ t('Category added successfully!')|tojson }});
         }
       } else {
-        alert('خطأ: ' + (response.error || 'فشل إضافة الفئة'));
+        alert({{ t('Error:')|tojson }} + ' ' + (response.error || {{ t('Failed to add category')|tojson }}));
       }
     },
     error: function(xhr) {
-      const error = xhr.responseJSON?.error || 'حدث خطأ أثناء الحفظ';
-      alert('خطأ: ' + error);
+      const error = xhr.responseJSON?.error || {{ t('An error occurred while saving')|tojson }};
+      alert({{ t('Error:')|tojson }} + ' ' + error);
     }
   });
 });

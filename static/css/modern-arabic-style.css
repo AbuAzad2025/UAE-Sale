@@ -160,6 +160,8 @@ h3 { font-size: var(--font-size-lg); }
   height: 200%;
   background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
   animation: shimmer 3s infinite;
+  /* Decorative overlay must never intercept clicks on buttons inside the header */
+  pointer-events: none;
 }
 
 @keyframes shimmer {

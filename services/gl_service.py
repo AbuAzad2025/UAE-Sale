@@ -655,6 +655,7 @@ class GLService:
         created_by: int | None = None,
         is_posted: bool = True,
         idempotency_key: str | None = None,
+        tenant_id: int | None = None,
     ) -> GLJournalEntry:
         """Post a balanced double-entry journal.
 
@@ -675,13 +676,20 @@ class GLService:
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
+        # Every GL row must carry a tenant. Outside a request (CLI/script) the
+        # ambient context is None — callers must pass tenant_id explicitly.
+        tid = tenant_id if tenant_id is not None else _current_tenant_id()
+        if tid is None:
+            raise ValueError(
+                "tenant_id is required to post a GL entry outside a tenant request"
+            )
 
         # Idempotency: when a caller supplies a key, return the existing entry
         # rather than posting a duplicate (e.g. double-submitted payment).
         if idempotency_key:
             existing = GLJournalEntry.query.filter_by(
                 idempotency_key=str(idempotency_key)[:120],
-                tenant_id=_current_tenant_id(),
+                tenant_id=tid,
             ).first()
             if existing is not None:
                 return existing
@@ -721,7 +729,7 @@ class GLService:
                     str(idempotency_key)[:120] if idempotency_key else None
                 ),
                 created_by=created_by if created_by is not None else _current_user_id(),
-                tenant_id=_current_tenant_id(),
+                tenant_id=tid,
             )
             db.session.add(entry)
             db.session.flush()
@@ -736,6 +744,7 @@ class GLService:
                         credit=item.credit,
                         amount_base=item.amount_base,
                         party_id=getattr(item, "party_id", None),
+                        tenant_id=tid,
                     )
                 )
             db.session.flush()
@@ -768,6 +777,7 @@ class GLService:
         notes: str | None = None,
         created_by: int | None = None,
         is_posted: bool = True,
+        tenant_id: int | None = None,
     ) -> GLJournalEntry:
         """Create a typed journal entry.
 
@@ -782,6 +792,11 @@ class GLService:
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
+        tid = tenant_id if tenant_id is not None else _current_tenant_id()
+        if tid is None:
+            raise ValueError(
+                "tenant_id is required to post a GL entry outside a tenant request"
+            )
 
         GLService.ensure_core_accounts()
 
@@ -815,7 +830,7 @@ class GLService:
                 total_credit=total_credit,
                 is_posted=bool(is_posted),
                 created_by=created_by if created_by is not None else _current_user_id(),
-                tenant_id=_current_tenant_id(),
+                tenant_id=tid,
             )
             db.session.add(entry)
             db.session.flush()
@@ -829,6 +844,7 @@ class GLService:
                         credit=item.credit,
                         amount_base=item.amount_base,
                         description=item.description or description,
+                        tenant_id=tid,
                     )
                 )
             db.session.flush()
@@ -861,6 +877,7 @@ class GLService:
         exchange_rate: Any = 1,
         entry_type: str = "manual",
         is_posted: bool = True,
+        tenant_id: int | None = None,
     ) -> GLJournalEntry:
         """Manual entry with full FX support (FIX 5)."""
         from flask_login import current_user
@@ -868,6 +885,11 @@ class GLService:
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
+        tid = tenant_id if tenant_id is not None else _current_tenant_id()
+        if tid is None:
+            raise ValueError(
+                "tenant_id is required to post a GL entry outside a tenant request"
+            )
 
         try:
             normalized, total_debit, total_credit = _normalize_lines(
@@ -905,7 +927,7 @@ class GLService:
                     if getattr(current_user, "is_authenticated", False)
                     else None
                 ),
-                tenant_id=_current_tenant_id(),
+                tenant_id=tid,
             )
             db.session.add(entry)
             db.session.flush()
@@ -920,6 +942,7 @@ class GLService:
                         credit=item.credit,
                         amount_base=item.amount_base,
                         party_id=getattr(item, "party_id", None),
+                        tenant_id=tid,
                     )
                 )
             db.session.flush()

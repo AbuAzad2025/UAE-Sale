@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إعدادات الذكاء الاصطناعي{% endblock %}
-{% block page_title %}إعدادات الذكاء الاصطناعي{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('AI Settings') }}{% endblock %}
+{% block page_title %}{{ t('AI Settings') }}{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{{ url_for('ai.assistant_page') }}">{{ t('AI Assistant') }}</a></li>
@@ -14,23 +14,23 @@
     
     <div class="card card-success">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-bolt"></i> Groq API (مجاني - تحديث يومي)</h3>
+        <h3 class="card-title"><i class="fas fa-bolt"></i> Groq API {{ t('(free - daily refresh)') }}</h3>
       </div>
       <form id="groqForm" method="POST" class="api-key-form" action="">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
           {% if groq_key_exists %}
           <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i> <strong>مفعّل حالياً</strong>
-            <p class="mb-0 mt-2"><small>المفتاح: {{ groq_key_preview }}</small></p>
-            <p class="mb-0 text-warning"><small><i class="fas fa-clock"></i> ينتهي كل 24 ساعة - حدّثه يومياً</small></p>
+            <i class="fas fa-check-circle"></i> <strong>{{ t('Currently active') }}</strong>
+            <p class="mb-0 mt-2"><small>{{ t('Key:') }} {{ groq_key_preview }}</small></p>
+            <p class="mb-0 text-warning"><small><i class="fas fa-clock"></i> {{ t('Expires every 24 hours - refresh it daily.') }}</small></p>
           </div>
           {% endif %}
           
           <input type="hidden" name="provider" value="groq">
           
           <div class="form-group">
-            <label><i class="fas fa-key"></i> مفتاح Groq الجديد</label>
+            <label><i class="fas fa-key"></i> {{ t('New Groq key') }}</label>
             <div class="input-group">
               <input type="password" name="api_key" id="groq_key" class="form-control"
                      placeholder="gsk_..." value="{{ groq_key_preview if groq_key_exists else '' }}">
@@ -41,17 +41,17 @@
               </div>
             </div>
             <small class="form-text text-muted">
-               احصل على مفتاح جديد: <a href="https://console.groq.com/keys" target="_blank" class="font-weight-bold">console.groq.com/keys</a>
+               {{ t('Get a new key:') }} <a href="https://console.groq.com/keys" target="_blank" class="font-weight-bold">console.groq.com/keys</a>
             </small>
           </div>
           
           <div class="alert alert-info">
-            <strong> نصيحة:</strong> كل صباح، جيب مفتاح جديد من Groq وحدّثه هنا (30 ثانية فقط!)
+            <strong> {{ t('Tip:') }}</strong> {{ t('Every morning, get a new key from Groq and update it here (only 30 seconds!)') }}
           </div>
         </div>
         <div class="card-footer">
           <button type="submit" class="btn btn-success btn-lg">
-            <i class="fas fa-save"></i> تحديث مفتاح Groq
+            <i class="fas fa-save"></i> {{ t('Update Groq Key') }}
           </button>
         </div>
       </form>
@@ -60,32 +60,32 @@
     
     <div class="card card-primary mt-3">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-robot"></i> مفاتيح أخرى (اختياري)</h3>
+        <h3 class="card-title"><i class="fas fa-robot"></i> {{ t('Other Keys (optional)') }}</h3>
       </div>
       <form id="otherForm" method="POST" class="api-key-form" action="">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card-body">
           {% if openai_key_exists %}
           <div class="alert alert-primary">
-            <i class="fas fa-check-circle"></i> <strong>OpenAI/Gemini مفعّل</strong>
+            <i class="fas fa-check-circle"></i> <strong>OpenAI/Gemini {{ t('active') }}</strong>
             <p class="mb-0 mt-2"><small>{{ openai_key_preview }}</small></p>
           </div>
           {% endif %}
           
           <div class="form-group">
-            <label>نوع المزود</label>
+            <label>{{ t('Provider Type') }}</label>
             <select name="provider" id="other_provider" class="form-control select2">
               {% for code, meta in lookups.get('ai_providers', []) %}
-              <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }} ({{ meta.en }})</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label><i class="fas fa-key"></i> مفتاح API</label>
+            <label><i class="fas fa-key"></i> {{ t('API Key') }}</label>
             <div class="input-group">
               <input type="password" name="api_key" id="other_key" class="form-control"
-                     placeholder="sk-... أو AIza...">
+                     placeholder="{{ t('sk-... or AIza...') }}">
               <div class="input-group-append">
                 <button type="button" class="btn btn-outline-secondary toggle-key" data-target="other_key">
                   <i class="fas fa-eye"></i>
@@ -96,7 +96,7 @@
         </div>
         <div class="card-footer">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save"></i> حفظ
+            <i class="fas fa-save"></i> {{ t('Save') }}
           </button>
         </div>
       </form>
@@ -106,48 +106,48 @@
   <div class="col-md-4">
     <div class="card card-info">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-question-circle"></i> المساعدة</h3>
+        <h3 class="card-title"><i class="fas fa-question-circle"></i> {{ t('Help') }}</h3>
       </div>
       <div class="card-body">
-        <h5>الحصول على مفتاح Groq (مجاني)</h5>
+        <h5>{{ t('Get a Groq key (free)') }}</h5>
         <ol>
-          <li>سجل في <a href="https://console.groq.com" target="_blank">console.groq.com</a></li>
-          <li>انتقل إلى API Keys</li>
-          <li>اضغط "Create API Key"</li>
-          <li>انسخ المفتاح والصقه هنا</li>
+          <li>{{ t('Sign up at') }} <a href="https://console.groq.com" target="_blank">console.groq.com</a></li>
+          <li>{{ t('Go to API Keys') }}</li>
+          <li>{{ t('Click "Create API Key"') }}</li>
+          <li>{{ t('Copy the key and paste it here') }}</li>
         </ol>
         
         <hr>
         
-        <h5>الحصول على مفتاح OpenAI</h5>
+        <h5>{{ t('Get an OpenAI key') }}</h5>
         <ol>
-          <li>سجل في <a href="https://platform.openai.com" target="_blank">platform.openai.com</a></li>
-          <li>أضف رصيد (مدفوع)</li>
-          <li>أنشئ مفتاح API</li>
-          <li>انسخه والصقه هنا</li>
+          <li>{{ t('Sign up at') }} <a href="https://platform.openai.com" target="_blank">platform.openai.com</a></li>
+          <li>{{ t('Add credit (paid)') }}</li>
+          <li>{{ t('Create an API key') }}</li>
+          <li>{{ t('Copy it and paste it here') }}</li>
         </ol>
         
         <div class="alert alert-warning mt-3">
           <i class="fas fa-exclamation-triangle"></i>
-          <strong>تحذير:</strong> احتفظ بالمفتاح آمناً ولا تشاركه
+          <strong>{{ t('Warning:') }}</strong> {{ t('Keep the key safe and do not share it.') }}
         </div>
       </div>
     </div>
     
     <div class="card card-success">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-check-circle"></i> الحالة</h3>
+        <h3 class="card-title"><i class="fas fa-check-circle"></i> {{ t('Status') }}</h3>
       </div>
       <div class="card-body">
         {% if ai_enabled %}
           <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i> AI مفعّل وجاهز!
+            <i class="fas fa-check-circle"></i> {{ t('AI is active and ready!') }}
           </div>
         {% else %}
           <div class="alert alert-secondary">
-            <i class="fas fa-robot"></i> يعمل في الوضع المحلي
+            <i class="fas fa-robot"></i> {{ t('Running in local mode') }}
           </div>
-          <p class="text-muted">أضف مفتاح API لتفعيل الميزات الكاملة</p>
+          <p class="text-muted">{{ t('Add an API key to enable full features') }}</p>
         {% endif %}
       </div>
     </div>
@@ -226,7 +226,7 @@ $(document).ready(function() {
     const submitBtn = $(this).find('button[type="submit"]');
     const originalText = submitBtn.html();
     
-    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...');
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> ' + {{ t('Saving...')|tojson }});
     
     $.ajax({
       url: '{{ url_for("ai.config") }}',
@@ -240,10 +240,10 @@ $(document).ready(function() {
         if (response.success) {
           Swal.fire({
             icon: 'success',
-            title: 'تم الحفظ! ',
+            title: {{ t('Saved!')|tojson }},
             html: `<p>${response.message}</p>
-                   <p class="text-muted"><small>صلاحية: ${response.expires_in}</small></p>`,
-            confirmButtonText: 'تمام',
+                   <p class="text-muted"><small>{{ t('Validity:') }} ${response.expires_in}</small></p>`,
+            confirmButtonText: {{ t('OK')|tojson }},
             timer: 3000
           }).then(() => {
             location.reload();
@@ -251,7 +251,7 @@ $(document).ready(function() {
         } else {
           Swal.fire({
             icon: 'error',
-            title: 'خطأ',
+            title: {{ t('Error')|tojson }},
             text: response.message
           });
         }
@@ -261,8 +261,8 @@ $(document).ready(function() {
         
         Swal.fire({
           icon: 'error',
-          title: 'خطأ في الحفظ',
-          text: 'تأكد من صلاحيتك وحاول مرة أخرى'
+          title: {{ t('Save Failed')|tojson }},
+          text: {{ t('Check your permissions and try again.')|tojson }}
         });
       }
     });

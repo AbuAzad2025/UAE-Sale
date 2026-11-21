@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إعدادات الفواتير والترويسات المتقدمة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced Invoice and Header Settings') }}{% endblock %}
 
 {% block content %}
 <div class="content-header">
@@ -9,18 +9,18 @@
       <div class="col-sm-6">
         <h1 class="m-0">
           <i class="fas fa-file-invoice text-warning"></i> 
-          إعدادات الفواتير والترويسات
+          {{ t('Invoice and Header Settings') }}
         </h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+            <i class="fas fa-arrow-right mr-1"></i> {{ t('Return to Owner Dashboard') }}
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
             <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t('Dashboard') }}</a></li>
             <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">Owner</a></li>
-            <li class="breadcrumb-item active">إعدادات الفواتير</li>
+            <li class="breadcrumb-item active">{{ t('Invoice Settings') }}</li>
           </ol>
         </div>
       </div>
@@ -40,24 +40,24 @@
           
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-building"></i> معلومات الشركة</h3>
+              <h3 class="card-title"><i class="fas fa-building"></i> {{ t('Company Information') }}</h3>
             </div>
             <div class="card-body">
               <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> <strong>تنبيه:</strong> هذه المعلومات ستظهر في رأس الفواتير وسندات القبض
+                <i class="fas fa-info-circle"></i> <strong>{{ t('Notice:') }}</strong> {{ t('This information will appear on invoice headers and receipt vouchers') }}
               </div>
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-building text-primary"></i> اسم الشركة (عربي) 
+                      <i class="fas fa-building text-primary"></i> {{ t('Company Name (Arabic)') }} 
                       <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control" name="company_name_ar" 
                            value="{{ settings.company_name_ar }}" required
-                           placeholder="مثال: شركة أزاد للأنظمة الذكية">
+                           placeholder="{{ t('e.g: Azad Smart Systems Company') }}">
                     <small class="form-text text-muted">
-                       سيظهر في رأس الفاتورة - الاسم الرسمي بالعربية
+                       {{ t('Appears in the invoice header - the official Arabic name') }}
                     </small>
                   </div>
                 </div>
@@ -81,12 +81,12 @@
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-map-marker-alt text-success"></i> العنوان (عربي)
+                      <i class="fas fa-map-marker-alt text-success"></i> {{ t('Address (Arabic)') }}
                     </label>
                     <textarea class="form-control" name="address_ar" rows="2" 
-                              placeholder="مثال: أبو ظبي - الإمارات العربية المتحدة">{{ settings.address_ar }}</textarea>
+                              placeholder="{{ t('e.g: Abu Dhabi - United Arab Emirates') }}">{{ settings.address_ar }}</textarea>
                     <small class="form-text text-muted">
-                       عنوان الشركة الكامل بالعربية
+                       {{ t('Full company address in Arabic') }}
                     </small>
                   </div>
                 </div>
@@ -107,45 +107,45 @@
               <div class="row">
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label><i class="fas fa-phone text-info"></i> هاتف 1</label>
+                    <label><i class="fas fa-phone text-info"></i> {{ t('Phone 1') }}</label>
                     <input type="text" class="form-control" name="phone_1" 
                            value="{{ settings.phone_1 }}"
                            placeholder="+971501234567">
                     <small class="form-text text-muted">
-                       رقم التواصل الرئيسي
+                       {{ t('Main contact number') }}
                     </small>
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label><i class="fas fa-phone text-info"></i> هاتف 2</label>
+                    <label><i class="fas fa-phone text-info"></i> {{ t('Phone 2') }}</label>
                     <input type="text" class="form-control" name="phone_2" 
                            value="{{ settings.phone_2 }}"
                            placeholder="+971501234568">
                     <small class="form-text text-muted">
-                       رقم احتياطي (اختياري)
+                       {{ t('Backup number (optional)') }}
                     </small>
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label><i class="fas fa-envelope text-warning"></i> البريد</label>
+                    <label><i class="fas fa-envelope text-warning"></i> {{ t('Mail') }}</label>
                     <input type="email" class="form-control" name="email" 
                            value="{{ settings.email }}"
                            placeholder="info@company.com">
                     <small class="form-text text-muted">
-                       البريد الإلكتروني
+                       {{ t('Email') }}
                     </small>
                   </div>
                 </div>
                 <div class="col-md-3">
                   <div class="form-group">
-                    <label><i class="fas fa-globe text-primary"></i> الموقع</label>
+                    <label><i class="fas fa-globe text-primary"></i> {{ t('Website') }}</label>
                     <input type="text" class="form-control" name="website" 
                            value="{{ settings.website }}" 
                            placeholder="www.company.com">
                     <small class="form-text text-muted">
-                       موقع الشركة الإلكتروني
+                       {{ t('Company website') }}
                     </small>
                   </div>
                 </div>
@@ -156,48 +156,48 @@
           
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-certificate"></i> المعلومات التجارية</h3>
+              <h3 class="card-title"><i class="fas fa-certificate"></i> {{ t('Business Information') }}</h3>
             </div>
             <div class="card-body">
               <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i> <strong>مهم:</strong> هذه المعلومات مطلوبة للفواتير الضريبية الرسمية
+                <i class="fas fa-exclamation-triangle"></i> <strong>{{ t('Important:') }}</strong> {{ t('This information is required for official tax invoices') }}
               </div>
               <div class="row">
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-receipt text-danger"></i> الرقم الضريبي (TRN)
+                      <i class="fas fa-receipt text-danger"></i> {{ t('Tax Number (TRN)') }}
                     </label>
                     <input type="text" class="form-control" name="tax_number" 
                            value="{{ settings.tax_number }}" placeholder="TRN-123456789">
                     <small class="form-text text-muted">
-                       رقم التسجيل الضريبي - Tax Registration Number
+                       {{ t('Tax Registration Number') }} - Tax Registration Number
                     </small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-file-alt text-info"></i> السجل التجاري
+                      <i class="fas fa-file-alt text-info"></i> {{ t('Commercial Register') }}
                     </label>
                     <input type="text" class="form-control" name="commercial_register" 
                            value="{{ settings.commercial_register }}"
-                           placeholder="رقم السجل التجاري">
+                           placeholder="{{ t('Commercial register number') }}">
                     <small class="form-text text-muted">
-                       رقم القيد في السجل التجاري
+                       {{ t('Commercial registration number') }}
                     </small>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-id-card text-success"></i> رقم الرخصة
+                      <i class="fas fa-id-card text-success"></i> {{ t('License Number') }}
                     </label>
                     <input type="text" class="form-control" name="license_number" 
                            value="{{ settings.license_number }}"
-                           placeholder="رقم الرخصة التجارية">
+                           placeholder="{{ t('Commercial license number') }}">
                     <small class="form-text text-muted">
-                      🆔 رقم الرخصة التجارية
+                      🆔 {{ t('Commercial license number') }}
                     </small>
                   </div>
                 </div>
@@ -208,36 +208,36 @@
           
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-university"></i> المعلومات البنكية</h3>
+              <h3 class="card-title"><i class="fas fa-university"></i> {{ t('Bank Information') }}</h3>
             </div>
             <div class="card-body">
               <div class="alert alert-success">
-                <i class="fas fa-check-circle"></i> <strong>ملاحظة:</strong> ستظهر هذه المعلومات في ذيل الفاتورة للتحويلات البنكية
+                <i class="fas fa-check-circle"></i> <strong>{{ t('Note:') }}</strong> {{ t('This information will appear in the invoice footer for bank transfers') }}
               </div>
               <div class="row">
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-university text-primary"></i> اسم البنك
+                      <i class="fas fa-university text-primary"></i> {{ t('Bank Name') }}
                     </label>
                     <input type="text" class="form-control" name="bank_name" 
                            value="{{ settings.bank_name }}"
-                           placeholder="مثال: بنك الإمارات دبي الوطني">
+                           placeholder="{{ t('e.g: Emirates NBD') }}">
                     <small class="form-text text-muted">
-                       البنك المستخدم لاستقبال التحويلات
+                       {{ t('Bank used to receive transfers') }}
                     </small>
                   </div>
                 </div>
                 <div class="col-md-6">
                   <div class="form-group">
                     <label>
-                      <i class="fas fa-hashtag text-info"></i> رقم الحساب
+                      <i class="fas fa-hashtag text-info"></i> {{ t('Account Number') }}
                     </label>
                     <input type="text" class="form-control" name="bank_account_number" 
                            value="{{ settings.bank_account_number }}"
                            placeholder="123456789">
                     <small class="form-text text-muted">
-                       رقم الحساب البنكي
+                       {{ t('Bank account number') }}
                     </small>
                   </div>
                 </div>
@@ -251,7 +251,7 @@
                     <input type="text" class="form-control" name="iban" value="{{ settings.iban }}"
                            placeholder="AE07 0331 2345 6789 0123 456">
                     <small class="form-text text-muted">
-                       رقم الحساب البنكي الدولي - للتحويلات الدولية
+                       {{ t('International bank account number - for international transfers') }}
                     </small>
                   </div>
                 </div>
@@ -264,7 +264,7 @@
                            value="{{ settings.swift_code }}"
                            placeholder="EBILAEAD">
                     <small class="form-text text-muted">
-                       كود السويفت - للتحويلات الدولية
+                       {{ t('SWIFT code - for international transfers') }}
                     </small>
                   </div>
                 </div>
@@ -275,17 +275,17 @@
           
           <div class="card">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-file-contract"></i> الشروط والملاحظات</h3>
+              <h3 class="card-title"><i class="fas fa-file-contract"></i> {{ t('Terms and Notes') }}</h3>
             </div>
             <div class="card-body">
               <div class="form-group">
                 <label>
-                  <i class="fas fa-handshake text-primary"></i> شروط الدفع (عربي)
+                  <i class="fas fa-handshake text-primary"></i> {{ t('Payment Terms (Arabic)') }}
                 </label>
                 <textarea class="form-control" name="payment_terms_ar" rows="2" 
-                          placeholder="مثال: الدفع نقداً أو بالتحويل البنكي خلال 7 أيام">{{ settings.payment_terms_ar }}</textarea>
+                          placeholder="{{ t('e.g: Payment by cash or bank transfer within 7 days') }}">{{ settings.payment_terms_ar }}</textarea>
                 <small class="form-text text-muted">
-                   شروط الدفع التي ستظهر في ذيل الفاتورة
+                   {{ t('Payment terms shown in the invoice footer') }}
                 </small>
               </div>
               <div class="form-group">
@@ -303,22 +303,22 @@
               
               <div class="form-group">
                 <label>
-                  <i class="fas fa-sticky-note text-warning"></i> ملاحظة افتراضية للفواتير (عربي)
+                  <i class="fas fa-sticky-note text-warning"></i> {{ t('Default Invoice Note (Arabic)') }}
                 </label>
                 <textarea class="form-control" name="default_invoice_note_ar" rows="2"
-                          placeholder="مثال: شكراً لتعاملكم معنا - نتطلع لخدمتكم مستقبلاً">{{ settings.default_invoice_note_ar }}</textarea>
+                          placeholder="{{ t('e.g: Thank you for your business - we look forward to serving you again') }}">{{ settings.default_invoice_note_ar }}</textarea>
                 <small class="form-text text-muted">
-                   ملاحظة اختيارية ستظهر تلقائياً في كل فاتورة جديدة
+                   {{ t('Optional note automatically shown on every new invoice') }}
                 </small>
               </div>
               <div class="form-group">
                 <label>
-                  <i class="fas fa-sticky-note text-success"></i> ملاحظة افتراضية لسندات القبض (عربي)
+                  <i class="fas fa-sticky-note text-success"></i> {{ t('Default Receipt Note (Arabic)') }}
                 </label>
                 <textarea class="form-control" name="default_receipt_note_ar" rows="2"
-                          placeholder="مثال: تم استلام المبلغ بالكامل - شكراً لكم">{{ settings.default_receipt_note_ar }}</textarea>
+                          placeholder="{{ t('e.g: Amount received in full - thank you') }}">{{ settings.default_receipt_note_ar }}</textarea>
                 <small class="form-text text-muted">
-                   ملاحظة اختيارية ستظهر تلقائياً في كل سند قبض جديد
+                   {{ t('Optional note automatically shown on every new receipt') }}
                 </small>
               </div>
             </div>
@@ -332,77 +332,77 @@
           
           <div class="card card-primary">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-palette"></i> التصميم والمظهر</h3>
+              <h3 class="card-title"><i class="fas fa-palette"></i> {{ t('Design and Appearance') }}</h3>
             </div>
             <div class="card-body">
               <div class="form-group">
                 <label>
-                  <i class="fas fa-file-invoice text-primary"></i> القالب النشط
+                  <i class="fas fa-file-invoice text-primary"></i> {{ t('Active Template') }}
                 </label>
                 <select class="form-control select2" name="active_template">
                   {% for code, meta in lookups.get('invoice_templates', []) %}
-                  <option value="{{ code }}" {% if settings.active_template == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
+                  <option value="{{ code }}" {% if settings.active_template == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>
                 <small class="form-text text-muted">
-                   اختر شكل الفاتورة المفضل - يمكن معاينته من الأسفل
+                   {{ t('Choose your preferred invoice layout - you can preview it below') }}
                 </small>
               </div>
               
               <div class="form-group">
                 <label>
-                  <i class="fas fa-paint-brush"></i> لون الترويسة
+                  <i class="fas fa-paint-brush"></i> {{ t('Header Color') }}
                 </label>
                 <input type="color" class="form-control" name="header_color" 
                        value="{{ settings.header_color or '#667eea' }}"
                        style="height: 45px;">
                 <small class="form-text text-muted">
-                   لون رأس الفاتورة والعناصر الرئيسية
+                   {{ t('Color of the invoice header and main elements') }}
                 </small>
               </div>
               
               <div class="form-group">
                 <label>
-                  <i class="fas fa-fill-drip"></i> اللون الثانوي
+                  <i class="fas fa-fill-drip"></i> {{ t('Accent Color') }}
                 </label>
                 <input type="color" class="form-control" name="accent_color" 
                        value="{{ settings.accent_color or '#764ba2' }}"
                        style="height: 45px;">
                 <small class="form-text text-muted">
-                   لون الأزرار والعناصر الثانوية
+                   {{ t('Color of buttons and secondary elements') }}
                 </small>
               </div>
               
               <hr class="my-3">
-              <h6 class="text-muted"><i class="fas fa-sliders-h"></i> خيارات إضافية</h6>
+              <h6 class="text-muted"><i class="fas fa-sliders-h"></i> {{ t('Additional Options') }}</h6>
               
               <div class="custom-control custom-checkbox mb-3">
                 <input type="checkbox" class="custom-control-input" id="show_logo" name="show_logo" 
                        {% if settings.show_logo %}checked{% endif %}>
                 <label class="custom-control-label" for="show_logo">
-                  <i class="fas fa-image text-primary"></i> إظهار الشعار
+                  <i class="fas fa-image text-primary"></i> {{ t('Show Logo') }}
                 </label>
                 <br>
-                <small class="text-muted ml-4">عرض شعار الشركة في رأس الفاتورة</small>
+                <small class="text-muted ml-4">{{ t('Display the company logo in the invoice header') }}</small>
               </div>
               
               <div class="form-group" id="logo-upload-group">
                 <label>
-                  <i class="fas fa-upload text-primary"></i> رفع شعار الشركة
+                  <i class="fas fa-upload text-primary"></i> {{ t('Upload Company Logo') }}
                 </label>
                 <input type="file" class="form-control-file" name="company_logo" accept="image/png,image/jpeg,image/jpg,image/webp">
                 <small class="form-text text-muted">
-                   <strong>الأبعاد المناسبة:</strong> 200×80 بكسل أو 400×160 بكسل (نسبة 2.5:1)<br>
-                   <strong>الحجم:</strong> أقل من 500 كيلوبايت<br>
-                   <strong>الصيغ:</strong> PNG (شفاف مفضل), JPG, WEBP<br>
-                   <strong>نصيحة:</strong> استخدم خلفية شفافة للحصول على أفضل نتيجة
+                   <strong>{{ t('Recommended dimensions:') }}</strong> {{ t('200x80 pixels or 400x160 pixels (2.5:1 ratio)') }}<br>
+                   <strong>{{ t('Size') }}:</strong> {{ t('Less than 500 KB') }}<br>
+                   <strong>{{ t('Formats:') }}</strong> {{ t('PNG (transparent preferred), JPG, WEBP') }}<br>
+                   <strong>{{ t('Tip:') }}</strong> {{ t('Use a transparent background for best results') }}
                 </small>
                 {% if settings and settings.logo_path %}
                 <div class="mt-2">
                   <img src="{{ url_for('static', filename=settings.logo_path) }}" 
                        alt="Current Logo" style="max-height: 60px; border: 1px solid #ddd; padding: 5px; background: white;">
                   <br>
-                  <small class="text-success"> الشعار الحالي</small>
+                  <small class="text-success"> {{ t('Current Logo') }}</small>
                 </div>
                 {% endif %}
               </div>
@@ -411,60 +411,60 @@
                 <input type="checkbox" class="custom-control-input" id="enable_qr_code" name="enable_qr_code" 
                        {% if settings.enable_qr_code %}checked{% endif %}>
                 <label class="custom-control-label" for="enable_qr_code">
-                  <i class="fas fa-qrcode text-success"></i> إظهار QR Code
+                  <i class="fas fa-qrcode text-success"></i> {{ t('Show QR Code') }}
                 </label>
                 <br>
-                <small class="text-muted ml-4">رمز QR للمسح السريع والدفع الإلكتروني</small>
+                <small class="text-muted ml-4">{{ t('QR code for quick scanning and electronic payment') }}</small>
               </div>
               
               <div class="custom-control custom-checkbox mb-3">
                 <input type="checkbox" class="custom-control-input" id="show_barcode" name="show_barcode" 
                        {% if settings.show_barcode %}checked{% endif %}>
                 <label class="custom-control-label" for="show_barcode">
-                  <i class="fas fa-barcode text-info"></i> إظهار Barcode
+                  <i class="fas fa-barcode text-info"></i> {{ t('Show Barcode') }}
                 </label>
                 <br>
-                <small class="text-muted ml-4">باركود رقم الفاتورة للمسح والأرشفة</small>
+                <small class="text-muted ml-4">{{ t('Barcode of the invoice number for scanning and archiving') }}</small>
               </div>
               
               <div class="custom-control custom-checkbox mb-3">
                 <input type="checkbox" class="custom-control-input" id="enable_watermark" name="enable_watermark" 
                        {% if settings.enable_watermark %}checked{% endif %}>
                 <label class="custom-control-label" for="enable_watermark">
-                  <i class="fas fa-stamp text-warning"></i> علامة مائية
+                  <i class="fas fa-stamp text-warning"></i> {{ t('Watermark') }}
                 </label>
                 <br>
-                <small class="text-muted ml-4">نص خلفي شفاف يظهر خلف الفاتورة (مثل: نسخة أصلية، مدفوعة، الخ)</small>
+                <small class="text-muted ml-4">{{ t('Transparent background text shown behind the invoice (e.g: Original Copy, Paid, etc.)') }}</small>
               </div>
               
               <div class="form-group" id="watermark-text-group" style="display: {% if settings.enable_watermark %}block{% else %}none{% endif %};">
                 <label>
-                  <i class="fas fa-font text-warning"></i> نص العلامة المائية
+                  <i class="fas fa-font text-warning"></i> {{ t('Watermark Text') }}
                 </label>
                 <input type="text" class="form-control" name="watermark_text" 
                        value="{{ settings.watermark_text }}"
-                       placeholder="مثال: نسخة أصلية / ORIGINAL COPY / PAID">
+                       placeholder="{{ t('e.g: Original Copy / ORIGINAL COPY / PAID') }}">
                 <small class="form-text text-muted">
-                   النص الذي سيظهر بشكل شفاف خلف الفاتورة بزاوية 45 درجة
+                   {{ t('Text displayed transparently behind the invoice at a 45-degree angle') }}
                 </small>
               </div>
               
               <div class="form-group" id="watermark-image-group" style="display: {% if settings.enable_watermark %}block{% else %}none{% endif %};">
                 <label>
-                  <i class="fas fa-image text-warning"></i> أو رفع صورة للعلامة المائية (اختياري)
+                  <i class="fas fa-image text-warning"></i> {{ t('Or upload a watermark image (optional)') }}
                 </label>
                 <input type="file" class="form-control-file" name="watermark_image" accept="image/png,image/jpeg,image/jpg">
                 <small class="form-text text-muted">
-                   <strong>ملاحظة:</strong> الصورة ستظهر شفافة بنسبة 5% في خلفية الفاتورة<br>
-                   <strong>الأبعاد:</strong> 300×300 بكسل (مربعة) أو 400×200 (مستطيلة)<br>
-                   <strong>الصيغ:</strong> PNG شفاف للحصول على أفضل نتيجة
+                   <strong>{{ t('Note:') }}</strong> {{ t('The image will appear at 5% opacity in the invoice background') }}<br>
+                   <strong>{{ t('Dimensions:') }}</strong> {{ t('300x300 pixels (square) or 400x200 (rectangular)') }}<br>
+                   <strong>{{ t('Formats:') }}</strong> {{ t('Transparent PNG for best results') }}
                 </small>
                 {% if settings and settings.watermark_image_path %}
                 <div class="mt-2">
                   <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" 
                        alt="Watermark" style="max-height: 50px; opacity: 0.3; border: 1px dashed #ffc107; padding: 5px;">
                   <br>
-                  <small class="text-warning"> صورة العلامة المائية الحالية</small>
+                  <small class="text-warning"> {{ t('Current watermark image') }}</small>
                 </div>
                 {% endif %}
               </div>
@@ -474,48 +474,48 @@
           
           <div class="card card-info">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-print"></i> إعدادات الطباعة</h3>
+              <h3 class="card-title"><i class="fas fa-print"></i> {{ t('Print Settings') }}</h3>
             </div>
             <div class="card-body">
               <div class="form-group">
                 <label>
-                  <i class="fas fa-file-alt text-info"></i> حجم الورق
+                  <i class="fas fa-file-alt text-info"></i> {{ t('Paper Size') }}
                 </label>
                 <select class="form-control select2" name="paper_size">
                   {% for code, meta in lookups.get('paper_sizes', []) %}
-                  <option value="{{ code }}" {% if settings.paper_size == code %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+                  <option value="{{ code }}" {% if settings.paper_size == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ code }})</option>
                   {% endfor %}
                 </select>
                 <small class="form-text text-muted">
-                   حجم الورقة المستخدمة في الطباعة
+                   {{ t('Paper size used for printing') }}
                 </small>
               </div>
               
               <div class="form-group">
                 <label>
-                  <i class="fas fa-arrows-alt-h text-warning"></i> الاتجاه
+                  <i class="fas fa-arrows-alt-h text-warning"></i> {{ t('Orientation') }}
                 </label>
                 <select class="form-control select2" name="orientation">
                   {% for code, meta in lookups.get('orientations', []) %}
-                  <option value="{{ code }}" {% if settings.orientation == code %}selected{% endif %}>{{ meta.ar }} ({{ meta.en }})</option>
+                  <option value="{{ code }}" {% if settings.orientation == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>
                 <small class="form-text text-muted">
-                   اتجاه الورقة عند الطباعة
+                   {{ t('Paper orientation when printing') }}
                 </small>
               </div>
               
               <div class="form-group">
                 <label>
-                  <i class="fas fa-language text-primary"></i> اللغة الافتراضية
+                  <i class="fas fa-language text-primary"></i> {{ t('Default Language') }}
                 </label>
                 <select class="form-control select2" name="default_language">
                   {% for code, meta in lookups.get('invoice_languages', []) %}
-                  <option value="{{ code }}" {% if settings.default_language == code %}selected{% endif %}>{{ meta.ar }} - {{ meta.en }}</option>
+                  <option value="{{ code }}" {% if settings.default_language == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} - {{ meta.en }}</option>
                   {% endfor %}
                 </select>
                 <small class="form-text text-muted">
-                   لغة عرض الفواتير الافتراضية
+                   {{ t('Default invoice display language') }}
                 </small>
               </div>
             </div>
@@ -524,30 +524,30 @@
           
           <div class="card card-success">
             <div class="card-header">
-              <h3 class="card-title"><i class="fas fa-eye"></i> معاينة قوالب الفواتير</h3>
+              <h3 class="card-title"><i class="fas fa-eye"></i> {{ t('Invoice Template Preview') }}</h3>
             </div>
             <div class="card-body">
               <p class="text-muted mb-3">
-                <i class="fas fa-info-circle"></i> اضغط "معاينة فاتورة" أو "معاينة سند" للعرض، أو "تطبيق" لاختيار القالب
+                <i class="fas fa-info-circle"></i> {{ t('Click "Preview Invoice" or "Preview Receipt" to view, or "Apply" to select the template') }}
               </p>
               <div class="row">
                 <div class="col-12 mb-3">
                   <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
                     <div>
-                      <i class="fas fa-file-invoice text-primary"></i> <strong>عصري (Modern)</strong>
-                      <br><small class="text-muted">قالب عصري ملون</small>
+                      <i class="fas fa-file-invoice text-primary"></i> <strong>{{ t('Modern') }}</strong>
+                      <br><small class="text-muted">{{ t('Colorful modern template') }}</small>
                     </div>
                     <div>
                       <a href="{{ url_for('owner.preview_invoice', template='modern') }}" 
                          target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-file-invoice"></i> فاتورة
+                        <i class="fas fa-file-invoice"></i> {{ t('Invoice') }}
                       </a>
                       <a href="{{ url_for('owner.preview_receipt', template='modern') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-receipt"></i> سند
+                        <i class="fas fa-receipt"></i> {{ t('Receipt') }}
                       </a>
                       <button type="button" class="btn btn-sm btn-primary" onclick="applyTemplate('modern')">
-                        <i class="fas fa-check"></i> تطبيق
+                        <i class="fas fa-check"></i> {{ t('Apply') }}
                       </button>
                     </div>
                   </div>
@@ -556,20 +556,20 @@
                 <div class="col-12 mb-3">
                   <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
                     <div>
-                      <i class="fas fa-file-alt text-secondary"></i> <strong>كلاسيكي (Classic)</strong>
-                      <br><small class="text-muted">قالب تقليدي بسيط</small>
+                      <i class="fas fa-file-alt text-secondary"></i> <strong>{{ t('Classic') }}</strong>
+                      <br><small class="text-muted">{{ t('Simple traditional template') }}</small>
                     </div>
                     <div>
                       <a href="{{ url_for('owner.preview_invoice', template='classic') }}" 
                          target="_blank" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-file-invoice"></i> فاتورة
+                        <i class="fas fa-file-invoice"></i> {{ t('Invoice') }}
                       </a>
                       <a href="{{ url_for('owner.preview_receipt', template='classic') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-receipt"></i> سند
+                        <i class="fas fa-receipt"></i> {{ t('Receipt') }}
                       </a>
                       <button type="button" class="btn btn-sm btn-secondary" onclick="applyTemplate('classic')">
-                        <i class="fas fa-check"></i> تطبيق
+                        <i class="fas fa-check"></i> {{ t('Apply') }}
                       </button>
                     </div>
                   </div>
@@ -578,20 +578,20 @@
                 <div class="col-12 mb-3">
                   <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
                     <div>
-                      <i class="fas fa-file text-info"></i> <strong>بسيط (Minimal)</strong>
-                      <br><small class="text-muted">قالب بسيط وأنيق</small>
+                      <i class="fas fa-file text-info"></i> <strong>{{ t('Minimal') }}</strong>
+                      <br><small class="text-muted">{{ t('Simple and elegant template') }}</small>
                     </div>
                     <div>
                       <a href="{{ url_for('owner.preview_invoice', template='minimal') }}" 
                          target="_blank" class="btn btn-sm btn-outline-info">
-                        <i class="fas fa-file-invoice"></i> فاتورة
+                        <i class="fas fa-file-invoice"></i> {{ t('Invoice') }}
                       </a>
                       <a href="{{ url_for('owner.preview_receipt', template='minimal') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-receipt"></i> سند
+                        <i class="fas fa-receipt"></i> {{ t('Receipt') }}
                       </a>
                       <button type="button" class="btn btn-sm btn-info" onclick="applyTemplate('minimal')">
-                        <i class="fas fa-check"></i> تطبيق
+                        <i class="fas fa-check"></i> {{ t('Apply') }}
                       </button>
                     </div>
                   </div>
@@ -600,20 +600,20 @@
                 <div class="col-12 mb-3">
                   <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
                     <div>
-                      <i class="fas fa-file-invoice-dollar text-warning"></i> <strong>خليجي (Gulf)</strong>
-                      <br><small class="text-muted">قالب بطابع خليجي</small>
+                      <i class="fas fa-file-invoice-dollar text-warning"></i> <strong>{{ t('Gulf') }}</strong>
+                      <br><small class="text-muted">{{ t('Template with a Gulf style') }}</small>
                     </div>
                     <div>
                       <a href="{{ url_for('owner.preview_invoice', template='gulf') }}" 
                          target="_blank" class="btn btn-sm btn-outline-warning">
-                        <i class="fas fa-file-invoice"></i> فاتورة
+                        <i class="fas fa-file-invoice"></i> {{ t('Invoice') }}
                       </a>
                       <a href="{{ url_for('owner.preview_receipt', template='gulf') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-receipt"></i> سند
+                        <i class="fas fa-receipt"></i> {{ t('Receipt') }}
                       </a>
                       <button type="button" class="btn btn-sm btn-warning" onclick="applyTemplate('gulf')">
-                        <i class="fas fa-check"></i> تطبيق
+                        <i class="fas fa-check"></i> {{ t('Apply') }}
                       </button>
                     </div>
                   </div>
@@ -622,20 +622,20 @@
                 <div class="col-12 mb-3">
                   <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded border border-success">
                     <div>
-                      <i class="fas fa-file text-success"></i> <strong>مبسط (Simple)</strong>
-                      <br><small class="text-muted">أساسيات فقط - بدون زخرفة</small>
+                      <i class="fas fa-file text-success"></i> <strong>{{ t('Simple') }}</strong>
+                      <br><small class="text-muted">{{ t('Basics only - no decoration') }}</small>
                     </div>
                     <div>
                       <a href="{{ url_for('owner.preview_invoice', template='simple') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-file-invoice"></i> فاتورة
+                        <i class="fas fa-file-invoice"></i> {{ t('Invoice') }}
                       </a>
                       <a href="{{ url_for('owner.preview_receipt', template='simple') }}" 
                          target="_blank" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-receipt"></i> سند
+                        <i class="fas fa-receipt"></i> {{ t('Receipt') }}
                       </a>
                       <button type="button" class="btn btn-sm btn-success" onclick="applyTemplate('simple')">
-                        <i class="fas fa-check"></i> تطبيق
+                        <i class="fas fa-check"></i> {{ t('Apply') }}
                       </button>
                     </div>
                   </div>
@@ -650,7 +650,7 @@
         <div class="col-lg-4">
           <div class="card card-widget sticky-top" style="top: 70px;">
             <div class="card-header bg-gradient-primary">
-              <h3 class="card-title"><i class="fas fa-desktop"></i> معاينة حية</h3>
+              <h3 class="card-title"><i class="fas fa-desktop"></i> {{ t('Live Preview') }}</h3>
             </div>
             <div class="card-body text-center" id="live-preview">
               <div class="invoice-preview p-3" style="background: white; border: 2px solid #ddd; border-radius: 8px; min-height: 400px;">
@@ -663,7 +663,7 @@
                     {{ settings.company_name_ar }}
                   </h4>
                   <p style="font-size: 12px; color: #666; margin: 5px 0;">
-                    {{ settings.address_ar or 'العنوان' }}
+                    {{ settings.address_ar or t('Address') }}
                   </p>
                   <p style="font-size: 11px; color: #999;">
                     <i class="fas fa-phone"></i> {{ settings.phone_1 or '---' }}
@@ -671,22 +671,22 @@
                 </div>
                 
                 <div class="invoice-info" style="text-align: right; font-size: 11px; color: #333;">
-                  <p><strong>رقم الفاتورة:</strong> INV-2025-0001</p>
-                  <p><strong>التاريخ:</strong> 2025-10-17</p>
-                  <p><strong>العميل:</strong> عميل تجريبي</p>
+                  <p><strong>{{ t('Invoice Number:') }}</strong> INV-2025-0001</p>
+                  <p><strong>{{ t('Date:') }}</strong> 2025-10-17</p>
+                  <p><strong>{{ t('Customer:') }}</strong> {{ t('Sample Customer') }}</p>
                 </div>
                 
                 <table class="table table-sm table-bordered mt-3" style="font-size: 11px;">
                   <thead style="background: var(--accent-color, #764ba2); color: white;">
                     <tr>
-                      <th>المنتج</th>
+                      <th>{{ t('Product') }}</th>
                       <th>{{ t('Quantity') }}</th>
                       <th>{{ t('Amount') }}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>منتج تجريبي</td>
+                      <td>{{ t('Sample Product') }}</td>
                       <td>2</td>
                       <td>200 AED</td>
                     </tr>
@@ -707,7 +707,7 @@
                 {% endif %}
                 
                 <div class="footer mt-3" style="border-top: 1px solid #ddd; padding-top: 10px; font-size: 10px; color: #666;">
-                  {{ settings.footer_text_ar or 'شكراً لتعاملكم معنا' }}
+                  {{ settings.footer_text_ar or t('Thank you for your business') }}
                 </div>
               </div>
             </div>
@@ -722,13 +722,13 @@
           <div class="card">
             <div class="card-footer">
               <button type="submit" class="btn btn-primary btn-lg">
-                <i class="fas fa-save"></i> حفظ الإعدادات
+                <i class="fas fa-save"></i> {{ t('Save Settings') }}
               </button>
               <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t('Cancel') }}
               </a>
               <button type="button" class="btn btn-info float-left" onclick="resetToDefaults()">
-                <i class="fas fa-undo"></i> استعادة الافتراضي
+                <i class="fas fa-undo"></i> {{ t('Restore Defaults') }}
               </button>
             </div>
           </div>
@@ -810,7 +810,7 @@ $(document).ready(function() {
   });
   
   $('input[name="company_name_ar"]').on('keyup', function() {
-    $('#live-preview h4').text($(this).val() || 'اسم الشركة');
+    $('#live-preview h4').text($(this).val() || {{ t('Company Name')|tojson }});
   });
   
   $('input[name="show_logo"]').on('change', function() {
@@ -832,17 +832,17 @@ function applyTemplate(templateName) {
   $('select[name="active_template"]').val(templateName);
   
   const templateNames = {
-    'modern': 'عصري',
-    'classic': 'كلاسيكي',
-    'minimal': 'بسيط',
-    'gulf': 'خليجي',
-    'simple': 'مبسط'
+    'modern': {{ t('Modern')|tojson }},
+    'classic': {{ t('Classic')|tojson }},
+    'minimal': {{ t('Minimal')|tojson }},
+    'gulf': {{ t('Gulf')|tojson }},
+    'simple': {{ t('Simple')|tojson }}
   };
   
   if (window.notify) {
-    notify.success(`تم اختيار القالب ${templateNames[templateName]}. اضغط "حفظ الإعدادات" لتطبيق التغيير.`);
+    notify.success({{ t('Selected template')|tojson }} + ' ' + templateNames[templateName] + '. ' + {{ t('Click "Save Settings" to apply the changes.')|tojson }});
   } else {
-    alert(`تم اختيار القالب ${templateNames[templateName]}. اضغط "حفظ الإعدادات" لتطبيق التغيير.`);
+    alert({{ t('Selected template')|tojson }} + ' ' + templateNames[templateName] + '. ' + {{ t('Click "Save Settings" to apply the changes.')|tojson }});
   }
   
   $('select[name="active_template"]').css('background-color', '#d4edda').css('color', '#155724');
@@ -852,14 +852,14 @@ function applyTemplate(templateName) {
 }
 
 function resetToDefaults() {
-  if (confirm('هل أنت متأكد من استعادة الإعدادات الافتراضية؟')) {
+  if (confirm({{ t('Are you sure you want to restore the default settings?')|tojson }})) {
     $('input[name="company_name_ar"]').val('شركة أزاد');
     $('input[name="company_name_en"]').val('Azad Company');
     $('input[name="header_color"]').val('#667eea');
     $('input[name="accent_color"]').val('#764ba2');
     $('select[name="active_template"]').val('modern');
     if (window.notify) {
-      notify.success('تم استعادة الإعدادات الافتراضية');
+      notify.success({{ t('Default settings restored')|tojson }});
     }
   }
 }

@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - الميزانية العمومية{% endblock %}
-{% block page_title %}الميزانية العمومية - Balance Sheet{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Balance Sheet') }}{% endblock %}
+{% block page_title %}{{ t('Balance Sheet') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <button onclick="window.print()" class="btn btn-secondary">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </button>
   </div>
 </div>
@@ -15,23 +15,23 @@
   <div class="card-body">
     <form method="GET" class="form-inline" action="">
       <div class="form-group mr-2">
-        <label class="mr-2">حتى تاريخ:</label>
+        <label class="mr-2">{{ t('As of Date') }}:</label>
         <input type="date" name="as_of_date" class="form-control" value="{{ as_of_date }}">
       </div>
-      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> تطبيق</button>
-      <a href="{{ url_for('ledger.balance_sheet') }}" class="btn btn-secondary">الكل</a>
+      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> {{ t('Apply') }}</button>
+      <a href="{{ url_for('ledger.balance_sheet') }}" class="btn btn-secondary">{{ t('All') }}</a>
     </form>
   </div>
 </div>
 
 <div class="card">
   <div class="card-header bg-gradient-success">
-    <h3 class="card-title text-white">الميزانية العمومية</h3>
+    <h3 class="card-title text-white">{{ t('Balance Sheet') }}</h3>
   </div>
   <div class="card-body">
     <div class="row">
       <div class="col-md-6">
-        <h4 class="text-success"><i class="fas fa-coins"></i> الأصول (Assets)</h4>
+        <h4 class="text-success"><i class="fas fa-coins"></i> {{ t('Assets') }}</h4>
         <table class="table table-sm table-bordered">
           <tbody>
             {% for name, amount in assets.items() %}
@@ -41,7 +41,7 @@
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
-              <td>إجمالي الأصول</td>
+              <td>{{ t('Total Assets') }}</td>
               <td class="text-left text-success">{{ "{:,.2f}".format(total_assets) }} {{ base_currency }}</td>
             </tr>
           </tbody>
@@ -49,7 +49,7 @@
       </div>
 
       <div class="col-md-6">
-        <h4 class="text-danger"><i class="fas fa-file-invoice-dollar"></i> الخصوم (Liabilities)</h4>
+        <h4 class="text-danger"><i class="fas fa-file-invoice-dollar"></i> {{ t('Liabilities') }}</h4>
         <table class="table table-sm table-bordered">
           <tbody>
             {% for name, amount in liabilities.items() %}
@@ -59,13 +59,13 @@
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
-              <td>إجمالي الخصوم</td>
+              <td>{{ t('Total Liabilities') }}</td>
               <td class="text-left text-danger">{{ "{:,.2f}".format(total_liabilities) }} {{ base_currency }}</td>
             </tr>
           </tbody>
         </table>
 
-        <h4 class="text-info mt-4"><i class="fas fa-hand-holding-usd"></i> حقوق الملكية (Equity)</h4>
+        <h4 class="text-info mt-4"><i class="fas fa-hand-holding-usd"></i> {{ t('Equity') }}</h4>
         <table class="table table-sm table-bordered">
           <tbody>
             {% for name, amount in equity.items() %}
@@ -75,7 +75,7 @@
             </tr>
             {% endfor %}
             <tr class="font-weight-bold bg-light">
-              <td>إجمالي حقوق الملكية</td>
+              <td>{{ t('Total Equity') }}</td>
               <td class="text-left text-info">{{ "{:,.2f}".format(total_equity) }} {{ base_currency }}</td>
             </tr>
           </tbody>
@@ -87,23 +87,23 @@
 
     {% if not balanced %}
     <div class="alert alert-danger text-center" role="alert" id="balance-sheet-imbalance">
-      <h4><i class="fas fa-exclamation-triangle"></i> الميزانية غير متوازنة</h4>
+      <h4><i class="fas fa-exclamation-triangle"></i> {{ t('Balance Sheet is not balanced') }}</h4>
       <h3 class="mb-1">
-        الفرق: {{ "{:,.2f}".format(delta|abs) }} {{ base_currency }}
+        {{ t('Difference') }}: {{ "{:,.2f}".format(delta|abs) }} {{ base_currency }}
       </h3>
       <p class="mb-0">
-        الأصول ({{ "{:,.2f}".format(total_assets) }}) ≠
-        الخصوم ({{ "{:,.2f}".format(total_liabilities) }}) +
-        حقوق الملكية ({{ "{:,.2f}".format(total_equity) }})
+        {{ t('Assets') }} ({{ "{:,.2f}".format(total_assets) }}) ≠
+        {{ t('Liabilities') }} ({{ "{:,.2f}".format(total_liabilities) }}) +
+        {{ t('Equity') }} ({{ "{:,.2f}".format(total_equity) }})
       </p>
     </div>
     {% endif %}
 
     <div class="alert {% if balanced %}alert-success{% else %}alert-secondary{% endif %} text-center">
-      <h4>المعادلة المحاسبية</h4>
-      <h3>الأصول ({{ "{:,.0f}".format(total_assets) }}) = الخصوم ({{ "{:,.0f}".format(total_liabilities) }}) + حقوق الملكية ({{ "{:,.0f}".format(total_equity) }})</h3>
+      <h4>{{ t('Accounting Equation') }}</h4>
+      <h3>{{ t('Assets') }} ({{ "{:,.0f}".format(total_assets) }}) = {{ t('Liabilities') }} ({{ "{:,.0f}".format(total_liabilities) }}) + {{ t('Equity') }} ({{ "{:,.0f}".format(total_equity) }})</h3>
       {% if balanced %}
-      <p class="mb-0"><i class="fas fa-check-circle"></i> الميزانية متوازنة (الفريق أقل من 0.01 {{ base_currency }})</p>
+      <p class="mb-0"><i class="fas fa-check-circle"></i> {{ t('Balance Sheet is balanced (difference less than 0.01 {currency})', currency=base_currency) }}</p>
       {% endif %}
     </div>
   </div>

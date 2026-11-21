@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة المستودع والمخزون{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Warehouse and Inventory Management") }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="text-gradient mb-0"><i class="fas fa-warehouse mr-3"></i>إدارة المستودع</h1>
-    <p class="text-muted">المخزون والحركات وإدارة القطع</p>
+    <h1 class="text-gradient mb-0"><i class="fas fa-warehouse mr-3"></i>{{ t("Warehouse Management") }}</h1>
+    <p class="text-muted">{{ t("Inventory, movements and parts management") }}</p>
   </div>
   <div>
     <div class="btn-group">
       <a href="{{ url_for('warehouse.movements') }}" class="btn btn-info btn-lg">
-        <i class="fas fa-exchange-alt mr-2"></i>حركات المخزون
+        <i class="fas fa-exchange-alt mr-2"></i>{{ t("Stock Movements") }}
       </a>
       <a href="{{ url_for('warehouse.low_stock') }}" class="btn btn-warning btn-lg">
-        <i class="fas fa-exclamation-triangle mr-2"></i>مخزون منخفض
+        <i class="fas fa-exclamation-triangle mr-2"></i>{{ t("Low Inventory") }}
       </a>
       <a href="{{ url_for('warehouse.out_of_stock') }}" class="btn btn-danger btn-lg">
-        <i class="fas fa-ban mr-2"></i>نفاد المخزون
+        <i class="fas fa-ban mr-2"></i>{{ t("Stock Out") }}
       </a>
     </div>
   </div>
@@ -67,8 +67,8 @@
       <div class="stat-icon" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);">
         <i class="fas fa-boxes"></i>
       </div>
-      <div class="stat-value">{{ products|length }}</div>
-      <div class="stat-label">إجمالي المنتجات</div>
+      <div class="stat-value">{{ total_products }}</div>
+      <div class="stat-label">{{ t("Total Products") }}</div>
     </div>
   </div>
   <div class="col-md-3">
@@ -76,10 +76,8 @@
       <div class="stat-icon" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
         <i class="fas fa-check-circle"></i>
       </div>
-      <div class="stat-value">
-        {{ products|selectattr('current_stock', 'gt', 0)|selectattr('is_low_stock', 'false')|list|length }}
-      </div>
-      <div class="stat-label">مخزون جيد</div>
+      <div class="stat-value">{{ good_count }}</div>
+      <div class="stat-label">{{ t("Good Stock") }}</div>
     </div>
   </div>
   <div class="col-md-3">
@@ -87,10 +85,8 @@
       <div class="stat-icon" style="background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);">
         <i class="fas fa-exclamation-triangle"></i>
       </div>
-      <div class="stat-value">
-        {{ products|selectattr('is_low_stock')|list|length }}
-      </div>
-      <div class="stat-label">مخزون منخفض</div>
+      <div class="stat-value">{{ low_count }}</div>
+      <div class="stat-label">{{ t("Low Inventory") }}</div>
     </div>
   </div>
   <div class="col-md-3">
@@ -98,10 +94,8 @@
       <div class="stat-icon" style="background: linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%);">
         <i class="fas fa-times-circle"></i>
       </div>
-      <div class="stat-value">
-        {{ products|selectattr('current_stock', 'le', 0)|list|length }}
-      </div>
-      <div class="stat-label">نفاد مخزون</div>
+      <div class="stat-value">{{ out_count }}</div>
+      <div class="stat-label">{{ t("Stock Out") }}</div>
     </div>
   </div>
 </div>
@@ -110,17 +104,17 @@
   <div class="card-header">
     <div class="d-flex justify-content-between align-items-center">
       <h3 class="card-title mb-0">
-        <i class="fas fa-inventory mr-2"></i>المخزون الحالي
+        <i class="fas fa-inventory mr-2"></i>{{ t("Current Stock") }}
       </h3>
       <div class="btn-group">
         <button type="button" class="btn btn-sm btn-outline-success active" id="filterAll">
-          <i class="fas fa-boxes mr-1"></i>الكل
+          <i class="fas fa-boxes mr-1"></i>{{ t("All") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-warning" id="filterLow">
-          <i class="fas fa-exclamation-triangle mr-1"></i>منخفض
+          <i class="fas fa-exclamation-triangle mr-1"></i>{{ t("Low") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-danger" id="filterOut">
-          <i class="fas fa-ban mr-1"></i>نفذ
+          <i class="fas fa-ban mr-1"></i>{{ t("Out") }}
         </button>
       </div>
     </div>
@@ -131,11 +125,11 @@
         <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
           <tr>
             <th><i class="fas fa-barcode mr-2"></i>SKU</th>
-            <th><i class="fas fa-box mr-2"></i>المنتج</th>
-            <th><i class="fas fa-layer-group mr-2"></i>المخزون الحالي</th>
-            <th><i class="fas fa-bell mr-2"></i>حد التنبيه</th>
+            <th><i class="fas fa-box mr-2"></i>{{ t("Product") }}</th>
+            <th><i class="fas fa-layer-group mr-2"></i>{{ t("Current Stock") }}</th>
+            <th><i class="fas fa-bell mr-2"></i>{{ t("Alert Threshold") }}</th>
             <th><i class="fas fa-chart-bar mr-2"></i>{{ t('Status') }}</th>
-            <th><i class="fas fa-map-marker-alt mr-2"></i>الموقع</th>
+            <th><i class="fas fa-map-marker-alt mr-2"></i>{{ t("Location") }}</th>
             <th class="text-center"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</th>
           </tr>
         </thead>
@@ -169,7 +163,7 @@
                 <h5 class="mb-0 {% if product.current_stock <= 0 %}text-danger{% elif product.is_low_stock() %}text-warning{% else %}text-success{% endif %}">
                   {{ "{:.0f}".format(product.current_stock) }}
                 </h5>
-                <small class="text-muted">{{ product.unit or 'بلا' }}</small>
+                <small class="text-muted">{{ product.unit or t('None') }}</small>
               </div>
             </td>
             <td>
@@ -179,7 +173,7 @@
               {% if product.current_stock <= 0 %}
                 <div>
                   <span class="badge badge-danger px-3 py-2">
-                    <i class="fas fa-times mr-1"></i>نفذ
+                    <i class="fas fa-times mr-1"></i>{{ t("Out") }}
                   </span>
                   <div class="stock-indicator">
                     <div class="stock-indicator-bar stock-critical" style="width: 0%"></div>
@@ -188,7 +182,7 @@
               {% elif product.is_low_stock() %}
                 <div>
                   <span class="badge badge-warning px-3 py-2">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>منخفض
+                    <i class="fas fa-exclamation-triangle mr-1"></i>{{ t("Low") }}
                   </span>
                   {% set stock_percent = (product.current_stock / product.min_stock_alert * 100) if product.min_stock_alert > 0 else 0 %}
                   <div class="stock-indicator">
@@ -198,7 +192,7 @@
               {% else %}
                 <div>
                   <span class="badge badge-success px-3 py-2">
-                    <i class="fas fa-check mr-1"></i>جيد
+                    <i class="fas fa-check mr-1"></i>{{ t("Good") }}
                   </span>
                   {% set stock_calc = (product.current_stock / (product.min_stock_alert * 3) * 100) if product.min_stock_alert > 0 else 100 %}
                   {% set stock_percent = stock_calc if stock_calc < 100 else 100 %}
@@ -210,7 +204,7 @@
             </td>
             <td>
               <i class="fas fa-map-marker-alt text-muted mr-1"></i>
-              {{ product.location or 'غير محدد' }}
+              {{ product.location or t('Unspecified') }}
             </td>
             <td class="text-center">
               <div class="btn-group btn-group-sm">
@@ -220,7 +214,7 @@
                 </a>
                 <button type="button" class="btn btn-warning" 
                         onclick="adjustStock({{ product.id }}, {{ product.name|tojson }})"
-                        title="تعديل المخزون">
+                        title="{{ t("Adjust Stock") }}">
                   <i class="fas fa-edit"></i>
                 </button>
               </div>
@@ -238,7 +232,7 @@
     <div class="modal-content">
       <div class="modal-header" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
         <h5 class="modal-title">
-          <i class="fas fa-edit mr-2"></i>تعديل المخزون
+          <i class="fas fa-edit mr-2"></i>{{ t("Adjust Stock") }}
         </h5>
         <button type="button" class="close text-white" data-dismiss="modal">
           <span>&times;</span>
@@ -250,21 +244,21 @@
         <div class="modal-body">
           <h6 id="product_name" class="mb-3"></h6>
           <div class="form-group">
-            <label class="font-weight-bold">الكمية:</label>
+            <label class="font-weight-bold">{{ t("Quantity") }}:</label>
             <input type="number" name="quantity" class="form-control" step="0.001" required>
-            <small class="form-text text-muted">أدخل قيمة موجبة للإضافة أو سالبة للخصم</small>
+            <small class="form-text text-muted">{{ t("Enter a positive value to add or a negative value to deduct") }}</small>
           </div>
           <div class="form-group">
-            <label class="font-weight-bold">ملاحظات:</label>
+            <label class="font-weight-bold">{{ t("Notes") }}:</label>
             <textarea name="notes" class="form-control" rows="3"></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">
-            <i class="fas fa-times mr-2"></i>إلغاء
+            <i class="fas fa-times mr-2"></i>{{ t("Cancel") }}
           </button>
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save mr-2"></i>حفظ التعديل
+            <i class="fas fa-save mr-2"></i>{{ t("Save Changes") }}
           </button>
         </div>
       </form>
@@ -293,7 +287,7 @@
 <script>
 $(document).ready(function() {
   const table = $('#warehouseTable').DataTable({
-    language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+    language: { url: "{{ url_for('static', filename=('datatables/English.json' if current_language == 'en' else 'datatables/Arabic.json')) }}" },
     pageLength: 50,
     order: [[2, 'asc']],  // Sort by stock (low first)
     responsive: true,
@@ -301,7 +295,7 @@ $(document).ready(function() {
     buttons: [
       {extend: 'excel', text: '<i class="fas fa-file-excel mr-1"></i> Excel', className: 'btn-sm btn-success'},
       {extend: 'pdf', text: '<i class="fas fa-file-pdf mr-1"></i> PDF', className: 'btn-sm btn-danger'},
-      {extend: 'print', text: '<i class="fas fa-print mr-1"></i> طباعة', className: 'btn-sm btn-info'}
+      {extend: 'print', text: '<i class="fas fa-print mr-1"></i> {{ t("Print") }}', className: 'btn-sm btn-info'}
     ]
   });
 

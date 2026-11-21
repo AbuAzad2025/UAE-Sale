@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}كشف حساب شريك - {{ partner.name }}{% endblock %}
+{% block title %}{{ t('Partner Statement') }} - {{ display_name(partner) }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
-  <h3>كشف حساب شريك: {{ partner.name }}</h3>
+  <h3>{{ t('Partner Statement') }}: {{ display_name(partner) }}</h3>
   
   <div class="row mb-3">
     <div class="col-md-3">
       <div class="card">
         <div class="card-body">
-          <h6>إجمالي الحصص</h6>
+          <h6>{{ t('Total Shares') }}</h6>
           <p class="text-success font-weight-bold">{{ "{:,.2f}".format(total_share) }}</p>
         </div>
       </div>
@@ -16,7 +16,7 @@
     <div class="col-md-3">
       <div class="card">
         <div class="card-body">
-          <h6>مستلم من الشريك</h6>
+          <h6>{{ t('Received from Partner') }}</h6>
           <p class="text-primary font-weight-bold">{{ "{:,.2f}".format(total_received) }}</p>
         </div>
       </div>
@@ -24,7 +24,7 @@
     <div class="col-md-3">
       <div class="card">
         <div class="card-body">
-          <h6>مدفوع للشريك</h6>
+          <h6>{{ t('Paid to Partner') }}</h6>
           <p class="text-danger font-weight-bold">{{ "{:,.2f}".format(total_paid) }}</p>
         </div>
       </div>
@@ -32,7 +32,7 @@
     <div class="col-md-3">
       <div class="card">
         <div class="card-body">
-          <h6>الرصيد الصافي</h6>
+          <h6>{{ t('Net Balance') }}</h6>
           <p class="font-weight-bold {{ 'text-danger' if net_balance < 0 else 'text-success' }}">{{ "{:,.2f}".format(net_balance) }}</p>
         </div>
       </div>
@@ -42,13 +42,13 @@
   <form method="GET" class="mb-3">
     <div class="row">
       <div class="col-md-3">
-        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" placeholder="من تاريخ">
+        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" placeholder="{{ t('From Date') }}">
       </div>
       <div class="col-md-3">
-        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" placeholder="إلى تاريخ">
+        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" placeholder="{{ t('To Date') }}">
       </div>
       <div class="col-md-2">
-        <button type="submit" class="btn btn-primary">فلترة</button>
+        <button type="submit" class="btn btn-primary">{{ t('Filter') }}</button>
       </div>
     </div>
   </form>
@@ -58,31 +58,31 @@
       <table class="table table-bordered table-striped">
         <thead>
           <tr>
-            <th>التاريخ</th>
-            <th>النوع</th>
-            <th>المرجع</th>
-            <th>الوصف</th>
-            <th>مدين</th>
-            <th>دائن</th>
-            <th>الرصيد</th>
+            <th>{{ t('Date') }}</th>
+            <th>{{ t('Type') }}</th>
+            <th>{{ t('Reference') }}</th>
+            <th>{{ t('Description') }}</th>
+            <th>{{ t('Debit') }}</th>
+            <th>{{ t('Credit') }}</th>
+            <th>{{ t('Balance') }}</th>
           </tr>
         </thead>
         <tbody>
-          {% for t in transactions %}
+          {% for txn in transactions %}
           <tr>
-            <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '-' }}</td>
-            <td>{{ 'حصة بيع' if t.type == 'sale_share' else 'دفعة' }}</td>
-            <td>{{ t.reference }}</td>
-            <td>{{ t.description }}</td>
-            <td class="text-danger">{{ "{:,.2f}".format(t.debit) if t.debit else '0.00' }}</td>
-            <td class="text-success">{{ "{:,.2f}".format(t.credit) if t.credit else '0.00' }}</td>
-            <td class="font-weight-bold">{{ "{:,.2f}".format(t.balance) }}</td>
+            <td>{{ txn.date.strftime('%Y-%m-%d') if txn.date else '-' }}</td>
+            <td>{{ t('Sale Share') if txn.type == 'sale_share' else t('Payment') }}</td>
+            <td>{{ txn.reference }}</td>
+            <td>{{ txn.description }}</td>
+            <td class="text-danger">{{ "{:,.2f}".format(txn.debit) if txn.debit else '0.00' }}</td>
+            <td class="text-success">{{ "{:,.2f}".format(txn.credit) if txn.credit else '0.00' }}</td>
+            <td class="font-weight-bold">{{ "{:,.2f}".format(txn.balance) }}</td>
           </tr>
           {% endfor %}
         </tbody>
         <tfoot>
           <tr class="font-weight-bold">
-            <td colspan="4">الإجمالي</td>
+            <td colspan="4">{{ t('Total') }}</td>
             <td class="text-danger">{{ "{:,.2f}".format(total_paid) }}</td>
             <td class="text-success">{{ "{:,.2f}".format(total_share + total_received) }}</td>
             <td>{{ "{:,.2f}".format(final_balance) }}</td>

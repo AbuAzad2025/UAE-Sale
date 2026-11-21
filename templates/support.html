@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>دعم المشروع - Support Azad Systems</title>
+    <title>{{ t('Project Support') }} - Support Azad Systems</title>
 
     
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
@@ -29,7 +29,7 @@
         <a href="{{ url_for('language.set_language', lang='en') }}" class="lang-pill {% if session.get('language') == 'en' %}active{% endif %}"><i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}"></i>English</a>
     </div>
     <a href="{{ url_for('auth.login') }}" class="login-link">
-        <i class="fas fa-sign-in-alt mr-2"></i>تسجيل الدخول
+        <i class="fas fa-sign-in-alt mr-2"></i>{{ t('Login') }}
     </a>
 
     <div class="support-container">
@@ -41,20 +41,20 @@
                 </div>
                 <h1 class="hero-title">
                     <i class="fas fa-store"></i>
-                    نظام إدارة متجر متكامل
+                    {{ t('Complete Store Management System') }}
                 </h1>
                 <p class="hero-subtitle">
-                     احصل على نظام إدارة احترافي شامل أو ساهم في تطوير المشروع
+                     {{ t('Get a comprehensive professional management system or contribute to the project') }}
                 </p>
                 <div style="background: rgba(102,126,234,0.1); padding: 20px; border-radius: 15px; margin: 20px 0; border-inline-start: 5px solid #667eea;">
                     <h4 style="color: #667eea; margin-bottom: 15px;">
-                        <i class="fas fa-star"></i> لماذا تختار نظامنا؟
+                        <i class="fas fa-star"></i> {{ t('Why choose our system?') }}
                     </h4>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; text-align: right;">
-                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> إدارة شاملة للمنتجات</div>
-                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> نظام عملاء متقدم</div>
-                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> تقارير مفصلة</div>
-                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> واجهة عربية احترافية</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> {{ t('Comprehensive product management') }}</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> {{ t('Advanced customer system') }}</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> {{ t('Detailed reports') }}</div>
+                        <div><i class="fas fa-check-circle" style="color: #28a745;"></i> {{ t('Professional Arabic interface') }}</div>
                     </div>
                 </div>
 
@@ -62,20 +62,20 @@
                 <div class="tab-buttons">
                     <button class="tab-btn active" onclick="switchTab('purchase', event)">
                         <i class="fas fa-shopping-cart"></i>
-                        <span>شراء النظام</span>
-                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">احصل على النظام كاملاً</small>
+                        <span>{{ t('Purchase the System') }}</span>
+                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">{{ t('Get the complete system') }}</small>
                     </button>
                     <button class="tab-btn" onclick="switchTab('donation', event)">
                         <i class="fas fa-heart"></i>
-                        <span>دعم المشروع</span>
-                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">ساهم في التطوير</small>
+                        <span>{{ t('Project Support') }}</span>
+                        <small style="display: block; font-size: 0.8rem; opacity: 0.8;">{{ t('Contribute to development') }}</small>
                     </button>
                 </div>
             <div class="wa-strip">
                 <i class="fab fa-whatsapp"></i>
-                <span>طريقة الدفع التي تريدها غير متاحة؟ تواصل معنا مباشرة على واتساب وسنرتب كل شيء.</span>
+                <span>{{ t('Your preferred payment method is not available? Contact us directly on WhatsApp and we will arrange everything.') }}</span>
                 <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="wa-strip-btn">
-                    <i class="fab fa-whatsapp"></i> تواصل واتساب
+                    <i class="fab fa-whatsapp"></i> {{ t('Contact WhatsApp') }}
                 </a>
             </div>
                 <div>
@@ -104,39 +104,39 @@
             <div class="progress-steps" id="purchase-progress">
                 <div class="step active" id="step-package">
                     <div class="step-number">1</div>
-                    <div class="step-label">باقة موحّدة</div>
+                    <div class="step-label">{{ t('Unified Package') }}</div>
                 </div>
                 <div class="step" id="step-payment">
                     <div class="step-number">2</div>
-                    <div class="step-label">طريقة الدفع</div>
+                    <div class="step-label">{{ t('Payment Method') }}</div>
                 </div>
                 <div class="step" id="step-complete">
                     <div class="step-number">3</div>
-                    <div class="step-label">إتمام الدفع</div>
+                    <div class="step-label">{{ t('Complete Payment') }}</div>
                 </div>
             </div>
 
             <div class="payment-card" style="max-width: 1000px; margin: 0 auto 30px;">
-  <h3 style="text-align:center;color:#007A3D;"><i class="fas fa-box-open"></i> الباقة الموحّدة — جميع الميزات</h3>
-  <p style="text-align:center;color:#666;">المنصة متاحة بباقة واحدة تشمل كل الوحدات والميزات.</p>
+  <h3 style="text-align:center;color:#007A3D;"><i class="fas fa-box-open"></i> {{ t('Unified Package — All Features') }}</h3>
+  <p style="text-align:center;color:#666;">{{ t('The platform is available in a single package including all modules and features.') }}</p>
 </div>
 
 <div id="purchase-payment-methods" style="display: none;">
                 <div class="payment-card" style="margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
                     <h3 style="margin: 0; font-size: 1.8rem;">
-                        <i class="fas fa-credit-card"></i> اختر طريقة الدفع المناسبة
+                        <i class="fas fa-credit-card"></i> {{ t('Choose a Suitable Payment Method') }}
                     </h3>
-                    <p style="margin: 10px 0 0 0; opacity: 0.9;">جميع الطرق آمنة ومحمية بتشفير SSL</p>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">{{ t('All methods are secure and protected with SSL encryption') }}</p>
                 </div>
                 <div class="payment-methods">
 
                 {% if pay_config.methods.crypto %}
                 <div class="payment-card" onclick="selectMethod('crypto', event)">
                     <i class="fab fa-bitcoin payment-icon"></i>
-                    <div class="payment-title">العملات الرقمية</div>
+                    <div class="payment-title">{{ t('Cryptocurrencies') }}</div>
                     <p class="payment-desc">
                         Bitcoin, Ethereum, USDT, BNB
-                        <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
+                        <br><small class="text-success"><i class="fas fa-shield-alt"></i> {{ t('Secure and Anonymous') }}</small>
                     </p>
                 </div>
                 {% endif %}
@@ -144,10 +144,10 @@
                 {% if pay_config.methods.card %}
                 <div class="payment-card" onclick="selectMethod('card', event)">
                     <i class="fas fa-credit-card payment-icon"></i>
-                    <div class="payment-title">البطاقات البنكية</div>
+                    <div class="payment-title">{{ t('Bank Cards') }}</div>
                     <p class="payment-desc">
                         Visa, Mastercard, Amex
-                        <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
+                        <br><small class="text-info"><i class="fas fa-lock"></i> {{ t('SSL Encryption') }}</small>
                     </p>
                 </div>
                 {% endif %}
@@ -157,8 +157,8 @@
                     <i class="fab fa-paypal payment-icon"></i>
                     <div class="payment-title">PayPal</div>
                     <p class="payment-desc">
-                        دفع سريع وآمن
-                        <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
+                        {{ t('Fast and Secure Payment') }}
+                        <br><small class="text-primary"><i class="fas fa-check-circle"></i> {{ t('Buyer Protection') }}</small>
                     </p>
                 </div>
                 {% endif %}
@@ -166,10 +166,10 @@
                 {% if pay_config.methods.bank %}
                 <div class="payment-card" onclick="selectMethod('bank', event)">
                     <i class="fas fa-university payment-icon"></i>
-                    <div class="payment-title">تحويل بنكي</div>
+                    <div class="payment-title">{{ t('Bank Transfer') }}</div>
                     <p class="payment-desc">
-                        التحويل المباشر
-                        <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
+                        {{ t('Direct Transfer') }}
+                        <br><small class="text-secondary"><i class="fas fa-building"></i> {{ t('For Large Amounts') }}</small>
                     </p>
                 </div>
                 {% endif %}
@@ -184,23 +184,23 @@
                     <i class="fas fa-heart"></i>
                 </div>
                 <h3 style="color: #ff6b6b; margin-bottom: 20px; font-size: 2rem;">
-                    <i class="fas fa-heart"></i> ساهم في تطوير المشروع
+                    <i class="fas fa-heart"></i> {{ t('Contribute to Project Development') }}
                 </h3>
                 <p style="font-size: 1.2rem; color: #666; margin-bottom: 20px; line-height: 1.8;">
-                    تبرعك يساعدنا في تحسين النظام وإضافة ميزات جديدة وتقديم خدمات أفضل للجميع
+                    {{ t('Your donation helps us improve the system, add new features, and provide better services for everyone') }}
                 </p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px;">
                     <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-code" style="color: #667eea; font-size: 1.5rem;"></i>
-                        <p style="margin: 10px 0 0 0; color: #666;">تطوير ميزات جديدة</p>
+                        <p style="margin: 10px 0 0 0; color: #666;">{{ t('Develop New Features') }}</p>
                     </div>
                     <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-bug" style="color: #667eea; font-size: 1.5rem;"></i>
-                        <p style="margin: 10px 0 0 0; color: #666;">إصلاح الأخطاء</p>
+                        <p style="margin: 10px 0 0 0; color: #666;">{{ t('Fix Bugs') }}</p>
                     </div>
                     <div style="background: white; padding: 15px; border-radius: 10px; border-inline-start: 4px solid #28a745;">
                         <i class="fas fa-headset" style="color: #667eea; font-size: 1.5rem;"></i>
-                        <p style="margin: 10px 0 0 0; color: #666;">تحسين الدعم الفني</p>
+                        <p style="margin: 10px 0 0 0; color: #666;">{{ t('Improve Technical Support') }}</p>
                     </div>
                 </div>
             </div>
@@ -210,10 +210,10 @@
                 {% if pay_config.methods.crypto %}
                 <div class="payment-card" onclick="selectMethod('crypto', event)">
                 <i class="fab fa-bitcoin payment-icon"></i>
-                <div class="payment-title">العملات الرقمية</div>
+                <div class="payment-title">{{ t('Cryptocurrencies') }}</div>
                 <p class="payment-desc">
                     Bitcoin, Ethereum, USDT, BNB
-                    <br><small class="text-success"><i class="fas fa-shield-alt"></i> آمن ومجهول</small>
+                    <br><small class="text-success"><i class="fas fa-shield-alt"></i> {{ t('Secure and Anonymous') }}</small>
                 </p>
             </div>
                 {% endif %}
@@ -221,10 +221,10 @@
                 {% if pay_config.methods.card %}
             <div class="payment-card" onclick="selectMethod('card', event)">
                 <i class="fas fa-credit-card payment-icon"></i>
-                <div class="payment-title">البطاقات البنكية</div>
+                <div class="payment-title">{{ t('Bank Cards') }}</div>
                 <p class="payment-desc">
                     Visa, Mastercard, Amex
-                    <br><small class="text-info"><i class="fas fa-lock"></i> تشفير SSL</small>
+                    <br><small class="text-info"><i class="fas fa-lock"></i> {{ t('SSL Encryption') }}</small>
                 </p>
             </div>
                 {% endif %}
@@ -234,8 +234,8 @@
                 <i class="fab fa-paypal payment-icon"></i>
                 <div class="payment-title">PayPal</div>
                 <p class="payment-desc">
-                    دفع سريع وآمن
-                    <br><small class="text-primary"><i class="fas fa-check-circle"></i> حماية المشتري</small>
+                    {{ t('Fast and Secure Payment') }}
+                    <br><small class="text-primary"><i class="fas fa-check-circle"></i> {{ t('Buyer Protection') }}</small>
                 </p>
             </div>
                 {% endif %}
@@ -243,10 +243,10 @@
                 {% if pay_config.methods.bank %}
             <div class="payment-card" onclick="selectMethod('bank', event)">
                 <i class="fas fa-university payment-icon"></i>
-                <div class="payment-title">تحويل بنكي</div>
+                <div class="payment-title">{{ t('Bank Transfer') }}</div>
                 <p class="payment-desc">
-                    التحويل المباشر
-                    <br><small class="text-secondary"><i class="fas fa-building"></i> للمبالغ الكبيرة</small>
+                    {{ t('Direct Transfer') }}
+                    <br><small class="text-secondary"><i class="fas fa-building"></i> {{ t('For Large Amounts') }}</small>
                 </p>
             </div>
                 {% endif %}
@@ -258,52 +258,52 @@
             <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
                 <i class="fab fa-bitcoin" style="font-size: 3rem; margin-bottom: 15px;"></i>
                 <h3 style="margin: 0; font-size: 1.8rem;">
-                    الدفع بالعملات الرقمية
+                    {{ t('Pay with Cryptocurrency') }}
                 </h3>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع آمن ومجهول بدون رسوم إضافية</p>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">{{ t('Secure and anonymous payment with no extra fees') }}</p>
             </div>
 
             <div class="alert alert-success" style="border-inline-start: 4px solid #28a745;">
                 <i class="fas fa-shield-alt mr-2"></i>
-                <strong>أمان كامل:</strong> لا تتبع، لا رسوم إضافية، تحويل فوري 
+                <strong>{{ t('Full Security:') }}</strong> {{ t('No tracking, no extra fees, instant transfer') }} 
             </div>
 
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                    <i class="fas fa-coins mr-2" style="color: #f5a623;"></i>اختر المبلغ (بالدولار)
+                    <i class="fas fa-coins mr-2" style="color: #f5a623;"></i>{{ t('Choose an Amount (USD)') }}
                 </label>
                 <div class="amount-options">
                     <button class="amount-btn" onclick="selectAmount(15)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$15</div>
-                        <small style="opacity: 0.7;">شكراً</small>
+                        <small style="opacity: 0.7;">{{ t('Thanks') }}</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(25)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$25</div>
-                        <small style="opacity: 0.7;">رائع</small>
+                        <small style="opacity: 0.7;">{{ t('Great') }}</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(50)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$50</div>
-                        <small style="opacity: 0.7;">مميز</small>
+                        <small style="opacity: 0.7;">{{ t('Excellent') }}</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(100)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$100</div>
-                        <small style="opacity: 0.7;">كريم</small>
+                        <small style="opacity: 0.7;">{{ t('Generous') }}</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(250)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$250</div>
-                        <small style="opacity: 0.7;">سخي</small>
+                        <small style="opacity: 0.7;">{{ t('Very Generous') }}</small>
                     </button>
                     <button class="amount-btn" onclick="selectAmount(500)">
                         <div style="font-size: 1.3rem; font-weight: 900;">$500</div>
                         <small style="opacity: 0.7;">VIP</small>
                     </button>
                 </div>
-                <input type="number" id="customAmount" class="form-control" placeholder="أو أدخل مبلغ مخصص (الحد الأدنى ${{ pay_config.min_display }})" min="{{ pay_config.min_display }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="number" id="customAmount" class="form-control" placeholder="{{ t('Or enter a custom amount (minimum $') }}{{ pay_config.min_display }})" min="{{ pay_config.min_display }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
 
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                    <i class="fab fa-bitcoin mr-2" style="color: #f7931a;"></i>اختر العملة الرقمية
+                    <i class="fab fa-bitcoin mr-2" style="color: #f7931a;"></i>{{ t('Choose Cryptocurrency') }}
                 </label>
                 <select class="form-control select2" id="cryptoType" style="font-size: 1.05rem; padding: 15px; border: 2px solid #dee2e6;">
                     {% for code, meta in lookups.get('crypto_types', []) %}
@@ -314,28 +314,28 @@
 
             <button class="btn btn-donate btn-block" onclick="generateCryptoPayment()" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                 <i class="fas fa-wallet mr-2"></i>
-                <span>إنشاء عنوان الدفع الآن</span>
+                <span>{{ t('Generate Payment Address Now') }}</span>
                 <i class="fas fa-arrow-left mr-2"></i>
             </button>
 
             <div class="crypto-info" id="cryptoPaymentInfo" style="display: none;">
                 <h4 class="text-center mb-4">
                     <i class="fas fa-qrcode mr-2"></i>
-                    معلومات الدفع
+                    {{ t('Payment Information') }}
                 </h4>
 
                 <div class="features-list">
                     <div class="feature-item">
                         <i class="fas fa-user-secret"></i>
-                        <strong>خصوصية كاملة:</strong> لا نحتفظ بأي معلومات شخصية
+                        <strong>{{ t('Full Privacy:') }}</strong> {{ t('We do not retain any personal information') }}
                     </div>
                     <div class="feature-item">
                         <i class="fas fa-bolt"></i>
-                        <strong>فوري:</strong> التأكيد خلال 10-30 دقيقة
+                        <strong>{{ t('Instant:') }}</strong> {{ t('Confirmation within 10-30 minutes') }}
                     </div>
                     <div class="feature-item">
                         <i class="fas fa-shield-alt"></i>
-                        <strong>آمن:</strong> تشفير متقدم وحماية كاملة
+                        <strong>{{ t('Secure:') }}</strong> {{ t('Advanced encryption and full protection') }}
                     </div>
                 </div>
 
@@ -349,14 +349,14 @@
                 <div class="wallet-address">
                     <span id="walletAddress">bc1q...</span>
                     <button class="copy-btn" onclick="copyAddress()">
-                        <i class="fas fa-copy"></i> نسخ
+                        <i class="fas fa-copy"></i> {{ t('Copy') }}
                     </button>
                 </div>
 
                 <p class="text-center mt-3 mb-0">
                     <small>
                         <i class="fas fa-info-circle"></i>
-                        أرسل المبلغ المحدد إلى العنوان أعلاه
+                        {{ t('Send the specified amount to the address above') }}
                     </small>
                 </p>
             </div>
@@ -379,34 +379,33 @@
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
                 <i class="fas fa-credit-card" style="font-size: 3rem; margin-bottom: 15px;"></i>
                 <h3 style="margin: 0; font-size: 1.8rem;">
-                    الدفع بالبطاقة البنكية
+                    {{ t('Pay by Bank Card') }}
                 </h3>
                 <p style="margin: 10px 0 0 0; opacity: 0.9;">Visa • Mastercard • American Express</p>
             </div>
 
             <div class="alert alert-info" style="border-inline-start: 4px solid #17a2b8;">
                 <i class="fas fa-lock mr-2"></i>
-                <strong>بدون مشاركة بيانات بنكية:</strong> لا نطلب رقم البطاقة هنا — الإتمام يتم بأمان مع فريقنا
+                <strong>{{ t('No Bank Details Shared:') }}</strong> {{ t('We do not ask for card numbers here - completion is handled securely with our team') }}
             </div>
 
             <div class="card-manual-note">
                 <i class="fas fa-info-circle"></i>
-                <strong>كيف يتم الدفع بالبطاقة؟</strong>
-                سجّل المبلغ وبيانات التواصل أدناه، وسيتواصل معك فريقنا عبر واتساب
-                لإتمام الدفع بالبطاقة بشكل آمن. لا تُدخل بيانات بطاقتك هنا أبداً.
+                <strong>{{ t('How is card payment processed?') }}</strong>
+                {{ t('Enter the amount and contact details below; our team will contact you via WhatsApp to complete the card payment securely. Never enter your card details here.') }}
             </div>
             <form id="cardPaymentForm" action="">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                        <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ (USD)
+                        <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>{{ t('Amount (USD)') }}
                     </label>
-                    <input type="number" id="cardAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="أدخل المبلغ (الحد الأدنى ${{ pay_config.min_display }})" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                    <input type="number" id="cardAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="{{ t('Enter amount (minimum $') }}{{ pay_config.min_display }})" required style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
                 </div>
 
                 <button type="submit" class="btn btn-donate btn-block" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                     <i class="fas fa-check-circle mr-2"></i>
-                    <span>تسجيل طلب الدفع</span>
+                    <span>{{ t('Submit Payment Request') }}</span>
                     <i class="fas fa-arrow-left mr-2"></i>
                 </button>
 
@@ -425,24 +424,24 @@
             <div style="background: linear-gradient(135deg, #0070ba 0%, #1546a0 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
                 <i class="fab fa-paypal" style="font-size: 3rem; margin-bottom: 15px;"></i>
                 <h3 style="margin: 0; font-size: 1.8rem;">
-                    الدفع عبر PayPal
+                    {{ t('Pay via PayPal') }}
                 </h3>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">دفع سريع وآمن مع حماية المشتري</p>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">{{ t('Fast and secure payment with buyer protection') }}</p>
             </div>
 
             <div class="alert alert-info" style="border-inline-start: 4px solid #0070ba;">
                 <i class="fas fa-shield-alt mr-2"></i>
-                <strong>حماية كاملة:</strong> استرداد الأموال متاح • لا حاجة لبطاقة ائتمان 
+                <strong>{{ t('Full Protection:') }}</strong> {{ t('Refunds available • No credit card required') }} 
             </div>
 
             <div class="text-center" id="paypal-button-container">
                 
                 <button class="btn btn-lg" onclick="handlePayPalPayment()" style="background: #0070ba; color: white; font-size: 1.3rem; padding: 20px 50px; border-radius: 50px; border: none; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)'">
                     <i class="fab fa-paypal mr-2" style="font-size: 1.5rem;"></i>
-                    <span>متابعة مع PayPal</span>
+                    <span>{{ t('Continue with PayPal') }}</span>
                 </button>
                 <p class="mt-3 text-muted">
-                    <i class="fas fa-info-circle"></i> سيتم توجيهك إلى صفحة PayPal الآمنة
+                    <i class="fas fa-info-circle"></i> {{ t('You will be redirected to the secure PayPal page') }}
                 </p>
             </div>
         </div>
@@ -452,80 +451,80 @@
             <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 25px; border-radius: 15px; margin-bottom: 30px; color: white; text-align: center;">
                 <i class="fas fa-university" style="font-size: 3rem; margin-bottom: 15px;"></i>
                 <h3 style="margin: 0; font-size: 1.8rem;">
-                    التحويل البنكي المباشر
+                    {{ t('Direct Bank Transfer') }}
                 </h3>
-                <p style="margin: 10px 0 0 0; opacity: 0.9;">للمبالغ الكبيرة والتعاملات الرسمية</p>
+                <p style="margin: 10px 0 0 0; opacity: 0.9;">{{ t('For large amounts and official transactions') }}</p>
             </div>
 
             {% if pay_config.bank %}
             <div class="bank-details">
-                <h4><i class="fas fa-university"></i> بيانات الحساب البنكي</h4>
+                <h4><i class="fas fa-university"></i> {{ t('Bank Account Details') }}</h4>
                 {% if pay_config.bank.bank_name %}
-                <div class="bank-row"><span class="bank-label">البنك</span><span class="bank-value">{{ pay_config.bank.bank_name }}</span></div>
+                <div class="bank-row"><span class="bank-label">{{ t('Bank') }}</span><span class="bank-value">{{ pay_config.bank.bank_name }}</span></div>
                 {% endif %}
                 {% if pay_config.bank.account_name %}
-                <div class="bank-row"><span class="bank-label">اسم الحساب</span><span class="bank-value">{{ pay_config.bank.account_name }}</span></div>
+                <div class="bank-row"><span class="bank-label">{{ t('Account Name') }}</span><span class="bank-value">{{ pay_config.bank.account_name }}</span></div>
                 {% endif %}
                 {% if pay_config.bank.account_number %}
-                <div class="bank-row"><span class="bank-label">رقم الحساب</span><span class="bank-value">{{ pay_config.bank.account_number }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.account_number }}')">نسخ</button></span></div>
+                <div class="bank-row"><span class="bank-label">{{ t('Account Number') }}</span><span class="bank-value">{{ pay_config.bank.account_number }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.account_number }}')">{{ t('Copy') }}</button></span></div>
                 {% endif %}
                 {% if pay_config.bank.iban %}
-                <div class="bank-row"><span class="bank-label">IBAN</span><span class="bank-value">{{ pay_config.bank.iban }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.iban }}')">نسخ</button></span></div>
+                <div class="bank-row"><span class="bank-label">IBAN</span><span class="bank-value">{{ pay_config.bank.iban }} <button type="button" class="bank-copy" onclick="navigator.clipboard.writeText('{{ pay_config.bank.iban }}')">{{ t('Copy') }}</button></span></div>
                 {% endif %}
                 {% if pay_config.bank.swift %}
                 <div class="bank-row"><span class="bank-label">SWIFT</span><span class="bank-value">{{ pay_config.bank.swift }}</span></div>
                 {% endif %}
                 {% if pay_config.bank.branch %}
-                <div class="bank-row"><span class="bank-label">الفرع</span><span class="bank-value">{{ pay_config.bank.branch }}</span></div>
+                <div class="bank-row"><span class="bank-label">{{ t('Branch') }}</span><span class="bank-value">{{ pay_config.bank.branch }}</span></div>
                 {% endif %}
                 {% if pay_config.bank.country %}
-                <div class="bank-row"><span class="bank-label">الدولة</span><span class="bank-value">{{ pay_config.bank.country }}</span></div>
+                <div class="bank-row"><span class="bank-label">{{ t('Country') }}</span><span class="bank-value">{{ pay_config.bank.country }}</span></div>
                 {% endif %}
             </div>
             {% endif %}
             <div class="alert alert-warning" style="border-inline-start: 4px solid #ffc107;">
                 <i class="fas fa-info-circle mr-2"></i>
-                <strong>ملاحظة:</strong> بعد إتمام التحويل من تطبيق بنكك، سجّل العملية أدناه ليتم تأكيدها من الإدارة
+                <strong>{{ t('Note') }}:</strong> {{ t('After completing the transfer from your bank app, register the transaction below for admin confirmation') }}
             </div>
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                    <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>المبلغ المحوّل (USD)
+                    <i class="fas fa-dollar-sign mr-2" style="color: #28a745;"></i>{{ t('Transferred Amount (USD)') }}
                 </label>
-                <input type="number" id="bankAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="أدخل المبلغ الذي حوّلته" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="number" id="bankAmount" class="form-control" min="{{ pay_config.min_display }}" placeholder="{{ t('Enter the amount you transferred') }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                    <i class="fas fa-user mr-2" style="color: #667eea;"></i>الاسم الكامل
+                    <i class="fas fa-user mr-2" style="color: #667eea;"></i>{{ t('Full Name') }}
                 </label>
-                <input type="text" id="bankName" class="form-control" placeholder="اسمك الكامل" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="text" id="bankName" class="form-control" placeholder="{{ t('Your full name') }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 1.1rem; color: #333;">
-                    <i class="fas fa-phone mr-2" style="color: #667eea;"></i>رقم الجوال (واتساب)
+                    <i class="fas fa-phone mr-2" style="color: #667eea;"></i>{{ t('Mobile Number (WhatsApp)') }}
                 </label>
-                <input type="text" id="bankPhone" class="form-control" placeholder="رقم الجوال للتواصل" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
+                <input type="text" id="bankPhone" class="form-control" placeholder="{{ t('Mobile number for contact') }}" style="font-size: 1.1rem; padding: 15px; border: 2px solid #dee2e6;">
             </div>
             <button type="button" class="btn btn-donate btn-block" onclick="submitBankTransfer()" style="font-size: 1.2rem; padding: 18px; margin-top: 25px;">
                 <i class="fas fa-check-circle mr-2"></i>
-                <span>سجّل التحويل للمراجعة</span>
+                <span>{{ t('Submit Transfer for Review') }}</span>
             </button>
             <div class="text-center">
                 <a href="mailto:{{ config.COMPANY_EMAIL }}?subject=Bank Transfer Request" class="btn btn-donate btn-lg" style="font-size: 1.2rem; padding: 18px 40px; margin: 10px;">
                     <i class="fas fa-envelope mr-2"></i>
-                    طلب تفاصيل الحساب عبر البريد
+                    {{ t('Request Account Details by Email') }}
                 </a>
 
                 <p class="mt-4" style="font-size: 1.1rem; color: #666;">
-                    <strong>أو تواصل معنا مباشرة:</strong>
+                    <strong>{{ t('Or contact us directly:') }}</strong>
                 </p>
                 <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" class="btn btn-lg mt-2" style="background: #25D366; color: white; font-size: 1.2rem; padding: 18px 40px; border-radius: 50px; font-weight: 700; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
                     <i class="fab fa-whatsapp mr-2" style="font-size: 1.5rem;"></i>
-                    تواصل عبر WhatsApp
+                    {{ t('Contact via WhatsApp') }}
                 </a>
 
                 <div class="alert alert-info mt-3">
                     <i class="fas fa-info-circle mr-2"></i>
-                    <strong>للمبالغ الكبيرة (+$500):</strong> يُرجى التواصل معنا للحصول على تفاصيل الحساب البنكي
+                    <strong>{{ t('For Large Amounts (+$500):') }}</strong> {{ t('Please contact us for bank account details') }}
                 </div>
             </div>
             </div>
@@ -552,11 +551,11 @@
                 html: `
                     <p>${orderRefText}</p>
                     <hr>
-                    <p>تواصل معنا مباشرة على واتساب لإتمام العملية</p>
+                    <p>{{ t('Contact us directly on WhatsApp to complete the transaction') }}</p>
                 `,
-                confirmButtonText: 'تواصل عبر WhatsApp',
+                confirmButtonText: {{ t('Contact via WhatsApp')|tojson }},
                 showCancelButton: true,
-                cancelButtonText: 'إلغاء'
+                cancelButtonText: {{ t('Cancel')|tojson }}
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.open(waLink(orderRefText), '_blank');
@@ -729,8 +728,8 @@
             if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
+                    title: {{ t('Error')|tojson }},
+                    text: {{ t('Minimum donation is $')|tojson }} + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -739,7 +738,7 @@
             const cryptoType = document.getElementById('cryptoType').value;
 
             Swal.fire({
-                title: 'جاري إنشاء عنوان الدفع...',
+                title: {{ t('Generating payment address...')|tojson }},
                 html: '<i class="fas fa-spinner fa-spin fa-3x"></i>',
                 showConfirmButton: false,
                 allowOutsideClick: false
@@ -750,16 +749,16 @@
 
             if (currentTab === 'purchase') {
 
-                const customerName = prompt('الرجاء إدخال اسمك الكامل:');
-                const customerEmail = prompt('البريد الإلكتروني:');
-                const customerPhone = prompt('رقم الجوال (WhatsApp):');
-                const companyName = prompt('اسم الشركة (اختياري):');
+                const customerName = prompt({{ t('Please enter your full name:')|tojson }});
+                const customerEmail = prompt({{ t('Email:')|tojson }});
+                const customerPhone = prompt({{ t('Mobile number (WhatsApp):')|tojson }});
+                const companyName = prompt({{ t('Company name (optional):')|tojson }});
 
                 if (!customerName || !customerEmail) {
                     Swal.fire({
                         icon: 'error',
-                        title: 'خطأ',
-                        text: 'الاسم والبريد الإلكتروني مطلوبان',
+                        title: {{ t('Error')|tojson }},
+                        text: {{ t('Name and email are required')|tojson }},
                         confirmButtonColor: '#667eea'
                     });
                     return;
@@ -782,9 +781,9 @@
                     }
                 };
             } else {
-                const donorName = prompt('اسمك (اختياري):');
-                const donorEmail = prompt('بريدك الإلكتروني (اختياري):');
-                const donorMessage = prompt('رسالة قصيرة (اختياري):');
+                const donorName = prompt({{ t('Your name (optional):')|tojson }});
+                const donorEmail = prompt({{ t('Your email (optional):')|tojson }});
+                const donorMessage = prompt({{ t('A short message (optional):')|tojson }});
 
                 apiEndpoint = '/payment-vault/api/donation';
                 requestData = {
@@ -811,39 +810,39 @@
 
                 if (data.success) {
                     const recordId = data.purchase_id || data.donation_id;
-                    const orderRef = (currentTab === 'purchase' ? 'طلب شراء #' : 'تبرع #') + (recordId || '') + ' - المبلغ: $' + paymentAmount;
+                    const orderRef = (currentTab === 'purchase' ? {{ t('Purchase request #')|tojson }} : {{ t('Donation #')|tojson }}) + (recordId || '') + {{ t(' - Amount: $')|tojson }} + paymentAmount;
 
                     if (data.payment_address) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'تم إنشاء عنوان الدفع!',
+                            title: {{ t('Payment address created!')|tojson }},
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 1.2rem; margin-bottom: 20px;">
-                                        <strong>رقم الطلب: #${recordId}</strong>
+                                        <strong>{{ t('Order number') }}: #${recordId}</strong>
                                     </p>
                                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                        <p><strong>المبلغ المطلوب:</strong></p>
+                                        <p><strong>{{ t('Amount Due') }}:</strong></p>
                                         <p style="font-size: 1.5rem; color: #667eea; font-weight: 900;">
                                             ${data.payment_amount || paymentAmount} ${data.crypto_currency || ''}
                                         </p>
                                         <hr>
-                                        <p><strong>عنوان المحفظة:</strong></p>
+                                        <p><strong>{{ t('Wallet Address') }}:</strong></p>
                                         <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 5px;">
                                             ${data.payment_address}
                                         </p>
                                         <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
                                                 class="btn btn-sm btn-primary mt-2">
-                                            <i class="fas fa-copy"></i> نسخ العنوان
+                                            {{ t('Copy Address') }}
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.95rem;">
                                         <i class="fas fa-info-circle"></i>
-                                        أرسل المبلغ المحدد إلى العنوان أعلاه
+                                        {{ t('Send the specified amount to the address above') }}
                                     </p>
                                 </div>
                             `,
-                            confirmButtonText: 'حسناً',
+                            confirmButtonText: {{ t('OK')|tojson }},
                             confirmButtonColor: '#28a745',
                             width: 600,
                             allowOutsideClick: false
@@ -851,14 +850,14 @@
                     } else if (data.manual_address) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'تم تسجيل طلبك بنجاح!',
+                            title: {{ t('Request registered successfully!')|tojson }},
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 1.2rem; margin-bottom: 20px;">
-                                        <strong>رقم الطلب: #${recordId}</strong>
+                                        <strong>{{ t('Order number') }}: #${recordId}</strong>
                                     </p>
                                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                        <p><strong>حوّل المبلغ مباشرة إلى هذا العنوان (${data.crypto_currency || ''}):</strong></p>
+                                        <p><strong>{{ t('Transfer the amount directly to this address') }} (${data.crypto_currency || ''}):</strong></p>
                                         <p style="font-size: 1.5rem; color: #667eea; font-weight: 900;">
                                             $${paymentAmount}
                                         </p>
@@ -868,35 +867,35 @@
                                         </p>
                                         <button onclick="navigator.clipboard.writeText('${data.manual_address}')"
                                                 class="btn btn-sm btn-primary mt-2">
-                                            <i class="fas fa-copy"></i> نسخ العنوان
+                                            {{ t('Copy Address') }}
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.95rem;">
                                         <i class="fas fa-info-circle"></i>
-                                        بعد التحويل سيتم تأكيد طلبك من الإدارة
+                                        {{ t('After transfer, your request will be confirmed by the admin') }}
                                     </p>
                                 </div>
                             `,
-                            confirmButtonText: 'حسناً',
+                            confirmButtonText: {{ t('OK')|tojson }},
                             confirmButtonColor: '#28a745',
                             width: 600,
                             allowOutsideClick: false
                         });
                     } else {
-                        whatsappFallbackSwal('تم تسجيل طلبك بنجاح!', orderRef);
+                        whatsappFallbackSwal({{ t('Request registered successfully!')|tojson }}, orderRef);
                     }
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'خطأ',
-                        text: data.error || 'حدث خطأ أثناء إنشاء الطلب',
+                        title: {{ t('Error')|tojson }},
+                        text: data.error || {{ t('An error occurred while creating the request')|tojson }},
                         confirmButtonColor: '#dc3545'
                     });
                 }
             })
             .catch(error => {
                 Swal.close();
-                whatsappFallbackSwal('خطأ في الاتصال', '');
+                whatsappFallbackSwal({{ t('Communication error')|tojson }}, '');
             });
         }
 
@@ -909,8 +908,8 @@
             if (!paymentAmount || paymentAmount < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
+                    title: {{ t('Error')|tojson }},
+                    text: {{ t('Minimum donation is $')|tojson }} + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -920,8 +919,8 @@
             if (!donorName) {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'تنبيه',
-                    text: 'الرجاء إدخال الاسم الكامل',
+                    title: {{ t('Warning')|tojson }},
+                    text: {{ t('Please enter your full name')|tojson }},
                     confirmButtonColor: '#667eea'
                 });
                 return;
@@ -947,14 +946,14 @@
                 const data = await response.json();
                 if (data.success) {
                     whatsappFallbackSwal(
-                        'تم تسجيل تحويلك بنجاح!',
-                        'تحويل بنكي #' + (data.donation_id || '') + ' - المبلغ: $' + paymentAmount
+                        {{ t('Transfer registered successfully!')|tojson }},
+                        {{ t('Bank Transfer #')|tojson }} + (data.donation_id || '') + {{ t(' - Amount: $')|tojson }} + paymentAmount
                     );
                 } else {
-                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error || 'تعذر تسجيل التحويل'});
+                    Swal.fire({icon: 'error', title: {{ t('Error')|tojson }}, text: data.error || {{ t('Unable to register the transfer')|tojson }}});
                 }
             } catch (error) {
-                whatsappFallbackSwal('خطأ في الاتصال', '');
+                whatsappFallbackSwal({{ t('Communication error')|tojson }}, '');
             }
         }
 
@@ -964,8 +963,8 @@
             navigator.clipboard.writeText(address).then(() => {
                 Swal.fire({
                     icon: 'success',
-                    title: 'تم النسخ!',
-                    text: 'تم نسخ العنوان إلى الحافظة',
+                    title: {{ t('Copied!')|tojson }},
+                    text: {{ t('Address copied to clipboard')|tojson }},
                     timer: 2000,
                     showConfirmButton: false
                 });
@@ -979,24 +978,24 @@
             if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
+                    title: {{ t('Error')|tojson }},
+                    text: {{ t('Minimum donation is $')|tojson }} + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
 
             const { value: formValues } = await Swal.fire({
-                title: 'بيانات الدفع - PayPal',
+                title: {{ t('Payment Details - PayPal')|tojson }},
                 html:
-                    '<input id="swal-name" class="swal2-input" placeholder="الاسم الكامل" required>' +
-                    '<input id="swal-email" class="swal2-input" placeholder="البريد الإلكتروني" type="email" required>' +
-                    '<input id="swal-phone" class="swal2-input" placeholder="رقم الجوال" type="tel">' +
-                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="اسم الشركة (اختياري)">' : ''),
+                    '<input id="swal-name" class="swal2-input" placeholder="{{ t('Full Name') }}" required>' +
+                    '<input id="swal-email" class="swal2-input" placeholder="{{ t('Email') }}" type="email" required>' +
+                    '<input id="swal-phone" class="swal2-input" placeholder="{{ t('Mobile Number') }}" type="tel">' +
+                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="{{ t('Company Name (optional)') }}">' : ''),
                 focusConfirm: false,
                 showCancelButton: true,
-                cancelButtonText: 'إلغاء',
-                confirmButtonText: 'متابعة',
+                cancelButtonText: {{ t('Cancel')|tojson }},
+                confirmButtonText: {{ t('Continue')|tojson }},
                 preConfirm: () => {
                     return {
                         name: document.getElementById('swal-name').value,
@@ -1050,18 +1049,18 @@
                     if (data.payment_address) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'معلومات الدفع',
+                            title: {{ t('Payment Information')|tojson }},
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 1.1rem; margin-bottom: 15px;">
                                         <i class="fab fa-paypal" style="color: #0070ba;"></i>
-                                        <strong>دفع عبر PayPal</strong>
+                                        <strong>{{ t('Pay via PayPal') }}</strong>
                                     </p>
-                                    <p>رقم الطلب: #${data.purchase_id || data.donation_id}</p>
+                                    <p>{{ t('Order number') }}: #${data.purchase_id || data.donation_id}</p>
                                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                        <p><strong>المبلغ:</strong> $${paymentAmount}</p>
+                                        <p><strong>{{ t('Amount') }}:</strong> $${paymentAmount}</p>
                                         <p style="font-size: 0.9rem; color: #666;">
-                                            <i class="fas fa-exchange-alt"></i> يتم التحويل تلقائياً إلى Bitcoin
+                                            <i class="fas fa-exchange-alt"></i> {{ t('Automatically converted to Bitcoin') }}
                                         </p>
                                         <hr>
                                         <p style="word-break: break-all; font-family: monospace; font-size: 0.85rem;">
@@ -1069,42 +1068,42 @@
                                         </p>
                                         <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
                                                 class="btn btn-sm btn-primary">
-                                            <i class="fas fa-copy"></i> نسخ
+                                            <i class="fas fa-copy"></i> {{ t('Copy') }}
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.9rem;">
-                                        تم حفظ طلبك بنجاح
+                                        {{ t('Your request has been saved successfully') }}
                                     </p>
                                 </div>
                             `,
-                            confirmButtonText: 'حسناً',
+                            confirmButtonText: {{ t('OK')|tojson }},
                             width: 600
                         });
                     } else {
                         Swal.fire({
                             icon: 'success',
-                            title: 'تم الحفظ!',
+                            title: {{ t('Saved!')|tojson }},
                             html: `
-                                <p>رقم الطلب: #${data.purchase_id || data.donation_id}</p>
-                                <p>المبلغ: $${paymentAmount}</p>
+                                <p>{{ t('Order number') }}: #${data.purchase_id || data.donation_id}</p>
+                                <p>{{ t('Amount') }}: $${paymentAmount}</p>
                                 <hr>
-                                <p>سنتواصل معك عبر WhatsApp</p>
+                                <p>{{ t('We will contact you via WhatsApp') }}</p>
                             `,
-                            confirmButtonText: 'تواصل عبر WhatsApp'
+                            confirmButtonText: {{ t('Contact via WhatsApp')|tojson }}
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 const message = currentTab === 'purchase'
-                                    ? `طلب شراء #${data.purchase_id || ''} - $${paymentAmount}`
-                                    : `تبرع #${data.donation_id || ''} - $${paymentAmount}`;
+                                    ? `{{ t('Purchase request #') }} ${data.purchase_id || ''} - $${paymentAmount}`
+                                    : `{{ t('Donation #') }} ${data.donation_id || ''} - $${paymentAmount}`;
                                 window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }
                         });
                     }
                 } else {
-                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
+                    Swal.fire({icon: 'error', title: {{ t('Error')|tojson }}, text: data.error});
                 }
             } catch (error) {
-                whatsappFallbackSwal('خطأ في الاتصال', '');
+                whatsappFallbackSwal({{ t('Communication error')|tojson }}, '');
             }
         }
 
@@ -1117,24 +1116,24 @@
             if (!paymentAmount || parseFloat(paymentAmount) < DONATION_MIN) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ',
-                    text: 'الحد الأدنى للتبرع $' + DONATION_MIN_DISPLAY,
+                    title: {{ t('Error')|tojson }},
+                    text: {{ t('Minimum donation is $')|tojson }} + DONATION_MIN_DISPLAY,
                     confirmButtonColor: '#667eea'
                 });
                 return;
             }
 
             const { value: formValues } = await Swal.fire({
-                title: 'بيانات الدفع',
+                title: {{ t('Payment Details')|tojson }},
                 html:
-                    '<input id="swal-name" class="swal2-input" placeholder="الاسم الكامل" required>' +
-                    '<input id="swal-email" class="swal2-input" placeholder="البريد الإلكتروني" type="email" required>' +
-                    '<input id="swal-phone" class="swal2-input" placeholder="رقم الجوال" type="tel">' +
-                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="اسم الشركة (اختياري)">' : ''),
+                    '<input id="swal-name" class="swal2-input" placeholder="{{ t('Full Name') }}" required>' +
+                    '<input id="swal-email" class="swal2-input" placeholder="{{ t('Email') }}" type="email" required>' +
+                    '<input id="swal-phone" class="swal2-input" placeholder="{{ t('Mobile Number') }}" type="tel">' +
+                    (currentTab === 'purchase' ? '<input id="swal-company" class="swal2-input" placeholder="{{ t('Company Name (optional)') }}">' : ''),
                 focusConfirm: false,
                 showCancelButton: true,
-                cancelButtonText: 'إلغاء',
-                confirmButtonText: 'متابعة',
+                cancelButtonText: {{ t('Cancel')|tojson }},
+                confirmButtonText: {{ t('Continue')|tojson }},
                 preConfirm: () => {
                     return {
                         name: document.getElementById('swal-name').value,
@@ -1188,34 +1187,34 @@
                     if (data.payment_address) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'تم إنشاء عنوان الدفع!',
+                            title: {{ t('Payment address created!')|tojson }},
                             html: `
                                 <div style="text-align: center;">
                                     <p style="font-size: 1.2rem; margin-bottom: 20px;">
-                                        <strong>رقم الطلب: #${data.purchase_id || data.donation_id}</strong>
+                                        <strong>{{ t('Order number') }}: #${data.purchase_id || data.donation_id}</strong>
                                     </p>
                                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                                        <p><strong>المبلغ المطلوب:</strong></p>
+                                        <p><strong>{{ t('Amount Due') }}:</strong></p>
                                         <p style="font-size: 1.5rem; color: #667eea; font-weight: 900;">
                                             ${data.payment_amount || paymentAmount} ${data.crypto_currency || 'BTC'}
                                         </p>
                                         <hr>
-                                        <p><strong>عنوان المحفظة:</strong></p>
+                                        <p><strong>{{ t('Wallet Address') }}:</strong></p>
                                         <p style="word-break: break-all; font-family: monospace; background: white; padding: 10px; border-radius: 5px;">
                                             ${data.payment_address}
                                         </p>
                                         <button onclick="navigator.clipboard.writeText('${data.payment_address}')"
                                                 class="btn btn-sm btn-primary mt-2">
-                                            <i class="fas fa-copy"></i> نسخ العنوان
+                                            {{ t('Copy Address') }}
                                         </button>
                                     </div>
                                     <p style="color: #28a745; font-size: 0.95rem;">
                                         <i class="fas fa-check-circle"></i>
-                                        أرسل المبلغ المحدد إلى العنوان أعلاه
+                                        {{ t('Send the specified amount to the address above') }}
                                     </p>
                                 </div>
                             `,
-                            confirmButtonText: 'حسناً',
+                            confirmButtonText: {{ t('OK')|tojson }},
                             confirmButtonColor: '#28a745',
                             width: 600,
                             allowOutsideClick: false
@@ -1223,28 +1222,28 @@
                     } else {
                         Swal.fire({
                             icon: 'success',
-                            title: 'تم الحفظ!',
+                            title: {{ t('Saved!')|tojson }},
                             html: `
-                                <p>تم حفظ طلبك برقم: #${data.purchase_id || data.donation_id}</p>
-                                <p>المبلغ: $${paymentAmount}</p>
+                                <p>{{ t('Your request has been saved with number') }}: #${data.purchase_id || data.donation_id}</p>
+                                <p>{{ t('Amount') }}: $${paymentAmount}</p>
                                 <hr>
-                                <p>سيتم توجيهك للتواصل معنا عبر WhatsApp للحصول على تفاصيل الدفع</p>
+                                <p>{{ t('You will be directed to contact us via WhatsApp for payment details') }}</p>
                             `,
-                            confirmButtonText: 'تواصل عبر WhatsApp'
+                            confirmButtonText: {{ t('Contact via WhatsApp')|tojson }}
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 const message = currentTab === 'purchase'
-                                    ? `مرحباً، طلب شراء #${data.purchase_id || ''} - المبلغ: $${paymentAmount}`
-                                    : `مرحباً، تبرع #${data.donation_id || ''} - المبلغ: $${paymentAmount}`;
+                                    ? `{{ t('Hello, Purchase request #') }} ${data.purchase_id || ''} - {{ t('Amount') }}: $${paymentAmount}`
+                                    : `{{ t('Hello, Donation #') }} ${data.donation_id || ''} - {{ t('Amount') }}: $${paymentAmount}`;
                                 window.open('https://wa.me/{{ config.COMPANY_WHATSAPP }}?text=' + encodeURIComponent(message), '_blank');
                             }
                         });
                     }
                 } else {
-                    Swal.fire({icon: 'error', title: 'خطأ', text: data.error});
+                    Swal.fire({icon: 'error', title: {{ t('Error')|tojson }}, text: data.error});
                 }
             } catch (error) {
-                whatsappFallbackSwal('خطأ في الاتصال', '');
+                whatsappFallbackSwal({{ t('Communication error')|tojson }}, '');
             }
         });
     </script>
@@ -1255,18 +1254,18 @@
             <div class="row">
                 <div class="col-md-4 text-center mb-4">
                     <i class="fas fa-shield-alt" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
-                    <h5 style="color: #333; font-weight: 700;">أمان مضمون</h5>
-                    <p style="color: #666;">جميع المعاملات محمية بتشفير SSL 256-bit</p>
+                    <h5 style="color: #333; font-weight: 700;">{{ t('Guaranteed Security') }}</h5>
+                    <p style="color: #666;">{{ t('All transactions are protected with 256-bit SSL encryption') }}</p>
                 </div>
                 <div class="col-md-4 text-center mb-4">
                     <i class="fas fa-headset" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
-                    <h5 style="color: #333; font-weight: 700;">دعم فني 24/7</h5>
-                    <p style="color: #666;">فريق الدعم جاهز لمساعدتك في أي وقت</p>
+                    <h5 style="color: #333; font-weight: 700;">{{ t('24/7 Technical Support') }}</h5>
+                    <p style="color: #666;">{{ t('Our support team is ready to help you at any time') }}</p>
                 </div>
                 <div class="col-md-4 text-center mb-4">
                     <i class="fas fa-rocket" style="font-size: 3rem; color: #667eea; margin-bottom: 15px;"></i>
-                    <h5 style="color: #333; font-weight: 700;">تحديثات مستمرة</h5>
-                    <p style="color: #666;">نضيف ميزات جديدة باستمرار</p>
+                    <h5 style="color: #333; font-weight: 700;">{{ t('Continuous Updates') }}</h5>
+                    <p style="color: #666;">{{ t('We continuously add new features') }}</p>
                 </div>
             </div>
 
@@ -1287,11 +1286,11 @@
 
                 <p style="color: #666; margin: 15px 0;">
                     <i class="fas fa-heart" style="color: #ff6b6b;"></i>
-                    صُنع بحب من فريق Azad Systems
+                    {{ t('Made with love by the Azad Systems team') }}
                 </p>
 
                 <p style="color: #999; font-size: 0.9rem; margin: 0;">
-                    © 2025 Azad Systems. جميع الحقوق محفوظة.
+                    © 2025 Azad Systems. {{ t('All rights reserved.') }}
                 </p>
             </div>
         </div>

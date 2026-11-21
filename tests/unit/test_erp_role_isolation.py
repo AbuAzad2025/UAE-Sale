@@ -147,7 +147,7 @@ def seller_user(db, all_permissions):
 
 @pytest.fixture(scope="function")
 def manager_user(db, all_permissions):
-    """Manager: broader permissions but NOT manage_ledger or admin."""
+    """Manager: full tenant-admin permissions (incl. ledger/HR), NOT platform admin."""
     role = Role(
         name="Manager",
         name_ar="مدير",
@@ -162,6 +162,8 @@ def manager_user(db, all_permissions):
             all_permissions["manage_expenses"],
             all_permissions["manage_warehouse"],
             all_permissions["view_costs"],
+            all_permissions["manage_hr"],  # tenant admin reaches every tenant module
+            all_permissions["manage_ledger"],  # full tenant accounting control
         ],
     )
     db.session.add(role)

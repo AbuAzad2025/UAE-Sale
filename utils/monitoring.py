@@ -453,12 +453,16 @@ def setup_advanced_logging(app):
     logs_dir = os.path.join(app.root_path, "logs")
     os.makedirs(logs_dir, exist_ok=True)
 
-    perf_handler = logging.FileHandler(os.path.join(logs_dir, "performance.log"))
+    perf_handler = logging.FileHandler(
+        os.path.join(logs_dir, "performance.log"), encoding="utf-8"
+    )
     perf_handler.setLevel(logging.INFO)
     perf_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     perf_handler.setFormatter(perf_formatter)
 
-    error_handler = logging.FileHandler(os.path.join(logs_dir, "errors.log"))
+    error_handler = logging.FileHandler(
+        os.path.join(logs_dir, "errors.log"), encoding="utf-8"
+    )
     error_handler.setLevel(logging.ERROR)
     error_formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s"

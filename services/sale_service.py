@@ -299,17 +299,12 @@ class SaleService:
 
                 cost_basis = CostingService.cost_for_sale(product, quantity)
 
+                # Warehouse is a hard constraint: every product is sold from
+                # the selected warehouse only. No fallback to global stock —
+                # otherwise a sale could consume stock sitting elsewhere.
                 available, msg = StockService.check_availability(
                     product.id, quantity, warehouse_id=warehouse_id
                 )
-                if (
-                    not available
-                    and warehouse_id
-                    and not _warehouse_stock_is_authoritative(product)
-                ):
-                    available, msg = StockService.check_availability(
-                        product.id, quantity
-                    )
                 if not available:
                     raise ValidationError(f"{product.name}: {msg}")
 

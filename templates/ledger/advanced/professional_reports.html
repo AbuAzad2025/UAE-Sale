@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}تقارير مالية احترافية - Professional Financial Reports{% endblock %}
+{% block title %}{{ t('Professional Financial Reports') }}{% endblock %}
 
 {% block styles %}
 <style>
@@ -142,8 +142,8 @@
   <div class="report-dashboard">
     <div class="row">
       <div class="col-md-8">
-        <h2><i class="fas fa-chart-line mr-2"></i>التقارير المالية الاحترافية</h2>
-        <p>تقارير متقدمة مع رسوم بيانية تفاعلية وتحليلات شاملة</p>
+        <h2><i class="fas fa-chart-line mr-2"></i>{{ t('Professional Financial Reports') }}</h2>
+        <p>{{ t('Advanced reports with interactive charts and comprehensive analytics') }}</p>
       </div>
       <div class="col-md-4 text-right">
         <div class="export-buttons">
@@ -154,7 +154,7 @@
             <i class="fas fa-file-excel mr-1"></i>Excel
           </button>
           <button class="btn btn-light export-btn" onclick="window.print()">
-            <i class="fas fa-print mr-1"></i>طباعة
+            <i class="fas fa-print mr-1"></i>{{ t('Print') }}
           </button>
         </div>
       </div>
@@ -165,30 +165,30 @@
   <div class="row">
     <div class="col-md-3">
       <div class="stat-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <p>إجمالي الإيرادات</p>
+        <p>{{ t('Total Revenue') }}</p>
         <h3>{{ "{:,.2f}".format(total_revenue) }}</h3>
-        <p><i class="fas fa-arrow-up trend-up"></i> +15.3% من الشهر الماضي</p>
+        <p><i class="fas fa-arrow-up trend-up"></i> +15.3% {{ t('from last month') }}</p>
       </div>
     </div>
     <div class="col-md-3">
       <div class="stat-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-        <p>إجمالي المصروفات</p>
+        <p>{{ t('Total Expenses') }}</p>
         <h3>{{ "{:,.2f}".format(total_expenses) }}</h3>
-        <p><i class="fas fa-arrow-down trend-up"></i> -5.2% من الشهر الماضي</p>
+        <p><i class="fas fa-arrow-down trend-up"></i> -5.2% {{ t('from last month') }}</p>
       </div>
     </div>
     <div class="col-md-3">
       <div class="stat-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-        <p>صافي الربح</p>
+        <p>{{ t('Net Profit') }}</p>
         <h3>{{ "{:,.2f}".format(net_profit) }}</h3>
-        <p><i class="fas fa-arrow-up trend-up"></i> +23.7% من الشهر الماضي</p>
+        <p><i class="fas fa-arrow-up trend-up"></i> +23.7% {{ t('from last month') }}</p>
       </div>
     </div>
     <div class="col-md-3">
       <div class="stat-box" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-        <p>هامش الربح</p>
+        <p>{{ t('Profit Margin') }}</p>
         <h3>{{ "{:.1f}".format(profit_margin) }}%</h3>
-        <p><i class="fas fa-arrow-up trend-up"></i> +2.1% من الشهر الماضي</p>
+        <p><i class="fas fa-arrow-up trend-up"></i> +2.1% {{ t('from last month') }}</p>
       </div>
     </div>
   </div>
@@ -197,23 +197,23 @@
   <div class="report-filter">
     <form method="GET" class="form-inline" action="">
       <div class="form-group mr-3">
-        <label class="mr-2">من تاريخ:</label>
+        <label class="mr-2">{{ t('From Date') }}:</label>
         <input type="date" name="date_from" class="form-control" value="{{ date_from.strftime('%Y-%m-%d') }}">
       </div>
       <div class="form-group mr-3">
-        <label class="mr-2">إلى تاريخ:</label>
+        <label class="mr-2">{{ t('To Date') }}:</label>
         <input type="date" name="date_to" class="form-control" value="{{ date_to.strftime('%Y-%m-%d') }}">
       </div>
       <div class="form-group mr-3">
-        <label class="mr-2">نوع التقرير:</label>
+        <label class="mr-2">{{ t('Report Type') }}:</label>
       <select name="report_type" class="form-control select2">
         {% for code, meta in lookups.get('professional_report_types', []) %}
-        <option value="{{ code }}">{{ meta.ar }}</option>
+        <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
         {% endfor %}
       </select>
       </div>
       <button type="submit" class="btn btn-primary">
-        <i class="fas fa-filter mr-1"></i>تطبيق الفلتر
+        <i class="fas fa-filter mr-1"></i>{{ t('Apply Filter') }}
       </button>
     </form>
   </div>
@@ -223,18 +223,18 @@
     
     <div class="col-md-6">
       <div class="report-card">
-        <h4><i class="fas fa-chart-bar mr-2"></i>الإيرادات والمصروفات الشهرية</h4>
+        <h4><i class="fas fa-chart-bar mr-2"></i>{{ t('Monthly Revenue and Expenses') }}</h4>
         <div class="chart-container">
           <canvas id="revenueExpenseChart"></canvas>
         </div>
         <div class="chart-legend">
           <div class="legend-item">
             <div class="legend-color" style="background: #667eea;"></div>
-            <span>الإيرادات</span>
+            <span>{{ t('Revenue') }}</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #f5576c;"></div>
-            <span>المصروفات</span>
+            <span>{{ t('Expenses') }}</span>
           </div>
         </div>
       </div>
@@ -243,7 +243,7 @@
     
     <div class="col-md-6">
       <div class="report-card">
-        <h4><i class="fas fa-chart-pie mr-2"></i>توزيع المصروفات حسب الفئة</h4>
+        <h4><i class="fas fa-chart-pie mr-2"></i>{{ t('Expense Distribution by Category') }}</h4>
         <div class="chart-container">
           <canvas id="expenseDistributionChart"></canvas>
         </div>
@@ -255,7 +255,7 @@
     
     <div class="col-md-12">
       <div class="report-card">
-        <h4><i class="fas fa-chart-line mr-2"></i>اتجاه الأرباح الشهرية</h4>
+        <h4><i class="fas fa-chart-line mr-2"></i>{{ t('Monthly Profit Trend') }}</h4>
         <div class="chart-container">
           <canvas id="profitTrendChart"></canvas>
         </div>
@@ -267,17 +267,17 @@
   <div class="row">
     <div class="col-md-12">
       <div class="report-card">
-        <h4><i class="fas fa-table mr-2"></i>تفاصيل الإيرادات والمصروفات</h4>
+        <h4><i class="fas fa-table mr-2"></i>{{ t('Revenue and Expense Details') }}</h4>
         <div class="table-responsive">
           <table class="financial-table table table-hover">
             <thead>
               <tr>
-                <th>الشهر</th>
-                <th>الإيرادات</th>
-                <th>المصروفات</th>
-                <th>صافي الربح</th>
-                <th>هامش الربح %</th>
-                <th>التغير %</th>
+                <th>{{ t('Month') }}</th>
+                <th>{{ t('Revenue') }}</th>
+                <th>{{ t('Expenses') }}</th>
+                <th>{{ t('Net Profit') }}</th>
+                <th>{{ t('Profit Margin (%)') }}</th>
+                <th>{{ t('Change (%)') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -300,7 +300,7 @@
             </tbody>
             <tfoot style="background: #f8f9fa; font-weight: bold;">
               <tr>
-                <td>الإجمالي</td>
+                <td>{{ t('Total') }}</td>
                 <td class="text-success">{{ "{:,.2f}".format(total_revenue) }}</td>
                 <td class="text-danger">{{ "{:,.2f}".format(total_expenses) }}</td>
                 <td class="text-primary">{{ "{:,.2f}".format(net_profit) }}</td>
@@ -318,39 +318,39 @@
   <div class="row">
     <div class="col-md-4">
       <div class="report-card">
-        <h5><i class="fas fa-analytics mr-2"></i>معدل النمو السنوي</h5>
+        <h5><i class="fas fa-analytics mr-2"></i>{{ t('Annual Growth Rate') }}</h5>
         <div class="chart-container" style="height: 200px;">
           <canvas id="growthRateChart"></canvas>
         </div>
         <div class="text-center mt-3">
           <h3 class="trend-up">+18.5%</h3>
-          <p>نمو ممتاز مقارنة بالعام الماضي</p>
+          <p>{{ t('Excellent growth compared to last year') }}</p>
         </div>
       </div>
     </div>
     
     <div class="col-md-4">
       <div class="report-card">
-        <h5><i class="fas fa-balance-scale mr-2"></i>نسبة السيولة</h5>
+        <h5><i class="fas fa-balance-scale mr-2"></i>{{ t('Liquidity Ratio') }}</h5>
         <div class="chart-container" style="height: 200px;">
           <canvas id="liquidityChart"></canvas>
         </div>
         <div class="text-center mt-3">
           <h3 class="trend-up">2.3</h3>
-          <p>سيولة جيدة وصحية</p>
+          <p>{{ t('Good and healthy liquidity') }}</p>
         </div>
       </div>
     </div>
     
     <div class="col-md-4">
       <div class="report-card">
-        <h5><i class="fas fa-percentage mr-2"></i>العائد على الاستثمار</h5>
+        <h5><i class="fas fa-percentage mr-2"></i>{{ t('Return on Investment') }}</h5>
         <div class="chart-container" style="height: 200px;">
           <canvas id="roiChart"></canvas>
         </div>
         <div class="text-center mt-3">
           <h3 class="trend-up">25.7%</h3>
-          <p>عائد ممتاز على الاستثمار</p>
+          <p>{{ t('Excellent return on investment') }}</p>
         </div>
       </div>
     </div>
@@ -375,14 +375,14 @@ const revenueExpenseChart = new Chart(revenueExpenseCtx, {
     labels: months,
     datasets: [
       {
-        label: 'الإيرادات',
+        label: {{ t('Revenue')|tojson }},
         data: revenueData,
         backgroundColor: 'rgba(102, 126, 234, 0.8)',
         borderColor: 'rgba(102, 126, 234, 1)',
         borderWidth: 2
       },
       {
-        label: 'المصروفات',
+        label: {{ t('Expenses')|tojson }},
         data: expenseData,
         backgroundColor: 'rgba(245, 87, 108, 0.8)',
         borderColor: 'rgba(245, 87, 108, 1)',
@@ -415,7 +415,7 @@ const expenseDistributionCtx = document.getElementById('expenseDistributionChart
 const expenseDistributionChart = new Chart(expenseDistributionCtx, {
   type: 'doughnut',
   data: {
-    labels: ['رواتب', 'إيجارات', 'مواد', 'كهرباء', 'صيانة', 'أخرى'],
+    labels: [{{ t('Salaries')|tojson }}, {{ t('Rent')|tojson }}, {{ t('Materials')|tojson }}, {{ t('Electricity')|tojson }}, {{ t('Maintenance')|tojson }}, {{ t('Other')|tojson }}],
     datasets: [{
       data: [35, 20, 18, 12, 10, 5],
       backgroundColor: [
@@ -447,7 +447,7 @@ const profitTrendChart = new Chart(profitTrendCtx, {
   data: {
     labels: months,
     datasets: [{
-      label: 'صافي الربح',
+      label: {{ t('Net Profit')|tojson }},
       data: profitData,
       fill: true,
       backgroundColor: 'rgba(67, 233, 123, 0.2)',
@@ -504,7 +504,7 @@ const liquidityCtx = document.getElementById('liquidityChart').getContext('2d');
 new Chart(liquidityCtx, {
   type: 'bar',
   data: {
-    labels: ['الحالي', 'السريع'],
+    labels: [{{ t('Current')|tojson }}, {{ t('Quick')|tojson }}],
     datasets: [{
       data: [2.3, 1.8],
       backgroundColor: ['#4facfe', '#00f2fe']
@@ -537,11 +537,11 @@ new Chart(roiCtx, {
 });
 
 function exportPDF() {
-  alert('سيتم تصدير التقرير كملف PDF');
+  alert({{ t('The report will be exported as a PDF file')|tojson }});
 }
 
 function exportExcel() {
-  alert('سيتم تصدير التقرير كملف Excel');
+  alert({{ t('The report will be exported as an Excel file')|tojson }});
 }
 </script>
 {% endblock %}

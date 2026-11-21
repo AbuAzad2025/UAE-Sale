@@ -5,13 +5,13 @@
     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-primary text-white">
         <h6 class="m-0 font-weight-bold">
             <i class="fas fa-user-circle fa-lg ml-2"></i>
-            {{ entity.name }}
+            {{ display_name(entity) }}
             <span class="badge badge-light text-primary ml-2">{{ type_label }}</span>
         </h6>
         <div class="text-white">
             <span class="ml-3"><i class="fas fa-phone ml-1"></i> {{ entity.phone or '---' }}</span>
             <span class="font-weight-bold ml-3">
-                الرصيد: {{ "{:,.2f}".format(balance) }} {{ base_currency }}
+                {{ t('Balance') }}: {{ "{:,.2f}".format(balance) }} {{ base_currency }}
                 <small>({{ balance_label }})</small>
             </span>
         </div>
@@ -21,17 +21,17 @@
         <ul class="nav nav-tabs" id="entityReportTabs" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active" id="products-tab" data-toggle="tab" href="#products" role="tab" aria-controls="products" aria-selected="true">
-                    <i class="fas fa-box-open text-info"></i> المنتجات
+                    <i class="fas fa-box-open text-info"></i> {{ t('Products') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" id="invoices-tab" data-toggle="tab" href="#invoices" role="tab" aria-controls="invoices" aria-selected="false">
-                    <i class="fas fa-file-invoice text-warning"></i> الفواتير
+                    <i class="fas fa-file-invoice text-warning"></i> {{ t('Invoices') }}
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" id="payments-tab" data-toggle="tab" href="#payments" role="tab" aria-controls="payments" aria-selected="false">
-                    <i class="fas fa-money-bill-wave text-success"></i> الدفعات والقبض
+                    <i class="fas fa-money-bill-wave text-success"></i> {{ t('Payments & Receipts') }}
                 </a>
             </li>
         </ul>
@@ -44,22 +44,22 @@
                     <table class="table table-bordered table-sm table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th>المنتج</th>
-                                <th>الكمية</th>
-                                <th>المجموع ({{ base_currency }})</th>
-                                <th>آخر حركة</th>
+                                <th>{{ t('Product') }}</th>
+                                <th>{{ t('Quantity') }}</th>
+                                <th>{{ t('Total') }} ({{ base_currency }})</th>
+                                <th>{{ t('Last Movement') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for prod in products %}
                             <tr>
-                                <td>{{ prod.name }}</td>
+                                <td>{{ display_name(prod) }}</td>
                                 <td>{{ prod.quantity }}</td>
                                 <td>{{ "{:,.2f}".format(prod.total) }}</td>
                                 <td>{{ prod.last_date }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="4" class="text-center text-muted">لا توجد منتجات</td></tr>
+                            <tr><td colspan="4" class="text-center text-muted">{{ t('No Products') }}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -72,12 +72,12 @@
                     <table class="table table-bordered table-sm table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th>رقم الفاتورة</th>
-                                <th>التاريخ</th>
-                                <th>الحالة</th>
-                                <th>المبلغ ({{ base_currency }})</th>
-                                <th>المدفوع</th>
-                                <th>المتبقي</th>
+                                <th>{{ t('Invoice Number') }}</th>
+                                <th>{{ t('Date') }}</th>
+                                <th>{{ t('Status') }}</th>
+                                <th>{{ t('Amount') }} ({{ base_currency }})</th>
+                                <th>{{ t('Paid') }}</th>
+                                <th>{{ t('Remaining') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -95,7 +95,7 @@
                                 <td class="text-danger">{{ "{:,.2f}".format(inv.balance) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="6" class="text-center text-muted">لا توجد فواتير</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted">{{ t('No Invoices') }}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -108,12 +108,12 @@
                     <table class="table table-bordered table-sm table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th>رقم السند</th>
-                                <th>النوع</th>
-                                <th>التاريخ</th>
-                                <th>المبلغ ({{ base_currency }})</th>
-                                <th>طريقة الدفع</th>
-                                <th>البيان</th>
+                                <th>{{ t('Voucher Number') }}</th>
+                                <th>{{ t('Type') }}</th>
+                                <th>{{ t('Date') }}</th>
+                                <th>{{ t('Amount') }} ({{ base_currency }})</th>
+                                <th>{{ t('Payment Method') }}</th>
+                                <th>{{ t('Description') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -122,9 +122,9 @@
                                 <td>{{ trans.number }}</td>
                                 <td>
                                     {% if trans.type == 'in' %}
-                                    <span class="badge badge-success"><i class="fas fa-arrow-down"></i> قبض</span>
+                                    <span class="badge badge-success"><i class="fas fa-arrow-down"></i> {{ t('Receipt') }}</span>
                                     {% else %}
-                                    <span class="badge badge-danger"><i class="fas fa-arrow-up"></i> صرف</span>
+                                    <span class="badge badge-danger"><i class="fas fa-arrow-up"></i> {{ t('Payment') }}</span>
                                     {% endif %}
                                 </td>
                                 <td>{{ trans.date }}</td>
@@ -133,7 +133,7 @@
                                 <td>{{ trans.notes }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="6" class="text-center text-muted">لا توجد حركات مالية</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted">{{ t('No Financial Movements') }}</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}إعدادات النظام المحاسبي - Accounting Settings{% endblock %}
-{% block page_title %}إعدادات النظام المحاسبي{% endblock %}
+{% block title %}{{ t('Accounting Settings') }}{% endblock %}
+{% block page_title %}{{ t('Accounting Settings') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للوحة التحكم
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Dashboard') }}
     </a>
   </div>
 </div>
@@ -17,49 +17,49 @@
     <div class="card">
       <div class="card-header bg-gradient-primary">
         <h5 class="card-title text-white mb-0">
-          <i class="fas fa-cogs mr-2"></i>الإعدادات العامة
+          <i class="fas fa-cogs mr-2"></i>{{ t('General Settings') }}
         </h5>
       </div>
       <div class="card-body">
         <form action="">
           <div class="form-group">
-            <label>العملة الأساسية:</label>
+            <label>{{ t('Base Currency') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>السنة المالية:</label>
+            <label>{{ t('Fiscal Year') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('fiscal_years', []) %}
-              <option value="{{ code }}">{{ meta.ar }}</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>نظام الترقيم:</label>
+            <label>{{ t('Numbering System') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('numbering_modes', []) %}
-              <option value="{{ code }}">{{ meta.ar }}</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>عدد الأرقام العشرية:</label>
+            <label>{{ t('Decimal Places') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('decimal_places', []) %}
-              <option value="{{ code }}" {% if code == '2' %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if code == '2' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+            <i class="fas fa-save mr-2"></i>{{ t('Save Settings') }}
           </button>
         </form>
       </div>
@@ -71,51 +71,51 @@
     <div class="card">
       <div class="card-header bg-gradient-success">
         <h5 class="card-title text-white mb-0">
-          <i class="fas fa-chart-line mr-2"></i>إعدادات الحسابات
+          <i class="fas fa-chart-line mr-2"></i>{{ t('Account Settings') }}
         </h5>
       </div>
       <div class="card-body">
         <form action="">
           <div class="form-group">
-            <label>طول كود الحساب:</label>
+            <label>{{ t('Account Code Length') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('code_lengths', []) %}
-              <option value="{{ code }}" {% if code == '4' %}selected{% endif %}>{{ meta.ar }} أرقام</option>
+              <option value="{{ code }}" {% if code == '4' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} {{ t('Digits') }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>مستوى الحسابات:</label>
+            <label>{{ t('Account Levels') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('account_levels', []) %}
-              <option value="{{ code }}" {% if code == '3' %}selected{% endif %}>{{ meta.ar }} مستويات</option>
+              <option value="{{ code }}" {% if code == '3' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} {{ t('Levels') }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>التحقق من التوازن:</label>
+            <label>{{ t('Balance Check') }}:</label>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="balance_check" checked>
               <label class="form-check-label" for="balance_check">
-                التحقق من توازن القيود تلقائياً
+                {{ t('Automatically verify entry balance') }}
               </label>
             </div>
           </div>
           
           <div class="form-group">
-            <label>التحقق من الحسابات الرئيسية:</label>
+            <label>{{ t('Header Account Check') }}:</label>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="header_check" checked>
               <label class="form-check-label" for="header_check">
-                منع القيود المباشرة على الحسابات الرئيسية
+                {{ t('Prevent direct entries on header accounts') }}
               </label>
             </div>
           </div>
           
           <button type="submit" class="btn btn-success">
-            <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+            <i class="fas fa-save mr-2"></i>{{ t('Save Settings') }}
           </button>
         </form>
       </div>
@@ -128,50 +128,50 @@
     <div class="card">
       <div class="card-header bg-gradient-info">
         <h5 class="card-title text-white mb-0">
-          <i class="fas fa-chart-pie mr-2"></i>إعدادات التقارير
+          <i class="fas fa-chart-pie mr-2"></i>{{ t('Report Settings') }}
         </h5>
       </div>
       <div class="card-body">
         <form action="">
           <div class="form-group">
-            <label>تنسيق التواريخ:</label>
+            <label>{{ t('Date Format') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('date_formats', []) %}
-              <option value="{{ code }}" {% if code == 'dd/mm/yyyy' %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if code == 'dd/mm/yyyy' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>تنسيق الأرقام:</label>
+            <label>{{ t('Number Format') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('number_formats', []) %}
-              <option value="{{ code }}" {% if code == '1,234.56' %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if code == '1,234.56' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>اللغة الافتراضية:</label>
+            <label>{{ t('Default Language') }}:</label>
             <select class="form-control">
               {% for code, meta in lookups.get('languages', []) %}
-              <option value="{{ code }}" {% if code == 'ar' %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if code == 'ar' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
           
           <div class="form-group">
-            <label>تضمين الصفحة الرئيسية:</label>
+            <label>{{ t('Include Header Page') }}:</label>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="header_page" checked>
               <label class="form-check-label" for="header_page">
-                إضافة رأس الصفحة في التقارير
+                {{ t('Add page header in reports') }}
               </label>
             </div>
           </div>
           
           <button type="submit" class="btn btn-info">
-            <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+            <i class="fas fa-save mr-2"></i>{{ t('Save Settings') }}
           </button>
         </form>
       </div>
@@ -183,43 +183,43 @@
     <div class="card">
       <div class="card-header bg-gradient-warning">
         <h5 class="card-title text-white mb-0">
-          <i class="fas fa-shield-alt mr-2"></i>إعدادات الأمان
+          <i class="fas fa-shield-alt mr-2"></i>{{ t('Security Settings') }}
         </h5>
       </div>
       <div class="card-body">
         <form action="">
           <div class="form-group">
-            <label>مدة انتهاء الجلسة (دقيقة):</label>
+            <label>{{ t('Session Timeout (minutes)') }}:</label>
             <input type="number" class="form-control" value="30" min="5" max="480">
           </div>
           
           <div class="form-group">
-            <label>عدد المحاولات المسموحة:</label>
+            <label>{{ t('Allowed Attempts') }}:</label>
             <input type="number" class="form-control" value="3" min="1" max="10">
           </div>
           
           <div class="form-group">
-            <label>تشفير البيانات:</label>
+            <label>{{ t('Data Encryption') }}:</label>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="encryption" checked>
               <label class="form-check-label" for="encryption">
-                تشفير البيانات الحساسة
+                {{ t('Encrypt sensitive data') }}
               </label>
             </div>
           </div>
           
           <div class="form-group">
-            <label>سجل العمليات:</label>
+            <label>{{ t('Audit Log') }}:</label>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="audit_log" checked>
               <label class="form-check-label" for="audit_log">
-                تسجيل جميع العمليات
+                {{ t('Log all operations') }}
               </label>
             </div>
           </div>
           
           <button type="submit" class="btn btn-warning">
-            <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+            <i class="fas fa-save mr-2"></i>{{ t('Save Settings') }}
           </button>
         </form>
       </div>
@@ -232,7 +232,7 @@
     <div class="card">
       <div class="card-header bg-gradient-secondary">
         <h5 class="card-title text-white mb-0">
-          <i class="fas fa-database mr-2"></i>إعدادات النسخ الاحتياطي
+          <i class="fas fa-database mr-2"></i>{{ t('Backup Settings') }}
         </h5>
       </div>
       <div class="card-body">
@@ -240,36 +240,36 @@
           <div class="col-md-6">
             <form action="">
               <div class="form-group">
-                <label>تكرار النسخ الاحتياطي:</label>
+                <label>{{ t('Backup Frequency') }}:</label>
                 <select class="form-control">
                   {% for code, meta in lookups.get('backup_frequencies', []) %}
-                  <option value="{{ code }}" {% if code == 'daily' %}selected{% endif %}>{{ meta.ar }}</option>
+                  <option value="{{ code }}" {% if code == 'daily' %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                 </select>
               </div>
               
               <div class="form-group">
-                <label>وقت النسخ الاحتياطي:</label>
+                <label>{{ t('Backup Time') }}:</label>
                 <input type="time" class="form-control" value="02:00">
               </div>
               
               <div class="form-group">
-                <label>عدد النسخ المحفوظة:</label>
+                <label>{{ t('Saved Copies Count') }}:</label>
                 <input type="number" class="form-control" value="30" min="1" max="365">
               </div>
               
               <button type="submit" class="btn btn-secondary">
-                <i class="fas fa-save mr-2"></i>حفظ الإعدادات
+                <i class="fas fa-save mr-2"></i>{{ t('Save Settings') }}
               </button>
             </form>
           </div>
           
           <div class="col-md-6">
             <div class="text-center">
-              <h5>النسخ الاحتياطي اليدوي</h5>
-              <p class="text-muted">إنشاء نسخة احتياطية فورية من قاعدة البيانات</p>
+              <h5>{{ t('Manual Backup') }}</h5>
+              <p class="text-muted">{{ t('Create an immediate backup of the database') }}</p>
               <button type="button" class="btn btn-primary btn-lg" onclick="createBackup()">
-                <i class="fas fa-download mr-2"></i>إنشاء نسخة احتياطية
+                <i class="fas fa-download mr-2"></i>{{ t('Create Backup') }}
               </button>
             </div>
           </div>
@@ -286,7 +286,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <h4 class="mb-0">50+</h4>
-            <p class="mb-0">حسابات محاسبية</p>
+            <p class="mb-0">{{ t('Accounting Accounts') }}</p>
           </div>
           <div class="align-self-center">
             <i class="fas fa-chart-line fa-2x"></i>
@@ -302,7 +302,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <h4 class="mb-0">12</h4>
-            <p class="mb-0">تقارير متاحة</p>
+            <p class="mb-0">{{ t('Reports Available') }}</p>
           </div>
           <div class="align-self-center">
             <i class="fas fa-chart-pie fa-2x"></i>
@@ -318,7 +318,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <h4 class="mb-0">5</h4>
-            <p class="mb-0">أنواع قيود</p>
+            <p class="mb-0">{{ t('Entry Types') }}</p>
           </div>
           <div class="align-self-center">
             <i class="fas fa-book fa-2x"></i>
@@ -334,7 +334,7 @@
         <div class="d-flex justify-content-between">
           <div>
             <h4 class="mb-0">100%</h4>
-            <p class="mb-0">أمان البيانات</p>
+            <p class="mb-0">{{ t('Data Security') }}</p>
           </div>
           <div class="align-self-center">
             <i class="fas fa-shield-alt fa-2x"></i>
@@ -349,7 +349,7 @@
 {% block scripts %}
 <script>
 function createBackup() {
-  if (confirm('هل تريد إنشاء نسخة احتياطية الآن؟')) {
+  if (confirm({{ t('Do you want to create a backup now?')|tojson }})) {
     fetch('{{ url_for("owner.backup_now") }}', {
       method: 'POST',
       headers: {
@@ -360,12 +360,12 @@ function createBackup() {
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        alert('تم إنشاء النسخة الاحتياطية بنجاح!');
+        alert({{ t('Backup created successfully!')|tojson }});
       } else {
-        alert('فشل في إنشاء النسخة الاحتياطية: ' + data.message);
+        alert({{ t('Failed to create backup: ')|tojson }} + data.message);
       }
     })
-    .catch(error => {      alert('حدث خطأ في إنشاء النسخة الاحتياطية');
+    .catch(error => {      alert({{ t('An error occurred while creating the backup')|tojson }});
     });
   }
 }

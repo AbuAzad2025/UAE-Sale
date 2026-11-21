@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - التكاملات والربط مع الأنظمة الخارجية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Integrations and External System Connections') }}{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,11 +8,11 @@
         <div class="container-fluid">
             <div class="row mb-2 align-items-center">
                 <div class="col-sm-6">
-                    <h1 class="m-0">التكاملات</h1>
+                    <h1 class="m-0">{{ t('Integrations') }}</h1>
                 </div>
                 <div class="col-sm-6 text-left">
                     <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+                        <i class="fas fa-arrow-right mr-1"></i> {{ t('Return to Owner Dashboard') }}
                     </a>
                 </div>
             </div>
@@ -30,14 +30,14 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h5>تكامل WhatsApp</h5>
-                                    <p class="text-muted">إرسال إشعارات الفواتير والمدفوعات عبر WhatsApp للعملاء</p>
+                                    <h5>{{ t('WhatsApp Integration') }}</h5>
+                                    <p class="text-muted">{{ t('Send invoice and payment notifications to customers via WhatsApp') }}</p>
                                 </div>
                                 <div>
                                     {% if integrations.whatsapp.enabled %}
-                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>{{ t('Enabled') }}</span>
                                     {% else %}
-                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>غير مفعل</span>
+                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>{{ t('Not Enabled') }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -49,36 +49,36 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل WhatsApp
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>{{ t('Enable WhatsApp') }}
                                     </label>
                                     <div class="custom-control custom-switch custom-switch-on-success">
                                         <input type="checkbox" class="custom-control-input" id="whatsapp_enabled" name="enabled" {% if integrations.whatsapp.enabled %}checked{% endif %}>
-                                        <label class="custom-control-label" for="whatsapp_enabled">تفعيل الإرسال التلقائي عبر WhatsApp</label>
+                                        <label class="custom-control-label" for="whatsapp_enabled">{{ t('Enable automatic sending via WhatsApp') }}</label>
                                     </div>
                                 </div>
                                 
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    <strong>ملاحظة:</strong> يمكنك استخدام WhatsApp Business API أو خدمات مثل Twilio, MessageBird, أو واجهة مخصصة
+                                    <strong>{{ t('Note:') }}</strong> {{ t('You can use the WhatsApp Business API or services like Twilio, MessageBird, or a custom interface') }}
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
                                         <i class="fas fa-key text-warning mr-1"></i>API Token / Access Key
                                     </label>
-                                    <input type="text" class="form-control" name="api_token" placeholder="أدخل API Token هنا" value="{{ integrations.whatsapp.config.api_token or '' }}">
+                                    <input type="text" class="form-control" name="api_token" placeholder="{{ t('Enter API Token here') }}" value="{{ integrations.whatsapp.config.api_token or '' }}">
                                     <small class="form-text text-muted">
-                                         <strong>مثال:</strong> EAA... (من Twilio أو Meta Business)
+                                         <strong>{{ t('Example:') }}</strong> {{ t('EAA... (from Twilio or Meta Business)') }}
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-phone text-primary mr-1"></i>رقم WhatsApp Business
+                                        <i class="fas fa-phone text-primary mr-1"></i>{{ t('WhatsApp Business Number') }}
                                     </label>
                                     <input type="text" class="form-control" name="phone_number" placeholder="+971501234567" value="{{ integrations.whatsapp.config.phone_number or '' }}">
                                     <small class="form-text text-muted">
-                                         <strong>مثال:</strong> +971501234567 (بالصيغة الدولية مع +)
+                                         <strong>{{ t('Example:') }}</strong> {{ t('+971501234567 (international format with +)') }}
                                     </small>
                                 </div>
                                 
@@ -88,22 +88,22 @@
                                     </label>
                                     <input type="text" class="form-control" name="api_url" placeholder="https://api.whatsapp.com/send" value="{{ integrations.whatsapp.config.api_url or '' }}">
                                     <small class="form-text text-muted">
-                                         <strong>مثال:</strong> https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json
+                                         <strong>{{ t('Example:') }}</strong> https://api.twilio.com/2010-04-01/Accounts/YOUR_ACCOUNT_SID/Messages.json
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-comment-dots text-success mr-1"></i>قالب الرسالة الافتراضي
+                                        <i class="fas fa-comment-dots text-success mr-1"></i>{{ t('Default Message Template') }}
                                     </label>
-                                    <textarea class="form-control" name="message_template" rows="3" placeholder="مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!">{{ integrations.whatsapp.config.message_template or 'مرحباً {customer_name}، فاتورتك رقم {invoice_number} بمبلغ {amount} جاهزة!' }}</textarea>
+                                    <textarea class="form-control" name="message_template" rows="3" placeholder="{{ t('Hello {customer_name}, your invoice number {invoice_number} for {amount} is ready!') }}">{{ integrations.whatsapp.config.message_template or t('Hello {customer_name}, your invoice number {invoice_number} for {amount} is ready!') }}</textarea>
                                     <small class="form-text text-muted">
-                                         <strong>المتغيرات المتاحة:</strong> {customer_name}, {invoice_number}, {amount}, {date}
+                                         <strong>{{ t('Available variables:') }}</strong> {customer_name}, {invoice_number}, {amount}, {date}
                                     </small>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات WhatsApp
+                                    <i class="fas fa-save mr-1"></i>{{ t('Save WhatsApp Settings') }}
                                 </button>
                             </form>
                         </div>
@@ -113,19 +113,19 @@
                 <div class="col-md-12">
                     <div class="card">
                         <div class="card-header bg-gradient-info">
-                            <h3 class="card-title"><i class="fas fa-envelope mr-2"></i>البريد الإلكتروني (SMTP)</h3>
+                            <h3 class="card-title"><i class="fas fa-envelope mr-2"></i>{{ t('Email (SMTP)') }}</h3>
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h5>تكامل البريد الإلكتروني</h5>
-                                    <p class="text-muted">إرسال الفواتير والتقارير والإشعارات عبر البريد الإلكتروني</p>
+                                    <h5>{{ t('Email Integration') }}</h5>
+                                    <p class="text-muted">{{ t('Send invoices, reports, and notifications via email') }}</p>
                                 </div>
                                 <div>
                                     {% if integrations.email.enabled %}
-                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>{{ t('Enabled') }}</span>
                                     {% else %}
-                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>غير مفعل</span>
+                                        <span class="badge badge-danger badge-lg"><i class="fas fa-times-circle mr-1"></i>{{ t('Not Enabled') }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -137,11 +137,11 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل البريد الإلكتروني
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>{{ t('Enable Email') }}
                                     </label>
                                     <div class="custom-control custom-switch custom-switch-on-success">
                                         <input type="checkbox" class="custom-control-input" id="email_enabled" name="enabled" {% if integrations.email.enabled %}checked{% endif %}>
-                                        <label class="custom-control-label" for="email_enabled">تفعيل الإرسال التلقائي عبر Email</label>
+                                        <label class="custom-control-label" for="email_enabled">{{ t('Enable automatic sending via Email') }}</label>
                                     </div>
                                 </div>
                                 
@@ -153,7 +153,7 @@
                                             </label>
                                             <input type="text" class="form-control" name="smtp_host" placeholder="smtp.gmail.com" value="{{ integrations.email.config.smtp_host or '' }}">
                                             <small class="form-text text-muted">
-                                                 <strong>أمثلة:</strong><br>
+                                                 <strong>{{ t('Examples:') }}</strong><br>
                                                 • Gmail: smtp.gmail.com<br>
                                                 • Outlook: smtp.office365.com<br>
                                                 • Yahoo: smtp.mail.yahoo.com
@@ -168,7 +168,7 @@
                                             </label>
                                             <input type="number" class="form-control" name="smtp_port" placeholder="587" value="{{ integrations.email.config.smtp_port or '587' }}">
                                             <small class="form-text text-muted">
-                                                 <strong>الافتراضي:</strong><br>
+                                                 <strong>{{ t('Default:') }}</strong><br>
                                                 • TLS: 587<br>
                                                 • SSL: 465
                                             </small>
@@ -184,7 +184,7 @@
                                             </label>
                                             <input type="email" class="form-control" name="smtp_user" placeholder="your-email@gmail.com" value="{{ integrations.email.config.smtp_user or '' }}">
                                             <small class="form-text text-muted">
-                                                 عادةً نفس البريد الإلكتروني الذي ترسل منه
+                                                 {{ t('Usually the same email address you send from') }}
                                             </small>
                                         </div>
                                     </div>
@@ -196,8 +196,8 @@
                                             </label>
                                             <input type="password" class="form-control" name="smtp_password" placeholder="••••••••••" value="{{ integrations.email.config.smtp_password or '' }}">
                                             <small class="form-text text-muted">
-                                                 <strong>Gmail:</strong> استخدم App Password (ليس كلمة المرور العادية)<br>
-                                                <a href="https://myaccount.google.com/apppasswords" target="_blank">إنشاء App Password</a>
+                                                 <strong>Gmail:</strong> {{ t('Use an App Password (not your regular password)') }}<br>
+                                                <a href="https://myaccount.google.com/apppasswords" target="_blank">{{ t('Create App Password') }}</a>
                                             </small>
                                         </div>
                                     </div>
@@ -205,34 +205,34 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-shield-alt text-success mr-1"></i>التشفير (TLS/SSL)
+                                        <i class="fas fa-shield-alt text-success mr-1"></i>{{ t('Encryption (TLS/SSL)') }}
                                     </label>
                                     <select class="form-control select2" name="smtp_encryption">
                                         {% set encryption = integrations.email.config.smtp_encryption or 'tls' %}
                                         {% for code, meta in lookups.get('smtp_encryptions', []) %}
-                                        <option value="{{ code }}" {{ 'selected' if encryption == code }}>{{ meta.en }} - {{ meta.ar }}</option>
+                                        <option value="{{ code }}" {{ 'selected' if encryption == code }}>{{ meta.en }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                         <strong>ننصح بـ TLS</strong> للأمان والتوافق
+                                         <strong>{{ t('TLS is recommended') }}</strong> {{ t('for security and compatibility') }}
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-paper-plane text-info mr-1"></i>اسم المُرسل
+                                        <i class="fas fa-paper-plane text-info mr-1"></i>{{ t('Email Sender Name') }}
                                     </label>
-                                    <input type="text" class="form-control" name="sender_name" placeholder="كراج الامارات" value="{{ integrations.email.config.sender_name or '' }}">
+                                    <input type="text" class="form-control" name="sender_name" placeholder="{{ t('Azad Garage') }}" value="{{ integrations.email.config.sender_name or '' }}">
                                     <small class="form-text text-muted">
-                                         الاسم الذي سيظهر للمستلم (مثال: "كراج الامارات" <no-reply@garage.ae>)
+                                         {{ t('The name shown to recipients (e.g. "Azad Garage" <no-reply@garage.ae>)') }}
                                     </small>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-info">
-                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات البريد
+                                    <i class="fas fa-save mr-1"></i>{{ t('Save Email Settings') }}
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary" onclick="testEmail()">
-                                    <i class="fas fa-paper-plane mr-1"></i>اختبار الإرسال
+                                    <i class="fas fa-paper-plane mr-1"></i>{{ t('Test Sending') }}
                                 </button>
                             </form>
                         </div>
@@ -247,14 +247,14 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h5>تكامل Redis</h5>
-                                    <p class="text-muted">تحسين سرعة النظام بتخزين البيانات المؤقتة في الذاكرة</p>
+                                    <h5>{{ t('Redis Integration') }}</h5>
+                                    <p class="text-muted">{{ t('Improve system speed by caching temporary data in memory') }}</p>
                                 </div>
                                 <div>
                                     {% if integrations.redis.enabled %}
-                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>نشط</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>{{ t('Active') }}</span>
                                     {% else %}
-                                        <span class="badge badge-secondary badge-lg"><i class="fas fa-ban mr-1"></i>معطل</span>
+                                        <span class="badge badge-secondary badge-lg"><i class="fas fa-ban mr-1"></i>{{ t('Disabled') }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -266,11 +266,11 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل Redis
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>{{ t('Enable Redis') }}
                                     </label>
                                     <div class="custom-control custom-switch custom-switch-on-success">
                                         <input type="checkbox" class="custom-control-input" id="redis_enabled" name="enabled" {% if integrations.redis.enabled %}checked{% endif %}>
-                                        <label class="custom-control-label" for="redis_enabled">تفعيل Redis Cache</label>
+                                        <label class="custom-control-label" for="redis_enabled">{{ t('Enable Redis Cache') }}</label>
                                     </div>
                                 </div>
                                 
@@ -280,8 +280,8 @@
                                     </label>
                                     <input type="text" class="form-control" name="redis_host" placeholder="localhost" value="{{ integrations.redis.config.redis_host or 'localhost' }}">
                                     <small class="form-text text-muted">
-                                         <strong>محلي:</strong> localhost أو 127.0.0.1<br>
-                                        <strong>سحابي:</strong> redis-12345.c1.us-east-1.redislabs.com
+                                         <strong>{{ t('Local:') }}</strong> localhost {{ t('or') }} 127.0.0.1<br>
+                                        <strong>{{ t('Cloud:') }}</strong> redis-12345.c1.us-east-1.redislabs.com
                                     </small>
                                 </div>
                                 
@@ -291,22 +291,22 @@
                                     </label>
                                     <input type="number" class="form-control" name="redis_port" placeholder="6379" value="{{ integrations.redis.config.redis_port or '6379' }}">
                                     <small class="form-text text-muted">
-                                         <strong>الافتراضي:</strong> 6379
+                                         <strong>{{ t('Default:') }}</strong> 6379
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-key text-warning mr-1"></i>Redis Password (اختياري)
+                                        <i class="fas fa-key text-warning mr-1"></i>{{ t('Redis Password (Optional)') }}
                                     </label>
                                     <input type="password" class="form-control" name="redis_password" placeholder="••••••••••" value="{{ integrations.redis.config.redis_password or '' }}">
                                     <small class="form-text text-muted">
-                                         اتركه فارغاً إذا لم يكن Redis محمياً بكلمة مرور
+                                         {{ t('Leave it empty if Redis is not password-protected') }}
                                     </small>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات Redis
+                                    <i class="fas fa-save mr-1"></i>{{ t('Save Redis Settings') }}
                                 </button>
                             </form>
                         </div>
@@ -316,19 +316,19 @@
                 <div class="col-md-6">
                     <div class="card">
                         <div class="card-header bg-gradient-warning">
-                            <h3 class="card-title"><i class="fas fa-exchange-alt mr-2"></i>API سعر الصرف</h3>
+                            <h3 class="card-title"><i class="fas fa-exchange-alt mr-2"></i>{{ t('Exchange Rate API') }}</h3>
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h5>تكامل API سعر الصرف</h5>
-                                    <p class="text-muted">تحديث أسعار العملات تلقائياً من الإنترنت</p>
+                                    <h5>{{ t('Exchange Rate API Integration') }}</h5>
+                                    <p class="text-muted">{{ t('Automatically update currency rates from the internet') }}</p>
                                 </div>
                                 <div>
                                     {% if integrations.currency_api.enabled %}
-                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>مفعل</span>
+                                        <span class="badge badge-success badge-lg"><i class="fas fa-check-circle mr-1"></i>{{ t('Enabled') }}</span>
                                     {% else %}
-                                        <span class="badge badge-warning badge-lg"><i class="fas fa-exclamation-triangle mr-1"></i>احتياطي</span>
+                                        <span class="badge badge-warning badge-lg"><i class="fas fa-exclamation-triangle mr-1"></i>{{ t('Fallback') }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -340,17 +340,17 @@
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-toggle-on text-success mr-1"></i>تفعيل API سعر الصرف
+                                        <i class="fas fa-toggle-on text-success mr-1"></i>{{ t('Enable Exchange Rate API') }}
                                     </label>
                                     <div class="custom-control custom-switch custom-switch-on-success">
                                         <input type="checkbox" class="custom-control-input" id="currency_enabled" name="enabled" {% if integrations.currency_api.enabled %}checked{% endif %}>
-                                        <label class="custom-control-label" for="currency_enabled">جلب الأسعار تلقائياً من الإنترنت</label>
+                                        <label class="custom-control-label" for="currency_enabled">{{ t('Fetch rates automatically from the internet') }}</label>
                                     </div>
                                 </div>
                                 
                                 <div class="alert alert-info">
                                     <i class="fas fa-lightbulb mr-1"></i>
-                                    <strong>خدمات مجانية:</strong> exchangerate-api.com, fixer.io, currencyapi.com
+                                    <strong>{{ t('Free services:') }}</strong> exchangerate-api.com, fixer.io, currencyapi.com
                                 </div>
                                 
                                 <div class="form-group">
@@ -364,7 +364,7 @@
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                         اختر مزود خدمة أسعار الصرف
+                                         {{ t('Choose an exchange rate provider') }}
                                     </small>
                                 </div>
                                 
@@ -374,47 +374,47 @@
                                     </label>
                                     <input type="text" class="form-control" name="api_key" placeholder="YOUR_API_KEY_HERE" value="{{ integrations.currency_api.config.api_key or '' }}">
                                     <small class="form-text text-muted">
-                                         <strong>احصل على API Key مجاناً:</strong><br>
-                                        • <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a> (1500 request/شهر مجاناً)<br>
-                                        • <a href="https://fixer.io" target="_blank">Fixer.io</a> (100 request/شهر مجاناً)
+                                         <strong>{{ t('Get a free API Key:') }}</strong><br>
+                                        • <a href="https://www.exchangerate-api.com" target="_blank">ExchangeRate-API</a> {{ t('(1500 requests/month free)') }}<br>
+                                        • <a href="https://fixer.io" target="_blank">Fixer.io</a> {{ t('(100 requests/month free)') }}
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-dollar-sign text-success mr-1"></i>العملة الأساسية
+                                        <i class="fas fa-dollar-sign text-success mr-1"></i>{{ t('Base Currency') }}
                                     </label>
                                     {% set base_currency = integrations.currency_api.config.base_currency or 'USD' %}
                                     <select class="form-control select2" name="base_currency">
                                         {% for code, meta in lookups.get('currencies', []) %}
-                                        <option value="{{ code }}" {{ 'selected' if base_currency == code }}>{{ code }} - {{ meta.ar }}</option>
+                                        <option value="{{ code }}" {{ 'selected' if base_currency == code }}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                         العملة المرجعية لحساب أسعار الصرف
+                                         {{ t('Reference currency for calculating exchange rates') }}
                                     </small>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label>
-                                        <i class="fas fa-clock text-info mr-1"></i>تكرار التحديث
+                                        <i class="fas fa-clock text-info mr-1"></i>{{ t('Update Frequency') }}
                                     </label>
                                     {% set freq = integrations.currency_api.config.update_frequency or 'daily' %}
                                     <select class="form-control select2" name="update_frequency">
                                         {% for code, meta in lookups.get('update_frequencies', []) %}
-                                        <option value="{{ code }}" {{ 'selected' if freq == code }}>{{ meta.ar }}</option>
+                                        <option value="{{ code }}" {{ 'selected' if freq == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                                         {% endfor %}
                                     </select>
                                     <small class="form-text text-muted">
-                                        ⏰ تحديث الأسعار تلقائياً حسب الجدول المحدد
+                                        {{ t('Automatically update rates according to the selected schedule') }}
                                     </small>
                                 </div>
                                 
                                 <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-save mr-1"></i>حفظ إعدادات أسعار الصرف
+                                    <i class="fas fa-save mr-1"></i>{{ t('Save Exchange Rate Settings') }}
                                 </button>
                                 <button type="button" class="btn btn-outline-secondary" onclick="testCurrencyAPI()">
-                                    <i class="fas fa-sync mr-1"></i>تحديث الأسعار الآن
+                                    <i class="fas fa-sync mr-1"></i>{{ t('Update Rates Now') }}
                                 </button>
                             </form>
                         </div>

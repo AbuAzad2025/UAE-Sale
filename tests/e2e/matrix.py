@@ -247,6 +247,8 @@ ROLE_PERMISSIONS = {
         "manage_users",
         "view_reports",
         "view_costs",
+        "manage_hr",  # tenant admin: all tenant modules, not owner/platform
+        "manage_ledger",
     },
     "accountant": {
         "view_ledger",

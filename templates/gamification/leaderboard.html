@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}لوحة المتصدرين - {{ company_name }}{% endblock %}
+{% block title %}{{ t('Leaderboard') }} - {{ company_name }}{% endblock %}
 
 {% block content %}
 <div class="content-header">
     <div class="container-fluid">
         <div class="row mb-2">
             <div class="col-sm-6">
-                <h1 class="m-0"> لوحة المتصدرين</h1>
+                <h1 class="m-0"> {{ t('Leaderboard') }}</h1>
             </div>
         </div>
     </div>
@@ -19,16 +19,16 @@
             <div class="col-md-8">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">أفضل الموظفين</h3>
+                        <h3 class="card-title">{{ t('Top Employees') }}</h3>
                     </div>
                     <div class="card-body p-0">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>المركز</th>
-                                    <th>الاسم</th>
-                                    <th>النقاط</th>
-                                    <th>الشارة</th>
+                                    <th>{{ t('Rank') }}</th>
+                                    <th>{{ t('Name') }}</th>
+                                    <th>{{ t('Points') }}</th>
+                                    <th>{{ t('Badge') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -55,33 +55,33 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">الشارات المتاحة</h3>
+                        <h3 class="card-title">{{ t('Available Badges') }}</h3>
                     </div>
                     <div class="card-body">
                         <div class="list-group">
                             <div class="list-group-item">
-                                <h5> مبتدئ</h5>
-                                <small>0 نقطة</small>
+                                <h5> {{ t('Beginner') }}</h5>
+                                <small>0 {{ t('points') }}</small>
                             </div>
                             <div class="list-group-item">
-                                <h5> برونزي</h5>
-                                <small>100 نقطة</small>
+                                <h5> {{ t('Bronze') }}</h5>
+                                <small>100 {{ t('points') }}</small>
                             </div>
                             <div class="list-group-item">
-                                <h5> فضي</h5>
-                                <small>500 نقطة</small>
+                                <h5> {{ t('Silver') }}</h5>
+                                <small>500 {{ t('points') }}</small>
                             </div>
                             <div class="list-group-item">
-                                <h5> ذهبي</h5>
-                                <small>1,000 نقطة</small>
+                                <h5> {{ t('Gold') }}</h5>
+                                <small>1,000 {{ t('points') }}</small>
                             </div>
                             <div class="list-group-item">
-                                <h5> بلاتيني</h5>
-                                <small>5,000 نقطة</small>
+                                <h5> {{ t('Platinum') }}</h5>
+                                <small>5,000 {{ t('points') }}</small>
                             </div>
                             <div class="list-group-item">
-                                <h5> أسطوري</h5>
-                                <small>10,000 نقطة</small>
+                                <h5> {{ t('Legendary') }}</h5>
+                                <small>10,000 {{ t('points') }}</small>
                             </div>
                         </div>
                     </div>

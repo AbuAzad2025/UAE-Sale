@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}إضافة موظف{% endblock %}
-{% block page_title %}<i class="fas fa-user-plus mr-2"></i>إضافة موظف جديد{% endblock %}
+{% block title %}{{ t('Add Employee') }}{% endblock %}
+{% block page_title %}<i class="fas fa-user-plus mr-2"></i>{{ t('Add New Employee') }}{% endblock %}
 
 {% block content %}
 {% set hr_mode = 'create' %}
@@ -10,38 +10,38 @@
   <div class="row">
     <div class="col-lg-12">
       <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-user mr-2"></i>المعلومات الأساسية</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-user mr-2"></i>{{ t('Basic Information') }}</h5></div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-4">
               <div class="form-group">
-                <label>المستخدم المرتبط <span class="text-danger">*</span></label>
+                <label>{{ t('Linked User') }} <span class="text-danger">*</span></label>
                 <select name="user_id" class="form-control" required>
-                  <option value="">— اختر مستخدم —</option>
+                  <option value="">{{ t('Select User') }}</option>
                   {% for u in available_users %}
                   <option value="{{ u.id }}">{{ u.full_name or u.username }} ({{ u.email }})</option>
                   {% endfor %}
                 </select>
-                <small class="text-muted">يجب إنشاء المستخدم أولاً من قسم المستخدمين</small>
+                <small class="text-muted">{{ t('The user must be created first from the Users section') }}</small>
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>رقم الموظف <span class="text-danger">*</span></label>
+                <label>{{ t('Employee Number') }} <span class="text-danger">*</span></label>
                 <input type="text" name="employee_number" class="form-control" required placeholder="EMP-001">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>تاريخ التعيين <span class="text-danger">*</span></label>
+                <label>{{ t('Hire Date') }} <span class="text-danger">*</span></label>
                 <input type="date" name="hire_date" class="form-control" value="{{ today }}" required>
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>القسم</label>
+                <label>{{ t('Department') }}</label>
                 <select name="department_id" class="form-control">
-                  <option value="">— بدون —</option>
+                  <option value="">{{ t('None Option') }}</option>
                   {% for d in departments %}
                   <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
                   {% endfor %}
@@ -50,22 +50,22 @@
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>المسمى الوظيفي <span class="text-danger">*</span></label>
+                <label>{{ t('Position') }} <span class="text-danger">*</span></label>
                 <input type="text" name="position" class="form-control" required>
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>المسمى بالعربي</label>
+                <label>{{ t('Position in Arabic') }}</label>
                 <input type="text" name="position_ar" class="form-control">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>نوع العقد</label>
+                <label>{{ t('Contract Type') }}</label>
                 <select name="contract_type" class="form-control select2">
                   {% for code, meta in lookups.get('contract_types', []) %}
-                  <option value="{{ code }}">{{ meta.ar }}</option>
+                  <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -80,27 +80,27 @@
   <div class="row">
     <div class="col-lg-12">
       <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>الراتب والمزايا</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Salary and Allowances') }}</h5></div>
         <div class="card-body">
           <div class="row">
             {% include 'hr/_employee_compensation.html' %}
           </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>العملة</label>
+                <label>{{ t('Currency') }}</label>
                 <select name="salary_currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
-                  <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+                  <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                 </select>
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>دورة الدفع</label>
+                <label>{{ t('Payment Frequency') }}</label>
                 <select name="payment_frequency" class="form-control select2">
                   {% for code, meta in lookups.get('payment_frequencies', []) %}
-                  <option value="{{ code }}">{{ meta.ar }}</option>
+                  <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -115,18 +115,18 @@
   <div class="row">
     <div class="col-lg-12">
       <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-university mr-2"></i>المعلومات المصرفية</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-university mr-2"></i>{{ t('Bank Information') }}</h5></div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-4">
               <div class="form-group">
-                <label>البنك</label>
+                <label>{{ t('Bank') }}</label>
                 <input type="text" name="bank_name" class="form-control">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>رقم الحساب</label>
+                <label>{{ t('Account Number') }}</label>
                 <input type="text" name="bank_account_number" class="form-control">
               </div>
             </div>
@@ -146,19 +146,19 @@
   <div class="row">
     <div class="col-lg-12">
       <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-id-card mr-2"></i>المعلومات الشخصية</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-id-card mr-2"></i>{{ t('Personal Information') }}</h5></div>
         <div class="card-body">
           <div class="row">
             {% include 'hr/_employee_identity.html' %}
             <div class="col-md-4">
               <div class="form-group">
-                <label>جهة اتصال الطوارئ</label>
+                <label>{{ t('Emergency Contact') }}</label>
                 <input type="text" name="emergency_contact_name" class="form-control">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>هاتف الطوارئ</label>
+                <label>{{ t('Emergency Phone') }}</label>
                 <input type="text" name="emergency_contact_phone" class="form-control">
               </div>
             </div>
@@ -172,15 +172,15 @@
   <div class="row">
     <div class="col-lg-12">
       <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>الإجازات والملاحظات</h5></div>
+        <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-calendar mr-2"></i>{{ t('Leaves and Notes') }}</h5></div>
         <div class="card-body">
           <div class="row">
             {% include 'hr/_employee_leave.html' %}
           </div>
         </div>
         <div class="card-footer">
-          <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-2"></i>حفظ الموظف</button>
-          <a href="{{ url_for('hr.employees') }}" class="btn btn-secondary btn-lg">إلغاء</a>
+          <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save mr-2"></i>{{ t('Save Employee') }}</button>
+          <a href="{{ url_for('hr.employees') }}" class="btn btn-secondary btn-lg">{{ t('Cancel') }}</a>
         </div>
       </div>
     </div>

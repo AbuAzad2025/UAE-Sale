@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إضافة مستخدم جديد{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Add New User") }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-user-plus mr-2"></i>إضافة مستخدم جديد</h1>
+    <h1 class="mb-0"><i class="fas fa-user-plus mr-2"></i>{{ t("Add New User") }}</h1>
   </div>
   <div>
     <a href="{{ url_for('users.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للمستخدمين
+      <i class="fas fa-arrow-right mr-2"></i>{{ t("Back to Users") }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t("Home") }}
     </a>
   </div>
 </div>
@@ -44,7 +44,7 @@
 }
 
 .optional-field::after {
-  content: '(اختياري)';
+  content: '({{ t("Optional") }})';
   position: absolute;
   left: 10px;
   top: 8px;
@@ -91,7 +91,7 @@
 <div class="card shadow-lg">
   <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
     <h3 class="card-title mb-0">
-      <i class="fas fa-user-plus mr-2"></i>إضافة مستخدم جديد
+      <i class="fas fa-user-plus mr-2"></i>{{ t("Add New User") }}
     </h3>
   </div>
   
@@ -99,7 +99,7 @@
   {% if fixed_tenant %}
   <div class="alert alert-info m-3">
     <i class="fas fa-building mr-2"></i>
-    سيتبع هذا المستخدم مستأجر <strong>{{ fixed_tenant.name_ar }}</strong> (<code>{{ fixed_tenant.slug }}</code>) تلقائياً.
+    {{ t("This user will belong to tenant") }} <strong>{{ fixed_tenant.name_ar }}</strong> (<code>{{ fixed_tenant.slug }}</code>) {{ t("automatically") }}.
   </div>
   {% endif %}
   <form method="POST" action="{{ url_for('users.create') }}{% if fixed_tenant %}?tenant_id={{ fixed_tenant.id }}{% endif %}" id="createUserForm">
@@ -109,30 +109,30 @@
       
       
       <div class="field-section">
-        <h5><i class="fas fa-user-circle mr-2"></i>معلومات الحساب الأساسية</h5>
+        <h5><i class="fas fa-user-circle mr-2"></i>{{ t("Basic Account Information") }}</h5>
         
         <div class="row">
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-user text-primary"></i> اسم المستخدم
+                <i class="fas fa-user text-primary"></i> {{ t("Username") }}
                 <span class="text-danger">*</span>
               </label>
-              <input type="text" name="username" class="form-control" placeholder="مثال: ahmed123" required minlength="3" pattern="[a-zA-Z0-9_]+" title="أحرف إنجليزية وأرقام فقط"
+              <input type="text" name="username" class="form-control" placeholder="{{ t("Example: ahmed123") }}" required minlength="3" pattern="[a-zA-Z0-9_]+" title="{{ t("English letters and numbers only") }}"
                      value="{{ form_data.get('username', '') }}">
-              <small class="form-text text-muted">اسم فريد للدخول (أحرف إنجليزية وأرقام فقط)</small>
+              <small class="form-text text-muted">{{ t("Unique login name (English letters and numbers only)") }}</small>
             </div>
           </div>
 
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-envelope text-info"></i> البريد الإلكتروني
+                <i class="fas fa-envelope text-info"></i> {{ t("Email") }}
                 <span class="text-danger">*</span>
               </label>
               <input type="email" name="email" class="form-control" placeholder="example@domain.com" required
                      value="{{ form_data.get('email', '') }}">
-              <small class="form-text text-muted">بريد فريد للمستخدم (إجباري)</small>
+              <small class="form-text text-muted">{{ t("Unique user email (required)") }}</small>
             </div>
           </div>
         </div>
@@ -140,29 +140,29 @@
 
       
       <div class="field-section">
-        <h5><i class="fas fa-id-card mr-2"></i>المعلومات الشخصية</h5>
+        <h5><i class="fas fa-id-card mr-2"></i>{{ t("Personal Information") }}</h5>
         
         <div class="row">
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-user-tag text-success"></i> الاسم الكامل
+                <i class="fas fa-user-tag text-success"></i> {{ t("Full Name") }}
                 <span class="text-danger">*</span>
               </label>
               <input type="text" name="full_name" class="form-control" placeholder="Ahmed Mohamed Ali" required minlength="3"
                      value="{{ form_data.get('full_name', '') }}">
-              <small class="form-text text-muted">الاسم الكامل بالإنجليزية</small>
+              <small class="form-text text-muted">{{ t("Full Name in English") }}</small>
             </div>
           </div>
 
           <div class="col-md-6 optional-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-user-tag text-success"></i> الاسم بالعربية
+                <i class="fas fa-user-tag text-success"></i> {{ t("Name in Arabic") }}
               </label>
-              <input type="text" name="full_name_ar" class="form-control" placeholder="أحمد محمد علي"
+              <input type="text" name="full_name_ar" class="form-control" placeholder="{{ t("Ahmed Mohamed Ali") }}"
                      value="{{ form_data.get('full_name_ar', '') }}">
-              <small class="form-text text-muted">الاسم الكامل بالعربية</small>
+              <small class="form-text text-muted">{{ t("Full Name in Arabic") }}</small>
             </div>
           </div>
         </div>
@@ -171,11 +171,11 @@
           <div class="col-md-6 optional-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-phone text-warning"></i> رقم الهاتف
+                <i class="fas fa-phone text-warning"></i> {{ t("Phone Number") }}
               </label>
               <input type="text" name="phone" class="form-control" placeholder="+971-50-123-4567"
                      value="{{ form_data.get('phone', '') }}">
-              <small class="form-text text-muted">رقم الهاتف للتواصل</small>
+              <small class="form-text text-muted">{{ t("Contact phone number") }}</small>
             </div>
           </div>
         </div>
@@ -183,28 +183,28 @@
 
       
       <div class="field-section">
-        <h5><i class="fas fa-lock mr-2"></i>كلمة المرور</h5>
+        <h5><i class="fas fa-lock mr-2"></i>{{ t("Password") }}</h5>
         
         <div class="row">
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-key text-danger"></i> كلمة المرور
+                <i class="fas fa-key text-danger"></i> {{ t("Password") }}
                 <span class="text-danger">*</span>
               </label>
               <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required minlength="10">
-              <small class="form-text text-muted">10 أحرف على الأقل: حرف كبير، حرف صغير، رقم، ورمز خاص</small>
+              <small class="form-text text-muted">{{ t("At least 10 characters: uppercase, lowercase, number and special character") }}</small>
             </div>
           </div>
 
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-check-circle text-success"></i> تأكيد كلمة المرور
+                <i class="fas fa-check-circle text-success"></i> {{ t("Confirm Password") }}
                 <span class="text-danger">*</span>
               </label>
               <input type="password" name="confirm_password" id="confirm_password" class="form-control" placeholder="••••••••" required>
-              <small class="form-text text-muted">أعد كتابة كلمة المرور</small>
+              <small class="form-text text-muted">{{ t("Re-enter password") }}</small>
               <div id="password-match-message" class="mt-2"></div>
             </div>
           </div>
@@ -213,18 +213,18 @@
 
       
       <div class="field-section">
-        <h5><i class="fas fa-user-shield mr-2"></i>الصلاحيات والحالة</h5>
+        <h5><i class="fas fa-user-shield mr-2"></i>{{ t("Permissions and Status") }}</h5>
         
         <div class="row">
           <div class="col-md-6 required-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-users-cog text-primary"></i> الدور الوظيفي
+                <i class="fas fa-users-cog text-primary"></i> {{ t("Job Role") }}
                 <span class="text-danger">*</span>
               </label>
               {% set selected_role = form_data.get('role_id') %}
               <select name="role_id" class="form-control select2" required>
-                <option value="" {% if not selected_role %}selected{% endif %}>بلا</option>
+                <option value="" {% if not selected_role %}selected{% endif %}>{{ t("None") }}</option>
                 {% for role in roles %}
                 <option value="{{ role.id }}" {% if selected_role and selected_role|int == role.id %}selected{% endif %}>
                   {{ role.name_ar or role.name }}
@@ -232,22 +232,22 @@
                 </option>
                 {% endfor %}
               </select>
-              <small class="form-text text-muted">يحدد الصلاحيات والإمكانيات</small>
+              <small class="form-text text-muted">{{ t("Determines permissions and capabilities") }}</small>
             </div>
           </div>
 
           <div class="col-md-6 optional-field">
             <div class="form-group">
               <label>
-                <i class="fas fa-toggle-on text-success"></i> حالة الحساب
+                <i class="fas fa-toggle-on text-success"></i> {{ t("Account Status") }}
               </label>
               {% set selected_active = form_data.get('is_active', '1') %}
               <select name="is_active" class="form-control select2">
                 {% for code, meta in lookups.get('active_flags', []) %}
-                <option value="{{ code }}" {% if (selected_active != '0' and code == '1') or (selected_active == '0' and code == '0') %}selected{% endif %}>{{ meta.ar }}</option>
+                <option value="{{ code }}" {% if (selected_active != '0' and code == '1') or (selected_active == '0' and code == '0') %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                 {% endfor %}
               </select>
-              <small class="form-text text-muted">الحالة الافتراضية: نشط</small>
+              <small class="form-text text-muted">{{ t("Default status: Active") }}</small>
             </div>
           </div>
         </div>
@@ -257,18 +257,18 @@
           <div class="col-md-6">
             <div class="form-group">
               <label>
-                <i class="fas fa-building text-info"></i> المستأجر
+                <i class="fas fa-building text-info"></i> {{ t("Tenant") }}
               </label>
               {% if fixed_tenant %}
-              <input type="text" class="form-control" value="{{ fixed_tenant.name_ar }} (مثبت)" disabled>
+              <input type="text" class="form-control" value="{{ fixed_tenant.name_ar }} ({{ t("Fixed") }})" disabled>
               {% else %}
               <select name="tenant_id" class="form-control select2" data-allow-clear="true">
-                <option value="">— بلا مستأجر —</option>
+                <option value="">{{ t("No Tenant") }}</option>
                 {% for t in tenants %}
                 <option value="{{ t.id }}" {% if form_data.get('tenant_id', '')|string == t.id|string %}selected{% endif %}>{{ t.name_ar }} ({{ t.slug }})</option>
                 {% endfor %}
               </select>
-              <small class="form-text text-muted">اتركه فارغاً لمستخدم بلا مستأجر</small>
+              <small class="form-text text-muted">{{ t("Leave empty for a user without a tenant") }}</small>
               {% endif %}
             </div>
           </div>
@@ -277,7 +277,7 @@
               <label>&nbsp;</label>
               <div class="custom-control custom-checkbox">
                 <input type="checkbox" class="custom-control-input" id="is_owner" name="is_owner" value="on" {% if form_data.get('is_owner') == 'on' %}checked{% endif %}>
-                <label class="custom-control-label text-danger font-weight-bold" for="is_owner">حساب مالك منصة (صلاحيات كاملة)</label>
+                <label class="custom-control-label text-danger font-weight-bold" for="is_owner">{{ t("Platform Owner Account (Full Permissions)") }}</label>
               </div>
             </div>
           </div>
@@ -289,16 +289,16 @@
 
     <div class="card-footer" style="background-color: #f8f9fa; border-top: 2px solid #667eea;">
       <button type="submit" class="btn btn-success btn-lg shadow">
-        <i class="fas fa-save mr-2"></i>حفظ المستخدم
+        <i class="fas fa-save mr-2"></i>{{ t("Save User") }}
       </button>
       <a href="{{ url_for('users.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i>إلغاء
+        <i class="fas fa-times mr-2"></i>{{ t("Cancel") }}
       </a>
       <div class="float-right mt-2">
         <small class="text-muted">
-          <i class="fas fa-star text-danger"></i> = حقل إجباري
+          <i class="fas fa-star text-danger"></i> = {{ t("Required field") }}
           &nbsp;&nbsp;|&nbsp;&nbsp;
-          <i class="fas fa-circle text-muted"></i> = حقل اختياري
+          <i class="fas fa-circle text-muted"></i> = {{ t("Optional field") }}
         </small>
       </div>
     </div>
@@ -320,16 +320,16 @@ $(function () {
     showPasswordStrength(strength);
     const messageDiv = $('#password-match-message');
     const req = [];
-    if (password.length >= 10) req.push('<i class="fas fa-check text-success"></i> 10 أحرف+');
-    else req.push('<i class="fas fa-times text-danger"></i> 10 أحرف+');
-    if (/[A-Z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> حرف كبير');
-    else req.push('<i class="fas fa-times text-danger"></i> حرف كبير');
-    if (/[a-z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> حرف صغير');
-    else req.push('<i class="fas fa-times text-danger"></i> حرف صغير');
-    if (/\d/.test(password)) req.push('<i class="fas fa-check text-success"></i> رقم');
-    else req.push('<i class="fas fa-times text-danger"></i> رقم');
-    if (/[^a-zA-Z\d]/.test(password)) req.push('<i class="fas fa-check text-success"></i> رمز خاص');
-    else req.push('<i class="fas fa-times text-danger"></i> رمز خاص');
+    if (password.length >= 10) req.push('<i class="fas fa-check text-success"></i> {{ t("10+ chars") }}');
+    else req.push('<i class="fas fa-times text-danger"></i> {{ t("10+ chars") }}');
+    if (/[A-Z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> {{ t("Uppercase") }}');
+    else req.push('<i class="fas fa-times text-danger"></i> {{ t("Uppercase") }}');
+    if (/[a-z]/.test(password)) req.push('<i class="fas fa-check text-success"></i> {{ t("Lowercase") }}');
+    else req.push('<i class="fas fa-times text-danger"></i> {{ t("Lowercase") }}');
+    if (/\d/.test(password)) req.push('<i class="fas fa-check text-success"></i> {{ t("Number") }}');
+    else req.push('<i class="fas fa-times text-danger"></i> {{ t("Number") }}');
+    if (/[^a-zA-Z\d]/.test(password)) req.push('<i class="fas fa-check text-success"></i> {{ t("Special char") }}');
+    else req.push('<i class="fas fa-times text-danger"></i> {{ t("Special char") }}');
     messageDiv.html('<div class="password-req small mt-1">' + req.join(' &bull; ') + '</div>');
   });
   
@@ -344,10 +344,10 @@ $(function () {
     }
     
     if (password === confirm) {
-      messageDiv.html('<span class="text-success"><i class="fas fa-check-circle"></i> كلمة المرور متطابقة</span>');
+      messageDiv.html('<span class="text-success"><i class="fas fa-check-circle"></i> {{ t("Passwords match") }}</span>');
       $('#confirm_password').removeClass('is-invalid').addClass('is-valid');
     } else {
-      messageDiv.html('<span class="text-danger"><i class="fas fa-times-circle"></i> كلمة المرور غير متطابقة</span>');
+      messageDiv.html('<span class="text-danger"><i class="fas fa-times-circle"></i> {{ t("Passwords do not match") }}</span>');
       $('#confirm_password').removeClass('is-valid').addClass('is-invalid');
     }
   }
@@ -363,9 +363,9 @@ $(function () {
       e.preventDefault();
       Swal.fire({
         icon: 'error',
-        title: 'خطأ في كلمة المرور',
-        text: 'كلمة المرور غير متطابقة. الرجاء التحقق والمحاولة مرة أخرى.',
-        confirmButtonText: 'حسناً'
+        title: '{{ t("Password Error") }}',
+        text: '{{ t("Passwords do not match. Please check and try again.") }}',
+        confirmButtonText: '{{ t("OK") }}'
       });
       $('#confirm_password').focus();
       return false;
@@ -375,9 +375,9 @@ $(function () {
       e.preventDefault();
       Swal.fire({
         icon: 'error',
-        title: 'كلمة مرور ضعيفة',
-        text: 'كلمة المرور يجب أن تكون 10 أحرف على الأقل، مع حرف كبير وصغير ورقم ورمز خاص.',
-        confirmButtonText: 'حسناً'
+        title: '{{ t("Weak Password") }}',
+        text: '{{ t("Password must be at least 10 characters with uppercase, lowercase, number and special character.") }}',
+        confirmButtonText: '{{ t("OK") }}'
       });
       $('#password').focus();
       return false;

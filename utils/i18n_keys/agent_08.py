@@ -1,0 +1,1862 @@
+TRANSLATIONS = {
+  "10+ chars": {
+    "ar": "10 أحرف+",
+    "en": "10+ chars"
+  },
+  "AI Keys (Groq)": {
+    "ar": "مفاتيح AI (Groq)",
+    "en": "AI Keys (Groq)"
+  },
+  "AP Aging": {
+    "ar": "أعمار الذمم الدائنة",
+    "en": "AP Aging"
+  },
+  "Account Number": {
+    "ar": "رقم الحساب",
+    "en": "Account Number"
+  },
+  "Account Statement": {
+    "ar": "كشف حساب",
+    "en": "Account Statement"
+  },
+  "Account Status": {
+    "ar": "حالة الحساب",
+    "en": "Account Status"
+  },
+  "Accounting Note:": {
+    "ar": "تنبيه محاسبي:",
+    "en": "Accounting Note:"
+  },
+  "Accounts": {
+    "ar": "الحسابات",
+    "en": "Accounts"
+  },
+  "Action": {
+    "ar": "الإجراء",
+    "en": "Action"
+  },
+  "Activate": {
+    "ar": "تفعيل",
+    "en": "Activate"
+  },
+  "Add Item": {
+    "ar": "إضافة صنف",
+    "en": "Add Item"
+  },
+  "Add New User": {
+    "ar": "إضافة مستخدم جديد",
+    "en": "Add New User"
+  },
+  "Add New Warehouse": {
+    "ar": "إضافة مستودع جديد",
+    "en": "Add New Warehouse"
+  },
+  "Add Payment": {
+    "ar": "إضافة دفعة",
+    "en": "Add Payment"
+  },
+  "Add Product": {
+    "ar": "إضافة منتج",
+    "en": "Add Product"
+  },
+  "Add User": {
+    "ar": "إضافة مستخدم",
+    "en": "Add User"
+  },
+  "Add Warehouse": {
+    "ar": "إضافة مستودع",
+    "en": "Add Warehouse"
+  },
+  "Add at least one product to the invoice.\\n\\nClick \"Add Row\" and choose a product.": {
+    "ar": "يجب إضافة منتج واحد على الأقل للفاتورة.\\n\\nاضغط \"إضافة صف\" واختر منتجاً.",
+    "en": "Add at least one product to the invoice.\\n\\nClick \"Add Row\" and choose a product."
+  },
+  "Additional Discount": {
+    "ar": "الخصم الإضافي",
+    "en": "Additional Discount"
+  },
+  "Additional Information": {
+    "ar": "معلومات إضافية",
+    "en": "Additional Information"
+  },
+  "Additional Tax": {
+    "ar": "الضريبة الإضافية",
+    "en": "Additional Tax"
+  },
+  "Additional discount on invoice total": {
+    "ar": "خصم إضافي على إجمالي الفاتورة",
+    "en": "Additional discount on invoice total"
+  },
+  "Additional invoice notes...": {
+    "ar": "ملاحظات إضافية عن الفاتورة...",
+    "en": "Additional invoice notes..."
+  },
+  "Adjust Stock": {
+    "ar": "تعديل المخزون",
+    "en": "Adjust Stock"
+  },
+  "Advanced Expenses": {
+    "ar": "المصروفات المتقدمة",
+    "en": "Advanced Expenses"
+  },
+  "Advanced Management": {
+    "ar": "إدارة متقدمة",
+    "en": "Advanced Management"
+  },
+  "Advanced Modules": {
+    "ar": "الوحدات المتقدمة",
+    "en": "Advanced Modules"
+  },
+  "After": {
+    "ar": "بعد",
+    "en": "After"
+  },
+  "Ahmed Mohamed Ali": {
+    "ar": "أحمد محمد علي",
+    "en": "Ahmed Mohamed Ali"
+  },
+  "Alert Threshold": {
+    "ar": "حد التنبيه",
+    "en": "Alert Threshold"
+  },
+  "All Invoices": {
+    "ar": "كل الفواتير",
+    "en": "All Invoices"
+  },
+  "All Tenants": {
+    "ar": "كل المستأجرين",
+    "en": "All Tenants"
+  },
+  "All Warehouses": {
+    "ar": "كل المستودعات",
+    "en": "All Warehouses"
+  },
+  "All actions are audited.": {
+    "ar": "كل إجراء تدقيق.",
+    "en": "All actions are audited."
+  },
+  "All archived sales invoices": {
+    "ar": "جميع فواتير البيع المؤرشفة",
+    "en": "All archived sales invoices"
+  },
+  "All prices": {
+    "ar": "جميع الأسعار",
+    "en": "All prices"
+  },
+  "All sales invoices and financial transactions": {
+    "ar": "جميع فواتير البيع والمعاملات المالية",
+    "en": "All sales invoices and financial transactions"
+  },
+  "Amount Received": {
+    "ar": "المبلغ المستلم",
+    "en": "Amount Received"
+  },
+  "Analytics": {
+    "ar": "التحليلات",
+    "en": "Analytics"
+  },
+  "Archive": {
+    "ar": "الأرشيف",
+    "en": "Archive"
+  },
+  "Archive Date": {
+    "ar": "تاريخ الأرشفة",
+    "en": "Archive Date"
+  },
+  "Are you sure you want to cancel this invoice?\\nThis action cannot be undone.": {
+    "ar": "هل أنت متأكد من إلغاء هذه الفاتورة؟\\nلا يمكن التراجع عن هذا الإجراء.",
+    "en": "Are you sure you want to cancel this invoice?\\nThis action cannot be undone."
+  },
+  "Are you sure you want to delete this invoice?\\n\\nNote: the invoice will be archived if it has financial links (payments/cheques), or permanently deleted otherwise.": {
+    "ar": "هل أنت متأكد من حذف هذه الفاتورة؟\\n\\nتنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.",
+    "en": "Are you sure you want to delete this invoice?\\n\\nNote: the invoice will be archived if it has financial links (payments/cheques), or permanently deleted otherwise."
+  },
+  "Assistant": {
+    "ar": "المساعد",
+    "en": "Assistant"
+  },
+  "At least 10 characters: uppercase, lowercase, number and special character": {
+    "ar": "10 أحرف على الأقل: حرف كبير، حرف صغير، رقم، ورمز خاص",
+    "en": "At least 10 characters: uppercase, lowercase, number and special character"
+  },
+  "Azad": {
+    "ar": "أزاد",
+    "en": "Azad"
+  },
+  "Azad Smart Systems": {
+    "ar": "شركة أزاد للأنظمة الذكية",
+    "en": "Azad Smart Systems"
+  },
+  "Azad Smart Systems - Sales Invoice": {
+    "ar": "شركة أزاد للأنظمة الذكية - فاتورة مبيعات",
+    "en": "Azad Smart Systems - Sales Invoice"
+  },
+  "Back to List": {
+    "ar": "العودة للقائمة",
+    "en": "Back to List"
+  },
+  "Back to Sales": {
+    "ar": "العودة للمبيعات",
+    "en": "Back to Sales"
+  },
+  "Back to Users": {
+    "ar": "العودة للمستخدمين",
+    "en": "Back to Users"
+  },
+  "Backups": {
+    "ar": "النسخ الاحتياطية",
+    "en": "Backups"
+  },
+  "Bank": {
+    "ar": "البنك",
+    "en": "Bank"
+  },
+  "Bank Cheque": {
+    "ar": "شيك بنكي",
+    "en": "Bank Cheque"
+  },
+  "Bank Cheque Details": {
+    "ar": "تفاصيل الشيك البنكي",
+    "en": "Bank Cheque Details"
+  },
+  "Bank Transfer": {
+    "ar": "تحويل بنكي",
+    "en": "Bank Transfer"
+  },
+  "Bank Transfer Information": {
+    "ar": "معلومات التحويل البنكي",
+    "en": "Bank Transfer Information"
+  },
+  "Basic": {
+    "ar": "مبسط",
+    "en": "Basic"
+  },
+  "Basic Account Information": {
+    "ar": "معلومات الحساب الأساسية",
+    "en": "Basic Account Information"
+  },
+  "Basic Information": {
+    "ar": "المعلومات الأساسية",
+    "en": "Basic Information"
+  },
+  "Batch Tracking": {
+    "ar": "تتبع الدفعات",
+    "en": "Batch Tracking"
+  },
+  "Before": {
+    "ar": "قبل",
+    "en": "Before"
+  },
+  "CR No:": {
+    "ar": "س.ت:",
+    "en": "CR No:"
+  },
+  "Cancel Invoice": {
+    "ar": "إلغاء الفاتورة",
+    "en": "Cancel Invoice"
+  },
+  "Capital Credit 3100": {
+    "ar": "دائن رأس المال 3100",
+    "en": "Capital Credit 3100"
+  },
+  "Card": {
+    "ar": "بطاقة",
+    "en": "Card"
+  },
+  "Carry Forward Opening Stock Balance": {
+    "ar": "ترحيل الرصيد الافتتاحي للمخزون",
+    "en": "Carry Forward Opening Stock Balance"
+  },
+  "Carry Opening Balance": {
+    "ar": "ترحيل الرصيد الافتتاحي",
+    "en": "Carry Opening Balance"
+  },
+  "Cash": {
+    "ar": "نقدي",
+    "en": "Cash"
+  },
+  "Cash Flow": {
+    "ar": "التدفقات النقدية",
+    "en": "Cash Flow"
+  },
+  "Cash Payment": {
+    "ar": "دفع نقدي",
+    "en": "Cash Payment"
+  },
+  "Cashier": {
+    "ar": "المحصل",
+    "en": "Cashier"
+  },
+  "Category": {
+    "ar": "الفئة",
+    "en": "Category"
+  },
+  "Change Language": {
+    "ar": "تغيير اللغة",
+    "en": "Change Language"
+  },
+  "Change Password": {
+    "ar": "تغيير كلمة المرور",
+    "en": "Change Password"
+  },
+  "Chart of Accounts": {
+    "ar": "شجرة الحسابات",
+    "en": "Chart of Accounts"
+  },
+  "Check Password": {
+    "ar": "تحقق من كلمة المرور",
+    "en": "Check Password"
+  },
+  "Cheque": {
+    "ar": "شيك",
+    "en": "Cheque"
+  },
+  "Cheque Alerts": {
+    "ar": "تنبيهات الشيكات",
+    "en": "Cheque Alerts"
+  },
+  "Cheque Details": {
+    "ar": "تفاصيل الشيك",
+    "en": "Cheque Details"
+  },
+  "Cheque Information": {
+    "ar": "معلومات الشيك",
+    "en": "Cheque Information"
+  },
+  "Cheque Integration": {
+    "ar": "تكامل الشيكات",
+    "en": "Cheque Integration"
+  },
+  "Cheque Management": {
+    "ar": "إدارة الشيكات",
+    "en": "Cheque Management"
+  },
+  "Cheque Number": {
+    "ar": "رقم الشيك",
+    "en": "Cheque Number"
+  },
+  "Cheques": {
+    "ar": "الشيكات",
+    "en": "Cheques"
+  },
+  "Classic": {
+    "ar": "كلاسيك",
+    "en": "Classic"
+  },
+  "Clear Filter": {
+    "ar": "إزالة التصفية",
+    "en": "Clear Filter"
+  },
+  "Client": {
+    "ar": "العميل",
+    "en": "Client"
+  },
+  "Client Details": {
+    "ar": "بيانات الزبون",
+    "en": "Client Details"
+  },
+  "Client Info": {
+    "ar": "معلومات الزبون",
+    "en": "Client Info"
+  },
+  "Clients": {
+    "ar": "العملاء",
+    "en": "Clients"
+  },
+  "Command Palette — Ctrl+K": {
+    "ar": "لوحة الأوامر — اختصار Ctrl+K",
+    "en": "Command Palette — Ctrl+K"
+  },
+  "Commercial Register": {
+    "ar": "السجل التجاري",
+    "en": "Commercial Register"
+  },
+  "Companies (Support)": {
+    "ar": "الشركات (دعم)",
+    "en": "Companies (Support)"
+  },
+  "Company Compliance Credentials": {
+    "ar": "اعتمادات الامتثال للشركات",
+    "en": "Company Compliance Credentials"
+  },
+  "Company Details and Logos": {
+    "ar": "بيانات الشركة والشعارات",
+    "en": "Company Details and Logos"
+  },
+  "Company Management": {
+    "ar": "إدارة الشركات",
+    "en": "Company Management"
+  },
+  "Company Settings": {
+    "ar": "إعدادات الشركة",
+    "en": "Company Settings"
+  },
+  "Complete Invoice": {
+    "ar": "إتمام الفاتورة",
+    "en": "Complete Invoice"
+  },
+  "Completely depleted products - need immediate restocking": {
+    "ar": "منتجات منفذة تماماً - تحتاج إعادة تموين فورية",
+    "en": "Completely depleted products - need immediate restocking"
+  },
+  "Confirm New Password": {
+    "ar": "تأكيد كلمة المرور الجديدة",
+    "en": "Confirm New Password"
+  },
+  "Confirm Password": {
+    "ar": "تأكيد كلمة المرور",
+    "en": "Confirm Password"
+  },
+  "Confirmed Paid": {
+    "ar": "المدفوع المؤكد",
+    "en": "Confirmed Paid"
+  },
+  "Console": {
+    "ar": "كونسول المنصة",
+    "en": "Console"
+  },
+  "Contact phone number": {
+    "ar": "رقم الهاتف للتواصل",
+    "en": "Contact phone number"
+  },
+  "Cost Report": {
+    "ar": "تقرير التكاليف",
+    "en": "Cost Report"
+  },
+  "Country Tax Rules": {
+    "ar": "قواعد الضريبة للدول",
+    "en": "Country Tax Rules"
+  },
+  "Create New": {
+    "ar": "إنشاء جديد",
+    "en": "Create New"
+  },
+  "Create New Sales Invoice": {
+    "ar": "فاتورة بيع جديدة",
+    "en": "Create New Sales Invoice"
+  },
+  "Create New Warehouse": {
+    "ar": "إنشاء مستودع جديد",
+    "en": "Create New Warehouse"
+  },
+  "Create Warehouse": {
+    "ar": "إنشاء المستودع",
+    "en": "Create Warehouse"
+  },
+  "Created At": {
+    "ar": "تاريخ الإنشاء",
+    "en": "Created At"
+  },
+  "Credit Card": {
+    "ar": "بطاقة ائتمانية",
+    "en": "Credit Card"
+  },
+  "Currency": {
+    "ar": "العملة",
+    "en": "Currency"
+  },
+  "Current Password": {
+    "ar": "كلمة المرور الحالية",
+    "en": "Current Password"
+  },
+  "Current Stock": {
+    "ar": "المخزون الحالي",
+    "en": "Current Stock"
+  },
+  "Current Stock in Warehouse": {
+    "ar": "المخزون الحالي في المستودع",
+    "en": "Current Stock in Warehouse"
+  },
+  "Current Tenant": {
+    "ar": "المستأجر الحالي",
+    "en": "Current Tenant"
+  },
+  "Current Warehouse:": {
+    "ar": "المستودع الحالي:",
+    "en": "Current Warehouse:"
+  },
+  "Customer": {
+    "ar": "العميل",
+    "en": "Customer"
+  },
+  "Customer Details": {
+    "ar": "تفاصيل الزبون",
+    "en": "Customer Details"
+  },
+  "Customer Information": {
+    "ar": "معلومات العميل",
+    "en": "Customer Information"
+  },
+  "Customer List": {
+    "ar": "قائمة الزبائن",
+    "en": "Customer List"
+  },
+  "Customer Signature": {
+    "ar": "توقيع العميل",
+    "en": "Customer Signature"
+  },
+  "Customer Tax Number": {
+    "ar": "الرقم الضريبي للعميل",
+    "en": "Customer Tax Number"
+  },
+  "Customs and Taxes": {
+    "ar": "الجمارك والضرائب",
+    "en": "Customs and Taxes"
+  },
+  "Deactivate": {
+    "ar": "إيقاف",
+    "en": "Deactivate"
+  },
+  "Default status: Active": {
+    "ar": "الحالة الافتراضية: نشط",
+    "en": "Default status: Active"
+  },
+  "Delete (Owner Only)": {
+    "ar": "حذف (المالك فقط)",
+    "en": "Delete (Owner Only)"
+  },
+  "Delete Invoice": {
+    "ar": "حذف الفاتورة",
+    "en": "Delete Invoice"
+  },
+  "Departments": {
+    "ar": "الأقسام",
+    "en": "Departments"
+  },
+  "Determines permissions and capabilities": {
+    "ar": "يحدد الصلاحيات والإمكانيات",
+    "en": "Determines permissions and capabilities"
+  },
+  "Device Registry": {
+    "ar": "سجل الأجهزة",
+    "en": "Device Registry"
+  },
+  "Disabled": {
+    "ar": "معطل",
+    "en": "Disabled"
+  },
+  "Discount %": {
+    "ar": "خصم%",
+    "en": "Discount %"
+  },
+  "Discount%": {
+    "ar": "الخصم%",
+    "en": "Discount%"
+  },
+  "Drawee Bank": {
+    "ar": "البنك المسحوب عليه",
+    "en": "Drawee Bank"
+  },
+  "Dubai - UAE": {
+    "ar": "دبي - الإمارات",
+    "en": "Dubai - UAE"
+  },
+  "Due": {
+    "ar": "المستحق",
+    "en": "Due"
+  },
+  "Due (No Payment)": {
+    "ar": "آجل (بدون دفع)",
+    "en": "Due (No Payment)"
+  },
+  "Due Date": {
+    "ar": "الاستحقاق",
+    "en": "Due Date"
+  },
+  "Dunning Alerts": {
+    "ar": "إنذارات التحصيل",
+    "en": "Dunning Alerts"
+  },
+  "E-Invoices": {
+    "ar": "الفواتير الإلكترونية",
+    "en": "E-Invoices"
+  },
+  "E-Wallet": {
+    "ar": "محفظة إلكترونية",
+    "en": "E-Wallet"
+  },
+  "Edit Invoice": {
+    "ar": "تعديل فاتورة",
+    "en": "Edit Invoice"
+  },
+  "Edit User": {
+    "ar": "تعديل المستخدم",
+    "en": "Edit User"
+  },
+  "Employees": {
+    "ar": "الموظفين",
+    "en": "Employees"
+  },
+  "English letters and numbers only": {
+    "ar": "أحرف إنجليزية وأرقام فقط",
+    "en": "English letters and numbers only"
+  },
+  "Enter a positive value to add or a negative value to deduct": {
+    "ar": "أدخل قيمة موجبة للإضافة أو سالبة للخصم",
+    "en": "Enter a positive value to add or a negative value to deduct"
+  },
+  "Enter at least one quantity": {
+    "ar": "أدخل كمية واحدة على الأقل",
+    "en": "Enter at least one quantity"
+  },
+  "Enter support context — all actions are audited": {
+    "ar": "دخول سياق دعم — كل الإجراءات مدققة",
+    "en": "Enter support context — all actions are audited"
+  },
+  "Events": {
+    "ar": "الأحداث",
+    "en": "Events"
+  },
+  "Example: ahmed123": {
+    "ar": "مثال: ahmed123",
+    "en": "Example: ahmed123"
+  },
+  "Exchange Rate": {
+    "ar": "سعر الصرف",
+    "en": "Exchange Rate"
+  },
+  "Exchange rate at transaction time": {
+    "ar": "سعر الصرف وقت المعاملة",
+    "en": "Exchange rate at transaction time"
+  },
+  "Exempt": {
+    "ar": "معفاة",
+    "en": "Exempt"
+  },
+  "Exit Context": {
+    "ar": "خروج من السياق",
+    "en": "Exit Context"
+  },
+  "Expense Categories": {
+    "ar": "فئات المصروفات",
+    "en": "Expense Categories"
+  },
+  "Export for Purchase": {
+    "ar": "تصدير للشراء",
+    "en": "Export for Purchase"
+  },
+  "Final Total": {
+    "ar": "الإجمالي النهائي",
+    "en": "Final Total"
+  },
+  "Fiscal Periods": {
+    "ar": "الفترات المالية",
+    "en": "Fiscal Periods"
+  },
+  "Fixed": {
+    "ar": "مثبت",
+    "en": "Fixed"
+  },
+  "Fixed Services": {
+    "ar": "الخدمات الثابتة",
+    "en": "Fixed Services"
+  },
+  "For Bank Transfer": {
+    "ar": "للتحويل البنكي",
+    "en": "For Bank Transfer"
+  },
+  "Full Name": {
+    "ar": "الاسم الكامل",
+    "en": "Full Name"
+  },
+  "Full Name in Arabic": {
+    "ar": "الاسم الكامل بالعربية",
+    "en": "Full Name in Arabic"
+  },
+  "Full Name in English": {
+    "ar": "الاسم الكامل بالإنجليزية",
+    "en": "Full Name in English"
+  },
+  "Full log of all inbound and outbound movements": {
+    "ar": "سجل كامل لجميع حركات الدخول والخروج",
+    "en": "Full log of all inbound and outbound movements"
+  },
+  "Fully Paid": {
+    "ar": "مدفوعة بالكامل",
+    "en": "Fully Paid"
+  },
+  "Generated by AzadERP ©": {
+    "ar": "صُدر بواسطة AzadERP ©",
+    "en": "Generated by AzadERP ©"
+  },
+  "Geographic location of the warehouse (required)": {
+    "ar": "موقع المستودع الجغرافي (إجباري)",
+    "en": "Geographic location of the warehouse (required)"
+  },
+  "Good": {
+    "ar": "جيد",
+    "en": "Good"
+  },
+  "Good Stock": {
+    "ar": "مخزون جيد",
+    "en": "Good Stock"
+  },
+  "Guide": {
+    "ar": "الدليل",
+    "en": "Guide"
+  },
+  "Gulf": {
+    "ar": "خليجي",
+    "en": "Gulf"
+  },
+  "Help and Guide": {
+    "ar": "مساعد ودليل",
+    "en": "Help and Guide"
+  },
+  "Home": {
+    "ar": "الرئيسية",
+    "en": "Home"
+  },
+  "Human Resources": {
+    "ar": "الموارد البشرية",
+    "en": "Human Resources"
+  },
+  "If this is a sub-warehouse, select the main warehouse (optional)": {
+    "ar": "إذا كان هذا مستودع فرعي، اختر المستودع الرئيسي (اختياري)",
+    "en": "If this is a sub-warehouse, select the main warehouse (optional)"
+  },
+  "Immediate action is required to avoid lost sales": {
+    "ar": "يجب اتخاذ إجراء فوري لتجنب فقدان المبيعات",
+    "en": "Immediate action is required to avoid lost sales"
+  },
+  "In": {
+    "ar": "دخول",
+    "en": "In"
+  },
+  "Inbound Shipments": {
+    "ar": "الشحنات الواردة",
+    "en": "Inbound Shipments"
+  },
+  "Incident Log": {
+    "ar": "سجل الحوادث",
+    "en": "Incident Log"
+  },
+  "Initial stock movements created with products that have not been posted yet. Posting creates a balanced entry:": {
+    "ar": "حركات المخزون الأولية التي أُنشئت مع المنتجات ولم يُرحَّل لها قيد بعد. عند الترحيل يُنشأ قيد متوازن:",
+    "en": "Initial stock movements created with products that have not been posted yet. Posting creates a balanced entry:"
+  },
+  "Integrated warehouse, sales and purchases management system with advanced AI": {
+    "ar": "نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم",
+    "en": "Integrated warehouse, sales and purchases management system with advanced AI"
+  },
+  "Integrations": {
+    "ar": "التكاملات",
+    "en": "Integrations"
+  },
+  "Inventory": {
+    "ar": "المخزون",
+    "en": "Inventory"
+  },
+  "Inventory Debit 1140": {
+    "ar": "مدين المخزون 1140",
+    "en": "Inventory Debit 1140"
+  },
+  "Inventory Management": {
+    "ar": "إدارة المخزون",
+    "en": "Inventory Management"
+  },
+  "Inventory Valuation": {
+    "ar": "تقييم المخزون",
+    "en": "Inventory Valuation"
+  },
+  "Inventory, movements and parts management": {
+    "ar": "المخزون والحركات وإدارة القطع",
+    "en": "Inventory, movements and parts management"
+  },
+  "Invoice": {
+    "ar": "الفاتورة",
+    "en": "Invoice"
+  },
+  "Invoice Details": {
+    "ar": "بيانات الفاتورة",
+    "en": "Invoice Details"
+  },
+  "Invoice Fully Paid": {
+    "ar": "الفاتورة مدفوعة بالكامل",
+    "en": "Invoice Fully Paid"
+  },
+  "Invoice List": {
+    "ar": "قائمة الفواتير",
+    "en": "Invoice List"
+  },
+  "Invoice Number": {
+    "ar": "رقم الفاتورة",
+    "en": "Invoice Number"
+  },
+  "Invoice Settings": {
+    "ar": "إعدادات الفواتير",
+    "en": "Invoice Settings"
+  },
+  "Invoice Tax Treatment": {
+    "ar": "معاملة ضريبية الفاتورة",
+    "en": "Invoice Tax Treatment"
+  },
+  "Invoice and Receipt Letterheads": {
+    "ar": "ترويسات الفواتير والسندات",
+    "en": "Invoice and Receipt Letterheads"
+  },
+  "Invoices": {
+    "ar": "الفواتير",
+    "en": "Invoices"
+  },
+  "Is this the main warehouse? (optional)": {
+    "ar": "هل هذا المستودع الرئيسي؟ (اختياري)",
+    "en": "Is this the main warehouse? (optional)"
+  },
+  "Items": {
+    "ar": "البنود",
+    "en": "Items"
+  },
+  "Job Role": {
+    "ar": "الدور الوظيفي",
+    "en": "Job Role"
+  },
+  "Journal Entries": {
+    "ar": "قيود اليومية",
+    "en": "Journal Entries"
+  },
+  "Last Login": {
+    "ar": "آخر دخول",
+    "en": "Last Login"
+  },
+  "Last Seen": {
+    "ar": "آخر ظهور",
+    "en": "Last Seen"
+  },
+  "Leave Requests": {
+    "ar": "طلبات الإجازة",
+    "en": "Leave Requests"
+  },
+  "Leave empty for a user without a tenant": {
+    "ar": "اتركه فارغاً لمستخدم بلا مستأجر",
+    "en": "Leave empty for a user without a tenant"
+  },
+  "Leave empty to be calculated from customer payment terms": {
+    "ar": "اتركه فارغاً ليُحسب من شروط دفع العميل",
+    "en": "Leave empty to be calculated from customer payment terms"
+  },
+  "License": {
+    "ar": "الرخصة",
+    "en": "License"
+  },
+  "License Number": {
+    "ar": "رقم الرخصة",
+    "en": "License Number"
+  },
+  "Location": {
+    "ar": "الموقع",
+    "en": "Location"
+  },
+  "Low": {
+    "ar": "منخفض",
+    "en": "Low"
+  },
+  "Low Inventory": {
+    "ar": "مخزون منخفض",
+    "en": "Low Stock"
+  },
+  "Low Stock Products": {
+    "ar": "منتجات منخفضة المخزون",
+    "en": "Low Stock Products"
+  },
+  "Lowercase": {
+    "ar": "حرف صغير",
+    "en": "Lowercase"
+  },
+  "Main": {
+    "ar": "رئيسي",
+    "en": "Main"
+  },
+  "Main Warehouse": {
+    "ar": "مستودع رئيسي",
+    "en": "Main Warehouse"
+  },
+  "Maintenance": {
+    "ar": "الصيانة",
+    "en": "Maintenance"
+  },
+  "Maintenance Orders": {
+    "ar": "أوامر الصيانة",
+    "en": "Maintenance Orders"
+  },
+  "Maintenance Settings": {
+    "ar": "إعدادات الصيانة",
+    "en": "Maintenance Settings"
+  },
+  "Manager": {
+    "ar": "مدير",
+    "en": "Manager"
+  },
+  "Manual Entry": {
+    "ar": "قيد يدوي",
+    "en": "Manual Entry"
+  },
+  "Method": {
+    "ar": "الطريقة",
+    "en": "Method"
+  },
+  "Minimum: 10 characters, uppercase, lowercase, number and special character": {
+    "ar": "الحد الأدنى: 10 أحرف، حرف كبير، حرف صغير، رقم، ورمز خاص",
+    "en": "Minimum: 10 characters, uppercase, lowercase, number and special character"
+  },
+  "Modern": {
+    "ar": "مودرن",
+    "en": "Modern"
+  },
+  "Movement Log": {
+    "ar": "سجل الحركات",
+    "en": "Movement Log"
+  },
+  "Movement Type": {
+    "ar": "نوع الحركة",
+    "en": "Movement Type"
+  },
+  "Movements": {
+    "ar": "الحركات",
+    "en": "Movements"
+  },
+  "Movements pending posting:": {
+    "ar": "الحركات بانتظار الترحيل:",
+    "en": "Movements pending posting:"
+  },
+  "Moving users between tenants is done from the tenant card.": {
+    "ar": "نقل المستخدم بين المستأجرين يتم من بطاقة المستأجر.",
+    "en": "Moving users between tenants is done from the tenant card."
+  },
+  "Must be at least 10 characters with uppercase, number and special character, and match the confirmation.": {
+    "ar": "يجب أن تكون 10 أحرف على الأقل وتحتوي على حرف كبير ورقم ورمز خاص، ويجب أن تتطابق مع التأكيد",
+    "en": "Must be at least 10 characters with uppercase, number and special character, and match the confirmation."
+  },
+  "Name in Arabic": {
+    "ar": "الاسم بالعربي",
+    "en": "Name in Arabic"
+  },
+  "Name in English": {
+    "ar": "الاسم بالإنجليزية",
+    "en": "Name in English"
+  },
+  "New Expense": {
+    "ar": "مصروف جديد",
+    "en": "New Expense"
+  },
+  "New Partner": {
+    "ar": "شريك جديد",
+    "en": "New Partner"
+  },
+  "New Password": {
+    "ar": "كلمة المرور الجديدة",
+    "en": "New Password"
+  },
+  "New Purchase": {
+    "ar": "شراء جديد",
+    "en": "New Purchase"
+  },
+  "New Receipt": {
+    "ar": "سند قبض جديد",
+    "en": "New Receipt"
+  },
+  "New User": {
+    "ar": "مستخدم جديد",
+    "en": "New User"
+  },
+  "No Tenant": {
+    "ar": "— بلا مستأجر —",
+    "en": "No Tenant"
+  },
+  "No active companies": {
+    "ar": "لا شركات نشطة",
+    "en": "No active companies"
+  },
+  "No movements pending posting ✅": {
+    "ar": "لا توجد حركات بانتظار الترحيل ✅",
+    "en": "No movements pending posting ✅"
+  },
+  "No products in this warehouse currently": {
+    "ar": "لا يوجد منتجات في هذا المستودع حالياً",
+    "en": "No products in this warehouse currently"
+  },
+  "No records.": {
+    "ar": "لا سجلات.",
+    "en": "No records."
+  },
+  "No results": {
+    "ar": "لا نتائج",
+    "en": "No results"
+  },
+  "No sales.": {
+    "ar": "لا مبيعات.",
+    "en": "No sales."
+  },
+  "No warehouses available": {
+    "ar": "لا توجد مستودعات متاحة",
+    "en": "No warehouses available"
+  },
+  "No warehouses registered. You can add a new warehouse now.": {
+    "ar": "لا توجد مستودعات مسجلة. يمكنك إضافة مستودع جديد الآن.",
+    "en": "No warehouses registered. You can add a new warehouse now."
+  },
+  "None": {
+    "ar": "بلا",
+    "en": "None"
+  },
+  "Note:": {
+    "ar": "ملاحظة:",
+    "en": "Note:"
+  },
+  "Notes and Payment Reason": {
+    "ar": "ملاحظات وسبب الدفع",
+    "en": "Notes and Payment Reason"
+  },
+  "Number": {
+    "ar": "الرقم",
+    "en": "Number"
+  },
+  "OK": {
+    "ar": "حسناً",
+    "en": "OK"
+  },
+  "Only notes and discount can be edited. Products and quantities cannot be changed after invoice creation.": {
+    "ar": "يمكن تعديل الملاحظات والخصم فقط. لا يمكن تعديل المنتجات أو الكميات بعد إنشاء الفاتورة.",
+    "en": "Only notes and discount can be edited. Products and quantities cannot be changed after invoice creation."
+  },
+  "Optional": {
+    "ar": "اختياري",
+    "en": "Optional"
+  },
+  "Optional field": {
+    "ar": "حقل اختياري",
+    "en": "Optional field"
+  },
+  "Out": {
+    "ar": "خروج",
+    "en": "Out"
+  },
+  "Out of Stock Item": {
+    "ar": "نفذ من المخزون",
+    "en": "Out of Stock Item"
+  },
+  "Out of Stock Products": {
+    "ar": "منتجات منفذة من المخزون",
+    "en": "Out of Stock Products"
+  },
+  "Overdue": {
+    "ar": "متأخر",
+    "en": "Overdue"
+  },
+  "Owner": {
+    "ar": "مالك",
+    "en": "Owner"
+  },
+  "Owner Dashboard": {
+    "ar": "لوحة المالك",
+    "en": "Owner Dashboard"
+  },
+  "Owner Guide (Private)": {
+    "ar": "دليل المالك (خاص)",
+    "en": "Owner Guide (Private)"
+  },
+  "Owners": {
+    "ar": "مالكون",
+    "en": "Owners"
+  },
+  "Page total": {
+    "ar": "إجمالي الصفحة",
+    "en": "Page total"
+  },
+  "Paid Amount": {
+    "ar": "المبلغ المدفوع",
+    "en": "Paid Amount"
+  },
+  "Paid Payments": {
+    "ar": "الدفعات المسددة",
+    "en": "Paid Payments"
+  },
+  "Paid amount in the selected payment currency": {
+    "ar": "المبلغ المدفوع بعملة الدفع المختارة",
+    "en": "Paid amount in the selected payment currency"
+  },
+  "Parent Warehouse": {
+    "ar": "المستودع الأب",
+    "en": "Parent Warehouse"
+  },
+  "Parent Warehouse (for branches)": {
+    "ar": "المستودع الأب (للفروع)",
+    "en": "Parent Warehouse (for branches)"
+  },
+  "Partial": {
+    "ar": "جزئي",
+    "en": "Partial"
+  },
+  "Partially Paid": {
+    "ar": "مدفوعة جزئياً",
+    "en": "Partially Paid"
+  },
+  "Partner List": {
+    "ar": "قائمة الشركاء",
+    "en": "Partner List"
+  },
+  "Partner and Trader Report": {
+    "ar": "تقرير الشركاء والتجار",
+    "en": "Partner and Trader Report"
+  },
+  "Partners Shareholders Profit Shares": {
+    "ar": "شركاء مساهمون نسب أرباح partners",
+    "en": "Partners Shareholders Profit Shares"
+  },
+  "Partners and Shareholders": {
+    "ar": "الشركاء والمساهمون",
+    "en": "Partners and Shareholders"
+  },
+  "Partners and Shares (Shareholders)": {
+    "ar": "الشركاء والنسب (المساهمون)",
+    "en": "Partners and Shares (Shareholders)"
+  },
+  "Password Error": {
+    "ar": "خطأ في كلمة المرور",
+    "en": "Password Error"
+  },
+  "Password must be at least 10 characters with uppercase, lowercase, number and special character.": {
+    "ar": "كلمة المرور يجب أن تكون 10 أحرف على الأقل، مع حرف كبير وصغير ورقم ورمز خاص.",
+    "en": "Password must be at least 10 characters with uppercase, lowercase, number and special character."
+  },
+  "Passwords do not match": {
+    "ar": "كلمة المرور غير متطابقة",
+    "en": "Passwords do not match"
+  },
+  "Passwords do not match. Please check and try again.": {
+    "ar": "كلمة المرور غير متطابقة. الرجاء التحقق والمحاولة مرة أخرى.",
+    "en": "Passwords do not match. Please check and try again."
+  },
+  "Passwords match": {
+    "ar": "كلمة المرور متطابقة",
+    "en": "Passwords match"
+  },
+  "Payment Currency": {
+    "ar": "عملة الدفع",
+    "en": "Payment Currency"
+  },
+  "Payment Method": {
+    "ar": "طريقة الدفع",
+    "en": "Payment Method"
+  },
+  "Payment Method:": {
+    "ar": "طريقة الدفع:",
+    "en": "Payment Method:"
+  },
+  "Payment Number": {
+    "ar": "رقم الدفعة",
+    "en": "Payment Number"
+  },
+  "Payment Receipt": {
+    "ar": "سند دفع",
+    "en": "Payment Receipt"
+  },
+  "Payment Status": {
+    "ar": "حالة الدفع",
+    "en": "Payment Status"
+  },
+  "Payroll": {
+    "ar": "كشوفات الرواتب",
+    "en": "Payroll"
+  },
+  "Pending Cheques": {
+    "ar": "شيكات معلقة",
+    "en": "Pending Cheques"
+  },
+  "Percentage": {
+    "ar": "النسبة",
+    "en": "Percentage"
+  },
+  "Permissions and Status": {
+    "ar": "الصلاحيات والحالة",
+    "en": "Permissions and Status"
+  },
+  "Personal Information": {
+    "ar": "المعلومات الشخصية",
+    "en": "Personal Information"
+  },
+  "Phone Number": {
+    "ar": "رقم الهاتف",
+    "en": "Phone Number"
+  },
+  "Piece": {
+    "ar": "قطعة",
+    "en": "Piece"
+  },
+  "Platform Console": {
+    "ar": "كونسول المنصة",
+    "en": "Platform Console"
+  },
+  "Platform Owner Account": {
+    "ar": "حساب مالك منصة",
+    "en": "Platform Owner Account"
+  },
+  "Platform Owner Account (Full Permissions)": {
+    "ar": "حساب مالك منصة (صلاحيات كاملة)",
+    "en": "Platform Owner Account (Full Permissions)"
+  },
+  "Post All to Ledger": {
+    "ar": "ترحيل الكل إلى الأستاذ",
+    "en": "Post All to Ledger"
+  },
+  "Previously Returned": {
+    "ar": "مرتجع سابق",
+    "en": "Previously Returned"
+  },
+  "Prices include tax (inclusive — tax is extracted from the total)": {
+    "ar": "الأسعار شاملة الضريبة (شامل — الضريبة تُستخرج من الإجمالي)",
+    "en": "Prices include tax (inclusive — tax is extracted from the total)"
+  },
+  "Print Invoice": {
+    "ar": "طباعة الفاتورة",
+    "en": "Print Invoice"
+  },
+  "Print Receipt": {
+    "ar": "طباعة السند",
+    "en": "Print Receipt"
+  },
+  "Print Template": {
+    "ar": "قالب الطباعة",
+    "en": "Print Template"
+  },
+  "Priority": {
+    "ar": "الأولوية",
+    "en": "Priority"
+  },
+  "Privacy Policy": {
+    "ar": "سياسة الخصوصية وحماية البيانات",
+    "en": "Privacy Policy"
+  },
+  "Product": {
+    "ar": "المنتج",
+    "en": "Product"
+  },
+  "Product List": {
+    "ar": "قائمة المنتجات",
+    "en": "Product List"
+  },
+  "Products (Cannot Be Edited)": {
+    "ar": "المنتجات (لا يمكن تعديلها)",
+    "en": "Products (Cannot Be Edited)"
+  },
+  "Products needing urgent restocking": {
+    "ar": "منتجات تحتاج إلى إعادة تموين عاجلة",
+    "en": "Products needing urgent restocking"
+  },
+  "Products out of stock - urgent action required!": {
+    "ar": "منتج منفذ من المخزون - يتطلب إجراء عاجل!",
+    "en": "Products out of stock - urgent action required!"
+  },
+  "Professional Reports": {
+    "ar": "التقارير الاحترافية",
+    "en": "Professional Reports"
+  },
+  "Purchase List": {
+    "ar": "قائمة المشتريات",
+    "en": "Purchase List"
+  },
+  "Purchase Maintenance Parts": {
+    "ar": "شراء قطع الصيانة",
+    "en": "Purchase Maintenance Parts"
+  },
+  "Purchase Order": {
+    "ar": "طلب شراء",
+    "en": "Purchase Order"
+  },
+  "Purchase Orders": {
+    "ar": "أوامر الشراء",
+    "en": "Purchase Orders"
+  },
+  "Quotations": {
+    "ar": "عروض الأسعار",
+    "en": "Quotations"
+  },
+  "Ratios and Distribution": {
+    "ar": "النسب والتوزيع",
+    "en": "Ratios and Distribution"
+  },
+  "Re-enter password": {
+    "ar": "أعد كتابة كلمة المرور",
+    "en": "Re-enter password"
+  },
+  "Reason for return...": {
+    "ar": "سبب الإرجاع...",
+    "en": "Reason for return..."
+  },
+  "Receipt": {
+    "ar": "قبض",
+    "en": "Receipt"
+  },
+  "Receipt Details": {
+    "ar": "بيانات السند",
+    "en": "Receipt Details"
+  },
+  "Receipt Info": {
+    "ar": "معلومات السند",
+    "en": "Receipt Info"
+  },
+  "Receipt List": {
+    "ar": "قائمة السندات",
+    "en": "Receipt List"
+  },
+  "Receipt Number": {
+    "ar": "رقم السند",
+    "en": "Receipt Number"
+  },
+  "Receivables": {
+    "ar": "الذمم المدينة",
+    "en": "Receivables"
+  },
+  "Receive Device": {
+    "ar": "استلام جهاز",
+    "en": "Receive Device"
+  },
+  "Received From": {
+    "ar": "المستلم من",
+    "en": "Received From"
+  },
+  "Recent Audit Log": {
+    "ar": "أحدث سجل التدقيق",
+    "en": "Recent Audit Log"
+  },
+  "Recent Sales": {
+    "ar": "آخر المبيعات",
+    "en": "Recent Sales"
+  },
+  "Recurring Expenses": {
+    "ar": "المصروفات الدورية",
+    "en": "Recurring Expenses"
+  },
+  "Reference": {
+    "ar": "المرجع",
+    "en": "Reference"
+  },
+  "Reference Number": {
+    "ar": "رقم المرجع",
+    "en": "Reference Number"
+  },
+  "Register Return": {
+    "ar": "تسجيل المرتجع",
+    "en": "Register Return"
+  },
+  "Register Return on This Invoice": {
+    "ar": "تسجيل مرتجع على هذه الفاتورة",
+    "en": "Register Return on This Invoice"
+  },
+  "Remaining to Return": {
+    "ar": "المتبقي للإرجاع",
+    "en": "Remaining to Return"
+  },
+  "Required field": {
+    "ar": "حقل إجباري",
+    "en": "Required field"
+  },
+  "Responsible Manager": {
+    "ar": "المدير المسؤول",
+    "en": "Responsible Manager"
+  },
+  "Restore": {
+    "ar": "استعادة",
+    "en": "Restore"
+  },
+  "Return Notes": {
+    "ar": "ملاحظات المرتجع",
+    "en": "Return Notes"
+  },
+  "Returned Quantity": {
+    "ar": "الكمية المرتجعة",
+    "en": "Returned Quantity"
+  },
+  "Role": {
+    "ar": "الدور",
+    "en": "Role"
+  },
+  "SLA — Operational Commitments": {
+    "ar": "اتفاقية مستوى الخدمة — التزامات التشغيل",
+    "en": "SLA — Operational Commitments"
+  },
+  "Sales Archive": {
+    "ar": "أرشيف المبيعات",
+    "en": "Sales Archive"
+  },
+  "Sales Count": {
+    "ar": "عدد المبيعات",
+    "en": "Sales Count"
+  },
+  "Sales Invoice": {
+    "ar": "فاتورة مبيعات",
+    "en": "Sales Invoice"
+  },
+  "Sales Record": {
+    "ar": "سجل المبيعات",
+    "en": "Sales Record"
+  },
+  "Sales and Invoice Management": {
+    "ar": "إدارة المبيعات والفواتير",
+    "en": "Sales and Invoice Management"
+  },
+  "Save Changes": {
+    "ar": "حفظ التعديلات",
+    "en": "Save Changes"
+  },
+  "Save Invoice": {
+    "ar": "حفظ الفاتورة",
+    "en": "Save Invoice"
+  },
+  "Save New Password": {
+    "ar": "حفظ كلمة المرور الجديدة",
+    "en": "Save New Password"
+  },
+  "Save User": {
+    "ar": "حفظ المستخدم",
+    "en": "Save User"
+  },
+  "Scan for electronic payment": {
+    "ar": "مسح للدفع الإلكتروني",
+    "en": "Scan for electronic payment"
+  },
+  "Search by name or email...": {
+    "ar": "بحث بالاسم أو البريد...",
+    "en": "Search by name or email..."
+  },
+  "Search for a customer...": {
+    "ar": "ابحث عن زبون...",
+    "en": "Search for a customer..."
+  },
+  "Search for: New Invoice, Customer, Account Statement...": {
+    "ar": "ابحث عن: فاتورة جديدة، زبون، كشف حساب...",
+    "en": "Search for: New Invoice, Customer, Account Statement..."
+  },
+  "Select Warehouse...": {
+    "ar": "اختر المستودع...",
+    "en": "Select Warehouse..."
+  },
+  "Select at least one product.\\n\\nChoose a product from the dropdown.": {
+    "ar": "يجب اختيار منتج واحد على الأقل.\\n\\nاختر منتجاً من القائمة المنسدلة.",
+    "en": "Select at least one product.\\n\\nChoose a product from the dropdown."
+  },
+  "Select the manager responsible for this warehouse (optional)": {
+    "ar": "اختر المدير المسؤول عن هذا المستودع (اختياري)",
+    "en": "Select the manager responsible for this warehouse (optional)"
+  },
+  "Select warehouse...": {
+    "ar": "اختر مستودع...",
+    "en": "Select warehouse..."
+  },
+  "Seller": {
+    "ar": "البائع",
+    "en": "Seller"
+  },
+  "Seller Info": {
+    "ar": "معلومات البائع",
+    "en": "Seller Info"
+  },
+  "Seller Signature": {
+    "ar": "توقيع البائع",
+    "en": "Seller Signature"
+  },
+  "Seller Stamp and Signature": {
+    "ar": "ختم وتوقيع البائع",
+    "en": "Seller Stamp and Signature"
+  },
+  "Shipments": {
+    "ar": "الإرساليات",
+    "en": "Shipments"
+  },
+  "Shipping": {
+    "ar": "الشحن",
+    "en": "Shipping"
+  },
+  "Shipping Cost": {
+    "ar": "تكلفة الشحن",
+    "en": "Shipping Cost"
+  },
+  "Short code for the warehouse (optional)": {
+    "ar": "رمز مختصر للمستودع (اختياري)",
+    "en": "Short code for the warehouse (optional)"
+  },
+  "Sidebar moved to the left": {
+    "ar": "تم نقل القائمة لليسار",
+    "en": "Sidebar moved to the left"
+  },
+  "Sidebar moved to the right": {
+    "ar": "تم نقل القائمة لليمين",
+    "en": "Sidebar moved to the right"
+  },
+  "Simple": {
+    "ar": "بسيط",
+    "en": "Simple"
+  },
+  "Sold": {
+    "ar": "المباع",
+    "en": "Sold"
+  },
+  "Special char": {
+    "ar": "رمز خاص",
+    "en": "Special char"
+  },
+  "Stamp and Signature": {
+    "ar": "ختم وتوقيع",
+    "en": "Stamp and Signature"
+  },
+  "Standard Treatment (Company Rate)": {
+    "ar": "معاملـة قياسية (نسبة الشركة)",
+    "en": "Standard Treatment (Company Rate)"
+  },
+  "Stock Alert!": {
+    "ar": "تنبيه مخزون!",
+    "en": "Stock Alert!"
+  },
+  "Stock Out": {
+    "ar": "نفاد مخزون",
+    "en": "Stock Out"
+  },
+  "Stock Takes": {
+    "ar": "جرد المخزون",
+    "en": "Stock Takes"
+  },
+  "Stock Transfers": {
+    "ar": "نقل المخزون",
+    "en": "Stock Transfers"
+  },
+  "Stock and Warehouse Movements": {
+    "ar": "حركات المخزون والمستودعات",
+    "en": "Stock and Warehouse Movements"
+  },
+  "Storage Bins": {
+    "ar": "مواقع التخزين",
+    "en": "Storage Bins"
+  },
+  "Sub-warehouse": {
+    "ar": "مستودع فرعي",
+    "en": "Sub-warehouse"
+  },
+  "Sub-warehouses": {
+    "ar": "المستودعات الفرعية",
+    "en": "Sub-warehouses"
+  },
+  "Subscription Contract (Template)": {
+    "ar": "عقد الاشتراك (نموذج)",
+    "en": "Subscription Contract (Template)"
+  },
+  "Subtotal": {
+    "ar": "المجموع الفرعي",
+    "en": "Subtotal"
+  },
+  "Supplier List": {
+    "ar": "قائمة الموردين",
+    "en": "Supplier List"
+  },
+  "Support Context:": {
+    "ar": "سياق دعم:",
+    "en": "Support Context:"
+  },
+  "Support Inbox": {
+    "ar": "صندوق وارد الدعم",
+    "en": "Support Inbox"
+  },
+  "System": {
+    "ar": "النظام",
+    "en": "System"
+  },
+  "System Constants": {
+    "ar": "ثوابت النظام",
+    "en": "System Constants"
+  },
+  "System Monitoring": {
+    "ar": "مراقبة النظام",
+    "en": "System Monitoring"
+  },
+  "TRN:": {
+    "ar": "ض.ر:",
+    "en": "TRN:"
+  },
+  "Table": {
+    "ar": "الجدول",
+    "en": "Table"
+  },
+  "Tax Exempt": {
+    "ar": "معفاة من الضريبة",
+    "en": "Tax Exempt"
+  },
+  "Tax Included in Total": {
+    "ar": "الضريبة المشمولة في الإجمالي",
+    "en": "Tax Included in Total"
+  },
+  "Tax Number": {
+    "ar": "الرقم الضريبي",
+    "en": "Tax Number"
+  },
+  "Tax Rate": {
+    "ar": "نسبة الضريبة",
+    "en": "Tax Rate"
+  },
+  "Tenant": {
+    "ar": "المستأجر",
+    "en": "Tenant"
+  },
+  "Tenants": {
+    "ar": "المستأجرون",
+    "en": "Tenants"
+  },
+  "Terms of Service": {
+    "ar": "شروط الخدمة والتعاقد",
+    "en": "Terms of Service"
+  },
+  "Thank you": {
+    "ar": "شكراً لكم",
+    "en": "Thank you"
+  },
+  "Thank you for dealing with us": {
+    "ar": "شكراً لتعاملكم معنا",
+    "en": "Thank you for dealing with us"
+  },
+  "Thank you for your kind cooperation": {
+    "ar": "شكراً لتعاملكم الكريم معنا",
+    "en": "Thank you for your kind cooperation"
+  },
+  "The operation is safe and non-repeating.": {
+    "ar": "العملية آمنة ولا تتكرر.",
+    "en": "The operation is safe and non-repeating."
+  },
+  "There are": {
+    "ar": "يوجد",
+    "en": "There are"
+  },
+  "These cheques have not been cashed yet": {
+    "ar": "هذه الشيكات لم تُصرف بعد من البنك",
+    "en": "These cheques have not been cashed yet"
+  },
+  "This user will belong to tenant": {
+    "ar": "سيتبع هذا المستخدم مستأجر",
+    "en": "This user will belong to tenant"
+  },
+  "Time": {
+    "ar": "الوقت",
+    "en": "Time"
+  },
+  "Toggle Sidebar": {
+    "ar": "تبديل القائمة",
+    "en": "Toggle Sidebar"
+  },
+  "Toggle Sidebar Position": {
+    "ar": "تبديل موقع القائمة الجانبية",
+    "en": "Toggle Sidebar Position"
+  },
+  "Total Amount": {
+    "ar": "الإجمالي",
+    "en": "Total Amount"
+  },
+  "Total Discount": {
+    "ar": "الخصم الإجمالي",
+    "en": "Total Discount"
+  },
+  "Total Payments": {
+    "ar": "إجمالي المدفوعات",
+    "en": "Total Payments"
+  },
+  "Total Products": {
+    "ar": "إجمالي المنتجات",
+    "en": "Total Products"
+  },
+  "Total Sales": {
+    "ar": "إجمالي المبيعات",
+    "en": "Total Sales"
+  },
+  "Totals": {
+    "ar": "الإجماليات",
+    "en": "Totals"
+  },
+  "Transfer": {
+    "ar": "تحويل",
+    "en": "Transfer"
+  },
+  "Transfer Information": {
+    "ar": "معلومات التحويل",
+    "en": "Transfer Information"
+  },
+  "Unable to register return": {
+    "ar": "تعذر تسجيل المرتجع",
+    "en": "Unable to register return"
+  },
+  "Unique login name (English letters and numbers only)": {
+    "ar": "اسم فريد للدخول (أحرف إنجليزية وأرقام فقط)",
+    "en": "Unique login name (English letters and numbers only)"
+  },
+  "Unique user email (required)": {
+    "ar": "بريد فريد للمستخدم (إجباري)",
+    "en": "Unique user email (required)"
+  },
+  "Unit": {
+    "ar": "الوحدة",
+    "en": "Unit"
+  },
+  "Unit Price": {
+    "ar": "سعر الوحدة",
+    "en": "Unit Price"
+  },
+  "Unspecified": {
+    "ar": "غير محددة",
+    "en": "Unspecified"
+  },
+  "Update Password": {
+    "ar": "تحديث كلمة المرور",
+    "en": "Update Password"
+  },
+  "Uppercase": {
+    "ar": "حرف كبير",
+    "en": "Uppercase"
+  },
+  "Urgent Purchase Order": {
+    "ar": "طلب شراء عاجل",
+    "en": "Urgent Purchase Order"
+  },
+  "Urgent Warning - Stock Out!": {
+    "ar": "تحذير عاجل - نفاد مخزون!",
+    "en": "Urgent Warning - Stock Out!"
+  },
+  "Use the bottom bar to save on mobile": {
+    "ar": "استخدم الشريط السفلي للحفظ على الجوال",
+    "en": "Use the bottom bar to save on mobile"
+  },
+  "User": {
+    "ar": "المستخدم",
+    "en": "User"
+  },
+  "User Data": {
+    "ar": "بيانات المستخدم",
+    "en": "User Data"
+  },
+  "User Details": {
+    "ar": "تفاصيل المستخدم",
+    "en": "User Details"
+  },
+  "User Guide": {
+    "ar": "دليل المستخدم",
+    "en": "User Guide"
+  },
+  "User List": {
+    "ar": "قائمة المستخدمين",
+    "en": "User List"
+  },
+  "User and Permission Management": {
+    "ar": "إدارة المستخدمين والصلاحيات",
+    "en": "User and Permission Management"
+  },
+  "Users": {
+    "ar": "المستخدمين",
+    "en": "Users"
+  },
+  "VAT Report": {
+    "ar": "تقرير ضريبة القيمة المضافة",
+    "en": "VAT Report"
+  },
+  "Value": {
+    "ar": "القيمة",
+    "en": "Value"
+  },
+  "Vaults": {
+    "ar": "الخزائن",
+    "en": "Vaults"
+  },
+  "Verify Backups": {
+    "ar": "التحقق من النسخ الاحتياطية",
+    "en": "Verify Backups"
+  },
+  "View Warehouse Details and Stock": {
+    "ar": "عرض تفاصيل ومخزون المستودع",
+    "en": "View Warehouse Details and Stock"
+  },
+  "Wallet": {
+    "ar": "محفظة",
+    "en": "Wallet"
+  },
+  "Warehouse Code": {
+    "ar": "رمز المستودع",
+    "en": "Warehouse Code"
+  },
+  "Warehouse Details": {
+    "ar": "تفاصيل المستودع",
+    "en": "Warehouse Details"
+  },
+  "Warehouse Information": {
+    "ar": "معلومات المستودع",
+    "en": "Warehouse Information"
+  },
+  "Warehouse List and Management": {
+    "ar": "قائمة المستودعات وإدارتها",
+    "en": "Warehouse List and Management"
+  },
+  "Warehouse Management": {
+    "ar": "إدارة المستودع",
+    "en": "Warehouse Management"
+  },
+  "Warehouse Management System, Accounting Software, E-Invoices, Sales Management, Inventory Management, AI, UAE, Dubai, Abu Dhabi": {
+    "ar": "نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي",
+    "en": "Warehouse Management System, Accounting Software, E-Invoices, Sales Management, Inventory Management, AI, UAE, Dubai, Abu Dhabi"
+  },
+  "Warehouse and Inventory Management": {
+    "ar": "إدارة المستودع والمخزون",
+    "en": "Warehouse and Inventory Management"
+  },
+  "Warehouse name in Arabic (optional)": {
+    "ar": "اسم المستودع بالعربية (اختياري)",
+    "en": "Warehouse name in Arabic (optional)"
+  },
+  "Warehouse name in English (required)": {
+    "ar": "اسم المستودع بالإنجليزية (إجباري)",
+    "en": "Warehouse name in English (required)"
+  },
+  "Warehouses": {
+    "ar": "المستودعات",
+    "en": "Warehouses"
+  },
+  "Warehouses and Inventory": {
+    "ar": "المستودعات والمخزون",
+    "en": "Warehouses and Inventory"
+  },
+  "We wish you an excellent experience": {
+    "ar": "نتمنى لكم تجربة ممتازة",
+    "en": "We wish you an excellent experience"
+  },
+  "Weak Password": {
+    "ar": "كلمة مرور ضعيفة",
+    "en": "Weak Password"
+  },
+  "Zero 0%": {
+    "ar": "صفرية 0%",
+    "en": "Zero 0%"
+  },
+  "Zero-rated (0%)": {
+    "ar": "خاضعة بنسبة صفرية (0%)",
+    "en": "Zero-rated (0%)"
+  },
+  "Zero-rated 0% (per legal status)": {
+    "ar": "خاضعة بنسبة صفرية 0% (حسب الحالة النظامية)",
+    "en": "Zero-rated 0% (per legal status)"
+  },
+  "automatically": {
+    "ar": "تلقائياً",
+    "en": "automatically"
+  },
+  "days": {
+    "ar": "يوم",
+    "en": "days"
+  },
+  "products completely out of stock": {
+    "ar": "منتج منفذ تماماً من المخزون",
+    "en": "products completely out of stock"
+  },
+  "products need immediate restocking": {
+    "ar": "منتج بحاجة إلى إعادة تموين فورية",
+    "en": "products need immediate restocking"
+  },
+  "short": {
+    "ar": "نقص",
+    "en": "short"
+  },
+  "⭐ Grand Total ⭐": {
+    "ar": "⭐ الإجمالي النهائي ⭐",
+    "en": "⭐ Grand Total ⭐"
+  }
+}

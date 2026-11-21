@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - مساعد الذكاء الاصطناعي المتقدم{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced AI Assistant') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
     <h1 class="text-gradient mb-0">
-      <i class="fas fa-robot mr-3"></i>المساعد الذكي الخارق
+      <i class="fas fa-robot mr-3"></i>{{ t('Super Smart Assistant') }}
     </h1>
-    <p class="text-muted">AI خارق يفوق أي مساعد في العالم - قدرات لا محدودة</p>
+    <p class="text-muted">{{ t('A super AI that surpasses any assistant in the world - unlimited capabilities') }}</p>
   </div>
   <div class="d-flex align-items-center">
-    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm mr-2" title="دليل المستخدم العام">
-      <i class="fas fa-book mr-1"></i> الدليل
+    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm mr-2" title="{{ t('General User Guide') }}">
+      <i class="fas fa-book mr-1"></i> {{ t('Guide') }}
     </a>
     {% if current_user.is_owner %}
-    <a href="{{ url_for('owner.owner_guide') }}" class="btn btn-outline-warning btn-sm mr-2" title="دليل المالك (خاص)">
-      <i class="fas fa-crown mr-1"></i> دليل المالك
+    <a href="{{ url_for('owner.owner_guide') }}" class="btn btn-outline-warning btn-sm mr-2" title="{{ t('Owner Guide (private)') }}">
+      <i class="fas fa-crown mr-1"></i> {{ t('Owner Guide') }}
     </a>
     {% endif %}
-    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-info btn-sm mr-2" title="بحث في الدليل">
-      <i class="fas fa-search mr-1"></i> ابحث في الدليل
+    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-info btn-sm mr-2" title="{{ t('Search the Guide') }}">
+      <i class="fas fa-search mr-1"></i> {{ t('Search the Guide') }}
     </a>
     <div class="btn-group mr-3" role="group">
       <button type="button" class="btn btn-secondary" id="ai-mode-local" onclick="switchAIMode('local')">
-        <i class="fas fa-microchip ml-1"></i> محلي
+        <i class="fas fa-microchip ml-1"></i> {{ t('Local') }}
       </button>
       <button type="button" class="btn btn-info" id="ai-mode-groq" onclick="switchAIMode('groq')">
         <i class="fas fa-cloud ml-1"></i> Groq
@@ -31,9 +31,9 @@
     </div>
     <span class="badge {% if ai_enabled %}badge-success{% else %}badge-primary{% endif %} badge-lg px-4 py-2" style="font-size: 1.1rem;" id="ai-status-badge">
       {% if ai_enabled %}
-        <i class="fas fa-brain mr-2"></i>AI كامل مفعّل
+        <i class="fas fa-brain mr-2"></i>{{ t('Full AI active') }}
       {% else %}
-        <i class="fas fa-microchip mr-2"></i>AI محلي خارق
+        <i class="fas fa-microchip mr-2"></i>{{ t('Super local AI') }}
       {% endif %}
     </span>
   </div>
@@ -201,8 +201,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-chart-line"></i>
       </div>
-      <h5>توقع المبيعات</h5>
-      <p class="text-muted">تنبؤ ذكي بالمبيعات القادمة</p>
+      <h5>{{ t('Sales Forecast') }}</h5>
+      <p class="text-muted">{{ t('Smart forecast of upcoming sales') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -210,8 +210,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-percentage"></i>
       </div>
-      <h5>هوامش الربح</h5>
-      <p class="text-muted">تحليل تفصيلي للربحية</p>
+      <h5>{{ t('Profit Margins') }}</h5>
+      <p class="text-muted">{{ t('Detailed profitability analysis') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -219,8 +219,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-boxes"></i>
       </div>
-      <h5>صحة المخزون</h5>
-      <p class="text-muted">تقييم ذكي للمخزون</p>
+      <h5>{{ t('Inventory Health') }}</h5>
+      <p class="text-muted">{{ t('Smart inventory assessment') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -228,8 +228,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-brain"></i>
       </div>
-      <h5>كشف الأنماط</h5>
-      <p class="text-muted">أنماط وسلوكيات خفية</p>
+      <h5>{{ t('Pattern Detection') }}</h5>
+      <p class="text-muted">{{ t('Hidden patterns and behaviors') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -237,8 +237,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-rocket"></i>
       </div>
-      <h5>التحسين الذاتي</h5>
-      <p class="text-muted">أزاد يتطور ذاتياً</p>
+      <h5>{{ t('Self Improvement') }}</h5>
+      <p class="text-muted">{{ t('Azad evolves by itself') }}</p>
     </div>
         </div>
   <div class="col-md-3 mb-3">
@@ -246,8 +246,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-graduation-cap"></i>
       </div>
-      <h5>حالة التعلم</h5>
-      <p class="text-muted">تتبع تقدم أزاد</p>
+      <h5>{{ t('Learning Status') }}</h5>
+      <p class="text-muted">{{ t('Track Azad progress') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -255,8 +255,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-network-wired"></i>
       </div>
-      <h5>الشبكات العصبية</h5>
-      <p class="text-muted">11 نموذج عصبي</p>
+      <h5>{{ t('Neural Networks') }}</h5>
+      <p class="text-muted">11 {{ t('neural models') }}</p>
     </div>
   </div>
   <div class="col-md-3 mb-3">
@@ -264,8 +264,8 @@
       <div class="ai-feature-icon">
         <i class="fas fa-car"></i>
       </div>
-      <h5>كمبيوترات السيارات</h5>
-      <p class="text-muted">خبير ECU/OBD-II</p>
+      <h5>{{ t('Car Computers') }}</h5>
+      <p class="text-muted">{{ t('ECU/OBD-II expert') }}</p>
     </div>
   </div>
 </div>
@@ -281,46 +281,46 @@
             </div>
           </div>
           <div style="flex: 1;">
-            <strong style="color: #667eea; font-size: 1.1rem;">المساعد الذكي الخارق</strong>
-            <p class="mt-2 mb-0">مرحباً!  أنا أذكى مساعد محاسبي في العالم </p>
+            <strong style="color: #667eea; font-size: 1.1rem;">{{ t('Super Smart Assistant') }}</strong>
+            <p class="mt-2 mb-0">{{ t('Hello! I am the smartest accounting assistant in the world ') }}</p>
             
             <div class="mt-3">
-              <h6 style="color: #667eea;"> قدراتي الخارقة:</h6>
+              <h6 style="color: #667eea;"> {{ t('My super capabilities:') }}</h6>
               <ul class="mb-0">
-                <li> <strong>تنبؤ بالمبيعات</strong> - توقع دقيق للإيرادات القادمة</li>
-                <li> <strong>تحليل الربحية</strong> - فهم عميق لهوامش الربح</li>
-                <li> <strong>كشف الأنماط</strong> - أنماط مخفية في البيانات</li>
-                <li> <strong>توقع التدفق النقدي</strong> - تخطيط مالي استباقي</li>
-                <li> <strong>تسعير ذكي</strong> - أسعار مثالية لكل عميل</li>
-                <li> <strong>توقع فقدان العملاء</strong> - احتفظ بعملائك</li>
-                <li> <strong>تحسين المخزون</strong> - مستويات مثالية</li>
-                <li> <strong>رؤى أعمال فورية</strong> - قرارات ذكية</li>
+                <li> <strong>{{ t('Sales Forecast') }}</strong> - {{ t('Accurate prediction of upcoming revenue') }}</li>
+                <li> <strong>{{ t('Profitability Analysis') }}</strong> - {{ t('Deep understanding of profit margins') }}</li>
+                <li> <strong>{{ t('Pattern Detection') }}</strong> - {{ t('Hidden patterns in data') }}</li>
+                <li> <strong>{{ t('Cash Flow Forecast') }}</strong> - {{ t('Proactive financial planning') }}</li>
+                <li> <strong>{{ t('Smart Pricing') }}</strong> - {{ t('Ideal prices for every customer') }}</li>
+                <li> <strong>{{ t('Customer Churn Prediction') }}</strong> - {{ t('Keep your customers') }}</li>
+                <li> <strong>{{ t('Inventory Optimization') }}</strong> - {{ t('Optimal levels') }}</li>
+                <li> <strong>{{ t('Instant Business Insights') }}</strong> - {{ t('Smart decisions') }}</li>
             </ul>
             </div>
             
             <div class="alert alert-info mt-3 mb-0">
-              <strong>جرب أسئلة مثل:</strong>
-              <br>• "حلل المبيعات"
-              <br>• "توقع الأسبوع القادم"
-              <br>• "صحة المخزون"
-              <br>• "أفضل العملاء"
-              <br>• "منتجات منخفضة الربح"
+              <strong>{{ t('Try questions like:') }}</strong>
+              <br>• "{{ t('Analyze sales') }}"
+              <br>• "{{ t('Forecast next week') }}"
+              <br>• "{{ t('Inventory Health') }}"
+              <br>• "{{ t('Best customers') }}"
+              <br>• "{{ t('Low-profit products') }}"
             </div>
             
             <div class="alert alert-success mt-3 mb-0">
-              <strong> أوامر سريعة:</strong>
-              <br>• <strong>تعديل رصيد:</strong> "رصيد: أحمد محمد، 500 درهم"
-              <br>• <strong>استلام دفعة:</strong> "استلام: أحمد محمد، 200 درهم، نقد"
-              <br>• <strong>إعطاء دفعة:</strong> "إعطاء: أحمد محمد، 100 درهم، استرداد"
-              <br>• <strong>إنشاء عميل:</strong> "عميل: أحمد محمد، 0561234567، دبي"
-              <br>• <strong>إنشاء منتج:</strong> "منتج: فلتر زيت، 12345، 50 درهم، 100 قطعة"
+              <strong> {{ t('Quick commands:') }}</strong>
+              <br>• <strong>{{ t('Adjust balance:') }}</strong> "{{ t('Balance: Ahmed Mohammed, 500 AED') }}"
+              <br>• <strong>{{ t('Receive payment:') }}</strong> "{{ t('Receive: Ahmed Mohammed, 200 AED, cash') }}"
+              <br>• <strong>{{ t('Give payment:') }}</strong> "{{ t('Give: Ahmed Mohammed, 100 AED, refund') }}"
+              <br>• <strong>{{ t('Create customer:') }}</strong> "{{ t('Customer: Ahmed Mohammed, 0561234567, Dubai') }}"
+              <br>• <strong>{{ t('Create product:') }}</strong> "{{ t('Product: oil filter, 12345, 50 AED, 100 pcs') }}"
             </div>
             
             <div class="alert alert-warning mt-3 mb-0">
-              <strong> نصيحة ذكية:</strong>
-              <br>• اكتب كلمة واحدة مثل "رصيد" أو "عميل" وسأعطيك الخيارات!
-              <br>• أو اكتب الطلب كاملاً وسأنفذه فوراً!
-              <br>• أنا أفهم أي طريقة تكتب بها! 
+              <strong> {{ t('Smart tip:') }}</strong>
+              <br>• {{ t('Type a single word like "balance" or "customer" and I will give you options!') }}
+              <br>• {{ t('Or write the full request and I will execute it immediately!') }}
+              <br>• {{ t('I understand any way you write!') }} 
             </div>
           </div>
         </div>
@@ -331,30 +331,30 @@
         
         <div class="d-flex justify-content-between mb-2">
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-danger" onclick="clearChat()" title="مسح المحادثة">
-              <i class="fas fa-trash"></i> مسح
+            <button type="button" class="btn btn-outline-danger" onclick="clearChat()" title="{{ t('Clear Chat') }}">
+              <i class="fas fa-trash"></i> {{ t('Clear') }}
             </button>
-            <button type="button" class="btn btn-outline-info" onclick="getSummary()" title="ملخص المحادثة">
-              <i class="fas fa-list"></i> ملخص
+            <button type="button" class="btn btn-outline-info" onclick="getSummary()" title="{{ t('Chat Summary') }}">
+              <i class="fas fa-list"></i> {{ t('Summary') }}
             </button>
-            <button type="button" class="btn btn-outline-success" onclick="toggleBeginnersMode()" id="beginnersBtn" title="وضع المبتدئين">
-              <i class="fas fa-graduation-cap"></i> مبتدئ
+            <button type="button" class="btn btn-outline-success" onclick="toggleBeginnersMode()" id="beginnersBtn" title="{{ t('Beginner Mode') }}">
+              <i class="fas fa-graduation-cap"></i> {{ t('Beginner') }}
             </button>
-            <button type="button" class="btn btn-outline-primary" onclick="showExcelUploader()" title="رفع ملف Excel">
+            <button type="button" class="btn btn-outline-primary" onclick="showExcelUploader()" title="{{ t('Upload Excel File') }}">
               <i class="fas fa-file-excel"></i> Excel
             </button>
-            <button type="button" class="btn btn-outline-success" onclick="openExcelTemplate()" title="فتح Excel للتعديل">
-              <i class="fas fa-external-link-alt"></i> فتح Excel
+            <button type="button" class="btn btn-outline-success" onclick="openExcelTemplate()" title="{{ t('Open Excel for Editing') }}">
+              <i class="fas fa-external-link-alt"></i> {{ t('Open Excel') }}
             </button>
           </div>
           <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary" onclick="setDialect('formal')" title="فصحى" id="formalBtn">
+            <button type="button" class="btn btn-outline-secondary" onclick="setDialect('formal')" title="{{ t('Formal') }}" id="formalBtn">
               <i class="fas fa-book"></i>
             </button>
-            <button type="button" class="btn btn-outline-primary active" onclick="setDialect('palestinian')" title="فلسطيني" id="palestinianBtn">
+            <button type="button" class="btn btn-outline-primary active" onclick="setDialect('palestinian')" title="{{ t('Palestinian') }}" id="palestinianBtn">
               <i class="fas fa-flag"></i> 
             </button>
-            <button type="button" class="btn btn-outline-info" onclick="setDialect('gulf')" title="خليجي" id="gulfBtn">
+            <button type="button" class="btn btn-outline-info" onclick="setDialect('gulf')" title="{{ t('Gulf') }}" id="gulfBtn">
               <i class="fas fa-mosque"></i>
             </button>
           </div>
@@ -364,15 +364,15 @@
         <div id="excelUploaderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
           <div style="background: white; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h4 style="color: #667eea; margin-bottom: 20px;">
-              <i class="fas fa-file-excel mr-2"></i>رفع ملف Excel - معالج ذكي خارق
+              <i class="fas fa-file-excel mr-2"></i>{{ t('Upload Excel File - Super Smart Wizard') }}
             </h4>
             <form id="excelUploadForm" enctype="multipart/form-data" action="">
               <div class="form-group">
-                <label>اختر ملف Excel (.xlsx, .xls)</label>
+                <label>{{ t('Choose an Excel file (.xlsx, .xls)') }}</label>
                 <input type="file" id="excelFile" accept=".xlsx,.xls" class="form-control" required>
               </div>
               <div class="form-group">
-                <label>المستودع</label>
+                <label>{{ t('Warehouse') }}</label>
                 <select id="warehouseSelect" class="form-control">
                   {% for warehouse in warehouses %}
                   <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
@@ -382,32 +382,32 @@
               <div class="form-group">
                 <div class="alert alert-info">
                   <i class="fas fa-lightbulb mr-2"></i>
-                  <strong>AI الذكي سيفهم تلقائياً:</strong><br>
-                  - أعمدة Excel (عربي أو إنجليزي)<br>
-                  - يُنشئ منتجات جديدة أو يحدث الموجودة<br>
-                  - دقة 100% - لا أخطاء بشرية
+                  <strong>{{ t('The smart AI will automatically understand:') }}</strong><br>
+                  - {{ t('Excel columns (Arabic or English)') }}<br>
+                  - {{ t('Creates new products or updates existing ones') }}<br>
+                  - {{ t('100% accuracy - no human errors') }}
                 </div>
                 <div class="alert alert-warning">
                   <i class="fas fa-edit mr-2"></i>
-                  <strong>نصيحة:</strong> اضغط "فتح Excel" أولاً لتعديل البيانات قبل الرفع
+                  <strong>{{ t('Tip:') }}</strong> {{ t('Click "Open Excel" first to edit the data before uploading') }}
                 </div>
               </div>
               <div class="d-flex justify-content-between">
                 <div>
                   <button type="button" class="btn btn-info mr-2" onclick="openExcelTemplate()">
-                    <i class="fas fa-external-link-alt mr-2"></i>فتح Excel
+                    <i class="fas fa-external-link-alt mr-2"></i>{{ t('Open Excel') }}
                   </button>
-                  <button type="button" class="btn btn-secondary" onclick="hideExcelUploader()">إلغاء</button>
+                  <button type="button" class="btn btn-secondary" onclick="hideExcelUploader()">{{ t('Cancel') }}</button>
                 </div>
                 <button type="submit" class="btn btn-success" id="uploadExcelBtn">
-                  <i class="fas fa-upload mr-2"></i>رفع ومعالجة
+                  <i class="fas fa-upload mr-2"></i>{{ t('Upload and Process') }}
                 </button>
               </div>
               <div id="uploadProgress" class="mt-3" style="display: none;">
                 <div class="progress">
                   <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
                 </div>
-                <small class="text-muted">جاري المعالجة الذكية...</small>
+                <small class="text-muted">{{ t('Smart processing in progress...') }}</small>
               </div>
             </form>
           </div>
@@ -415,12 +415,12 @@
         
         <div class="input-group">
         <input type="text" id="userMessage" class="form-control form-control-lg" 
-               placeholder="اسأل أي سؤال... " autocomplete="off"
+               placeholder="{{ t('Ask any question...') }}" autocomplete="off"
                style="border-radius: 12px 0 0 12px; border: 2px solid #667eea;">
           <div class="input-group-append">
           <button class="btn btn-lg" id="sendBtn"
                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 0 12px 12px 0; padding: 0 30px;">
-            <i class="fas fa-paper-plane mr-2"></i>إرسال
+            <i class="fas fa-paper-plane mr-2"></i>{{ t('Send') }}
             </button>
           </div>
         </div>
@@ -429,9 +429,9 @@
           <small class="text-muted">
           <i class="fas fa-shield-alt mr-1"></i>
             {% if ai_enabled %}
-            AI خارجي + محلي معاً - قوة مضاعفة
+            {{ t('External + local AI together - doubled power') }}
             {% else %}
-            AI محلي خارق - لا يحتاج إنترنت
+            {{ t('Super local AI - no internet needed') }}
             {% endif %}
           </small>
         <div class="btn-group btn-group-sm">
@@ -444,16 +444,16 @@
           <button type="button" class="btn btn-outline-secondary" onclick="clearChat()">
             <i class="fas fa-trash"></i>
           </button>
-          <button type="button" class="btn btn-success" onclick="showSelfImprovement()" title="التحسين الذاتي">
+          <button type="button" class="btn btn-success" onclick="showSelfImprovement()" title="{{ t('Self Improvement') }}">
             <i class="fas fa-rocket"></i>
           </button>
-          <button type="button" class="btn btn-info" onclick="showSystemSummary()" title="ملخص النظام">
+          <button type="button" class="btn btn-info" onclick="showSystemSummary()" title="{{ t('System Summary') }}">
             <i class="fas fa-chart-bar"></i>
           </button>
-          <button type="button" class="btn btn-warning" onclick="showKnowledgeManager()" title="إدارة المعرفة">
+          <button type="button" class="btn btn-warning" onclick="showKnowledgeManager()" title="{{ t('Knowledge Management') }}">
             <i class="fas fa-book"></i>
           </button>
-          <button type="button" class="btn btn-dark" onclick="searchInSystem()" title="البحث في النظام">
+          <button type="button" class="btn btn-dark" onclick="searchInSystem()" title="{{ t('Search the System') }}">
             <i class="fas fa-search"></i>
           </button>
         </div>
@@ -467,13 +467,13 @@
     <div class="card">
       <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
         <h3 class="card-title text-white mb-0">
-          <i class="fas fa-lightbulb mr-2"></i>رؤى فورية من المساعد الذكي
+          <i class="fas fa-lightbulb mr-2"></i>{{ t('Instant Insights from the Smart Assistant') }}
         </h3>
       </div>
       <div class="card-body" id="insights-container">
         <div class="text-center text-muted">
           <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-          <p>جاري تحليل البيانات وتوليد الرؤى...</p>
+          <p>{{ t('Analyzing data and generating insights...') }}</p>
         </div>
       </div>
     </div>
@@ -502,7 +502,7 @@ function addMessage(sender, text, isBot = false) {
            <i class="fas fa-user text-white fa-2x"></i>
          </div>`;
     
-    const senderName = isBot ? 'أزاد ' : '{{ current_user.username }}' || 'أنت';
+    const senderName = isBot ? {{ t('Azad')|tojson }} + ' ' : '{{ current_user.username }}' || {{ t('You')|tojson }};
     
     chatBox.append(`
       <div class="${messageClass}">
@@ -531,7 +531,7 @@ function showTyping() {
           <i class="fas fa-robot text-white fa-2x"></i>
         </div>
         <div class="mr-3">
-          <strong style="color: #667eea;">المساعد يفكر</strong>
+          <strong style="color: #667eea;">{{ t('Assistant is thinking') }}</strong>
           <div class="typing-indicator mt-2">
             <span></span><span></span><span></span>
           </div>
@@ -588,7 +588,7 @@ $(document).ready(function() {
       },
       error: function() {
         hideTyping();
-        addMessage('bot', ' عذراً، حدث خطأ. حاول مرة أخرى.', true);
+        addMessage('bot', ' ' + {{ t('Sorry, an error occurred. Try again.')|tojson }}, true);
         sendBtn.prop('disabled', false);
       }
     });
@@ -612,23 +612,23 @@ $(document).ready(function() {
   let chatHistory = [];
   
   window.clearChat = function() {
-    if (confirm('هل تريد مسح المحادثة؟')) {
+    if (confirm({{ t('Do you want to clear the chat?')|tojson }})) {
       $('#chatBox').empty();
       if (typeof chatHistory !== 'undefined') {
         chatHistory = [];
       }
-      addMessage('bot', 'تم مسح المحادثة! 🆕 كيف يمكنني مساعدتك؟', true);
+      addMessage('bot', {{ t('Chat cleared! How can I help you?')|tojson }}, true);
     }
   };
   
   window.getSummary = function() {
     if (chatHistory.length === 0) {
-      addMessage('bot', ' لا توجد محادثة لتلخيصها بعد!', true);
+      addMessage('bot', ' ' + {{ t('No conversation to summarize yet!')|tojson }}, true);
       return;
     }
     
     const questions = chatHistory.filter(m => m.role === 'user').length;
-    const summary = ` **ملخص المحادثة:**\n\n• عدد الأسئلة: ${questions}\n• عدد الردود: ${chatHistory.filter(m => m.role === 'bot').length}\n\n **المواضيع:**\n${chatHistory.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n')}`;
+    const summary = ' ' + {{ t('**Chat summary:**')|tojson }} + '\n\n• ' + {{ t('Questions:')|tojson }} + ' ' + questions + '\n• ' + {{ t('Replies:')|tojson }} + ' ' + chatHistory.filter(m => m.role === 'bot').length + '\n\n ' + {{ t('**Topics:**')|tojson }} + '\n' + chatHistory.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n');
     
     addMessage('bot', summary, true);
   };
@@ -639,10 +639,10 @@ $(document).ready(function() {
     
     if (beginnersMode) {
       btn.removeClass('btn-outline-success').addClass('btn-success');
-      addMessage('bot', ' **وضع المبتدئين مفعّل!**\n\nسأشرح كل شيء بالتفصيل مع أمثلة وخطوات واضحة! ', true);
+      addMessage('bot', ' ' + {{ t('**Beginner mode enabled!**')|tojson }} + '\n\n' + {{ t('I will explain everything in detail with examples and clear steps!')|tojson }} + ' ', true);
     } else {
       btn.removeClass('btn-success').addClass('btn-outline-success');
-      addMessage('bot', ' **وضع المحترفين مفعّل!**\n\nردود مباشرة وسريعة! ', true);
+      addMessage('bot', ' ' + {{ t('**Pro mode enabled!**')|tojson }} + '\n\n' + {{ t('Direct and fast replies!')|tojson }} + ' ', true);
     }
   };
   
@@ -653,9 +653,9 @@ $(document).ready(function() {
     $(`#${dialect}Btn`).addClass('active');
     
     const dialectMessages = {
-      'formal': ' **اللغة: فصحى**\n\nسأتحدث بالعربية الفصحى المعيارية.',
-      'palestinian': ' **اللهجة: فلسطينية**\n\nأهلاً وسهلاً! إيش بدك يا زميل؟ ',
-      'gulf': ' **اللهجة: خليجية**\n\nأهلاً وسهلاً! شخبارك؟ شلونك؟ '
+      'formal': ' ' + {{ t('**Language: Formal**')|tojson }} + '\n\n' + {{ t('I will speak standard Arabic.')|tojson }},
+      'palestinian': ' ' + {{ t('**Dialect: Palestinian**')|tojson }} + '\n\n' + {{ t('Ahlan wa sahlan! What do you need, buddy?')|tojson }} + ' ',
+      'gulf': ' ' + {{ t('**Dialect: Gulf**')|tojson }} + '\n\n' + {{ t('Ahlan wa sahlan! How are you?')|tojson }} + ' '
     };
     
     addMessage('bot', dialectMessages[dialect], true);
@@ -663,10 +663,10 @@ $(document).ready(function() {
   
   window.quickAnalysis = function(type) {
     const questions = {
-      'sales': 'حلل المبيعات',
-      'margins': 'هوامش الربح',
-      'inventory': 'صحة المخزون',
-      'patterns': 'أنماط المبيعات'
+      'sales': {{ t('Analyze sales')|tojson }},
+      'margins': {{ t('Profit Margins')|tojson }},
+      'inventory': {{ t('Inventory Health')|tojson }},
+      'patterns': {{ t('Sales patterns')|tojson }}
     };
     
     $('#userMessage').val(questions[type]);
@@ -674,32 +674,32 @@ $(document).ready(function() {
   };
   
   window.showSelfImprovement = function() {
-    $('#userMessage').val('تحسين ذاتي');
+    $('#userMessage').val({{ t('Self improvement')|tojson }});
     $('#sendBtn').click();
   };
   
   window.showLearningStatus = function() {
-    $('#userMessage').val('حالة التعلم');
+    $('#userMessage').val({{ t('Learning Status')|tojson }});
     $('#sendBtn').click();
   };
   
   window.showSystemSummary = function() {
-    $('#userMessage').val('ملخص النظام');
+    $('#userMessage').val({{ t('System Summary')|tojson }});
     $('#sendBtn').click();
   };
   
   window.showKnowledgeManager = function() {
-    $('#userMessage').val('مصادر كل');
+    $('#userMessage').val({{ t('List all sources')|tojson }});
     $('#sendBtn').click();
   };
   
   window.showNeuralStatus = function() {
-    $('#userMessage').val('حالة الشبكات العصبية');
+    $('#userMessage').val({{ t('Neural network status')|tojson }});
     $('#sendBtn').click();
   };
   
   window.showAutomotiveKnowledge = function() {
-    $('#userMessage').val('أخبرني عن كمبيوترات السيارات');
+    $('#userMessage').val({{ t('Tell me about car computers')|tojson }});
     $('#sendBtn').click();
   };
   
@@ -719,7 +719,7 @@ $(document).ready(function() {
         'transform': 'scale(1)'
       });
       $('#ai-status-badge').removeClass('badge-success').addClass('badge-secondary')
-        .html('<i class="fas fa-microchip mr-2"></i>محلي ');
+        .html('<i class="fas fa-microchip mr-2"></i>' + {{ t('Local')|tojson }} + ' ');
     } else {
       $('#ai-mode-groq').css({
         'background': '#17a2b8',
@@ -773,11 +773,11 @@ function loadBusinessInsights() {
         html += '</div>';
         $('#insights-container').html(html);
       } else {
-        $('#insights-container').html('<p class="text-muted text-center">لا توجد رؤى متاحة حالياً</p>');
+        $('#insights-container').html('<p class="text-muted text-center">' + {{ t('No insights available currently')|tojson }} + '</p>');
       }
     },
     error: function() {
-      $('#insights-container').html('<p class="text-danger text-center">فشل تحميل الرؤى</p>');
+      $('#insights-container').html('<p class="text-danger text-center">' + {{ t('Failed to load insights')|tojson }} + '</p>');
     }
   });
 }
@@ -799,7 +799,7 @@ $('#excelUploadForm').on('submit', function(e) {
   const warehouseId = $('#warehouseSelect').val();
   
   if (!fileInput.files || !fileInput.files[0]) {
-    alert('يرجى اختيار ملف Excel');
+    alert({{ t('Please select an Excel file')|tojson }});
     return;
   }
   
@@ -821,14 +821,14 @@ $('#excelUploadForm').on('submit', function(e) {
         addMessage('bot', response.message, true);
         hideExcelUploader();
       } else {
-        addMessage('bot', ` خطأ: ${response.error}`, true);
+        addMessage('bot', ' ' + {{ t('Error:')|tojson }} + ' ' + response.error, true);
       }
       $('#uploadExcelBtn').prop('disabled', false);
       $('#uploadProgress').hide();
     },
     error: function(xhr) {
-      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'حدث خطأ غير متوقع';
-      addMessage('bot', ` خطأ: ${errorMsg}`, true);
+      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : {{ t('An unexpected error occurred')|tojson }};
+      addMessage('bot', ' ' + {{ t('Error:')|tojson }} + ' ' + errorMsg, true);
       $('#uploadExcelBtn').prop('disabled', false);
       $('#uploadProgress').hide();
     }
@@ -846,14 +846,14 @@ function openExcelTemplate() {
   link.click();
   document.body.removeChild(link);
   
-  addMessage('bot', ` تم فتح ملف Excel في التطبيق!
+  addMessage('bot', ` {{ t('Excel file opened in the application!') }}
   
-   تعليمات:
-  1. عدّل البيانات في Excel
-  2. احفظ الملف (Ctrl+S)
-  3. ارجع هنا واضغط "Excel" لرفع الملف المحدث
+   {{ t('Instructions:') }}
+  1. {{ t('Edit the data in Excel') }}
+  2. {{ t('Save the file (Ctrl+S)') }}
+  3. {{ t('Come back here and click "Excel" to upload the updated file') }}
   
-   المصدر: GROQ API + التحليل المحلي`, true);
+   {{ t('Source:') }} GROQ API + {{ t('local analysis') }}`, true);
 }
 </script>
 {% endblock %}

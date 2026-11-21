@@ -17,9 +17,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   
-  <meta name="description" content="{% block meta_description %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم{% endblock %}">
-  <meta name="keywords" content="{% block meta_keywords %}نظام إدارة المستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المبيعات، إدارة المخزون، ذكاء اصطناعي، الإمارات، دبي، أبوظبي{% endblock %}">
-  <meta name="author" content="شركة أزاد للأنظمة الذكية">
+  <meta name="description" content="{% block meta_description %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Integrated warehouse, sales and purchases management system with advanced AI") }}{% endblock %}">
+  <meta name="keywords" content="{% block meta_keywords %}{{ t("Warehouse Management System, Accounting Software, E-Invoices, Sales Management, Inventory Management, AI, UAE, Dubai, Abu Dhabi") }}{% endblock %}">
+  <meta name="author" content="{{ t("Azad Smart Systems") }}">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
   <meta name="language" content="{{ current_language }}">
   
@@ -30,7 +30,7 @@
   <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
   <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
   <meta property="og:locale" content="{{ 'ar_AE' if current_language == 'ar' else 'en_US' }}">
-  <meta property="og:site_name" content="شركة أزاد للأنظمة الذكية">
+  <meta property="og:site_name" content="{{ t("Azad Smart Systems") }}">
   
   
   <meta name="twitter:card" content="summary_large_image">
@@ -93,11 +93,11 @@
   {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "شركة أزاد للأنظمة الذكية",
+    "name": "{{ t("Azad Smart Systems") }}",
     "alternateName": "Azad Smart Systems",
     "url": "{{ request.url_root }}",
     "logo": "{{ url_for('static', filename='img/azad_logo.png', _external=True) }}",
-    "description": "نظام متكامل لإدارة المستودعات والمبيعات والمشتريات مع ذكاء اصطناعي متقدم",
+    "description": "{{ t("Integrated warehouse, sales and purchases management system with advanced AI") }}",
     "address": {
       "@type": "PostalAddress",
       "addressCountry": "AE",
@@ -216,31 +216,31 @@
       
       {% if not current_user.is_owner %}
       <li class="nav-item">
-        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="المساعد الذكي">
+        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="{{ t("AI Assistant") }}">
           <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
-          <span class="d-none d-md-inline">المساعد</span>
+          <span class="d-none d-md-inline">{{ t("Assistant") }}</span>
         </a>
       </li>
       {% endif %}
       
       <li class="nav-item">
-        <a href="{{ url_for('public.user_guide') }}" class="nav-link" title="دليل المستخدم">
+        <a href="{{ url_for('public.user_guide') }}" class="nav-link" title="{{ t("User Guide") }}">
           <i class="fas fa-book mr-1" style="color: #28a745;"></i>
-          <span class="d-none d-md-inline">الدليل</span>
+          <span class="d-none d-md-inline">{{ t("Guide") }}</span>
         </a>
       </li>
       
       
       <li class="nav-item">
-        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="تبديل موقع القائمة الجانبية">
+        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="{{ t("Toggle Sidebar Position") }}">
           <i class="fas fa-exchange-alt" style="transform: rotate(90deg);"></i>
-          <span class="d-none d-md-inline">تبديل القائمة</span>
+          <span class="d-none d-md-inline">{{ t("Toggle Sidebar") }}</span>
         </a>
       </li>
       
       
       <li class="nav-item dropdown">
-        <a class="nav-link" data-toggle="dropdown" href="#" title="تغيير اللغة">
+        <a class="nav-link" data-toggle="dropdown" href="#" title="{{ t("Change Language") }}">
           <i class="fas fa-globe mr-1"></i>
           <span class="d-none d-md-inline">{{ session.get('language', 'ar')|upper }}</span>
         </a>
@@ -268,7 +268,7 @@
           <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
           <div class="dropdown-divider"></div>
           <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
-            <i class="fas fa-sign-out-alt mr-2"></i>تسجيل خروج
+            <i class="fas fa-sign-out-alt mr-2"></i>{{ t("Logout") }}
           </a>
         </div>
       </li>
@@ -289,9 +289,9 @@
     <div class="sidebar" style="overflow-y: auto; max-height: calc(100vh - 100px); scrollbar-width: thin; scrollbar-color: #667eea #1a1a2e;">
       {% if is_impersonating and impersonate_tenant %}
       <div class="alert alert-warning alert-dismissible fade show mx-2 mt-2" role="alert">
-        <small><strong> سياق دعم:</strong> {{ impersonate_tenant.name_ar or impersonate_tenant.name }}<br>
-        كل إجراء تدقيق.</small>
-        <a href="{{ url_for('owner.tenant_impersonate_exit') }}" class="btn btn-sm btn-outline-danger mt-1 w-100">↩ خروج من السياق</a>
+        <small><strong> {{ t("Support Context:") }}</strong> {{ impersonate_tenant.name_ar or impersonate_tenant.name }}<br>
+        {{ t("All actions are audited.") }}</small>
+        <a href="{{ url_for('owner.tenant_impersonate_exit') }}" class="btn btn-sm btn-outline-danger mt-1 w-100">↩ {{ t("Exit Context") }}</a>
       </div>
       {% endif %}
       <div class="user-panel mt-3 pb-3 mb-3 d-flex">
@@ -300,7 +300,7 @@
         </div>
         <div class="info">
           <a href="#" class="d-block text-white">{{ current_user.username }}</a>
-          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else 'مستخدم' }}</small>
+          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else t('User') }}</small>
         </div>
       </div>
 
@@ -311,7 +311,7 @@
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.') %}active{% endif %}">
               <i class="nav-icon fas fa-crown"></i>
-              <p>كونسول المنصة</p>
+              <p>{{ t("Platform Console") }}</p>
             </a>
           </li>
           {% else %}
@@ -330,7 +330,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('sales.') %}active{% endif %}">
               <i class="nav-icon fas fa-file-invoice"></i>
               <p>
-                المبيعات
+                {{ t("Sales") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -338,13 +338,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('sales.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>فاتورة جديدة</p>
+                  <p>{{ t("Invoice") }} {{ t("New") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('sales.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الفواتير</p>
+                  <p>{{ t("Invoice List") }}</p>
                 </a>
               </li>
             </ul>
@@ -356,7 +356,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('customers.') %}active{% endif %}">
               <i class="nav-icon fas fa-users"></i>
               <p>
-                الزبائن
+                {{ t("Clients") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -364,13 +364,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('customers.create') }}" class="nav-link">
                   <i class="fas fa-user-plus nav-icon text-success"></i>
-                  <p>زبون جديد</p>
+                  <p>{{ t("New Customer") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('customers.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الزبائن</p>
+                  <p>{{ t("Customer List") }}</p>
                 </a>
               </li>
             </ul>
@@ -382,7 +382,7 @@
             <a href="#" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
               <i class="nav-icon fas fa-handshake"></i>
               <p>
-                الشركاء والمساهمون
+                {{ t("Partners and Shareholders") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -390,19 +390,19 @@
               <li class="nav-item">
                 <a href="{{ url_for('customers.create') }}" class="nav-link">
                   <i class="fas fa-user-plus nav-icon text-success"></i>
-                  <p>شريك جديد</p>
+                  <p>{{ t("New Partner") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('customers.index', type='partner') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الشركاء</p>
+                  <p>{{ t("Partner List") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
                   <i class="fas fa-percentage nav-icon text-warning"></i>
-                  <p>النسب والتوزيع</p>
+                  <p>{{ t("Ratios and Distribution") }}</p>
                 </a>
               </li>
             </ul>
@@ -415,7 +415,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('products.') %}active{% endif %}">
               <i class="nav-icon fas fa-box"></i>
               <p>
-                المنتجات
+                {{ t("Products") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -429,7 +429,7 @@
               <li class="nav-item">
                 <a href="{{ url_for('products.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المنتجات</p>
+                  <p>{{ t("Product List") }}</p>
                 </a>
               </li>
             </ul>
@@ -441,7 +441,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('warehouse.') %}active{% endif %}">
               <i class="nav-icon fas fa-warehouse"></i>
               <p>
-                المستودعات والمخزون
+                {{ t("Warehouses and Inventory") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -449,45 +449,45 @@
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.index') }}" class="nav-link">
                   <i class="fas fa-boxes nav-icon text-info"></i>
-                  <p>إدارة المخزون</p>
+                  <p>{{ t("Inventory Management") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.list_warehouses') }}" class="nav-link">
                   <i class="fas fa-building nav-icon text-primary"></i>
-                  <p>المستودعات</p>
+                  <p>{{ t("Warehouses") }}</p>
                 </a>
               </li>
               {% if current_user.has_permission('manage_warehouse') %}
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.create_warehouse') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>إضافة مستودع</p>
+                  <p>{{ t("Add Warehouse") }}</p>
                 </a>
               </li>
               {% endif %}
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.movements') }}" class="nav-link">
                   <i class="fas fa-exchange-alt nav-icon text-secondary"></i>
-                  <p>حركات المخزون</p>
+                  <p>{{ t("Stock Movements") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.opening_stock') }}" class="nav-link">
                   <i class="fas fa-file-import nav-icon text-warning"></i>
-                  <p>ترحيل الرصيد الافتتاحي</p>
+                  <p>{{ t("Carry Opening Balance") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.low_stock') }}" class="nav-link">
                   <i class="fas fa-exclamation-triangle nav-icon text-warning"></i>
-                  <p>مخزون منخفض</p>
+                  <p>{{ t("Low Inventory") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('warehouse.out_of_stock') }}" class="nav-link">
                   <i class="fas fa-ban nav-icon text-danger"></i>
-                  <p>نفذ من المخزون</p>
+                  <p>{{ t("Out of Stock Item") }}</p>
                 </a>
               </li>
             </ul>
@@ -500,7 +500,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('purchases.') %}active{% endif %}">
               <i class="nav-icon fas fa-shopping-cart"></i>
               <p>
-                المشتريات
+                {{ t("Purchases") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -508,13 +508,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('purchases.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مشترى جديد</p>
+                  <p>{{ t("New Purchase") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('purchases.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المشتريات</p>
+                  <p>{{ t("Purchase List") }}</p>
                 </a>
               </li>
             </ul>
@@ -526,7 +526,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('suppliers.') %}active{% endif %}">
               <i class="nav-icon fas fa-truck"></i>
               <p>
-                الموردين
+                {{ t("Suppliers") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -534,13 +534,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('suppliers.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مورد جديد</p>
+                  <p>{{ t("New Supplier") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('suppliers.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة الموردين</p>
+                  <p>{{ t("Supplier List") }}</p>
                 </a>
               </li>
             </ul>
@@ -552,7 +552,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('users.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
-                المستخدمين
+                {{ t("Users") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -560,13 +560,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('users.create') }}" class="nav-link">
                   <i class="fas fa-user-plus nav-icon text-success"></i>
-                  <p>مستخدم جديد</p>
+                  <p>{{ t("New User") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('users.index') }}" class="nav-link">
                   <i class="fas fa-users nav-icon"></i>
-                  <p>قائمة المستخدمين</p>
+                  <p>{{ t("User List") }}</p>
                 </a>
               </li>
             </ul>
@@ -578,7 +578,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('payments.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-bill-wave"></i>
               <p>
-                المدفوعات
+                {{ t("Payments") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -586,13 +586,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('payments.create_receipt') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>سند قبض جديد</p>
+                  <p>{{ t("New Receipt") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('payments.receipts') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة السندات</p>
+                  <p>{{ t("Receipt List") }}</p>
                 </a>
               </li>
             </ul>
@@ -604,7 +604,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('cheques.') %}active{% endif %}">
               <i class="nav-icon fas fa-money-check-alt"></i>
               <p>
-                إدارة الشيكات
+                {{ t("Cheque Management") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -612,13 +612,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('cheques.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon text-info"></i>
-                  <p>الشيكات</p>
+                  <p>{{ t("Cheques") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('cheques.alerts') }}" class="nav-link">
                   <i class="fas fa-bell nav-icon text-warning"></i>
-                  <p>تنبيهات الشيكات</p>
+                  <p>{{ t("Cheque Alerts") }}</p>
                 </a>
               </li>
             </ul>
@@ -630,7 +630,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('expenses.') %}active{% endif %}">
               <i class="nav-icon fas fa-receipt"></i>
               <p>
-                المصروفات
+                {{ t("Expenses") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -638,13 +638,13 @@
               <li class="nav-item">
                 <a href="{{ url_for('expenses.create') }}" class="nav-link">
                   <i class="fas fa-plus-circle nav-icon text-success"></i>
-                  <p>مصروف جديد</p>
+                  <p>{{ t("New Expense") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('expenses.index') }}" class="nav-link">
                   <i class="fas fa-list nav-icon"></i>
-                  <p>قائمة المصروفات</p>
+                  <p>{{ t("List") }} {{ t("Expenses") }}</p>
                 </a>
               </li>
             </ul>
@@ -656,7 +656,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('ledger.') %}active{% endif %}">
               <i class="nav-icon fas fa-book"></i>
               <p>
-                دفتر الأستاذ
+                {{ t("Ledger") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -664,75 +664,77 @@
               <li class="nav-item">
                 <a href="{{ url_for('ledger.index') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الرئيسية</p>
+                  <p>{{ t("Home") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.journal_entries') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>القيود</p>
+                  <p>{{ t("Journal Entries") }}</p>
                 </a>
               </li>
+              {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.accounts') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الحسابات</p>
+                  <p>{{ t("Accounts") }}</p>
                 </a>
               </li>
+              {% endif %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.accounts_tree') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>شجرة الحسابات</p>
+                  <p>{{ t("Chart of Accounts") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.manual_entry') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>قيد يدوي</p>
+                  <p>{{ t("Manual Entry") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.trial_balance') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>ميزان المراجعة</p>
+                  <p>{{ t("Trial Balance") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.income_statement') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>قائمة الدخل</p>
+                  <p>{{ t("Income Statement") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.balance_sheet') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الميزانية</p>
+                  <p>{{ t("Balance Sheet") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.reports') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>التقارير</p>
+                  <p>{{ t("Reports") }}</p>
                 </a>
               </li>
               {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.vaults') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
-                  <p>الخزائن</p>
+                  <p>{{ t("Vaults") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('ledger.settings') }}" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
-                  <p>الإعدادات</p>
+                  <p>{{ t("Settings") }}</p>
                 </a>
               </li>
               <li class="nav-item has-treeview">
                 <a href="#" class="nav-link">
                   <i class="fas fa-cogs nav-icon"></i>
                   <p>
-                    إدارة متقدمة
+                    {{ t("Advanced Management") }}
                     <i class="right fas fa-angle-left"></i>
                   </p>
                 </a>
@@ -740,43 +742,43 @@
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.customs_taxes') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>الجمارك والضرائب</p>
+                      <p>{{ t("Customs and Taxes") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.expense_categories') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>فئات المصروفات</p>
+                      <p>{{ t("Expense Categories") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.advanced_expenses') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>المصروفات المتقدمة</p>
+                      <p>{{ t("Advanced Expenses") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.cheque_integration') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>تكامل الشيكات</p>
+                      <p>{{ t("Cheque Integration") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.professional_reports') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>التقارير الاحترافية</p>
+                      <p>{{ t("Professional Reports") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.advanced_analytics') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>التحليلات</p>
+                      <p>{{ t("Analytics") }}</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="{{ url_for('advanced_ledger.real_time_events') }}" class="nav-link">
                       <i class="far fa-circle nav-icon"></i>
-                      <p>الأحداث</p>
+                      <p>{{ t("Events") }}</p>
                     </a>
                   </li>
                 </ul>
@@ -791,41 +793,41 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('erp_modules.') %}active{% endif %}">
               <i class="nav-icon fas fa-puzzle-piece"></i>
               <p>
-                الوحدات المتقدمة
+                {{ t("Advanced Modules") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
             <ul class="nav nav-treeview">
               {% if current_user.has_permission('manage_sales') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.quotations') }}" class="nav-link"><i class="fas fa-file-invoice nav-icon"></i><p>عروض الأسعار</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.e_invoices') }}" class="nav-link"><i class="fas fa-file-code nav-icon"></i><p>الفواتير الإلكترونية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.quotations') }}" class="nav-link"><i class="fas fa-file-invoice nav-icon"></i><p>{{ t("Quotations") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.e_invoices') }}" class="nav-link"><i class="fas fa-file-code nav-icon"></i><p>{{ t("E-Invoices") }}</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_purchases') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>أوامر الشراء</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>{{ t("Purchase Orders") }}</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_backups') %}
            <li class="nav-item">
              <a href="{{ url_for('owner.verify_latest_backup') }}" class="nav-link">
                <i class="nav-icon fas fa-clipboard-check"></i>
-               <p>التحقق من النسخ الاحتياطية</p>
+               <p>{{ t("Verify Backups") }}</p>
              </a>
            </li>
            {% endif %}
 
            {% if current_user.has_permission('manage_warehouse') %}
-              <li class="nav-item"><a href="{{ url_for('shipments.list_shipments') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>الإرساليات</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('inbound_shipments.list_inbound') }}" class="nav-link"><i class="fas fa-dolly nav-icon"></i><p>الشحنات الواردة</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>نقل المخزون</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>جرد المخزون</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>تتبع الدفعات</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.bins') }}" class="nav-link"><i class="fas fa-th-large nav-icon"></i><p>مواقع التخزين</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('shipments.list_shipments') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>{{ t("Shipments") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('inbound_shipments.list_inbound') }}" class="nav-link"><i class="fas fa-dolly nav-icon"></i><p>{{ t("Inbound Shipments") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_transfers') }}" class="nav-link"><i class="fas fa-exchange-alt nav-icon"></i><p>{{ t("Stock Transfers") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.stock_takes') }}" class="nav-link"><i class="fas fa-clipboard-check nav-icon"></i><p>{{ t("Stock Takes") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.lots') }}" class="nav-link"><i class="fas fa-layer-group nav-icon"></i><p>{{ t("Batch Tracking") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.bins') }}" class="nav-link"><i class="fas fa-th-large nav-icon"></i><p>{{ t("Storage Bins") }}</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_payments') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>إنذارات التحصيل</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>المصروفات الدورية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>{{ t("Dunning Alerts") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>{{ t("Recurring Expenses") }}</p></a></li>
               {% endif %}
               {% if current_user.has_permission('manage_ledger') %}
-              <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>الفترات المالية</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>{{ t("Fiscal Periods") }}</p></a></li>
               {% endif %}
             </ul>
           </li>
@@ -836,23 +838,23 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('maintenance.') %}active{% endif %}">
               <i class="nav-icon fas fa-tools"></i>
               <p>
-                الصيانة
+                {{ t("Maintenance") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
             <ul class="nav nav-treeview">
-              <li class="nav-item"><a href="{{ url_for('maintenance.list_orders') }}" class="nav-link"><i class="fas fa-clipboard-list nav-icon"></i><p>أوامر الصيانة</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.list_orders') }}" class="nav-link"><i class="fas fa-clipboard-list nav-icon"></i><p>{{ t("Maintenance Orders") }}</p></a></li>
               {% if current_user.has_permission('maintenance_receive') %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.create_order') }}" class="nav-link"><i class="fas fa-plus-circle nav-icon"></i><p>استلام جهاز</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.create_order') }}" class="nav-link"><i class="fas fa-plus-circle nav-icon"></i><p>{{ t("Receive Device") }}</p></a></li>
               {% endif %}
               {% if current_user.has_permission('maintenance_purchase') %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.purchases_list') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>شراء قطع الصيانة</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.purchases_list') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>{{ t("Purchase Maintenance Parts") }}</p></a></li>
               {% endif %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="nav-link"><i class="fas fa-chart-pie nav-icon"></i><p>تقرير التكاليف</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('maintenance.devices_list') }}" class="nav-link"><i class="fas fa-mobile-alt nav-icon"></i><p>سجل الأجهزة</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="nav-link"><i class="fas fa-chart-pie nav-icon"></i><p>{{ t("Cost Report") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.devices_list') }}" class="nav-link"><i class="fas fa-mobile-alt nav-icon"></i><p>{{ t("Device Registry") }}</p></a></li>
               {% if current_user.has_permission('maintenance_settings') %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.services_list') }}" class="nav-link"><i class="fas fa-list-ul nav-icon"></i><p>الخدمات الثابتة</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('maintenance.settings') }}" class="nav-link"><i class="fas fa-cogs nav-icon"></i><p>إعدادات الصيانة</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.services_list') }}" class="nav-link"><i class="fas fa-list-ul nav-icon"></i><p>{{ t("Fixed Services") }}</p></a></li>
+              <li class="nav-item"><a href="{{ url_for('maintenance.settings') }}" class="nav-link"><i class="fas fa-cogs nav-icon"></i><p>{{ t("Maintenance Settings") }}</p></a></li>
               {% endif %}
             </ul>
           </li>
@@ -863,7 +865,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('hr.') %}active{% endif %}">
               <i class="nav-icon fas fa-users-cog"></i>
               <p>
-                الموارد البشرية
+                {{ t("Human Resources") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -871,31 +873,31 @@
               <li class="nav-item">
                 <a href="{{ url_for('hr.dashboard') }}" class="nav-link">
                   <i class="fas fa-tachometer-alt nav-icon"></i>
-                  <p>لوحة التحكم</p>
+                  <p>{{ t("Dashboard") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.employees') }}" class="nav-link">
                   <i class="fas fa-users nav-icon"></i>
-                  <p>الموظفين</p>
+                  <p>{{ t("Employees") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.departments') }}" class="nav-link">
                   <i class="fas fa-building nav-icon"></i>
-                  <p>الأقسام</p>
+                  <p>{{ t("Departments") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.leave_requests') }}" class="nav-link">
                   <i class="fas fa-calendar-check nav-icon"></i>
-                  <p>طلبات الإجازة</p>
+                  <p>{{ t("Leave Requests") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('hr.payroll') }}" class="nav-link">
                   <i class="fas fa-money-check-alt nav-icon"></i>
-                  <p>كشوفات الرواتب</p>
+                  <p>{{ t("Payroll") }}</p>
                 </a>
               </li>
             </ul>
@@ -907,7 +909,7 @@
             <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}">
               <i class="nav-icon fas fa-chart-bar"></i>
               <p>
-                التقارير
+                {{ t("Reports") }}
                 <i class="right fas fa-angle-left"></i>
               </p>
             </a>
@@ -915,43 +917,43 @@
               <li class="nav-item">
                 <a href="{{ url_for('reports.sales') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير المبيعات</p>
+                  <p>{{ t("Sales Report") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.receivables') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>الذمم المدينة</p>
+                  <p>{{ t("Receivables") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.partners') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير الشركاء والتجار</p>
+                  <p>{{ t("Partner and Trader Report") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.inventory_valuation') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقييم المخزون</p>
+                  <p>{{ t("Inventory Valuation") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.ap_aging') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>أعمار الذمم الدائنة</p>
+                  <p>{{ t("AP Aging") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.cash_flow') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>التدفقات النقدية</p>
+                  <p>{{ t("Cash Flow") }}</p>
                 </a>
               </li>
               <li class="nav-item">
                 <a href="{{ url_for('reports.vat_report') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
-                  <p>تقرير VAT</p>
+                  <p>{{ t("VAT Report") }}</p>
                 </a>
               </li>
             </ul>
@@ -962,7 +964,7 @@
           <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}menu-open{% endif %}">
             <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}active{% endif %}">
               <i class="nav-icon fas fa-database"></i>
-              <p>النسخ الاحتياطية</p>
+              <p>{{ t("Backups") }}</p>
             </a>
           </li>
           {% endif %}
@@ -971,39 +973,39 @@
 
           
           {% if current_user.has_permission('manage_settings') %}
-          <li class="nav-header">إعدادات الشركة</li>
+          <li class="nav-header">{{ t("Company Settings") }}</li>
           <li class="nav-item">
             <a href="{{ url_for('main.company_settings') }}" class="nav-link {% if request.endpoint == 'main.company_settings' %}active{% endif %}">
               <i class="nav-icon fas fa-building text-info"></i>
-              <p>بيانات الشركة والشعارات</p>
+              <p>{{ t("Company Details and Logos") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('main.letterheads_settings') }}" class="nav-link {% if request.endpoint in ['main.letterheads_settings', 'owner.invoice_settings'] %}active{% endif %}">
               <i class="nav-icon fas fa-file-invoice text-info"></i>
-              <p>ترويسات الفواتير والسندات</p>
+              <p>{{ t("Invoice and Receipt Letterheads") }}</p>
             </a>
           </li>
           {% endif %}
 
-          <li class="nav-header">مساعد ودليل</li>
+          <li class="nav-header">{{ t("Help and Guide") }}</li>
           <li class="nav-item">
             <a href="{{ url_for('ai.assistant_page') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('ai.') %}active{% endif %}">
               <i class="nav-icon fas fa-robot text-primary"></i>
-              <p>المساعد الذكي</p>
+              <p>{{ t("AI Assistant") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('public.user_guide') }}" class="nav-link {% if request.endpoint == 'public.user_guide' %}active{% endif %}">
               <i class="nav-icon fas fa-book-open text-success"></i>
-              <p>دليل المستخدم</p>
+              <p>{{ t("User Guide") }}</p>
             </a>
           </li>
           {% if current_user.is_owner %}
           <li class="nav-item">
             <a href="{{ url_for('owner.owner_guide') }}" class="nav-link {% if request.endpoint == 'owner.owner_guide' %}active{% endif %}">
               <i class="nav-icon fas fa-crown text-warning"></i>
-              <p>دليل المالك (خاص)</p>
+              <p>{{ t("Owner Guide (Private)") }}</p>
             </a>
           </li>
           {% endif %}
@@ -1013,13 +1015,13 @@
           <li class="nav-item">
             <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-crown text-warning"></i>
-              <p>لوحة المالك</p>
+              <p>{{ t("Owner Dashboard") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.tenants_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tenant') %}active{% endif %}">
               <i class="nav-icon fas fa-building text-success"></i>
-              <p>المستأجرون</p>
+              <p>{{ t("Tenants") }}</p>
             </a>
           </li>
           <li class="nav-item">
@@ -1027,79 +1029,79 @@
           <li class="nav-item">
             <a href="{{ url_for('owner.support_inbox') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.support_ticket') %}active{% endif %}">
               <i class="nav-icon fas fa-inbox text-info"></i>
-              <p>صندوق وارد الدعم</p>
+              <p>{{ t("Support Inbox") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.incidents') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.incidents') %}active{% endif %}">
               <i class="nav-icon fas fa-bolt text-danger"></i>
-              <p>سجل الحوادث</p>
+              <p>{{ t("Incident Log") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.compliance_credentials') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.compliance_credentials') %}active{% endif %}">
               <i class="nav-icon fas fa-key text-warning"></i>
-              <p>اعتمادات الامتثال للشركات</p>
+              <p>{{ t("Company Compliance Credentials") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.tax_rulesets') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tax_rulesets') %}active{% endif %}">
               <i class="nav-icon fas fa-globe text-success"></i>
-              <p>قواعد الضريبة للدول</p>
+              <p>{{ t("Country Tax Rules") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.constants_index') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.constants') %}active{% endif %}">
               <i class="nav-icon fas fa-list-alt text-info"></i>
-              <p>ثوابت النظام</p>
+              <p>{{ t("System Constants") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('monitoring.dashboard') }}" class="nav-link">
               <i class="nav-icon fas fa-heartbeat text-danger"></i>
-              <p>مراقبة النظام</p>
+              <p>{{ t("System Monitoring") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('ai.config') }}" class="nav-link">
               <i class="nav-icon fas fa-key text-info"></i>
-              <p>مفاتيح AI (Groq)</p>
+              <p>{{ t("AI Keys (Groq)") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.list_backups') }}" class="nav-link">
               <i class="nav-icon fas fa-database text-info"></i>
-              <p>النسخ الاحتياطية</p>
+              <p>{{ t("Backups") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.invoice_settings') }}" class="nav-link">
               <i class="nav-icon fas fa-file-invoice text-warning"></i>
-              <p>إعدادات الفواتير</p>
+              <p>{{ t("Invoice Settings") }}</p>
             </a>
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.integrations') }}" class="nav-link">
               <i class="nav-icon fas fa-plug text-secondary"></i>
-              <p>التكاملات</p>
+              <p>{{ t("Integrations") }}</p>
             </a>
           </li>
           
-          <li class="nav-header">الشركات (دعم)</li>
+          <li class="nav-header">{{ t("Companies (Support)") }}</li>
           {% for _t in (owner_tenants or []) %}
           <li class="nav-item">
-            <a href="{{ url_for('owner.tenant_impersonate', id=_t.id) }}" class="nav-link" title="دخول سياق دعم — كل الإجراءات مدققة">
+            <a href="{{ url_for('owner.tenant_impersonate', id=_t.id) }}" class="nav-link" title="{{ t("Enter support context — all actions are audited") }}">
               <i class="nav-icon fas fa-door-open text-success"></i>
               <p>{{ _t.name_ar or _t.name }}</p>
             </a>
           </li>
           {% else %}
-          <li class="nav-item nav-link text-muted"><i class="nav-icon fas fa-info-circle"></i><p>لا شركات نشطة</p></li>
+          <li class="nav-item nav-link text-muted"><i class="nav-icon fas fa-info-circle"></i><p>{{ t("No active companies") }}</p></li>
           {% endfor %}
           <li class="nav-item">
             <a href="{{ url_for('owner.tenants_list') }}" class="nav-link">
               <i class="nav-icon fas fa-cog text-muted"></i>
-              <p>إدارة الشركات</p>
+              <p>{{ t("Company Management") }}</p>
             </a>
           </li>
           {% endif %}
@@ -1116,7 +1118,7 @@
              inside it, so this is a div (not h1) to avoid nested headings. #}
           <div class="page-title-host">{% block page_title %}{% endblock %}</div>
           <ol class="breadcrumb float-sm-right mb-0" style="background:transparent;">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-home"></i> الرئيسية</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-home"></i> {{ t("Home") }}</a></li>
             <li class="breadcrumb-item active">{% block breadcrumb_current %}{{ self.page_title()|page_title_text }}{% endblock %}</li>
           </ol>
         </div>
@@ -1167,7 +1169,7 @@
       <div class="footer-inline">
         <div class="footer-inline-brand">
           <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
-          <span class="footer-brand-name">{{ config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems' }}</span>
+          <span class="footer-brand-name">{{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
         </div>
 
         <div class="footer-inline-contact">
@@ -1182,14 +1184,14 @@
           <a href="{{ config.COMPANY_WEBSITE or '#' }}" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE or 'azadsystems.com' }}" target="_blank">
             <i class="fas fa-globe"></i>
           </a>
-          <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="دليل المستخدم">
+          <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="{{ t("User Guide") }}">
             <i class="fas fa-book"></i>
           </a>
-          <a href="{{ url_for('public.sla') }}" class="footer-inline-link" title="SLA — التزامات التشغيل"><i class="fas fa-life-ring"></i></a>
-          <a href="{{ url_for('public.contract') }}" class="footer-inline-link" title="عقد الاشتراك (نموذج)"><i class="fas fa-file-contract"></i></a>
-          <a href="{{ url_for('public.terms') }}" class="footer-inline-link" title="شروط الخدمة"><i class="fas fa-gavel"></i></a>
-          <a href="{{ url_for('public.privacy') }}" class="footer-inline-link" title="سياسة الخصوصية"><i class="fas fa-user-shield"></i></a>
-          <a href="#" class="footer-inline-link" title="{{ config.COMPANY_ADDRESS }}">
+          <a href="{{ url_for('public.sla') }}" class="footer-inline-link" title="{{ t("SLA — Operational Commitments") }}"><i class="fas fa-life-ring"></i></a>
+          <a href="{{ url_for('public.contract') }}" class="footer-inline-link" title="{{ t("Subscription Contract (Template)") }}"><i class="fas fa-file-contract"></i></a>
+          <a href="{{ url_for('public.terms') }}" class="footer-inline-link" title="{{ t("Terms of Service") }}"><i class="fas fa-gavel"></i></a>
+          <a href="{{ url_for('public.privacy') }}" class="footer-inline-link" title="{{ t("Privacy Policy") }}"><i class="fas fa-user-shield"></i></a>
+          <a href="#" class="footer-inline-link" title="{{ company_address }}">
             <i class="fas fa-map-marker-alt"></i>
           </a>
         </div>
@@ -1241,11 +1243,11 @@
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content" style="border-radius:12px; overflow:hidden;">
       <div class="modal-header py-2" style="background:linear-gradient(135deg,#667eea,#764ba2); color:#fff;">
-        <h6 class="modal-title" id="commandPaletteLabel"><i class="fas fa-bolt mr-2"></i>لوحة الأوامر — Ctrl+K</h6>
+        <h6 class="modal-title" id="commandPaletteLabel"><i class="fas fa-bolt mr-2"></i>{{ t("Command Palette — Ctrl+K") }}</h6>
         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body p-0">
-        <input type="text" id="commandInput" class="form-control border-0" placeholder="ابحث عن: فاتورة جديدة، زبون، كشف حساب..." style="border-radius:0; padding:14px 16px;" autocomplete="off">
+        <input type="text" id="commandInput" class="form-control border-0" placeholder="{{ t("Search for: New Invoice, Customer, Account Statement...") }}" style="border-radius:0; padding:14px 16px;" autocomplete="off">
         <div id="commandResults" style="max-height:320px; overflow-y:auto; border-top:1px solid #eee;"></div>
       </div>
     </div>
@@ -1259,15 +1261,15 @@ document.addEventListener('keydown', function(e){
 (function(){
   const raw=[
     {% if not (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) or is_impersonating %}
-    {% if current_user.has_permission('manage_sales') %}{label:'فاتورة جديدة', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'فاتورة بيع sale'},{% endif %}
-    {% if current_user.has_permission('manage_sales') %}{label:'قائمة الفواتير', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'فواتير sales'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'زبون جديد', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'زبون customer'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'قائمة الزبائن', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'زبائن customers'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'الشركاء والنسب (المساهمون)', icon:'fa-handshake', url:"{{ url_for('main.company_partners') }}", keys:'شركاء مساهمون نسب أرباح partners'},{% endif %}
-    {% if current_user.has_permission('manage_products') %}{label:'منتج جديد', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'منتج product'},{% endif %}
-    {% if current_user.has_permission('manage_payments') %}{label:'سند قبض جديد', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'سند قبض payment'},{% endif %}
-    {% if current_user.has_permission('view_ledger') %}{label:'كشف حساب', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'كشف حساب ledger'},{% endif %}
-    {% if current_user.has_permission('view_ledger') %}{label:'ميزان المراجعة', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'ميزان trial'},{% endif %}
+    {% if current_user.has_permission('manage_sales') %}{label:'{{ t("Invoice") }} {{ t("New") }}', icon:'fa-file-invoice', url:"{{ url_for('sales.create') }}", keys:'{{ t("Sales Invoice") }} sale'},{% endif %}
+    {% if current_user.has_permission('manage_sales') %}{label:'{{ t("Invoice List") }}', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'{{ t("Invoices") }} sales'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'{{ t("New Customer") }}', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'{{ t("Customer") }} customer'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'{{ t("Customer List") }}', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'{{ t("Customers") }} customers'},{% endif %}
+    {% if current_user.has_permission('manage_customers') %}{label:'{{ t("Partners and Shares (Shareholders)") }}', icon:'fa-handshake', url:"{{ url_for('main.company_partners') }}", keys:'{{ t("Partners Shareholders Profit Shares") }}'},{% endif %}
+    {% if current_user.has_permission('manage_products') %}{label:'{{ t("New Product") }}', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'{{ t("Product") }} product'},{% endif %}
+    {% if current_user.has_permission('manage_payments') %}{label:'{{ t("New Receipt") }}', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'{{ t("Receipt") }} payment'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'{{ t("Account Statement") }}', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'{{ t("Account Statement") }} ledger'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'{{ t("Trial Balance") }}', icon:'fa-balance-scale', url:"{{ url_for('ledger.trial_balance') }}", keys:'{{ t("Balance") }} trial'},{% endif %}
     {% endif %}
   ];
   const commands=raw;
@@ -1276,7 +1278,7 @@ document.addEventListener('keydown', function(e){
   function render(q){
     const f=q.trim().toLowerCase();
     const filtered= f ? commands.filter(c=> (c.label+c.keys+c.url).toLowerCase().includes(f)) : commands;
-    results.innerHTML = filtered.map(c=> `<a href="${c.url}" class="d-flex align-items-center p-3 text-dark" style="text-decoration:none; border-bottom:1px solid #f0f0f0;"><i class="fas ${c.icon} mr-3 text-primary"></i><span>${c.label}</span><small class="ml-auto text-muted">${c.keys.split(' ')[0]}</small></a>`).join('') || '<div class="p-4 text-center text-muted">لا نتائج</div>';
+    results.innerHTML = filtered.map(c=> `<a href="${c.url}" class="d-flex align-items-center p-3 text-dark" style="text-decoration:none; border-bottom:1px solid #f0f0f0;"><i class="fas ${c.icon} mr-3 text-primary"></i><span>${c.label}</span><small class="ml-auto text-muted">${c.keys.split(' ')[0]}</small></a>`).join('') || '<div class="p-4 text-center text-muted">{{ t("No results") }}</div>';
   }
   if(input){ input.addEventListener('input', e=>render(e.target.value)); }
   $('#commandPalette').on('shown.bs.modal', ()=>render(''));
@@ -1407,7 +1409,7 @@ function toggleSidebarDirection() {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: 'تم نقل القائمة لليمين',
+      title: '{{ t("Sidebar moved to the right") }}',
       showConfirmButton: false,
       timer: 1500
     });
@@ -1433,7 +1435,7 @@ function toggleSidebarDirection() {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: 'تم نقل القائمة لليسار',
+      title: '{{ t("Sidebar moved to the left") }}',
       showConfirmButton: false,
       timer: 1500
     });

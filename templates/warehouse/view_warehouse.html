@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}تفاصيل المستودع - {{ warehouse.name_ar or warehouse.name }}{% endblock %}
+{% block title %}{{ t("Warehouse Details") }} - {{ warehouse.name_ar or warehouse.name }}{% endblock %}
 
 {% block content %}
 <div class="content-header">
@@ -10,14 +10,14 @@
         <h1 class="m-0">
           <i class="fas fa-warehouse"></i> {{ warehouse.name_ar or warehouse.name }}
           {% if warehouse.is_main %}
-          <span class="badge badge-primary text-sm ml-2">رئيسي</span>
+          <span class="badge badge-primary text-sm ml-2">{{ t("Main") }}</span>
           {% endif %}
         </h1>
       </div>
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-left">
-          <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">الرئيسية</a></li>
-          <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">المستودعات</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t("Home") }}</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">{{ t("Warehouses") }}</a></li>
           <li class="breadcrumb-item active">{{ warehouse.name_ar or warehouse.name }}</li>
         </ol>
       </div>
@@ -31,21 +31,21 @@
     
     <div class="card mb-4">
       <div class="card-header bg-gradient-light">
-        <h3 class="card-title"><i class="fas fa-info-circle"></i> معلومات المستودع</h3>
+        <h3 class="card-title"><i class="fas fa-info-circle"></i> {{ t("Warehouse Information") }}</h3>
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-md-3">
-            <strong>الاسم:</strong> {{ warehouse.name_ar or warehouse.name }}
+            <strong>{{ t("Name") }}:</strong> {{ warehouse.name_ar or warehouse.name }}
           </div>
           <div class="col-md-3">
-            <strong>الرمز:</strong> {{ warehouse.code or '-' }}
+            <strong>{{ t("Code") }}:</strong> {{ warehouse.code or '-' }}
           </div>
           <div class="col-md-3">
-            <strong>الموقع:</strong> {{ warehouse.location or '-' }}
+            <strong>{{ t("Location") }}:</strong> {{ warehouse.location or '-' }}
           </div>
           <div class="col-md-3">
-            <strong>المدير:</strong> {{ warehouse.manager.username if warehouse.manager else '-' }}
+            <strong>{{ t("Manager") }}:</strong> {{ warehouse.manager.username if warehouse.manager else '-' }}
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@
     
     <div class="card">
       <div class="card-header bg-primary">
-        <h3 class="card-title"><i class="fas fa-boxes"></i> المخزون الحالي في المستودع</h3>
+        <h3 class="card-title"><i class="fas fa-boxes"></i> {{ t("Current Stock in Warehouse") }}</h3>
         <div class="card-tools">
             <button type="button" class="btn btn-tool" data-card-widget="collapse">
                 <i class="fas fa-minus"></i>
@@ -65,12 +65,12 @@
         <table class="table table-hover text-nowrap">
           <thead>
             <tr>
-              <th>المنتج</th>
+              <th>{{ t("Product") }}</th>
               <th>SKU</th>
-              <th>التصنيف</th>
-              <th class="text-center">الكمية</th>
-              <th>الوحدة</th>
-              <th>إجراءات</th>
+              <th>{{ t("Category") }}</th>
+              <th class="text-center">{{ t("Quantity") }}</th>
+              <th>{{ t("Unit") }}</th>
+              <th>{{ t("Actions") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -94,9 +94,9 @@
                   {{ item.quantity }}
                 </span>
               </td>
-              <td>{{ item.product.unit or 'قطعة' }}</td>
+              <td>{{ item.product.unit or t('Piece') }}</td>
               <td>
-                <a href="{{ url_for('warehouse.movements', product=item.product.id, warehouse=warehouse.id) }}" class="btn btn-xs btn-info" title="حركات المخزون">
+                <a href="{{ url_for('warehouse.movements', product=item.product.id, warehouse=warehouse.id) }}" class="btn btn-xs btn-info" title="{{ t("Stock Movements") }}">
                   <i class="fas fa-history"></i>
                 </a>
               </td>
@@ -105,7 +105,7 @@
             <tr>
               <td colspan="6" class="text-center text-muted p-4">
                 <i class="fas fa-box-open fa-3x mb-3"></i><br>
-                لا يوجد منتجات في هذا المستودع حالياً
+                {{ t("No products in this warehouse currently") }}
               </td>
             </tr>
             {% endfor %}

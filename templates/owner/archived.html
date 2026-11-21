@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - السجلات المؤرشفة والاسترداد{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Archived Records & Recovery') }}{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -8,15 +8,15 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1 class="m-0"><i class="fas fa-archive mr-2"></i>السجلات المؤرشفة</h1>
+                    <h1 class="m-0"><i class="fas fa-archive mr-2"></i>{{ t('Archived Records') }}</h1>
                 </div>
                 <div class="col-sm-6">
                     <div class="float-left">
                         <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+                            <i class="fas fa-arrow-right mr-2"></i>{{ t('Owner Dashboard') }}
                         </a>
                         <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home mr-2"></i>الرئيسية
+                            <i class="fas fa-home mr-2"></i>{{ t('Home') }}
                         </a>
                     </div>
                 </div>
@@ -30,18 +30,18 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">السجلات المؤرشفة</h3>
+                            <h3 class="card-title">{{ t('Archived Records') }}</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th>تاريخ الأرشفة</th>
+                                            <th>{{ t('Archive Date') }}</th>
                                             <th>{{ t('Table') }}</th>
-                                            <th>المعرف</th>
-                                            <th>المستخدم</th>
-                                            <th>السبب</th>
+                                            <th>{{ t('ID') }}</th>
+                                            <th>{{ t('User') }}</th>
+                                            <th>{{ t('Reason') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -50,7 +50,7 @@
                                             <td>{{ record.archived_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                             <td>{{ record.table_name }}</td>
                                             <td>{{ record.record_id }}</td>
-                                            <td>{{ record.archived_by.username if record.archived_by else 'غير محدد' }}</td>
+                                            <td>{{ record.archived_by.username if record.archived_by else t('Not Specified') }}</td>
                                             <td>{{ record.reason or '' }}</td>
                                         </tr>
                                         {% endfor %}

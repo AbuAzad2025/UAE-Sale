@@ -109,6 +109,15 @@ def reverse_or_purge_gl_entries(reference_type, reference_id, description=None):
     return {"reversed": len(posted), "purged": purged, "posted": bool(posted)}
 
 
+def _acc_display(acc):
+    """Account name in the current UI language (never raw English in AR mode)."""
+    from utils.i18n import get_current_language
+
+    if hasattr(acc, "get_display_name"):
+        return acc.get_display_name(get_current_language())
+    return acc.name_ar or acc.name
+
+
 def _statement_accounts(account_type=None):
     """الحسابات التي تدخل القوائم المالية (نشطة + غير رئيسية).
 
@@ -614,7 +623,7 @@ def income_statement():
         balance = account_balances["balance"] if account_balances else Decimal("0")
 
         if balance != 0:
-            revenues[acc.name] = float(balance)
+            revenues[_acc_display(acc)] = float(balance)
             total_revenue += balance
 
     expenses = {}
@@ -625,7 +634,7 @@ def income_statement():
         balance = account_balances["balance"] if account_balances else Decimal("0")
 
         if balance != 0:
-            expenses[acc.name] = float(balance)
+            expenses[_acc_display(acc)] = float(balance)
             total_expense += balance
 
     net_profit = total_revenue - total_expense
@@ -788,21 +797,21 @@ def balance_sheet():
     for acc in _statement_accounts(account_type="asset"):
         balance = _balance(acc.id)
         if balance != 0:
-            assets[acc.name] = float(balance)
+            assets[_acc_display(acc)] = float(balance)
             total_assets += balance
 
     total_liabilities = Decimal("0")
     for acc in _statement_accounts(account_type="liability"):
         balance = _balance(acc.id)
         if balance != 0:
-            liabilities[acc.name] = float(balance)
+            liabilities[_acc_display(acc)] = float(balance)
             total_liabilities += balance
 
     total_equity = Decimal("0")
     for acc in _statement_accounts(account_type="equity"):
         balance = _balance(acc.id)
         if balance != 0:
-            equity[acc.name] = float(balance)
+            equity[_acc_display(acc)] = float(balance)
             total_equity += balance
 
     total_revenue_period = Decimal("0")
@@ -816,7 +825,11 @@ def balance_sheet():
     net_profit_period = total_revenue_period - total_expense_period
 
     if net_profit_period != 0:
-        equity["الأرباح المبقاة (صافي الربح التراكمي)"] = float(net_profit_period)
+        from utils.i18n import t as _t
+
+        equity[_t("Retained Earnings (cumulative net profit)")] = float(
+            net_profit_period
+        )
         total_equity += net_profit_period
 
     delta = total_assets - (total_liabilities + total_equity)

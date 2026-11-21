@@ -23,9 +23,9 @@ $(document).ready(function() {
                     // إظهار توصية
                     const badge = `
                         <span class="badge badge-info ai-recommendation" style="margin-right: 5px;">
-                            <i class="fas fa-robot"></i> موصى به: ${response.recommended_price.toFixed(2)}
+                            <i class="fas fa-robot"></i> ${t('Recommended')}: ${response.recommended_price.toFixed(2)}
                             <button type="button" class="btn btn-xs btn-light ml-1" onclick="applyRecommendedPrice(${lineIndex}, ${response.recommended_price})">
-                                تطبيق
+                                ${t('Apply')}
                             </button>
                         </span>
                     `;
@@ -85,10 +85,10 @@ $(document).ready(function() {
                 
                 const analysisHtml = `
                     <div class="alert alert-${riskClass} mt-3">
-                        <h5><i class="fas fa-chart-line"></i> تحليل العميل</h5>
-                        <p><strong>الرصيد الحالي:</strong> ${analysis.current_balance.toFixed(2)} درهم</p>
-                        <p><strong>متوسط تأخير الدفع:</strong> ${analysis.avg_payment_delay_days} يوم</p>
-                        <p><strong>التوصية:</strong> ${analysis.recommendation}</p>
+                        <h5><i class="fas fa-chart-line"></i> ${t('Customer Analysis')}</h5>
+                        <p><strong>${t('Current balance:')}</strong> ${analysis.current_balance.toFixed(2)} ${t('AED')}</p>
+                        <p><strong>${t('Average payment delay:')}</strong> ${analysis.avg_payment_delay_days} ${t('days')}</p>
+                        <p><strong>${t('Recommendation:')}</strong> ${analysis.recommendation}</p>
                     </div>
                 `;
                 
@@ -114,7 +114,7 @@ $(document).ready(function() {
                 const sourceInfo = `
                     <small class="text-muted d-block mt-1">
                         <i class="fas fa-info-circle"></i> ${suggestion.source}
-                        ${suggestion.count > 0 ? `(بناءً على ${suggestion.count} معاملات)` : ''}
+                        ${suggestion.count > 0 ? `(${t('Based on')} ${suggestion.count} ${t('transactions')})` : ''}
                     </small>
                 `;
                 
@@ -135,13 +135,13 @@ $(document).ready(function() {
                 if (result.found && result.suggested_price_aed) {
                     const marketInfo = `
                         <div class="alert alert-success alert-sm mt-2">
-                            <strong> سعر السوق العالمي:</strong><br>
+                            <strong> ${t('Global market price:')}</strong><br>
                             <span class="badge badge-primary">${result.average_price_usd} USD</span>
                             <span class="badge badge-info">${result.suggested_price_aed.toFixed(2)} ${window.BASE_CURRENCY || 'AED'}</span><br>
                             <small>${result.notes || ''}</small>
-                            ${result.markets ? '<br><small>الأسواق: ' + result.markets.join(', ') + '</small>' : ''}
+                            ${result.markets ? '<br><small>' + t('Markets:') + ' ' + result.markets.join(', ') + '</small>' : ''}
                             <button type="button" class="btn btn-xs btn-success mt-1" onclick="applyMarketPrice(${lineIndex}, ${result.suggested_price_aed})">
-                                تطبيق السعر
+                                ${t('Apply price')}
                             </button>
                         </div>
                     `;
@@ -161,7 +161,7 @@ $(document).ready(function() {
             method: 'GET',
             success: function(result) {
                 if (result.found && result.vehicles && result.vehicles.length > 0) {
-                    let vehiclesHtml = '<div class="alert alert-info mt-2"><h6><i class="fas fa-car"></i> متوافقة مع:</h6><ul class="mb-0">';
+                    let vehiclesHtml = '<div class="alert alert-info mt-2"><h6><i class="fas fa-car"></i> ' + t('Compatible with:') + '</h6><ul class="mb-0">';
                     
                     result.vehicles.slice(0, 5).forEach(v => {
                         vehiclesHtml += `<li><strong>${v.brand}</strong>: ${v.models.join(', ')} (${v.years})`;
@@ -170,7 +170,7 @@ $(document).ready(function() {
                     });
                     
                     if (result.total_count > 5) {
-                        vehiclesHtml += `<li class="text-muted">...و ${result.total_count - 5} أخرى</li>`;
+                        vehiclesHtml += `<li class="text-muted">...${t('and')} ${result.total_count - 5} ${t('others')}</li>`;
                     }
                     
                     vehiclesHtml += '</ul>';

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}الشيكات المؤرشفة{% endblock %}
+{% block title %}{{ t('Archived Cheques') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,11 +9,11 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-archive"></i> الشيكات المؤرشفة
+            <i class="fas fa-archive"></i> {{ t('Archived Cheques') }}
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-              <i class="fas fa-arrow-left"></i> رجوع
+              <i class="fas fa-arrow-left"></i> {{ t('Back') }}
             </a>
           </div>
         </div>
@@ -21,14 +21,14 @@
           <table class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>رقم الشيك</th>
-                <th>النوع</th>
-                <th>المبلغ</th>
-                <th>البنك</th>
-                <th>تاريخ الاستحقاق</th>
-                <th>الحالة</th>
-                <th>تاريخ الأرشفة</th>
-                <th>الإجراءات</th>
+                <th>{{ t('Cheque Number') }}</th>
+                <th>{{ t('Type') }}</th>
+                <th>{{ t('Amount') }}</th>
+                <th>{{ t('Bank') }}</th>
+                <th>{{ t('Due Date') }}</th>
+                <th>{{ t('Status') }}</th>
+                <th>{{ t('Archive Date') }}</th>
+                <th>{{ t('Actions') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -37,9 +37,9 @@
                 <td>{{ cheque.cheque_number }}</td>
                 <td>
                   {% if cheque.cheque_type == 'incoming' %}
-                    <span class="badge badge-success">وارد</span>
+                    <span class="badge badge-success">{{ t('Incoming') }}</span>
                   {% else %}
-                    <span class="badge badge-warning">صادر</span>
+                    <span class="badge badge-warning">{{ t('Outgoing') }}</span>
                   {% endif %}
                 </td>
                 <td>{{ cheque.amount }} {{ cheque.currency }}</td>
@@ -52,15 +52,15 @@
                 <td>
                   <form method="post" action="{{ url_for('cheques.restore', id=cheque.id) }}" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('استعادة هذا الشيك؟')">
-                      <i class="fas fa-undo"></i> استعادة
+                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('{{ t('Restore this cheque?') }}')">
+                      <i class="fas fa-undo"></i> {{ t('Restore') }}
                     </button>
                   </form>
                 </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="8" class="text-center">لا توجد شيكات مؤرشفة</td>
+                <td colspan="8" class="text-center">{{ t('No archived cheques') }}</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -72,7 +72,7 @@
             <ul class="pagination justify-content-center">
               {% if pagination.has_prev %}
               <li class="page-item">
-                <a class="page-link" href="{{ url_for('cheques.archived', page=pagination.prev_num) }}">السابق</a>
+                <a class="page-link" href="{{ url_for('cheques.archived', page=pagination.prev_num) }}">{{ t('Previous') }}</a>
               </li>
               {% endif %}
               
@@ -86,7 +86,7 @@
               
               {% if pagination.has_next %}
               <li class="page-item">
-                <a class="page-link" href="{{ url_for('cheques.archived', page=pagination.next_num) }}">التالي</a>
+                <a class="page-link" href="{{ url_for('cheques.archived', page=pagination.next_num) }}">{{ t('Next') }}</a>
               </li>
               {% endif %}
             </ul>

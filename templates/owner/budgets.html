@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}الموازنات - Owner{% endblock %}
+{% block title %}{{ t('Budgets') }} - {{ t('Owner') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>الموازنات (Budgets)</h3>
+    <h3>{{ t('Budgets') }}</h3>
     <a href="{{ url_for('owner.budget_create') }}" class="btn btn-primary">
-      <i class="fas fa-plus"></i> إنشاء موازنة
+      <i class="fas fa-plus"></i> {{ t('Create Budget') }}
     </a>
   </div>
 
@@ -13,7 +13,7 @@
     <div class="row">
       <div class="col-md-4">
         <select name="tenant_id" class="form-control" onchange="this.form.submit()">
-          <option value="">جميع التينانتات</option>
+          <option value="">{{ t('All Tenants') }}</option>
           {% for t in tenants %}
           <option value="{{ t.id }}" {% if selected_tenant_id == t.id %}selected{% endif %}>{{ t.name }}</option>
           {% endfor %}
@@ -27,15 +27,15 @@
       <table class="table table-bordered table-striped">
         <thead>
           <tr>
-            <th>رقم الموازنة</th>
-            <th>الاسم (عربي)</th>
-            <th>السنة المالية</th>
-            <th>النوع</th>
-            <th>الميزانية</th>
-            <th>الفعلي</th>
-            <th>الانحراف</th>
-            <th>الحالة</th>
-            <th>الإجراءات</th>
+            <th>{{ t('Budget Number') }}</th>
+            <th>{{ t('Name (Arabic)') }}</th>
+            <th>{{ t('Fiscal Year') }}</th>
+            <th>{{ t('Type') }}</th>
+            <th>{{ t('Budget Amount') }}</th>
+            <th>{{ t('Actual') }}</th>
+            <th>{{ t('Variance') }}</th>
+            <th>{{ t('Status') }}</th>
+            <th>{{ t('Actions List') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -50,19 +50,19 @@
             <td>{{ b.total_variance }}</td>
             <td>
               {% if b.status == 'draft' %}
-              <span class="badge badge-secondary">مسودة</span>
+              <span class="badge badge-secondary">{{ t('Draft') }}</span>
               {% elif b.status == 'active' %}
-              <span class="badge badge-success">نشط</span>
+              <span class="badge badge-success">{{ t('Active') }}</span>
               {% elif b.status == 'closed' %}
-              <span class="badge badge-danger">مغلق</span>
+              <span class="badge badge-danger">{{ t('Closed') }}</span>
               {% endif %}
             </td>
             <td>
-              <a href="{{ url_for('owner.budget_view', budget_id=b.id) }}" class="btn btn-sm btn-info">عرض</a>
-              <a href="{{ url_for('owner.budget_edit', budget_id=b.id) }}" class="btn btn-sm btn-warning">تعديل</a>
-              <form method="POST" action="{{ url_for('owner.budget_delete', budget_id=b.id) }}" style="display:inline;" onsubmit="return confirm('هل أنت متأكد؟');">
+              <a href="{{ url_for('owner.budget_view', budget_id=b.id) }}" class="btn btn-sm btn-info">{{ t('View') }}</a>
+              <a href="{{ url_for('owner.budget_edit', budget_id=b.id) }}" class="btn btn-sm btn-warning">{{ t('Edit') }}</a>
+              <form method="POST" action="{{ url_for('owner.budget_delete', budget_id=b.id) }}" style="display:inline;" onsubmit="return confirm('{{ t('Are you sure?') }}');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-sm btn-danger">حذف</button>
+                <button type="submit" class="btn btn-sm btn-danger">{{ t('Delete') }}</button>
               </form>
             </td>
           </tr>

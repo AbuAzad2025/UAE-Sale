@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}عرض سعر #{{ quotation.quotation_number }}{% endblock %}
+{% block print_title %}{{ t('Quotation') }} #{{ quotation.quotation_number }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -33,38 +33,38 @@
       </div>
     </div>
     <div class="quotation-title">
-      <h2>عرض أسعار — QUOTATION</h2>
+      <h2>{{ t('Quotation') }}</h2>
       <div class="purchase-number">{{ quotation.quotation_number }}</div>
     </div>
     <div class="content">
       {% if quotation.is_expired %}
-      <div class="expired-banner"> انتهت صلاحية هذا العرض ({{ quotation.valid_until }})</div>
+      <div class="expired-banner"> {{ t('This quotation has expired') }} ({{ quotation.valid_until }})</div>
       {% endif %}
       <div class="info-grid">
         <div class="info-box">
-          <h3>العميل</h3>
+          <h3>{{ t('Customer') }}</h3>
           <p><strong>{{ quotation.customer.name if quotation.customer else '—' }}</strong></p>
-          {% if quotation.customer and quotation.customer.phone %}<p>هاتف: {{ quotation.customer.phone }}</p>{% endif %}
+          {% if quotation.customer and quotation.customer.phone %}<p>{{ t('Phone') }}: {{ quotation.customer.phone }}</p>{% endif %}
           {% if quotation.customer and quotation.customer.tax_number %}<p>TRN: {{ quotation.customer.tax_number }}</p>{% endif %}
         </div>
         <div class="info-box">
-          <h3>تفاصيل العرض</h3>
-          <p>التاريخ: {{ quotation.quotation_date }}</p>
-          <p>صالح حتى: {{ quotation.valid_until }}</p>
-          <p>الحالة: {{ quotation.status_ar }}</p>
-          {% if quotation.currency %}<p>العملة: {{ quotation.currency }}</p>{% endif %}
+          <h3>{{ t('Quotation Details') }}</h3>
+          <p>{{ t('Date') }}: {{ quotation.quotation_date }}</p>
+          <p>{{ t('Valid Until') }}: {{ quotation.valid_until }}</p>
+          <p>{{ t('Status') }}: {{ quotation.status_ar }}</p>
+          {% if quotation.currency %}<p>{{ t('Currency') }}: {{ quotation.currency }}</p>{% endif %}
         </div>
       </div>
       <table>
         <thead>
           <tr>
             <th>#</th>
-            <th>المنتج</th>
-            <th>الكمية</th>
-            <th>السعر unit</th>
-            <th>الخصم %</th>
-            <th>الإجمالي</th>
-            <th>المعاملة</th>
+            <th>{{ t('Product') }}</th>
+            <th>{{ t('Quantity') }}</th>
+            <th>{{ t('Unit Price') }}</th>
+            <th>{{ t('Discount') }} %</th>
+            <th>{{ t('Total Amount') }}</th>
+            <th>{{ t('Treatment') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,18 +82,18 @@
         </tbody>
       </table>
       <div class="total-section">
-        <div class="total-row"><span>المجموع الفرعي</span><span>{{ '{:,.3f}'.format(quotation.subtotal) }}</span></div>
-        {% if quotation.discount_amount %}<div class="total-row"><span>الخصم</span><span>- {{ '{:,.3f}'.format(quotation.discount_amount) }}</span></div>{% endif %}
-        {% if quotation.shipping_cost %}<div class="total-row"><span>الشحن</span><span>{{ '{:,.3f}'.format(quotation.shipping_cost) }}</span></div>{% endif %}
-        {% if quotation.tax_amount %}<div class="total-row"><span>الضريبة</span><span>{{ '{:,.3f}'.format(quotation.tax_amount) }}</span></div>{% endif %}
-        <div class="total-row final"><span>الإجمالي</span><span>{{ '{:,.3f}'.format(quotation.total_amount) }} {{ quotation.currency }}</span></div>
+        <div class="total-row"><span>{{ t('Subtotal') }}</span><span>{{ '{:,.3f}'.format(quotation.subtotal) }}</span></div>
+        {% if quotation.discount_amount %}<div class="total-row"><span>{{ t('Discount') }}</span><span>- {{ '{:,.3f}'.format(quotation.discount_amount) }}</span></div>{% endif %}
+        {% if quotation.shipping_cost %}<div class="total-row"><span>{{ t('Shipping') }}</span><span>{{ '{:,.3f}'.format(quotation.shipping_cost) }}</span></div>{% endif %}
+        {% if quotation.tax_amount %}<div class="total-row"><span>{{ t('Tax') }}</span><span>{{ '{:,.3f}'.format(quotation.tax_amount) }}</span></div>{% endif %}
+        <div class="total-row final"><span>{{ t('Total Amount') }}</span><span>{{ '{:,.3f}'.format(quotation.total_amount) }} {{ quotation.currency }}</span></div>
       </div>
-      {% if quotation.payment_terms %}<div class="mt-2"><strong>شروط الدفع:</strong> {{ quotation.payment_terms }}</div>{% endif %}
-      {% if quotation.terms_and_conditions %}<div class="mt-2"><strong>الشروط والأحكام:</strong> {{ quotation.terms_and_conditions }}</div>{% endif %}
-      {% if quotation.notes %}<div class="mt-2"><strong>ملاحظات:</strong> {{ quotation.notes }}</div>{% endif %}
+      {% if quotation.payment_terms %}<div class="mt-2"><strong>{{ t('Payment Terms') }}:</strong> {{ quotation.payment_terms }}</div>{% endif %}
+      {% if quotation.terms_and_conditions %}<div class="mt-2"><strong>{{ t('Terms and Conditions') }}:</strong> {{ quotation.terms_and_conditions }}</div>{% endif %}
+      {% if quotation.notes %}<div class="mt-2"><strong>{{ t('Notes') }}:</strong> {{ quotation.notes }}</div>{% endif %}
     </div>
     <div class="footer">
-      <p>صُدر بواسطة AzadERP — {{ settings.company_name_ar or settings.company_name or '' }}</p>
+      <p>{{ t('Generated by') }} AzadERP — {{ settings.company_name_ar or settings.company_name or '' }}</p>
     </div>
   </div>
 </div>

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سياسة الخصوصية وحماية البيانات — {{ config.COMPANY_NAME_AR }}</title>
-    <meta name="description" content="كيف نجمع ونحد من الوصول ونحمي بياناتك ومكتسباتك على منصة AzadERP.">
+    <title>{{ t('Privacy Policy') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="{{ t('How we collect, limit and protect your data on the AzadERP platform.') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -25,55 +25,55 @@
     </div>
 
     <nav class="navbar">
-        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</div>
         <div>
-            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
-            <a href="{{ url_for('public.terms') }}">الشروط</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+            <a href="{{ url_for('public.landing') }}">{{ t('Home') }}</a>
+            <a href="{{ url_for('public.terms') }}">{{ t('Terms') }}</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> {{ t('Sign In') }}</a>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="doc">
-            <h1>سياسة الخصوصية وحماية البيانات</h1>
-            <p class="muted">آخر تحديث: 2026-11-08 — بوضوح ودون تزيين.</p>
+            <h1>{{ t('Privacy Policy') }}</h1>
+            <p class="muted">{{ t('Last updated: 2026-11-08 — plain-language, no decoration.') }}</p>
 
-            <h2>1. ما نجمعه</h2>
+            <h2>{{ t('1. What we collect') }}</h2>
             <ul>
-                <li><strong>بيانات الاشتراك:</strong> الاسم والبريدة — فقط لإدارة الحساب والفواتير.</li>
-                <li><strong>بيانات الاستخدام:</strong> صفحات زياراتك، أخطائك التقنية — لتحسين النظام (anonymized حيث ممكن).</li>
-                <li><strong>البيانات التجارية:</strong> كل ما يُدخله العميل داخل حسابه — ملك العميل، لا تطلع عليه المنصة إلا عند إصلاح خطأ معروف.</li>
+                <li><strong>{{ t('Account data') }}:</strong> {{ t('name and email — only to operate the account and bill issues.') }}</li>
+                <li><strong>{{ t('Usage data') }}:</strong> {{ t('page visits, technical errors — to improve the product (anonymized where possible).') }}</li>
+                <li><strong>{{ t('Commercial data') }}:</strong> {{ t("whatever the customer enters into its account — the customer's; we inspect it only to fix a known fault.") }}</li>
             </ul>
 
-            <h2>2. لا نبيع ولا نؤجر</h2>
-            <p>لا نبيع بيانات المستخدم، لا نؤجر أي تارجت، ولا نشارك أي شيء مع شركاء تسويق/إعلان. أي جهة ثالثة تُدرج تلزم ببنود حماية مكافئة.</p>
+            <h2>{{ t('2. No sale, no lease') }}</h2>
+            <p>{{ t('We do not sell or lease customer data. No partner gets access unless strictly required for a chosen integration, under equivalent terms.') }}</p>
 
-            <h2>3. أين نخزن وكيف نحميه</h2>
+            <h2>{{ t('3. Where and how') }}</h2>
             <ul>
-                <li>خادم مُدار بمفاتيح تشفير على الراحة وعلى النقل (TLS).</li>
-                <li>بيانات الدفع لا تُمرر بالكامل عبر النظام — توكن البطاقة فقط (والبطاقات اختيارية).</li>
-                <li>بيانات الاعتماد لكل سلطة ضريبية (CSID/API Keys) تُختم بختم Fernet داخل قاعدة البيانات، ولا تُعرض ولا تُرسَل.</li>
-                <li>كل وصول وفقًا للصلاحيات؛ كل وصول للمستخدم المالك يُسجل في <code>audit_logs</code>.</li>
+                <li>{{ t('Managed server with encryption at rest and in transit (TLS).') }}</li>
+                <li>{{ t('Card data is tokenised only; optional, never fully held by the platform.') }}</li>
+                <li>{{ t('Tax-authority credentials are sealed with Fernet at rest — never displayed or sent anywhere.') }}</li>
+                <li>{{ t('Every access follows the permission model; owner access is recorded in') }} <code>audit_logs</code>.</li>
             </ul>
 
-            <h2>4. الوصول من المحسوب والمطورين</h2>
-            <p>لا يملك أي موظف حق الوصول إلى بياناتك دون سبب واضح — وأقصى ما يحدث هو تشفير مفاتيح الدخول (Fernet) بلا تشفير البيانات نفسها. أي خطأ تقني في هذه السياسة يشكل ثغرة يُبلغ بها فورًا وتخضع لمسؤولية المدير.</p>
+            <h2>{{ t('4. Access from staff and developers') }}</h2>
+            <p>{{ t('No employee has access to your data without a clear reason — staff permissions are minimal by default. Any audit failure is treated as a security defect, fixed urgently, disclosed openly to affected customers.') }}</p>
 
-            <h2>5. حقوقك</h2>
+            <h2>{{ t('5. Your rights') }}</h2>
             <ol>
-                <li>الوصول: يمكنك طباعة/تصدير بياناتك في أي وقت (CSV/PDF).</li>
-                <li>التصحيح: عدل أو احذف أي سجل داخل حسابك ما لم يطلب قانون الاحتفاظ به (مثلاً القيود المحاسبية للضرائب).</li>
-                <li>الحذف: اطلب حذف الحساب بالكامل؛ يُحذف مع البيانات التشغيلية خلال 30 يومًا إلا ما يُحفظ قانونًا.</li>
-                <li>الاعتراض: وقف التحليلات/الإشعارات التسويقية من الحساب مباشرة.</li>
+                <li>{{ t('Access: export your data at any time (CSV/PDF).') }}</li>
+                <li>{{ t('Correction: update or delete any record in your account, except where law requires retention (e.g., tax books).') }}</li>
+                <li>{{ t('Deletion: deletion request honoured; operational data deleted within 30 days, subject to legal retention.') }}</li>
+                <li>{{ t('Objection: disable analytics/marketing messages from the account directly.') }}</li>
             </ol>
 
-            <h2>6. الكوكيز</h2>
-            <p>جلسة واحدة ضرورية فقط (للدخول). لا توجد كوكيز تسويق/إعلان/تحليل سلوك. لا يُباع شيء هنا.</p>
+            <h2>{{ t('6. Cookies') }}</h2>
+            <p>{{ t('One required session cookie only. No marketing/analytics cookies; no behavioural tracking.') }}</p>
 
-            <h2>7. التغييرات</h2>
-            <p>أي تغيير مادي في هذه السياسة يُؤتى به بإشعار لـ30 يومًا على الأقل عبر البريد واللوحة قبل تنفيذه.</p>
+            <h2>{{ t('7. Changes') }}</h2>
+            <p>{{ t('Material changes by 30-day advance notice via email and in-app notice before taking effect.') }}</p>
 
-            <p class="muted">للاستفسار: <a href="{{ url_for('public.contact') }}">اتصل بنا</a> — أو عبر <a href="{{ url_for('auth.support') }}">الدعم</a>. هذه الوثيقة عينة؛ الإصدار الموقّع يُملى في كل عقد.</p>
+            <p class="muted">{{ t('Questions:') }} <a href="{{ url_for('public.contact') }}">{{ t('Contact Us') }}</a> — {{ t('or via') }} <a href="{{ url_for('auth.support') }}">{{ t('Support') }}</a>. {{ t('Sample; final policy is executed in each signed contract.') }}</p>
         </div>
     </div>
 </body>

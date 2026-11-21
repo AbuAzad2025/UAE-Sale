@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تقرير المنتجات الأكثر مبيعاً{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Top Selling Products Report') }}{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
@@ -20,24 +20,24 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">المنتجات الأكثر مبيعاً</h3>
+                            <h3 class="card-title">{{ t('Top Selling Products') }}</h3>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
-                                            <th>الترتيب</th>
-                                            <th>اسم المنتج</th>
-                                            <th class="num-cell">الكمية المباعة</th>
-                                            <th class="num-cell">إجمالي المبيعات</th>
+                                            <th>{{ t('Sort Order') }}</th>
+                                            <th>{{ t('Product Name') }}</th>
+                                            <th class="num-cell">{{ t('Quantity Sold') }}</th>
+                                            <th class="num-cell">{{ t('Total Sales') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for product in products %}
                                         <tr>
                                             <td>{{ loop.index }}</td>
-                                            <td>{{ product.name }}</td>
+                                            <td>{{ display_name(product) }}</td>
                                             <td class="num-cell">{{ product.total_quantity }}</td>
                                             <td class="num-cell {{ 'money-neg' if product.total_sales < 0 else 'money-pos' }}">{{ product.total_sales|money(base_currency) }}</td>
                                         </tr>

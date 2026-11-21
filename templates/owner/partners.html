@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
-{% block title %}توزيع أرباح الشركاء{% endblock %}
+{% block title %}{{ t('Partner Profit Distribution') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3 d-flex justify-content-between align-items-center">
-    <h2 class="mb-0"><i class="fas fa-handshake text-success"></i> توزيع أرباح الشركاء</h2>
+    <h2 class="mb-0"><i class="fas fa-handshake text-success"></i> {{ t('Partner Profit Distribution') }}</h2>
     {% if neutral %}
-    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> العودة للوحة التحكم</a>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Dashboard') }}</a>
     {% else %}
-    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للوحة المالك</a>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Owner Dashboard') }}</a>
     {% endif %}
   </div>
 
   {% if not impersonated %}
   <div class="alert alert-warning">
-    <strong>لا توجد شركة مختارة — عرض تجميعي للقراءة فقط.</strong><br>
-    لإدارة شركاء شركة محددة (إعداد النسب، تسجيل المسحوبات، تنفيذ التوزيع) استخدم
-    مبدّل الشركات في الأعلى لتدخل سياق الشركة، ثم افتح هذه الصفحة مرة أخرى.
+    <strong>{{ t('No company selected - read-only aggregated view.') }}</strong><br>
+    {{ t('To manage partners of a specific company (set ratios, record draws, execute distribution), use') }}
+    {{ t('the company switcher above to enter the company context, then open this page again.') }}
   </div>
 
   <div class="card mb-4">
-    <div class="card-header"><h4 class="mb-0">النتيجة والشركاء لكل شركة — الفترة {{ period_from }} ← {{ period_to }}</h4></div>
+    <div class="card-header"><h4 class="mb-0">{{ t('Result and Partners per Company - Period') }} {{ period_from }} ← {{ period_to }}</h4></div>
     <div class="card-body p-0">
       <table class="table table-striped mb-0">
         <thead class="thead-light">
-          <tr><th>#</th><th>الشركة</th><th>صافي النتيجة</th><th>عدد الشركاء</th><th>المسحوبات (3300/3350)</th></tr>
+          <tr><th>#</th><th>{{ t('Company') }}</th><th>{{ t('Net Result') }}</th><th>{{ t('Partner Count') }}</th><th>{{ t('Draws (3300/3350)') }}</th></tr>
         </thead>
         <tbody>
           {% for row in per_tenant %}
@@ -36,7 +36,7 @@
           </tr>
           {% endfor %}
           {% if not per_tenant %}
-          <tr><td colspan="5" class="text-center text-muted py-4">لا توجد شركات مفعلة</td></tr>
+          <tr><td colspan="5" class="text-center text-muted py-4">{{ t('No active companies') }}</td></tr>
           {% endif %}
         </tbody>
       </table>
@@ -45,24 +45,24 @@
   {% else %}
 
   <div class="alert alert-info">
-    <i class="fas fa-building"></i> {% if neutral %}شركتك:{% else %}أنت الآن في سياق الشركة:{% endif %} <strong>{{ impersonated.name }}</strong> — كل عملية من هذه الصفحة تُرحَّل على أستاذ هذه الشركة فقط وتظهر هويتها في كل قيد.
+    <i class="fas fa-building"></i> {% if neutral %}{{ t('Your company:') }}{% else %}{{ t('You are now in the company context:') }}{% endif %} <strong>{{ impersonated.name }}</strong> — {{ t("Every action from this page is posted only to this company's ledger and its identity appears in every entry.") }}
   </div>
 
   <form method="get" class="card mb-3 p-3">
     <div class="row align-items-end">
       <div class="col-md-3">
-        <label for="from">من تاريخ</label>
+        <label for="from">{{ t('From Date') }}</label>
         <input type="date" class="form-control" id="from" name="from" value="{{ period_from.isoformat() }}">
       </div>
       <div class="col-md-3">
-        <label for="to">إلى تاريخ</label>
+        <label for="to">{{ t('To Date') }}</label>
         <input type="date" class="form-control" id="to" name="to" value="{{ period_to.isoformat() }}">
       </div>
       <div class="col-md-3">
-        <button type="submit" class="btn btn-outline-primary"><i class="fas fa-sync"></i> تحديث المعاينة</button>
+        <button type="submit" class="btn btn-outline-primary"><i class="fas fa-sync"></i> {{ t('Refresh Preview') }}</button>
       </div>
       <div class="col-md-3 text-md-right">
-        <small class="text-muted d-block">العملة: {{ base_currency }}</small>
+        <small class="text-muted d-block">{{ t('Currency:') }} {{ base_currency }}</small>
       </div>
     </div>
   </form>
@@ -71,7 +71,7 @@
     <div class="col-md-4">
       <div class="card text-center h-100">
         <div class="card-body">
-          <div class="text-muted small">صافي نتيجة الفترة (إيرادات − مصروفات)</div>
+          <div class="text-muted small">{{ t('Period Net Result (Revenue - Expenses)') }}</div>
           <div class="h3 {% if net_income >= 0 %}text-success{% else %}text-danger{% endif %}" dir="ltr">{{ '{:,.3f}'.format(net_income) }}</div>
           <small class="text-muted">{{ period_from }} ← {{ period_to }}</small>
         </div>
@@ -80,7 +80,7 @@
     <div class="col-md-4">
       <div class="card text-center h-100">
         <div class="card-body">
-          <div class="text-muted small">شركاء مُعرَّفون في هذه الشركة</div>
+          <div class="text-muted small">{{ t('Partners defined in this company') }}</div>
           <div class="h3">{{ company_partners | length }}</div>
         </div>
       </div>
@@ -88,9 +88,9 @@
     <div class="col-md-4">
       <div class="card text-center h-100">
         <div class="card-body">
-          <div class="text-muted small">مستوى المنتج</div>
+          <div class="text-muted small">{{ t('Product Level') }}</div>
           <div class="h3">{{ product_partner_rows | length }}</div>
-          <small class="text-muted">نسبة لكل شريك في منتج (تُرحَّل مع كل فاتورة فورًا)</small>
+          <small class="text-muted">{{ t('Ratio per partner in a product (posted with each invoice immediately)') }}</small>
         </div>
       </div>
     </div>
@@ -98,26 +98,26 @@
 
   <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">المعاينة قبل التوزيع النهائي</h4>
-      <form method="post" onsubmit="return confirm('سيُرحَّل قيد التوزيع في الأستاذ الآن. هل أنت متأكد؟')">
+      <h4 class="mb-0">{{ t('Preview Before Final Distribution') }}</h4>
+      <form method="post" onsubmit='return confirm({{ t('The distribution entry will be posted to the ledger now. Are you sure?')|tojson }})'>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="distribute">
         <input type="hidden" name="from" value="{{ period_from.isoformat() }}">
         <input type="hidden" name="to" value="{{ period_to.isoformat() }}">
-        <button type="submit" class="btn btn-success"><i class="fas fa-check-double"></i> تنفيذ التوزيع وترحيل القيد</button>
+        <button type="submit" class="btn btn-success"><i class="fas fa-check-double"></i> {{ t('Execute Distribution and Post Entry') }}</button>
       </form>
     </div>
     <div class="card-body">
-      <p class="text-muted mb-2">يُخصم من حصة كل شريك شركة:</p>
+      <p class="text-muted mb-2">{{ t("The following are deducted from each company partner's share:") }}</p>
       <ul class="text-muted mb-2">
-        <li>المسحوبات المرتبطة به (قيود <code>PartnerDraw</code> بطرفه).</li>
-        <li>مبيعات غير مسددة تمت له في الفترة (<code>balance_due × سعر الصرف</code>).</li>
-        <li>حصصه من المنتجات لا تُخصم هنا — تُدفع تلقائيًا مع كل فاتورة، وتُعرض للمعلومة فقط في عمود "حصص المنتج في الفترة".</li>
+        <li>{{ t('Draws linked to him') }} ({{ t('entries') }} <code>PartnerDraw</code> {{ t('with his party') }}).</li>
+        <li>{{ t('Unpaid sales made to him in the period') }} (<code>balance_due × {{ t('exchange rate') }}</code>).</li>
+        <li>{{ t('His product shares are not deducted here - they are paid automatically with each invoice, and shown for information only in the') }} "{{ t('Product Shares in Period') }}".</li>
       </ul>
       <div class="table-responsive">
         <table class="table table-sm table-striped mb-0">
           <thead class="thead-light">
-            <tr><th>الشريك</th><th>النسبة %</th><th>نصيب النتيجة</th><th>المسحوبات</th><th>مبيعات غير مسددة له</th><th>الصافي (شركة)</th><th>حصص المنتج في الفترة</th><th>الإجمالي (شركة+منتج)</th></tr>
+            <tr><th>{{ t('Partner') }}</th><th>{{ t('Rate %') }}</th><th>{{ t('Share of Result') }}</th><th>{{ t('Draws') }}</th><th>{{ t('Unpaid Sales to Him') }}</th><th>{{ t('Net (Company)') }}</th><th>{{ t('Product Shares in Period') }}</th><th>{{ t('Total (Company+Product)') }}</th></tr>
           </thead>
           <tbody>
             {% for r in preview_rows %}
@@ -133,7 +133,7 @@
             </tr>
             {% endfor %}
             {% if not preview_rows %}
-            <tr><td colspan="6" class="text-center text-muted py-3">لا توجد نتيجة للتوزيع في هذه الفترة</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-3">{{ t('No distribution result for this period') }}</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -142,57 +142,57 @@
   </div>
 
   <div class="card mb-4">
-    <div class="card-header"><h4 class="mb-0">إعداد الشركاء (مستوى المنتج ومستوى الشركة)</h4></div>
+    <div class="card-header"><h4 class="mb-0">{{ t('Partner Setup (Product Level and Company Level)') }}</h4></div>
     <div class="card-body">
       <form method="post" class="row align-items-end mb-3 border-bottom pb-3">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="action" value="set_scope">
         <div class="col-md-4">
-          <label>العميل</label>
+          <label>{{ t('Customer') }}</label>
           <select class="form-control" name="customer_id" required>
-            <option value="">— اختر العميل —</option>
+            <option value="">— {{ t('Select Customer') }} —</option>
             {% for c in customer_options %}
-            <option value="{{ c.id }}">{{ c.name }} — {{ 'شريك' if c.customer_type == 'partner' else c.customer_type }}</option>
+            <option value="{{ c.id }}">{{ c.name }} — {{ t('Partner') if c.customer_type == 'partner' else c.customer_type }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="col-md-2">
-          <label>نوع الشراكة للشركة</label>
+          <label>{{ t('Company Partnership Type') }}</label>
           <select class="form-control" name="scope">
-            <option value="none">ليس شريك شركة</option>
-            <option value="product">ليس شريك شركة (له روابط منتج)</option>
-            <option value="company">شريك شركة</option>
+            <option value="none">{{ t('Not a company partner') }}</option>
+            <option value="product">{{ t('Not a company partner (has product links)') }}</option>
+            <option value="company">{{ t('Company Partner') }}</option>
           </select>
         </div>
         <div class="col-md-2">
-          <label>النسبة % (شريك الشركة فقط)</label>
-          <input type="number" step="0.001" min="0" max="100" class="form-control" name="share" placeholder="مثال: 25">
+          <label>{{ t('Ratio % (company partner only)') }}</label>
+          <input type="number" step="0.001" min="0" max="100" class="form-control" name="share" placeholder="{{ t('e.g: 25') }}">
         </div>
         <div class="col-md-4">
-          <small class="text-muted">الشخص يمكن أن يكون شريك منتج (روابط من شاشة المنتج) وشريك شركة في آنٍ واحد — النسبة هنا للشركة فقط، وفصل الأدوار لا يحذف أي رابط.</small>
+          <small class="text-muted">{{ t('A person can be both a product partner (links from the product screen) and a company partner - the ratio here is for the company only, and separating roles does not delete any link.') }}</small>
         </div>
         <div class="col-md-2">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> {{ t('Save') }}</button>
         </div>
       </form>
 
       <div class="table-responsive">
         <table class="table table-sm table-striped mb-0">
           <thead class="thead-light">
-            <tr><th>الاسم</th><th>شريك شركة</th><th>شريك منتج</th><th>حصص المنتج في الفترة</th><th>رصيد جاري الشريك (3350)</th></tr>
+            <tr><th>{{ t('Name') }}</th><th>{{ t('Company Partner') }}</th><th>{{ t('Product Partner') }}</th><th>{{ t('Product Shares in Period') }}</th><th>{{ t('Partner Current Balance (3350)') }}</th></tr>
           </thead>
           <tbody>
             {% for p in company_partners %}
             <tr>
               <td>{{ p.name }}</td>
               <td>
-                {% if p.partner_scope == 'company' %}<span class="badge badge-success">شركة {{ p.partner_share }}%</span>
+                {% if p.partner_scope == 'company' %}<span class="badge badge-success">{{ t('Company') }} {{ p.partner_share }}%</span>
                 {% else %}<span class="badge badge-secondary">—</span>{% endif %}
               </td>
               <td>
                 {% set links = product_link_counts.get(p.id, 0) %}
-                {% if links %}<span class="badge badge-info">منتج ({{ links }} رابط)</span>
-                {% elif p.partner_scope == 'product' %}<span class="badge badge-info">منتج</span>
+                {% if links %}<span class="badge badge-info">{{ t('Product') }} ({{ links }} {{ t('links') }})</span>
+                {% elif p.partner_scope == 'product' %}<span class="badge badge-info">{{ t('Product') }}</span>
                 {% else %}<span class="badge badge-secondary">—</span>{% endif %}
               </td>
               <td>{{ '{:,.3f}'.format(product_accrual.get(p.id, 0)) }}</td>
@@ -200,7 +200,7 @@
             </tr>
             {% endfor %}
             {% if not company_partners %}
-            <tr><td colspan="5" class="text-center text-muted py-3">لا يوجد شركاء معرَّفون بعد — إما شريك شركة هنا أو شريك منتج من شاشة المنتج</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-3">{{ t('No partners defined yet - either a company partner here or a product partner from the product screen') }}</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -211,16 +211,16 @@
   <div class="row">
     <div class="col-md-6 mb-4">
       <div class="card h-100">
-        <div class="card-header"><h4 class="mb-0">تسجيل مسحوبات شريك</h4></div>
+        <div class="card-header"><h4 class="mb-0">{{ t('Record Partner Draws') }}</h4></div>
         <div class="card-body">
-          <p class="text-muted">تُسجل المسحوبات كمدين على جاري الشريك (3350) وتُخصم تلقائيًا من توزيعه القادم.</p>
-          <form method="post" onsubmit="return confirm('تأكيد تسجيل المسحوبات؟')">
+          <p class="text-muted">{{ t("Draws are recorded as a debit on the partner's current account (3350) and are automatically deducted from his next distribution.") }}</p>
+          <form method="post" onsubmit='return confirm({{ t('Confirm recording draws?')|tojson }})'>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="record_draw">
             <div class="form-group">
-              <label>الشريك</label>
+              <label>{{ t('Partner') }}</label>
               <select class="form-control" name="partner_id" required>
-                <option value="">— اختر الشريك —</option>
+                <option value="">— {{ t('Select Partner') }} —</option>
                 {% for p in company_partners %}
                 {% if p.is_active %}<option value="{{ p.id }}">{{ p.name }}</option>{% endif %}
                 {% endfor %}
@@ -229,21 +229,21 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>المبلغ</label>
+                  <label>{{ t('Amount') }}</label>
                   <input type="number" step="0.001" min="0.001" class="form-control" name="amount" required>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>من حساب</label>
+                  <label>{{ t('From Account') }}</label>
                   <select class="form-control" name="source">
-                    <option value="cash">الصندوق (1110)</option>
-                    <option value="bank">البنك (1120)</option>
+                    <option value="cash">{{ t('Cash (1110)') }}</option>
+                    <option value="bank">{{ t('Bank (1120)') }}</option>
                   </select>
                 </div>
               </div>
             </div>
-            <button type="submit" class="btn btn-outline-danger"><i class="fas fa-hand-holding-usd"></i> تسجيل المسحوبات</button>
+            <button type="submit" class="btn btn-outline-danger"><i class="fas fa-hand-holding-usd"></i> {{ t('Record Draws') }}</button>
           </form>
         </div>
       </div>
@@ -251,18 +251,18 @@
 
     <div class="col-md-6 mb-4">
       <div class="card h-100">
-        <div class="card-header"><h4 class="mb-0">شركاء المنتجات</h4></div>
+        <div class="card-header"><h4 class="mb-0">{{ t('Product Partners') }}</h4></div>
         <div class="card-body p-0">
-          <p class="text-muted px-3 pt-2">تُدار النسب لكل منتج من شاشة المنتج (تعديل المنتج → قسم الشركاء). هذه خلاصة للروابط القائمة.</p>
+          <p class="text-muted px-3 pt-2">{{ t('Ratios per product are managed from the product screen (Edit Product - Partners section). This is a summary of existing links.') }}</p>
           <div class="table-responsive">
             <table class="table table-sm table-striped mb-0">
-              <thead class="thead-light"><tr><th>المنتج</th><th>الشريك</th><th>النسبة %</th></tr></thead>
+              <thead class="thead-light"><tr><th>{{ t('Product') }}</th><th>{{ t('Partner') }}</th><th>{{ t('Rate %') }}</th></tr></thead>
               <tbody>
                 {% for row in product_partner_rows %}
                 <tr><td>{{ row.product_name }}</td><td>{{ row.partner_name }}</td><td>{{ row.percentage }}</td></tr>
                 {% endfor %}
                 {% if not product_partner_rows %}
-                <tr><td colspan="3" class="text-center text-muted py-3">لا توجد نسب شركاء على منتجات بعد</td></tr>
+                <tr><td colspan="3" class="text-center text-muted py-3">{{ t('No partner ratios on products yet') }}</td></tr>
                 {% endif %}
               </tbody>
             </table>

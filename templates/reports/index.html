@@ -1,178 +1,191 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - التقارير والإحصائيات{% endblock %}
-{% block page_title %}التقارير{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Reports & Statistics') }}{% endblock %}
+{% block page_title %}{{ t('Reports & Statistics') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.reports-hero {
+  background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);
+  color: #fff; border-radius: 14px; padding: 1.4rem 1.6rem; margin-bottom: 1.25rem;
+  box-shadow: 0 6px 18px rgba(0,122,61,0.25);
+}
+.reports-hero h3 { margin: 0; font-weight: 700; }
+.reports-hero p { margin: .35rem 0 0; opacity: .9; font-size: .95rem; }
+
+.quick-card {
+  display: flex; align-items: center; gap: 1rem; padding: 1.1rem;
+  border-radius: 12px; color: #fff; text-decoration: none;
+  transition: transform .18s, box-shadow .18s; height: 100%;
+}
+.quick-card:hover { transform: translateY(-4px); box-shadow: 0 10px 22px rgba(0,0,0,.18); color: #fff; text-decoration: none; }
+.quick-card, .quick-card * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.card a.report-link, .card a.report-link * { color: #263238 !important; -webkit-text-fill-color: #263238 !important; background: #fff !important; border-color: #eef1f4 !important; text-shadow: none !important; box-shadow: none !important; }
+.card a.report-link:hover, .card a.report-link:hover * { color: #007A3D !important; -webkit-text-fill-color: #007A3D !important; background: #f4faf6 !important; }
+.card a.report-link i { color: #007A3D !important; -webkit-text-fill-color: #007A3D !important; }
+.info-box a.quick-card, .info-box a.quick-card * { color: #fff !important; -webkit-text-fill-color: #fff !important; }
+.quick-card .qc-icon { font-size: 2.1rem; opacity: .9; }
+.quick-card .qc-title { font-size: 1.1rem; font-weight: 700; }
+.quick-card .qc-sub { font-size: .82rem; opacity: .85; }
+.qc-sales { background: linear-gradient(135deg,#0f9d58 0%,#0b7a43 100%); }
+.qc-inv   { background: linear-gradient(135deg,#f5a623 0%,#e08b0c 100%); }
+.qc-rec   { background: linear-gradient(135deg,#d64545 0%,#b62f2f 100%); }
+
+.report-section { border-radius: 12px; overflow: hidden; margin-bottom: 1.25rem; }
+.report-section .card-header {
+  font-weight: 700; font-size: 1.05rem;
+  background: linear-gradient(135deg,#f8f9fa 0%,#eef2f5 100%);
+  border-bottom: 2px solid #e3e8e6;
+}
+.report-link {
+  display: flex; align-items: center; gap: .7rem; padding: .7rem .85rem;
+  border-radius: 8px; color: #263238; text-decoration: none;
+  border: 1px solid #eef1f4; background: #fff; height: 100%; font-size: .93rem;
+  transition: background .15s, border-color .15s;
+}
+.report-link:hover { background: #f4faf6; border-color: #007A3D; color: #007A3D; text-decoration: none; }
+.report-link i { color: #007A3D; min-width: 20px; text-align: center; }
+.report-link small { display: block; color: #90a4ae; font-size: .76rem; margin-top: .15rem; }
+
+.sec-badge { font-size: .72rem; padding: .2rem .5rem; border-radius: 20px; background: #007A3D; color: #fff; }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="reports-hero">
+  <h3><i class="fas fa-chart-line mr-2"></i> {{ t('Reports & Statistics Center') }}</h3>
+  <p>{{ t('Comprehensive dashboard for all financial and operational reports') }} — {{ current_tenant.name_ar if current_tenant else '' }}</p>
+</div>
+
+{# ===== روابط سريعة ===== #}
 <div class="row">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-header bg-gradient-primary">
-        <h3 class="card-title text-white">
-          <i class="fas fa-chart-bar mr-2"></i>
-          التقارير والإحصائيات
-        </h3>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          
-          
-          <div class="col-md-4">
-            <div class="info-box bg-gradient-success">
-              <span class="info-box-icon"><i class="fas fa-shopping-cart"></i></span>
-              <div class="info-box-content">
-                <span class="info-box-text">{{ t('Sales Report') }}</span>
-                <span class="info-box-number">Sales Report</span>
-                <a href="{{ url_for('reports.sales') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
-                </a>
-              </div>
-            </div>
-          </div>
+  <div class="col-md-4 mb-3">
+    <a href="{{ url_for('reports.sales') }}" class="quick-card qc-sales">
+      <span class="qc-icon"><i class="fas fa-shopping-cart"></i></span>
+      <span><span class="qc-title">{{ t('Sales Report') }}</span><br><span class="qc-sub">{{ t('Revenue, Invoices & Performance') }}</span></span>
+    </a>
+  </div>
+  <div class="col-md-4 mb-3">
+    <a href="{{ url_for('reports.inventory') }}" class="quick-card qc-inv">
+      <span class="qc-icon"><i class="fas fa-boxes"></i></span>
+      <span><span class="qc-title">{{ t('Inventory Report') }}</span><br><span class="qc-sub">{{ t('Quantities, Stock & Movements') }}</span></span>
+    </a>
+  </div>
+  <div class="col-md-4 mb-3">
+    <a href="{{ url_for('reports.receivables') }}" class="quick-card qc-rec">
+      <span class="qc-icon"><i class="fas fa-user-clock"></i></span>
+      <span><span class="qc-title">{{ t('Receivables') }}</span><br><span class="qc-sub">{{ t('Customer Balances & Collection') }}</span></span>
+    </a>
+  </div>
+</div>
 
-          
-          <div class="col-md-4">
-            <div class="info-box bg-gradient-warning">
-              <span class="info-box-icon"><i class="fas fa-boxes"></i></span>
-              <div class="info-box-content">
-                <span class="info-box-text">{{ t('Inventory Report') }}</span>
-                <span class="info-box-number">Inventory Report</span>
-                <a href="{{ url_for('reports.inventory') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
-                </a>
-              </div>
-            </div>
-          </div>
+{# ===== التقارير المالية ===== #}
+<div class="card report-section card-outline card-primary">
+  <div class="card-header"><i class="fas fa-book mr-2"></i> {{ t('Financial Reports') }} <span class="sec-badge mr-2">{{ t('Accounting') }}</span></div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.trial_balance') }}" class="report-link btn"><i class="fas fa-balance-scale"></i><span>{{ t('Trial Balance') }}<small>{{ t('Debit & Credit Balance') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.income_statement') }}" class="report-link btn"><i class="fas fa-chart-line"></i><span>{{ t('Income Statement') }}<small>{{ t('Profits & Losses') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.balance_sheet') }}" class="report-link btn"><i class="fas fa-file-invoice-dollar"></i><span>{{ t('Balance Sheet Report') }}<small>{{ t('Assets, Liabilities & Equity') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.cash_flow') }}" class="report-link btn"><i class="fas fa-money-bill-alt"></i><span>{{ t('Cash Flow Statement') }}<small>{{ t('Cash & Expense Movements') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.vat_report') }}" class="report-link btn"><i class="fas fa-percent"></i><span>{{ t('VAT Report') }}<small>{{ t('Outputs and Inputs') }} — {{ (current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5)|int }}%</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.journal_entries') }}" class="report-link btn"><i class="fas fa-list-alt"></i><span>{{ t('Journal Entries') }}<small>{{ t('All Posted Entries') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-          
-          <div class="col-md-4">
-            <div class="info-box bg-gradient-danger">
-              <span class="info-box-icon"><i class="fas fa-user-clock"></i></span>
-              <div class="info-box-content">
-                <span class="info-box-text">الذمم المدينة</span>
-                <span class="info-box-number">Receivables</span>
-                <a href="{{ url_for('reports.receivables') }}" class="btn btn-light btn-sm mt-2 stretched-link">
-                  عرض التقرير <i class="fas fa-arrow-left mr-1"></i>
-                </a>
-              </div>
-            </div>
-          </div>
+{# ===== المبيعات والمخزون ===== #}
+<div class="card report-section card-outline card-success">
+  <div class="card-header"><i class="fas fa-shopping-cart mr-2"></i> {{ t('Sales & Inventory') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.sales') }}" class="report-link btn"><i class="fas fa-chart-bar"></i><span>{{ t('Sales Summary') }}<small>{{ t('Revenue by Period') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.top_selling') }}" class="report-link btn"><i class="fas fa-fire"></i><span>{{ t('Top Selling') }}<small>{{ t('Best Selling Products') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.inventory_valuation') }}" class="report-link btn"><i class="fas fa-coins"></i><span>{{ t('Inventory Valuation') }}<small>{{ t('Book Value at Cost') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('warehouse.low_stock') }}" class="report-link btn"><i class="fas fa-exclamation-triangle"></i><span>{{ t('Low Stock Alert') }}<small>{{ t('Products Needing Reorder') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('warehouse.out_of_stock') }}" class="report-link btn"><i class="fas fa-ban"></i><span>{{ t('Out of Stock Alert') }}<small>{{ t('Unavailable Products') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('warehouse.movements') }}" class="report-link btn"><i class="fas fa-exchange-alt"></i><span>{{ t('Stock Movements') }}<small>{{ t('Inbound & Outbound Log') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-        </div>
+{# ===== الذمم والشركاء ===== #}
+<div class="card report-section card-outline card-danger">
+  <div class="card-header"><i class="fas fa-handshake mr-2"></i> {{ t('Receivables & Partners') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.receivables') }}" class="report-link btn"><i class="fas fa-users"></i><span>{{ t('Receivables') }}<small>{{ t('Amounts Due from Customers') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.ap_aging') }}" class="report-link btn"><i class="fas fa-user-clock"></i><span>{{ t('Accounts Payable Aging') }}<small>{{ t('Amounts Due to Suppliers') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.aging_analysis') }}" class="report-link btn"><i class="fas fa-hourglass-half"></i><span>{{ t('Aging Analysis') }}<small>{{ t('Balances by Age') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.partners') }}" class="report-link btn"><i class="fas fa-handshake"></i><span>{{ t('Partners & Merchants Report') }}<small>{{ t('Partner Shares & Profits') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('main.company_partners') }}" class="report-link btn"><i class="fas fa-boxes"></i><span>{{ t('Partner Products') }}<small>{{ t('Link Products to Ratios & Partners') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-        <div class="row mt-3">
-          
-          
-          <div class="col-md-4">
-            <div class="card card-outline card-primary">
-              <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-book mr-2"></i>التقارير المالية</h3>
-              </div>
-              <div class="card-body">
-                <div class="list-group">
-                  <a href="{{ url_for('ledger.trial_balance') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-balance-scale mr-2"></i>ميزان المراجعة
-                  </a>
-                  <a href="{{ url_for('ledger.income_statement') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-line mr-2"></i>قائمة الدخل
-                  </a>
-                  <a href="{{ url_for('ledger.balance_sheet') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-file-invoice-dollar mr-2"></i>الميزانية العمومية
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
+{# ===== تقارير العمليات ===== #}
+<div class="card report-section card-outline card-info">
+  <div class="card-header"><i class="fas fa-clipboard-list mr-2"></i> {{ t('Operations & Records Reports') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('sales.index') }}" class="report-link btn"><i class="fas fa-file-invoice"></i><span>{{ t('Sales Invoices') }}<small>{{ t('All Sales Invoices') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('sales.archived') }}" class="report-link btn"><i class="fas fa-archive"></i><span>{{ t('Archive') }}<small>{{ t('Archived Invoices') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('purchases.index') }}" class="report-link btn"><i class="fas fa-shopping-bag"></i><span>{{ t('Purchase Invoices') }}<small>{{ t('All Purchase Invoices') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('payments.receipts') }}" class="report-link btn"><i class="fas fa-money-bill-wave"></i><span>{{ t('Payments') }}<small>{{ t('Receipt & Payment Vouchers') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('expenses.index') }}" class="report-link btn"><i class="fas fa-wallet"></i><span>{{ t('Expenses') }}<small>{{ t('Expense Log') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('customers.index') }}" class="report-link btn"><i class="fas fa-users"></i><span>{{ t('Clients') }}<small>{{ t('Customer List & Balances') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('products.index') }}" class="report-link btn"><i class="fas fa-cubes"></i><span>{{ t('Products') }}<small>{{ t('Item List & Prices') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-          
-          <div class="col-md-4">
-            <div class="card card-outline card-success">
-              <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-clipboard-list mr-2"></i>تقارير العمليات</h3>
-              </div>
-              <div class="card-body">
-                <div class="list-group">
-                  <a href="{{ url_for('sales.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-file-invoice mr-2"></i>فواتير المبيعات
-                  </a>
-                  <a href="{{ url_for('purchases.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-shopping-bag mr-2"></i>فواتير المشتريات
-                  </a>
-                  <a href="{{ url_for('payments.receipts') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-money-bill-wave mr-2"></i>المدفوعات
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
+{# ===== الرواتب والموارد البشرية ===== #}
+<div class="card report-section card-outline card-warning">
+  <div class="card-header"><i class="fas fa-users mr-2"></i> {{ t('Payroll & HR') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('hr.dashboard') }}" class="report-link btn"><i class="fas fa-tachometer-alt"></i><span>{{ t('HR Dashboard') }}<small>{{ t('Employee Overview') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('hr.payroll') }}" class="report-link btn"><i class="fas fa-money-check-alt"></i><span>{{ t('Payroll Statements') }}<small>{{ t('Salaries & Deductions') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('hr.employees') }}" class="report-link btn"><i class="fas fa-id-card"></i><span>{{ t('Employees') }}<small>{{ t('Employee List & Details') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('hr.leave_requests') }}" class="report-link btn"><i class="fas fa-calendar-minus"></i><span>{{ t('Leave Requests') }}<small>{{ t('Leaves & Balances') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('hr.departments') }}" class="report-link btn"><i class="fas fa-sitemap"></i><span>{{ t('Departments') }}<small>{{ t('Department Organization') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-          
-          <div class="col-md-4">
-            <div class="card card-outline card-info">
-              <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-list mr-2"></i>تقارير أخرى</h3>
-              </div>
-              <div class="card-body">
-                <div class="list-group">
-                  <a href="{{ url_for('customers.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-users mr-2"></i>العملاء
-                  </a>
-                  <a href="{{ url_for('products.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-cubes mr-2"></i>المنتجات
-                  </a>
-                  <a href="{{ url_for('expenses.index') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-wallet mr-2"></i>المصروفات
-                  </a>
-                  <a href="{{ url_for('reports.partners') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-handshake mr-2"></i>تقرير الشركاء والتجار
-                  </a>
-                  <a href="{{ url_for('reports.quotation_pipeline') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-funnel-dollar mr-2"></i>تقرير خط أنابيب عروض الأسعار
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
+{# ===== تقارير الفترات الزمنية ===== #}
+<div class="card report-section card-outline card-secondary">
+  <div class="card-header"><i class="fas fa-calendar-alt mr-2"></i> {{ t('Period Reports') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.sales') }}" class="report-link btn"><i class="fas fa-chart-area"></i><span>{{ t('Sales by Period') }}<small>{{ t('From Date to Date') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.cash_flow') }}" class="report-link btn"><i class="fas fa-stream"></i><span>{{ t('Cash Flows') }}<small>{{ t('Cash Movements in Period') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.vat_report') }}" class="report-link btn"><i class="fas fa-percent"></i><span>{{ t('Period VAT') }}<small>{{ t('VAT from date to date') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.aging_analysis') }}" class="report-link btn"><i class="fas fa-hourglass-half"></i><span>{{ t('Aging') }}<small>{{ t('Balances Over Time') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.ap_aging') }}" class="report-link btn"><i class="fas fa-user-clock"></i><span>{{ t('Payables Aging') }}<small>{{ t('Supplier Dues Over Time') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-        </div>
+{# ===== الصيانة ===== #}
+<div class="card report-section card-outline card-success">
+  <div class="card-header"><i class="fas fa-tools mr-2"></i> {{ t('Maintenance & Service Centers') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('maintenance.list_orders') }}" class="report-link btn"><i class="fas fa-wrench"></i><span>{{ t('Maintenance Orders') }}<small>{{ t('All Orders & Their Statuses') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="report-link btn"><i class="fas fa-receipt"></i><span>{{ t('Maintenance Cost Report') }}<small>{{ t('Costs & Revenue') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('maintenance.devices_list') }}" class="report-link btn"><i class="fas fa-laptop"></i><span>{{ t('Devices') }}<small>{{ t('Device Registry') }}</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('maintenance.services_list') }}" class="report-link btn"><i class="fas fa-concierge-bell"></i><span>{{ t('Maintenance Services') }}<small>{{ t('Service List') }}</small></span></a></div>
+    </div>
+  </div>
+</div>
 
-        
-        <div class="row mt-4">
-          <div class="col-md-12">
-            <div class="card card-outline card-info">
-              <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i>التقارير المالية المتقدمة</h3>
-              </div>
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-md-3">
-                    <a href="{{ url_for('reports.inventory_valuation') }}" class="btn btn-outline-primary btn-block">
-                      <i class="fas fa-boxes mr-2"></i>تقييم المخزون
-                    </a>
-                  </div>
-                  <div class="col-md-3">
-                    <a href="{{ url_for('reports.ap_aging') }}" class="btn btn-outline-danger btn-block">
-                      <i class="fas fa-user-clock mr-2"></i>أعمار الذمم الدائنة
-                    </a>
-                  </div>
-                  <div class="col-md-3">
-                    <a href="{{ url_for('reports.cash_flow') }}" class="btn btn-outline-success btn-block">
-                      <i class="fas fa-money-bill-alt mr-2"></i>قائمة التدفقات النقدية
-                    </a>
-                  </div>
-                  <div class="col-md-3">
-                    <a href="{{ url_for('reports.vat_report') }}" class="btn btn-outline-warning btn-block">
-                      <i class="fas fa-percent mr-2"></i>تقرير VAT (5%)
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
+{# ===== عروض الأسعار ===== #}
+<div class="card report-section card-outline card-primary">
+  <div class="card-header"><i class="fas fa-file-signature mr-2"></i> {{ t('Quotations') }}</div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.quotation_pipeline') }}" class="report-link btn"><i class="fas fa-funnel-dollar"></i><span>{{ t('Quotation Pipeline') }}<small>{{ t('Quotations & Their Statuses') }}</small></span></a></div>
     </div>
   </div>
 </div>
 {% endblock %}
-

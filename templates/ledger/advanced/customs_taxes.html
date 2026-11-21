@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}إدارة الجمارك والضرائب{% endblock %}
+{% block title %}{{ t('Customs and Tax Management') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,11 +9,11 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-file-invoice-dollar"></i> الجمارك والضرائب
+            <i class="fas fa-file-invoice-dollar"></i> {{ t('Customs and Taxes') }}
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('advanced_ledger.add_customs_tax') }}" class="btn btn-success">
-              <i class="fas fa-plus"></i> إضافة ضريبة جمركية
+              <i class="fas fa-plus"></i> {{ t('Add Customs Tax') }}
             </a>
           </div>
         </div>
@@ -21,13 +21,13 @@
           <table class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>الكود</th>
-                <th>الاسم</th>
-                <th>النسبة %</th>
-                <th>نوع الحساب</th>
-                <th>الحساب المحاسبي</th>
-                <th>الحالة</th>
-                <th>الإجراءات</th>
+                <th>{{ t('Code') }}</th>
+                <th>{{ t('Name') }}</th>
+                <th>{{ t('Rate (%)') }}</th>
+                <th>{{ t('Account Type') }}</th>
+                <th>{{ t('GL Account') }}</th>
+                <th>{{ t('Status') }}</th>
+                <th>{{ t('Actions') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -40,9 +40,9 @@
                 <td>{{ tax.gl_account.code if tax.gl_account else '-' }}</td>
                 <td>
                   {% if tax.is_active %}
-                    <span class="badge badge-success">نشط</span>
+                    <span class="badge badge-success">{{ t('Active') }}</span>
                   {% else %}
-                    <span class="badge badge-secondary">غير نشط</span>
+                    <span class="badge badge-secondary">{{ t('Inactive') }}</span>
                   {% endif %}
                 </td>
                 <td>
@@ -53,7 +53,7 @@
               </tr>
               {% else %}
               <tr>
-                <td colspan="7" class="text-center">لا توجد ضرائب مسجلة</td>
+                <td colspan="7" class="text-center">{{ t('No taxes found') }}</td>
               </tr>
               {% endfor %}
             </tbody>

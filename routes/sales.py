@@ -327,12 +327,14 @@ def print_invoice(id):
     if template not in _ALLOWED_TEMPLATES:
         template = "modern"
 
+    from utils.i18n import t as _t
+
     template_labels = {
-        "modern": "مودرن",
-        "classic": "كلاسيك",
-        "gulf": "خليجي",
-        "minimal": "بسيط",
-        "simple": "مبسط",
+        "modern": _t("Modern"),
+        "classic": _t("Classic"),
+        "gulf": _t("Gulf"),
+        "minimal": _t("Simple"),
+        "simple": _t("Basic"),
     }
     available_templates = [
         (k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES
@@ -558,6 +560,7 @@ def cancel(id):
 def api_get_price():
     product_id = request.args.get("product_id", type=int)
     customer_id = request.args.get("customer_id", type=int)
+    warehouse_id = request.args.get("warehouse_id", type=int)
 
     if not product_id or not customer_id:
         return jsonify({"error": "Missing parameters"}), 400
@@ -570,13 +573,22 @@ def api_get_price():
 
     price = product.get_price_for_customer(customer.customer_type)
 
+    # Stock is always scoped to the warehouse selected on the invoice.
+    from services.stock_service import StockService
+
+    stock_qty = (
+        StockService.get_warehouse_quantity(product.id, warehouse_id)
+        if warehouse_id
+        else float(product.current_stock or 0)
+    )
+
     return jsonify(
         {
             "price": float(price),
             "cost_price": float(product.cost_price)
             if current_user.can_see_costs()
             else None,
-            "current_stock": float(product.current_stock),
+            "current_stock": float(stock_qty),
             "unit": product.unit or "بلا",
             "tax_treatment": getattr(product, "tax_treatment", None) or "standard",
         }

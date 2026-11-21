@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إنشاء فاتورة شراء جديدة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Create New Purchase Invoice') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>فاتورة شراء جديدة</h1>
+    <h1 class="mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i>{{ t('New Purchase Invoice') }}</h1>
   </div>
   <div class="purchase-header-actions">
     <a href="{{ url_for('purchases.index') }}" class="purchase-header-link purchase-header-link--primary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للمشتريات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Purchases') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="purchase-header-link purchase-header-link--secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -168,7 +168,7 @@
 {% block content %}
 <div class="card card-primary">
   <div class="card-header">
-    <h3 class="card-title"><i class="fas fa-shopping-cart"></i> بيانات فاتورة الشراء</h3>
+    <h3 class="card-title"><i class="fas fa-shopping-cart"></i> {{ t('Purchase Invoice Details') }}</h3>
   </div>
   
   <form method="POST" action="{{ url_for('purchases.create') }}" id="purchaseForm" class="purchase-create-form">
@@ -181,7 +181,7 @@
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-truck"></i> معلومات المورد
+            <i class="fas fa-truck"></i> {{ t('Supplier Information') }}
           </h5>
         </div>
       </div>
@@ -190,22 +190,22 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="supplier_id">
-              <i class="fas fa-truck text-success"></i> المورد 
+              <i class="fas fa-truck text-success"></i> {{ t('Supplier') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اختر المورد - الفلتر الذكي (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Select the supplier - smart filter (required)') }}"></i>
             </label>
             <div class="input-group">
               <select name="supplier_id" id="supplier_id" class="form-control supplier-select" required>
-                <option value="" selected>بلا</option>
+                <option value="" selected>{{ t('None') }}</option>
               </select>
               <div class="input-group-append">
-                <a href="{{ url_for('suppliers.create') }}" class="btn btn-success" target="_blank" title="إضافة مورد جديد">
+                <a href="{{ url_for('suppliers.create') }}" class="btn btn-success" target="_blank" title="{{ t('Add New Supplier') }}">
                   <i class="fas fa-plus"></i>
                 </a>
               </div>
             </div>
             <small class="form-text text-muted">
-               لا يوجد المورد؟ اضغط زر الإضافة لفتح صفحة الموردين في نافذة جديدة.
+               {{ t('Supplier not found? Click the add button to open the suppliers page in a new window.') }}
             </small>
           </div>
         </div>
@@ -213,12 +213,12 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="warehouse_id">
-              <i class="fas fa-warehouse text-info"></i> المستودع
+              <i class="fas fa-warehouse text-info"></i> {{ t('Warehouse') }}
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المستودع الذي ستُضاف إليه البضاعة (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('The warehouse to which the goods will be added (required)') }}"></i>
             </label>
             <select name="warehouse_id" id="warehouse_id" class="form-control" required>
-              <option value="" selected>بلا</option>
+              <option value="" selected>{{ t('None') }}</option>
               {% if warehouses %}
                 {% for warehouse in warehouses %}
                 <option value="{{ warehouse.id }}">
@@ -230,7 +230,7 @@
               {% endif %}
             </select>
             <small class="form-text text-info">
-              <i class="fas fa-info-circle"></i> ستُضاف البضاعة لهذا المستودع
+              <i class="fas fa-info-circle"></i> {{ t('Goods will be added to this warehouse') }}
             </small>
           </div>
         </div>
@@ -238,8 +238,8 @@
         <div class="col-md-2">
           <div class="form-group">
             <label for="supplier_phone">
-              <i class="fas fa-phone text-info"></i> هاتف المورد
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
+              <i class="fas fa-phone text-info"></i> {{ t('Supplier Phone') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Filled automatically when selecting the supplier') }}"></i>
             </label>
             <input type="text" name="supplier_phone" id="supplier_phone" class="form-control" readonly>
           </div>
@@ -248,8 +248,8 @@
         <div class="col-md-2">
           <div class="form-group">
             <label for="supplier_email">
-              <i class="fas fa-envelope text-secondary"></i> بريد المورد
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="يُملأ تلقائياً عند اختيار المورد"></i>
+              <i class="fas fa-envelope text-secondary"></i> {{ t('Supplier Email') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Filled automatically when selecting the supplier') }}"></i>
             </label>
             <input type="email" name="supplier_email" id="supplier_email" class="form-control" readonly>
           </div>
@@ -260,7 +260,7 @@
       <div class="row mt-3">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-dollar-sign"></i> العملة والضريبة
+            <i class="fas fa-dollar-sign"></i> {{ t('Currency and Tax') }}
           </h5>
         </div>
       </div>
@@ -269,55 +269,55 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="currency">
-              <i class="fas fa-dollar-sign text-success"></i> العملة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة الفاتورة (افتراضي: {{ base_currency }})"></i>
+              <i class="fas fa-dollar-sign text-success"></i> {{ t('Currency') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Invoice currency (default: {currency})', currency=base_currency) }}"></i>
             </label>
             <select name="currency" id="currency" class="form-control">
-              <option value="AED" {% if base_currency == "AED" %}selected{% endif %}>درهم إماراتي (AED)</option>
-              <option value="USD">دولار أمريكي (USD)</option>
-              <option value="EUR">يورو (EUR)</option>
-              <option value="GBP">جنيه إسترليني (GBP)</option>
-              <option value="SAR">ريال سعودي (SAR)</option>
+              <option value="AED" {% if base_currency == "AED" %}selected{% endif %}>{{ t('UAE Dirham (AED)') }}</option>
+              <option value="USD">{{ t('US Dollar (USD)') }}</option>
+              <option value="EUR">{{ t('Euro (EUR)') }}</option>
+              <option value="GBP">{{ t('British Pound (GBP)') }}</option>
+              <option value="SAR">{{ t('Saudi Riyal (SAR)') }}</option>
             </select>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label for="exchange_rate">سعر الصرف</label>
+            <label for="exchange_rate">{{ t('Exchange Rate') }}</label>
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" value="1.000000" step="0.000001" min="0">
-            <small class="form-text text-muted">سعر الصرف مقابل {{ base_currency }}</small>
+            <small class="form-text text-muted">{{ t('Exchange rate against') }} {{ base_currency }}</small>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label for="tax_rate">نسبة الضريبة %</label>
+            <label for="tax_rate">{{ t('Tax Rate %') }}</label>
             <input type="number" name="tax_rate" id="tax_rate" 
                    class="form-control" value="0" step="0.01" min="0" max="100">
-            <small class="form-text text-muted">مثال: 5 للضريبة 5%</small>
+            <small class="form-text text-muted">{{ t('Example: 5 for 5% tax') }}</small>
             </div>
             <div class="form-group">
-              <label for="tax_treatment">المعاملة الضريبية</label>
+              <label for="tax_treatment">{{ t('Tax Treatment') }}</label>
               <select name="tax_treatment" id="tax_treatment" class="form-control">
-                <option value="standard">قياسية (نسبة الشركة)</option>
-                <option value="zero">خاضعة بصفر 0%</option>
-                <option value="exempt">معفاة من الضريبة</option>
+                <option value="standard">{{ t('Standard (company rate)') }}</option>
+                <option value="zero">{{ t('Zero-rated 0%') }}</option>
+                <option value="exempt">{{ t('Tax exempt') }}</option>
               </select>
             </div>
             <div class="form-check mt-2">
               <input type="checkbox" name="tax_inclusive" class="form-check-input" id="tax_inclusive" value="on">
-              <label class="form-check-label" for="tax_inclusive">الأسعار شاملة الضريبة</label>
+              <label class="form-check-label" for="tax_inclusive">{{ t('Prices include tax') }}</label>
             </div>
             <div class="form-check mt-2">
               <input type="hidden" name="vat_recoverable" value="0">
               <input type="checkbox" name="vat_recoverable" class="form-check-input" id="vat_recoverable" value="on" checked>
-              <label class="form-check-label" for="vat_recoverable">ضريبة المدخلات قابلة للاسترداد (أزل العلامة إذا لم تكن — سيارات/ترفيه/مصاريف غير قابلة للاسترداد)</label>
+              <label class="form-check-label" for="vat_recoverable">{{ t('Input tax is recoverable (uncheck if not - cars/entertainment/non-recoverable expenses)') }}</label>
             </div>
             <div class="form-check mt-1">
               <input type="checkbox" name="reverse_charge" class="form-check-input" id="reverse_charge" value="on">
-              <label class="form-check-label" for="reverse_charge">مورد أجنبي — عكس الضريبة (Reverse Charge): المورد لا يضيف ضريبة؛ الشركة تُقيّد ضريبة مدخلات ومخرجات متوازنة</label>
+              <label class="form-check-label" for="reverse_charge">{{ t('Foreign supplier - Reverse Charge: the supplier does not add tax; the company records balanced input and output tax') }}</label>
             </div>
           </div>
         </div>
@@ -328,11 +328,11 @@
         <div class="col-md-4">
           <div class="form-group">
             <label for="due_date">
-              <i class="fas fa-calendar-check text-warning"></i> تاريخ الاستحقاق
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="تاريخ استحقاق الذمم الدائنة - اتركه فارغاً ليُحسب من شروط دفع المورد"></i>
+              <i class="fas fa-calendar-check text-warning"></i> {{ t('Due Date') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Due date of payables - leave empty to calculate from supplier payment terms') }}"></i>
             </label>
             <input type="date" name="due_date" id="due_date" class="form-control">
-            <small class="form-text text-muted">اتركه فارغاً ليُحسب تلقائياً من شروط دفع المورد</small>
+            <small class="form-text text-muted">{{ t('Leave empty to calculate automatically from supplier payment terms') }}</small>
           </div>
         </div>
       </div>
@@ -341,7 +341,7 @@
       <div class="row mt-4">
         <div class="col-md-12">
           <h5 class="text-primary mb-3">
-            <i class="fas fa-boxes"></i> المنتجات المشتراة
+            <i class="fas fa-boxes"></i> {{ t('Purchased Products') }}
           </h5>
         </div>
       </div>
@@ -349,7 +349,7 @@
       <div id="linesContainer" class="mb-3"></div>
       
       <button type="button" class="btn btn-success btn-sm" onclick="addLine()">
-        <i class="fas fa-plus-circle"></i> إضافة منتج
+        <i class="fas fa-plus-circle"></i> {{ t('Add Product') }}
       </button>
       
       
@@ -358,25 +358,25 @@
           <div class="form-group">
             <label for="notes">{{ t('Notes') }}</label>
             <textarea name="notes" id="notes" class="form-control" rows="4" 
-                      placeholder="أي ملاحظات إضافية عن فاتورة الشراء..."></textarea>
+                      placeholder="{{ t('Any additional notes about the purchase invoice...') }}"></textarea>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="card bg-light">
             <div class="card-body">
-              <h6 class="text-center mb-3"><i class="fas fa-calculator"></i> ملخص الفاتورة</h6>
+              <h6 class="text-center mb-3"><i class="fas fa-calculator"></i> {{ t('Invoice Summary') }}</h6>
               <table class="table table-sm">
                 <tr>
-                  <td>المجموع الفرعي:</td>
+                  <td>{{ t('Subtotal:') }}</td>
                   <td class="text-left" id="summary_subtotal">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr>
-                  <td>الضريبة:</td>
+                  <td>{{ t('Tax:') }}</td>
                   <td class="text-left" id="summary_tax">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr class="font-weight-bold border-top">
-                  <td>الإجمالي:</td>
+                  <td>{{ t('Total:') }}</td>
                   <td class="text-left text-primary" id="summary_total">0.00 {{ base_currency }}</td>
                 </tr>
               </table>
@@ -389,19 +389,19 @@
     
     <div class="card-footer">
       <button type="submit" class="btn btn-primary btn-lg">
-        <i class="fas fa-save mr-2"></i> حفظ فاتورة الشراء
+        <i class="fas fa-save mr-2"></i> {{ t('Save Purchase Invoice') }}
       </button>
       <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i> إلغاء
+        <i class="fas fa-times mr-2"></i> {{ t('Cancel') }}
       </a>
       <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals();">
-        <i class="fas fa-calculator mr-2"></i> إعادة الحساب
+        <i class="fas fa-calculator mr-2"></i> {{ t('Recalculate') }}
       </button>
       <button type="button" class="btn btn-warning btn-lg float-left ml-2" onclick="debugTotals()">
         <i class="fas fa-bug mr-2"></i> Debug
       </button>
       <button type="button" class="btn btn-success btn-lg float-left ml-2" onclick="forceCalculate()">
-        <i class="fas fa-bolt mr-2"></i> حساب فوري
+        <i class="fas fa-bolt mr-2"></i> {{ t('Instant Calculation') }}
       </button>
     </div>
   </form>
@@ -419,18 +419,18 @@ function addLine() {
       <div class="row align-items-end">
         
         <div class="col-md-3">
-          <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> المنتج</label>
+          <label class="small" for="line_${lineIndex}_product_id"><i class="fas fa-box"></i> {{ t('Product') }}</label>
           <select name="lines[${lineIndex}][product_id]" 
                   id="line_${lineIndex}_product_id"
                   class="form-control product-select line-product" 
                   data-line="${lineIndex}" required>
-            <option value="">بلا</option>
+            <option value="">{{ t('None') }}</option>
           </select>
         </div>
         
         
         <div class="col-md-2">
-          <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> الكمية</label>
+          <label class="small" for="line_${lineIndex}_quantity"><i class="fas fa-sort-numeric-up"></i> {{ t('Quantity') }}</label>
           <input type="number" name="lines[${lineIndex}][quantity]" 
                  id="line_${lineIndex}_quantity"
                  class="form-control line-quantity" data-line="${lineIndex}"
@@ -439,7 +439,7 @@ function addLine() {
         
         
         <div class="col-md-2">
-          <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> التكلفة</label>
+          <label class="small" for="line_${lineIndex}_unit_cost"><i class="fas fa-dollar-sign"></i> {{ t('Cost') }}</label>
           <input type="number" name="lines[${lineIndex}][unit_cost]" 
                  id="line_${lineIndex}_unit_cost"
                  class="form-control line-cost" data-line="${lineIndex}"
@@ -448,7 +448,7 @@ function addLine() {
         
         
         <div class="col-md-1">
-          <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> خصم%</label>
+          <label class="small" for="line_${lineIndex}_discount"><i class="fas fa-percentage"></i> {{ t('Discount %') }}</label>
           <input type="number" name="lines[${lineIndex}][discount_percent]" 
                  id="line_${lineIndex}_discount"
                  class="form-control line-discount" data-line="${lineIndex}"
@@ -457,20 +457,20 @@ function addLine() {
         
         
         <div class="col-md-2">
-          <label class="small" for="line_${lineIndex}_tax_treatment">المعاملة الضريبية</label>
+          <label class="small" for="line_${lineIndex}_tax_treatment">{{ t('Tax Treatment') }}</label>
           <select name="lines[${lineIndex}][tax_treatment]"
                   id="line_${lineIndex}_tax_treatment"
                   class="form-control tax-treatment-input" data-line="${lineIndex}"
                   onchange="calculateTotals()">
-            <option value="standard">خاضعة (عادية)</option>
-            <option value="zero">صفرية 0%</option>
-            <option value="exempt">معفاة</option>
+            <option value="standard">{{ t('Standard (regular)') }}</option>
+            <option value="zero">{{ t('Zero 0%') }}</option>
+            <option value="exempt">{{ t('Exempt') }}</option>
           </select>
         </div>
 
         
         <div class="col-md-1">
-          <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> المجموع</label>
+          <label class="small" for="line_total_${lineIndex}"><i class="fas fa-equals"></i> {{ t('Total') }}</label>
           <input type="text" class="form-control line-total bg-light" 
                  id="line_total_${lineIndex}" data-line="${lineIndex}" value="0.00" readonly>
         </div>
@@ -520,14 +520,14 @@ function addLine() {
         },
         cache: true
       },
-      placeholder: 'ابحث عن منتج...',
+      placeholder: {{ t('Search for a product...')|tojson }},
       allowClear: true,
       minimumInputLength: 0,
       dir: 'rtl',
       width: '100%',
       language: 'ar',
       templateResult: function(p) {
-        if (p.loading) return 'جاري البحث...';
+        if (p.loading) return {{ t('Searching...')|tojson }};
         if (!p.id) return p.text;
         
         const stockIcon = (p.current_stock || 0) > 0 ? '' : '';
@@ -739,9 +739,9 @@ function forceCalculate() {
   $('#summary_tax').text(taxAmount.toFixed(2) + ' ' + currency);
   $('#summary_total').text(total.toFixed(2) + ' ' + currency);  
   if (subtotal > 0) {
-    alert(`تم الحساب بنجاح.\nالمجموع الفرعي: ${subtotal.toFixed(2)} ${currency}\nالإجمالي: ${total.toFixed(2)} ${currency}`);
+    alert({{ t('Calculated successfully.')|tojson }} + '\n' + {{ t('Subtotal:')|tojson }} + ' ' + subtotal.toFixed(2) + ' ' + currency + '\n' + {{ t('Total:')|tojson }} + ' ' + total.toFixed(2) + ' ' + currency);
   } else {
-    alert('لم يتم العثور على بيانات للحساب.');
+    alert({{ t('No data found to calculate.')|tojson }});
   }
 }
 
@@ -776,11 +776,11 @@ $('#currency').on('change', function() {
           $('#exchange_rate').val(data.rate.toFixed(6));
           updateLineCosts();
         } else {
-          toastr.warning('يرجى إدخال سعر الصرف يدوياً');
+          toastr.warning({{ t('Please enter the exchange rate manually.')|tojson }});
         }
       },
       error: function() {
-        toastr.warning('يرجى إدخال سعر الصرف يدوياً');
+        toastr.warning({{ t('Please enter the exchange rate manually.')|tojson }});
       }
     });
   } else {
@@ -801,7 +801,7 @@ $('#supplier_id').on('change', function() {
     $('#supplier_email').val(selectedData.email || '');
     
     if (selectedData.is_verified) {
-      toastr.success(` مورد موثوق: ${selectedData.name}`);
+      toastr.success({{ t('Trusted supplier:')|tojson }} + ' ' + selectedData.name);
     }
   }
 });
@@ -825,13 +825,13 @@ $(document).ready(function() {
     const lineCount = $('.product-line').length;    
     if (lineCount === 0) {
       e.preventDefault();
-      toastr.error('يجب إضافة منتج واحد على الأقل');
+      toastr.error({{ t('At least one product must be added.')|tojson }});
       return false;
     }
     
     if (!$('#supplier_id').val()) {
       e.preventDefault();
-      toastr.error('يجب اختيار المورد');
+      toastr.error({{ t('A supplier must be selected')|tojson }});
       return false;
     }
     

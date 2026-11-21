@@ -135,7 +135,7 @@ ROLE_PERMISSIONS = {
     # The three role vectors below are taken verbatim from the application's
     # own definitions in tests/unit/test_erp_role_isolation.py so the E2E
     # matrix and the unit suite agree on what each role may do.
-    #   manager   -> "broader permissions but NOT manage_ledger or admin"
+    #   manager   -> "full tenant-admin permissions (ledger + HR), NOT platform admin"
     #   accountant-> "ledger + expenses + reports, but NOT sales or POS"
     #   viewer    -> "view_reports ONLY - no write access anywhere"
     "manager": [
@@ -151,6 +151,10 @@ ROLE_PERMISSIONS = {
         # utils/system_init.py gives 'manager' manage_users, which is the only
         # /users/<id>/delete.
         "manage_users",
+        # Tenant admin reaches every tenant-level module (incl. HR); only
+        # owner/platform screens stay out of scope.
+        "manage_hr",
+        "manage_ledger",
     ],
     "accountant": [
         "view_ledger",

@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
-{% block title %}إدارة الحسابات المحاسبية - Accounts Management{% endblock %}
-{% block page_title %}إدارة الحسابات المحاسبية{% endblock %}
+{% block title %}{{ t('Accounts Management') }}{% endblock %}
+{% block page_title %}{{ t('Accounts Management') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة لدفتر الأستاذ
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Ledger') }}
     </a>
     <a href="{{ url_for('ledger.add_account') }}" class="btn btn-success">
-      <i class="fas fa-plus mr-2"></i>إضافة حساب جديد
+      <i class="fas fa-plus mr-2"></i>{{ t('Add New Account') }}
     </a>
     <a href="{{ url_for('ledger.accounts_tree') }}" class="btn btn-info">
-      <i class="fas fa-sitemap mr-2"></i>شجرة الحسابات
+      <i class="fas fa-sitemap mr-2"></i>{{ t('Chart of Accounts') }}
     </a>
   </div>
 </div>
@@ -20,7 +20,7 @@
 <div class="card">
   <div class="card-header bg-gradient-primary">
     <h3 class="card-title text-white">
-      <i class="fas fa-chart-line mr-2"></i>جميع الحسابات المحاسبية
+      <i class="fas fa-chart-line mr-2"></i>{{ t('All Accounts') }}
     </h3>
   </div>
   <div class="card-body p-0">
@@ -28,14 +28,14 @@
       <table class="table table-hover mb-0" id="accountsTable">
         <thead class="bg-light">
           <tr>
-            <th>الكود</th>
-            <th>اسم الحساب</th>
-            <th>النوع</th>
-            <th>المستوى</th>
-            <th>الحساب الرئيسي</th>
-            <th>الرصيد</th>
-            <th>الحالة</th>
-            <th>الإجراءات</th>
+            <th>{{ t('Code') }}</th>
+            <th>{{ t('Account Name') }}</th>
+            <th>{{ t('Type') }}</th>
+            <th>{{ t('Level') }}</th>
+            <th>{{ t('Parent Account') }}</th>
+            <th>{{ t('Balance') }}</th>
+            <th>{{ t('Status') }}</th>
+            <th>{{ t('Actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -73,12 +73,12 @@
             </td>
             <td>
               {% if account.is_active %}
-                <span class="badge badge-success">نشط</span>
+                <span class="badge badge-success">{{ t('Active') }}</span>
               {% else %}
-                <span class="badge badge-danger">غير نشط</span>
+                <span class="badge badge-danger">{{ t('Inactive') }}</span>
               {% endif %}
               {% if account.is_header %}
-                <br><span class="badge badge-info">حساب رئيسي</span>
+                <br><span class="badge badge-info">{{ t('Header Account') }}</span>
               {% endif %}
             </td>
             <td>
@@ -106,23 +106,23 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title">تأكيد الحذف</h5>
+        <h5 class="modal-title">{{ t('Confirm Delete') }}</h5>
         <button type="button" class="close text-white" data-dismiss="modal">
           <span>&times;</span>
         </button>
       </div>
       <div class="modal-body">
-        <p>هل أنت متأكد من حذف الحساب <strong id="accountName"></strong>؟</p>
+        <p>{{ t('Are you sure you want to delete the account') }} <strong id="accountName"></strong>?</p>
         <div class="alert alert-warning">
           <i class="fas fa-exclamation-triangle mr-2"></i>
-          <strong>تحذير:</strong> لا يمكن حذف الحساب إذا كان مرتبطاً بقيود محاسبية أو حسابات فرعية.
+          <strong>{{ t('Warning') }}:</strong> {{ t('The account cannot be deleted if it is linked to journal entries or sub-accounts.') }}
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ t('Cancel') }}</button>
         <form method="POST" id="deleteForm" style="display: inline;" action="">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-danger">حذف</button>
+          <button type="submit" class="btn btn-danger">{{ t('Delete') }}</button>
         </form>
       </div>
     </div>
@@ -141,7 +141,7 @@ function deleteAccount(accountId, accountName) {
 $(document).ready(function() {
   $('#accountsTable').DataTable({
     "language": {
-      "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Arabic.json"
+      "url": "{{ url_for('static', filename=('datatables/English.json' if current_language == 'en' else 'datatables/Arabic.json')) }}"
     },
     "pageLength": 25,
     "order": [[ 0, "asc" ]],

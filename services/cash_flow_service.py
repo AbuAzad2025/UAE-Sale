@@ -313,7 +313,14 @@ class CashFlowService:
             if amount == 0:
                 continue
 
-            label = f"{row.account_code} - {row.account_name_ar or row.account_name}"
+            from utils.i18n import get_current_language
+
+            acct_name = (
+                row.account_name_ar
+                if get_current_language() == "ar"
+                else row.account_name
+            ) or row.account_name_ar or row.account_name
+            label = f"{row.account_code} - {acct_name}"
             sections[section][label] = (
                 sections[section].get(label, Decimal("0")) + amount
             )
@@ -323,7 +330,7 @@ class CashFlowService:
                     "section": section,
                     "section_label": CashFlowService.SECTION_LABELS[section],
                     "code": row.account_code,
-                    "name": row.account_name_ar or row.account_name,
+                    "name": acct_name,
                     "label": label,
                     "debit": CashFlowService._dec(row.debit_base),
                     "credit": CashFlowService._dec(row.credit_base),

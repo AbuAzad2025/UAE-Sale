@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block title %}{{ 'تعديل موازنة' if budget else 'إنشاء موازنة' }} - Owner{% endblock %}
+{% block title %}{{ t('Edit Budget') if budget else t('Create Budget') }} - Owner{% endblock %}
 {% block content %}
 <div class="container-fluid">
-  <h3>{{ 'تعديل موازنة' if budget else 'إنشاء موازنة جديدة' }}</h3>
+  <h3>{{ t('Edit Budget') if budget else t('Create New Budget') }}</h3>
   <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
       <div class="col-md-6">
         <div class="form-group">
-          <label>اسم الموازنة (عربي) *</label>
+          <label>{{ t('Budget Name (Arabic)') }} *</label>
           <input type="text" name="name_ar" class="form-control" value="{{ budget.name_ar if budget else '' }}" required>
         </div>
       </div>
       <div class="col-md-6">
         <div class="form-group">
-          <label>اسم الموازنة (إنجليزي)</label>
+          <label>{{ t('Budget Name (English)') }}</label>
           <input type="text" name="name_en" class="form-control" value="{{ budget.name_en if budget else '' }}">
         </div>
       </div>
@@ -22,23 +22,23 @@
     <div class="row">
       <div class="col-md-4">
         <div class="form-group">
-          <label>السنة المالية</label>
+          <label>{{ t('Fiscal Year') }}</label>
           <input type="number" name="fiscal_year" class="form-control" value="{{ budget.fiscal_year if budget else 2026 }}">
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-group">
-          <label>نوع الفترة</label>
+          <label>{{ t('Period Type') }}</label>
           <select name="period_type" class="form-control">
-            <option value="annual" {% if budget and budget.period_type == 'annual' %}selected{% endif %}>سنوية</option>
-            <option value="quarterly" {% if budget and budget.period_type == 'quarterly' %}selected{% endif %}>ربع سنوية</option>
-            <option value="monthly" {% if budget and budget.period_type == 'monthly' %}selected{% endif %}>شهرية</option>
+            <option value="annual" {% if budget and budget.period_type == 'annual' %}selected{% endif %}>{{ t('Annual') }}</option>
+            <option value="quarterly" {% if budget and budget.period_type == 'quarterly' %}selected{% endif %}>{{ t('Quarterly') }}</option>
+            <option value="monthly" {% if budget and budget.period_type == 'monthly' %}selected{% endif %}>{{ t('Monthly') }}</option>
           </select>
         </div>
       </div>
       <div class="col-md-4">
         <div class="form-group">
-          <label>التينانت</label>
+          <label>{{ t('Tenant') }}</label>
           <select name="tenant_id" class="form-control">
             {% for t in tenants %}
             <option value="{{ t.id }}">{{ t.name }}</option>
@@ -50,29 +50,29 @@
     <div class="row">
       <div class="col-md-6">
         <div class="form-group">
-          <label>تاريخ البداية</label>
+          <label>{{ t('Start Date') }}</label>
           <input type="date" name="period_start" class="form-control" value="{{ budget.period_start if budget else '' }}">
         </div>
       </div>
       <div class="col-md-6">
         <div class="form-group">
-          <label>تاريخ النهاية</label>
+          <label>{{ t('End Date') }}</label>
           <input type="date" name="period_end" class="form-control" value="{{ budget.period_end if budget else '' }}">
         </div>
       </div>
     </div>
     <div class="form-group">
-      <label>ملاحظات</label>
+      <label>{{ t('Notes') }}</label>
       <textarea name="notes" class="form-control">{{ budget.notes if budget else '' }}</textarea>
     </div>
 
     {% if not budget %}
-    <h5>بنود الموازنة</h5>
+    <h5>{{ t('Budget Lines') }}</h5>
     <table class="table table-bordered" id="budgetLines">
       <thead>
         <tr>
-          <th>الحساب</th>
-          <th>المبلغ المقدر</th>
+          <th>{{ t('Account') }}</th>
+          <th>{{ t('Budgeted Amount') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -89,17 +89,17 @@
 
     {% if budget %}
     <div class="form-group">
-      <label>الحالة</label>
+      <label>{{ t('Status') }}</label>
       <select name="status" class="form-control">
-        <option value="draft" {% if budget.status == 'draft' %}selected{% endif %}>مسودة</option>
-        <option value="active" {% if budget.status == 'active' %}selected{% endif %}>نشط</option>
-        <option value="closed" {% if budget.status == 'closed' %}selected{% endif %}>مغلق</option>
+        <option value="draft" {% if budget.status == 'draft' %}selected{% endif %}>{{ t('Draft') }}</option>
+        <option value="active" {% if budget.status == 'active' %}selected{% endif %}>{{ t('Active') }}</option>
+        <option value="closed" {% if budget.status == 'closed' %}selected{% endif %}>{{ t('Closed') }}</option>
       </select>
     </div>
     {% endif %}
 
-    <button type="submit" class="btn btn-primary">حفظ</button>
-    <a href="{{ url_for('owner.budgets_list') }}" class="btn btn-secondary">إلغاء</a>
+    <button type="submit" class="btn btn-primary">{{ t('Save') }}</button>
+    <a href="{{ url_for('owner.budgets_list') }}" class="btn btn-secondary">{{ t('Cancel') }}</a>
   </form>
 </div>
 {% endblock %}

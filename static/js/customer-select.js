@@ -39,7 +39,7 @@
         },
         cache: true
       },
-          placeholder: 'ابحث عن زبون...',
+          placeholder: t('Search for a customer...'),
       allowClear: true,
       minimumInputLength: 0,
       dir: 'rtl',
@@ -83,7 +83,7 @@
             },
             cache: true
           },
-          placeholder: 'ابحث عن مورد...',
+          placeholder: t('Search for a supplier...'),
           allowClear: true,
           minimumInputLength: 0,
           dir: 'rtl',
@@ -128,7 +128,7 @@
         },
         cache: true
       },
-      placeholder: 'ابحث عن منتج...',
+      placeholder: t('Search for a product...'),
       allowClear: true,
       minimumInputLength: 0,
       dir: 'rtl',
@@ -143,7 +143,7 @@
     // FORMATTING FUNCTIONS
     // =====================================
     formatCustomerResult: function(item) {
-      if (item.loading) return 'جاري البحث...';
+      if (item.loading) return t('Searching...');
       if (!item.id) return item.text;
       
       const balance = parseFloat(item.balance || 0);
@@ -169,7 +169,7 @@
     },
     
     formatSupplierResult: function(item) {
-      if (item.loading) return 'جاري البحث...';
+      if (item.loading) return t('Searching...');
       if (!item.id) return item.text;
       
       const balance = parseFloat(item.balance || 0);
@@ -195,11 +195,11 @@
     },
     
     formatProductResult: function(item) {
-      if (item.loading) return 'جاري البحث...';
+      if (item.loading) return t('Searching...');
       if (!item.id) return item.text;
       
       const stock = parseFloat(item.stock || 0);
-      const stockText = stock > 0 ? `${stock} متوفر` : 'غير متوفر';
+      const stockText = stock > 0 ? `${stock} ${t('in stock')}` : t('Out of stock');
       const stockClass = stock > 0 ? 'text-success' : 'text-danger';
       
       return $(`

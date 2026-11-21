@@ -87,12 +87,12 @@ $(document).ready(function() {
         $submitBtn.prop('disabled', true);
         
         // Add loading state
-        $submitBtn.html('<i class="fas fa-spinner fa-spin mr-2"></i>جاري الحفظ...');
+        $submitBtn.html('<i class="fas fa-spinner fa-spin mr-2"></i>' + t('Saving...'));
         
         // Re-enable after 5 seconds as fallback
         setTimeout(() => {
             $submitBtn.prop('disabled', false);
-            $submitBtn.html($submitBtn.data('original-text') || 'حفظ');
+            $submitBtn.html($submitBtn.data('original-text') || t('Save'));
         }, 5000);
     });
 
@@ -116,9 +116,9 @@ $(document).ready(function() {
         },
         error: function(xhr, status, error) {
             if (status === 'timeout') {
-                alert('انتهت مهلة الاتصال. يرجى المحاولة مرة أخرى.');
+                alert(t('Connection timed out. Please try again.'));
             } else if (xhr.status === 500) {
-                alert('حدث خطأ في الخادم. يرجى المحاولة مرة أخرى.');
+                alert(t('A server error occurred. Please try again.'));
             }
         }
     });
@@ -236,7 +236,7 @@ const loadingCSS = `
 }
 
 .loading::before {
-    content: 'جاري التحميل...';
+    content: '${t('Loading')}';
     position: absolute;
     top: 50%;
     left: 50%;

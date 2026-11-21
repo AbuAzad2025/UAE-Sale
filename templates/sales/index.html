@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة المبيعات والفواتير{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Sales and Invoice Management") }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
     <h1 class="text-gradient mb-0"><i class="fas fa-file-invoice mr-3"></i>{{ t('Sales Management') }}</h1>
-    <p class="text-muted">جميع فواتير البيع والمعاملات المالية</p>
+    <p class="text-muted">{{ t("All sales invoices and financial transactions") }}</p>
   </div>
   <div>
     <a href="{{ url_for('sales.create') }}" class="btn btn-primary btn-lg pulse text-white" style="color:#ffffff !important;">
-      <i class="fas fa-plus-circle mr-2" style="color:#ffffff !important"></i>فاتورة جديدة
+      <i class="fas fa-plus-circle mr-2" style="color:#ffffff !important"></i>{{ t("Invoice") }} {{ t("New") }}
     </a>
     <a href="{{ url_for('sales.archived') }}" class="btn btn-warning btn-lg">
-      <i class="fas fa-archive mr-2"></i>الأرشيف
+      <i class="fas fa-archive mr-2"></i>{{ t("Archive") }}
     </a>
   </div>
 </div>
@@ -139,23 +139,23 @@ a.btn.btn-warning span {
   <div class="card-header">
     <div class="d-flex justify-content-between align-items-center">
       <h3 class="card-title mb-0">
-        <i class="fas fa-list mr-2"></i>سجل المبيعات
+        <i class="fas fa-list mr-2"></i>{{ t("Sales Record") }}
       </h3>
       <div class="btn-group">
         <button type="button" class="btn btn-sm btn-outline-info" id="printSalesBtn">
-          <i class="fas fa-print mr-1"></i>طباعة
+          <i class="fas fa-print mr-1"></i>{{ t("Print") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-primary active" id="filterAll">
-          <i class="fas fa-list mr-1"></i>الكل
+          <i class="fas fa-list mr-1"></i>{{ t("All") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-success" id="filterPaid">
-          <i class="fas fa-check mr-1"></i>مدفوع
+          <i class="fas fa-check mr-1"></i>{{ t("Paid") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-warning" id="filterPartial">
-          <i class="fas fa-clock mr-1"></i>جزئي
+          <i class="fas fa-clock mr-1"></i>{{ t("Partial") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-danger" id="filterUnpaid">
-          <i class="fas fa-times mr-1"></i>آجل
+          <i class="fas fa-times mr-1"></i>{{ t("Due") }}
         </button>
       </div>
     </div>
@@ -166,14 +166,14 @@ a.btn.btn-warning span {
         <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
           <tr>
             <th><i class="fas fa-hashtag mr-2"></i>{{ t('Invoice Number') }}</th>
-            <th><i class="fas fa-user mr-2"></i>الزبون</th>
+            <th><i class="fas fa-user mr-2"></i>{{ t("Client") }}</th>
             <th><i class="far fa-calendar mr-2"></i>{{ t('Date') }}</th>
             <th><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Amount') }}</th>
             <th><i class="fas fa-check-circle mr-2"></i>{{ t('Paid') }}</th>
-            <th><i class="fas fa-exclamation-circle mr-2"></i>الباقي</th>
-            <th><i class="fas fa-exchange-alt mr-2"></i>سعر الصرف</th>
+            <th><i class="fas fa-exclamation-circle mr-2"></i>{{ t("Remaining") }}</th>
+            <th><i class="fas fa-exchange-alt mr-2"></i>{{ t("Exchange Rate") }}</th>
             <th><i class="fas fa-wallet mr-2"></i>{{ t('Status') }}</th>
-            <th><i class="fas fa-calendar-check mr-2"></i>تاريخ الاستحقاق</th>
+            <th><i class="fas fa-calendar-check mr-2"></i>{{ t("Due Date") }}</th>
             <th class="text-center"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</th>
           </tr>
         </thead>
@@ -220,7 +220,7 @@ a.btn.btn-warning span {
             </td>
             <td>
               {% if sale.exchange_rate and sale.exchange_rate != 1 %}
-                <span class="badge badge-info" title="سعر الصرف وقت المعاملة">
+                <span class="badge badge-info" title="{{ t("Exchange rate at transaction time") }}">
                   <i class="fas fa-exchange-alt mr-1"></i>{{ "{:.4f}".format(sale.exchange_rate) }}
                 </span>
               {% else %}
@@ -230,22 +230,22 @@ a.btn.btn-warning span {
             <td>
               {% if sale.payment_status == 'paid' %}
                 <span class="badge badge-success px-3">
-                  <i class="fas fa-check mr-1"></i>مدفوع
+                  <i class="fas fa-check mr-1"></i>{{ t("Paid") }}
                 </span>
               {% elif sale.payment_status == 'partial' %}
                 <span class="badge badge-warning px-3">
-                  <i class="fas fa-clock mr-1"></i>جزئي
+                  <i class="fas fa-clock mr-1"></i>{{ t("Partial") }}
                 </span>
               {% else %}
                 <span class="badge badge-danger px-3">
-                  <i class="fas fa-hourglass-half mr-1"></i>آجل
+                  <i class="fas fa-hourglass-half mr-1"></i>{{ t("Due") }}
                 </span>
               {% endif %}
             </td>
             <td>
               <span class="text-muted">{{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}</span>
               {% if sale.balance_due > 0 and sale.days_overdue > 0 %}
-                <br><span class="badge badge-danger px-2">متأخر {{ sale.days_overdue }} يوم</span>
+                <br><span class="badge badge-danger px-2">{{ t("Overdue") }} {{ sale.days_overdue }} {{ t("days") }}</span>
               {% endif %}
             </td>
             <td class="text-center">
@@ -260,13 +260,13 @@ a.btn.btn-warning span {
                 </a>
                 {% if sale.balance_due > 0 %}
                 <a href="{{ url_for('payments.create_from_sale', sale_id=sale.id) }}" 
-                   class="btn btn-success" title="سند دفع">
+                   class="btn btn-success" title="{{ t("Payment Receipt") }}">
                   <i class="fas fa-credit-card"></i>
                 </a>
                 {% endif %}
                 <button type="button" class="btn btn-danger" 
                         onclick="deleteItem('sales', {{ sale.id }}, {{ sale.sale_number|tojson }})" 
-                        title="حذف">
+                        title="{{ t("Delete") }}">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -285,7 +285,7 @@ a.btn.btn-warning span {
 $(document).ready(function() {
   const $tableEl = $('#salesTable');
   const printOptions = {
-    title: 'سجل المبيعات',
+    title: '{{ t("Sales Record") }}',
     headerColor: '#007A3D'
   };
 
@@ -294,7 +294,7 @@ $(document).ready(function() {
     table = $tableEl.DataTable();
   } else {
     table = $tableEl.DataTable({
-      language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+      language: { url: "{{ url_for('static', filename=('datatables/English.json' if current_language == 'en' else 'datatables/Arabic.json')) }}" },
       order: [[2, 'desc']],
       pageLength: 25,
       responsive: true,
@@ -313,7 +313,7 @@ $(document).ready(function() {
           return a + (isNaN(val) ? 0 : val);
         }, 0);
 
-        UI.toast(`إجمالي الصفحة: ${total.toFixed(2)} | مدفوع: ${paid.toFixed(2)}`, 'info', 2000);
+        UI.toast(`{{ t("Page total") }}: ${total.toFixed(2)} | {{ t("Paid") }}: ${paid.toFixed(2)}`, 'info', 2000);
       }
     });
   }
@@ -330,19 +330,19 @@ $(document).ready(function() {
   });
 
   $('#filterPaid').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('مدفوع').draw();
+    table.column(6).search('{{ t("Paid") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterPartial').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('جزئي').draw();
+    table.column(6).search('{{ t("Partial") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterUnpaid').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('آجل').draw();
+    table.column(6).search('{{ t("Due") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });

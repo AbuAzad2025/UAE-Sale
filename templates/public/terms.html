@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شروط الخدمة — {{ config.COMPANY_NAME_AR }}</title>
-    <meta name="description" content="شروط الخدمة والتعاقد لمنصة AzadERP — تكملة صريحة لعينة العقد.">
+    <title>{{ t('Terms of Service') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
+    <meta name="description" content="{{ t('Terms of service for AzadERP platform — a transparent, non-decorative sample contract.') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
@@ -27,71 +27,71 @@
     </div>
 
     <nav class="navbar">
-        <div class="logo">{{ config.COMPANY_NAME_AR }}</div>
+        <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</div>
         <div>
-            <a href="{{ url_for('public.landing') }}">الرئيسية</a>
+            <a href="{{ url_for('public.landing') }}">{{ t('Home') }}</a>
             <a href="{{ url_for('public.sla') }}">SLA</a>
-            <a href="{{ url_for('public.user_guide') }}">دليل المستخدم</a>
-            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> دخول</a>
+            <a href="{{ url_for('public.user_guide') }}">{{ t('User Guide') }}</a>
+            <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> {{ t('Sign In') }}</a>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="doc">
-            <h1>شروط الخدمة والتعاقد</h1>
-            <p class="muted">آخر تحديث: 2026-11-08 — عينة تعاقدية عامة؛ الصيغة النهائية بموجب العقد المبرم مع كل جهة.</p>
+            <h1>{{ t('Terms of Service') }}</h1>
+            <p class="muted">{{ t('Last updated: 2026-11-08 — a sample; the executed contract governs the specific deal.') }}</p>
 
             <div class="legal-note">
-                <strong>ملاحظة قانونية صريحة:</strong> هذه الصفحة ليست استشارة قانونية، وأي التزام نهائي يبدأ بعقد مكتوب محدد يفيد بتوقيعه وأطرافه. الامتثال الضريبي الكامل لأي دولة يتطلب عقدًا وشهادة من سلطة تلك الدولة.
+                <strong>{{ t('Honest note:') }}</strong> {{ t('this page is not legal advice. Any binding relationship is governed by a signed contract executed by the parties. Full tax compliance in any country requires a contract and certificate from its authority — not from us.') }}
             </div>
 
-            <h2>1. التعريفات</h2>
+            <h2>{{ t('1. Definitions') }}</h2>
             <ul>
-                <li><strong>"المنصة"</strong> أو <strong>"النظام"</strong>: تطبيق AzadERP بكل واجهاته (ويب، طباعة، تقارير).</li>
-                <li><strong>"العميل"</strong>: الشركة أو الجهة المرخص لها باستخدام المنصة بموجب عقد اشتراك فعّال.</li>
-                <li><strong>"البيانات"</strong>: كل ما يُدخله العميل في المنصة، ولا سيما القيود المحاسبية والقيود الائتمانية.</li>
+                <li><strong>{{ t('"Platform"') }}</strong> {{ t('or') }} <strong>{{ t('"System"') }}</strong>: {{ t('AzadERP application and all its interfaces (web, printing, reports).') }}</li>
+                <li><strong>{{ t('"Customer"') }}</strong>: {{ t('the company or entity licensed to use the platform under an active subscription.') }}</li>
+                <li><strong>{{ t('"Data"') }}</strong>: {{ t('everything the customer enters into the platform, above all accounting entries.') }}</li>
             </ul>
 
-            <h2>2. نطاق الترخيص</h2>
+            <h2>{{ t('2. License') }}</h2>
             <ol>
-                <li>الترخيص لا يمنح حق بيع أو تأجير أو توزيع المنصة كوحدة — فقط الاستخدام الداخلي من قبل العميل.</li>
-                <li>عدد المستخدمين/المنتجات/العملاء المرخص به في الباقة الموحّدة المتفق عليها في العقد؛ لا تُفرض تقنيًا ويجب على العميل الالتزام بها بمسؤولية.</li>
-                <li>لا يجوز استخدام المنصة لأي غرض مخالف للقانون أو لانتهاكات تتعلق بالضرائب أو غسل الأموال.</li>
+                <li>{{ t('License grants internal use only; no resale or rental of the platform as a unit.') }}</li>
+                <li>{{ t('Users/products/customers are governed by the unified package stated in the contract — not technically enforced, expected responsibility.') }}</li>
+                <li>{{ t('No use for unlawful purposes or tax fraud/money laundering.') }}</li>
             </ol>
 
-            <h2>3. الخصوصية والبيانات</h2>
-            <p>البيانات ملك العميل وحده. لا تطلع المنصة على أي بيانات إلا للضرورة القصوى للمهمة (كعرض التقارير)، ولا تُنقل لأي جهة أخرى دون موافقة كتابية، ما لم يلزم به حكم قضائي أو طلب رسمي من جهة رقابية.</p>
+            <h2>{{ t('3. Privacy') }}</h2>
+            <p>{{ t('Customer data belongs to the customer. Platform access is minimal and purpose-bound; no transfer to any third party without written approval, except where required by law.') }}</p>
 
-            <h2>4. الاشتراك والدفع</h2>
+            <h2>{{ t('4. Subscription and payment') }}</h2>
             <ol>
-                <li>تتجدد الباقة كل سنة ما لم يُلغِها العميل قبل موعد التجديد بعد الإشعار من المنصة.</li>
-                <li>التأخير في الدفع يخول المنصة تعليق الحسابات حتى الاستلام؛ لا تُحذف بيانات العميل بسبب التأخير.</li>
+                <li>{{ t('Renews annually unless the customer cancels before renewal after notice.') }}</li>
+                <li>{{ t('Late payment allows suspension; records are not deleted due to delay.') }}</li>
             </ol>
 
-            <h2>5. الضرائب والامتثال</h2>
-            <p><strong>مهم:</strong> المنصة تدعم إعدادات الضريبة (قواعد الدولة، الشهادات، التقارير) تقنيًا، لكنها <strong>لا تمنح شهادة امتثال</strong> أمام أي سلطة. الإقرارات القانونية تطلب عقدًا وشهادة من سلطة الدولة، إما مباشرة أو عبر مزود معتمد. ما توفره المنصة: بيانات جاهزة بكفاءة 100% لاستهلاك المختص — لا أكثر ولا أقل.</p>
+            <h2>{{ t('5. Tax and compliance') }}</h2>
+            <p><strong>{{ t('Important:') }}</strong> {{ t('the platform technically supports tax settings, but') }} <strong>{{ t('does not grant compliance certification') }}</strong> {{ t("before any authority. Statutory filings require the authority's own contract and credentials — direct or via a certified provider. The platform stores data in submission-ready form.") }}</p>
 
-            <h2>6. التوفر ومستوى الخدمة</h2>
-            <p>أهداف مستوى الخدمة في <a href="{{ url_for('public.sla') }}">وثيقة SLA</a>. الصيانة المجدولة تُعلن مسبقًا على <a href="{{ url_for('public.contact') }}">قنوات التواصل</a>.</p>
+            <h2>{{ t('6. SLA') }}</h2>
+            <p>{{ t('Availability goals are published on the') }} <a href="{{ url_for('public.sla') }}">{{ t('SLA document') }}</a>. {{ t('Scheduled maintenance is announced on') }} <a href="{{ url_for('public.contact') }}">{{ t('contact channels') }}</a>.</p>
 
-            <h2>7. المسؤولية</h2>
+            <h2>{{ t('7. Liability') }}</h2>
             <ol>
-                <li>المنصة غير مسؤولة عن قرارات تشغيلية اتخذها العميل بناءً على التحليلات أو التوقعات الذكية.</li>
-                <li>الحد الأقصى للمسؤولية: قيمة الاشتراك المدفوع للدورة الحالية.</li>
-                <li>لا تنطبق هذه الحدود حيث لا يجيز القانون ذلك؛ في حال الإهمال الجسيم أو سوء النية.</li>
+                <li>{{ t('The platform is not responsible for operational decisions made on analytics/forecasts.') }}</li>
+                <li>{{ t('Maximum liability: the subscription fee paid for the current cycle.') }}</li>
+                <li>{{ t('Limit does not apply where the law does not permit: gross negligence or wilful misconduct.') }}</li>
             </ol>
 
-            <h2>8. إنهاء التعاقد</h2>
+            <h2>{{ t('8. Termination') }}</h2>
             <ol>
-                <li>يمكن لأي طرف إنهاء الاشتراك بإشعار 30 يومًا قبل نهاية الدورة.</li>
-                <li>عند نهاية التعاقد، للعميل الحق في تصدير بياناته (CSV/PDF/طباعة) قبل حذفها نهائيًا.</li>
-                <li>للمنصة حق تعليق أي حساب يخالف هذه الشروط بإشعار.</li>
+                <li>{{ t("Either party may terminate with 30 days' notice before period end.") }}</li>
+                <li>{{ t('Upon termination, the customer may export data (CSV/PDF/print) before deletion.') }}</li>
+                <li>{{ t('Account suspension for breach with notice is reserved to the platform.') }}</li>
             </ol>
 
-            <h2>9. القانون الواجب التطبيق</h2>
-            <p>يخضع هذا الاتفاق للقانون الإماراتي أو قانون بلد العميل (حيث يُنص في العقد). أي نزاع يُحال أولًا للمفاوضة، ثم للتحكيم.</p>
+            <h2>{{ t('9. Governing law') }}</h2>
+            <p>{{ t("Governed by UAE law or the customer's law (as stated in the executed contract). Disputes: negotiation first, then arbitration.") }}</p>
 
-            <p class="muted">الاستفسار: <a href="{{ url_for('public.contact') }}">اتصل بنا</a> أو عبر <a href="{{ url_for('auth.support') }}">الدعم</a>.</p>
+            <p class="muted">{{ t('Inquiries:') }} <a href="{{ url_for('public.contact') }}">{{ t('Contact Us') }}</a> {{ t('or via') }} <a href="{{ url_for('auth.support') }}">{{ t('Support') }}</a>.</p>
         </div>
     </div>
 </body>

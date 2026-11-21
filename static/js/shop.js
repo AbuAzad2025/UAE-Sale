@@ -6,7 +6,33 @@
     reset: { ar: 'إعادة', en: 'Reset', fr: 'Réinitialiser' },
     maxExceeded: { ar: 'تجاوزت الحد الأقصى المسموح.', en: 'You exceeded the maximum allowed.', fr: 'Vous avez dépassé le maximum autorisé.' },
     noResults: { ar: 'لا توجد منتجات مطابقة.', en: 'No matching products found.', fr: 'Aucun produit correspondant trouvé.' },
-    processing: { ar: 'جاري معالجة الدفع...', en: 'Processing payment...', fr: 'Traitement du paiement...' }
+    processing: { ar: 'جاري معالجة الدفع...', en: 'Processing payment...', fr: 'Traitement du paiement...' },
+    'Connection failed': { ar: 'تعذر الاتصال', en: 'Connection failed' },
+    'Updated': { ar: 'تم التحديث', en: 'Updated' },
+    'Update failed': { ar: 'تعذر التحديث', en: 'Update failed' },
+    'Enabled': { ar: 'مفعَل', en: 'Enabled' },
+    'Disabled': { ar: 'غير مفعَل', en: 'Disabled' },
+    'Activate': { ar: 'تفعيل', en: 'Activate' },
+    'Deactivate': { ar: 'تعطيل', en: 'Deactivate' },
+    'Name is required': { ar: 'الاسم مطلوب', en: 'Name is required' },
+    'Failed to create category': { ar: 'تعذر إنشاء الفئة', en: 'Failed to create category' },
+    'No online warehouse': { ar: 'لا يوجد أونلاين', en: 'No online warehouse' },
+    'Fetch failed': { ar: 'فشل الجلب', en: 'Fetch failed' },
+    'Loading online data...': { ar: 'جاري تحميل بيانات الأونلاين...', en: 'Loading online data...' },
+    'Loaded.': { ar: 'تم التحميل.', en: 'Loaded.' },
+    'Unable to load data.': { ar: 'تعذر تحميل البيانات.', en: 'Unable to load data.' },
+    'Choose an image first': { ar: 'اختر صورة أولاً', en: 'Choose an image first' },
+    'Uploading image...': { ar: 'جاري رفع الصورة...', en: 'Uploading image...' },
+    'Upload failed': { ar: 'فشل الرفع', en: 'Upload failed' },
+    'Unable to upload image': { ar: 'تعذر رفع الصورة', en: 'Unable to upload image' },
+    'No online warehouse selected': { ar: 'لا يوجد مستودع أونلاين', en: 'No online warehouse selected' },
+    'No changes to save': { ar: 'لا يوجد أي تغيير للحفظ', en: 'No changes to save' },
+    'Saving...': { ar: 'جارٍ الحفظ...', en: 'Saving...' },
+    'Unable to save': { ar: 'تعذر الحفظ', en: 'Unable to save' },
+    'Online settings saved': { ar: 'تم حفظ إعدادات الأونلاين', en: 'Online settings saved' },
+    'Saved.': { ar: 'تم الحفظ.', en: 'Saved.' },
+    'Operation failed': { ar: 'فشل العملية', en: 'Operation failed' },
+    'Connection error': { ar: 'خطأ في الاتصال', en: 'Connection error' }
   };
   const DIGITS_AR = '٠١٢٣٤٥٦٧٨٩';
   const DIGITS_FA = '۰۱۲۳۴۵۶۷۸۹';
@@ -226,7 +252,7 @@
       try { data = await r.json(); } catch { data = { message: r.ok ? 'ok' : 'error' }; }
       return { ok: r.ok, data };
     } catch {
-      return { ok: false, data: { message: 'تعذر الاتصال' } };
+      return { ok: false, data: { message: t('Connection failed') } };
     }
   };
 
@@ -296,8 +322,8 @@
           const nm = form ? form.querySelector('input[name="name"],#name') : document.getElementById('name');
           if (nm && payload.name) nm.value = payload.name;
           if (priceInput && payload.price) priceInput.value = Number(payload.price).toFixed(2);
-          alert(data.message || 'تم التحديث');
-        } else alert(data.message || 'تعذر التحديث');
+          alert(data.message || t('Updated'));
+        } else alert(data.message || t('Update failed'));
       });
     }
 
@@ -310,10 +336,10 @@
           const off = badge.classList.contains('badge-inactive');
           badge.classList.toggle('badge-inactive', off === false);
           badge.classList.toggle('badge-active', off === true);
-          badge.textContent = off ? 'مفعَل' : 'غير مفعَل';
-          toggleBtn.innerHTML = off ? '<i class="fas fa-play me-1"></i> تفعيل' : '<i class="fas fa-pause me-1"></i> تعطيل';
-          alert(data.message || 'تم التحديث');
-        } else alert(data.message || 'تعذر التحديث');
+          badge.textContent = off ? t('Enabled') : t('Disabled');
+          toggleBtn.innerHTML = off ? '<i class="fas fa-play me-1"></i> ' + t('Activate') : '<i class="fas fa-pause me-1"></i> ' + t('Deactivate');
+          alert(data.message || t('Updated'));
+        } else alert(data.message || t('Update failed'));
       });
     }
 
@@ -326,13 +352,13 @@
         const url = catForm.getAttribute('data-url') || catForm.getAttribute('action');
         const nameEl = catForm.querySelector('#qc-name');
         const nm = (nameEl?.value || '').trim();
-        if (!nm) { alert('الاسم مطلوب'); nameEl && nameEl.focus(); return; }
+        if (!nm) { alert(t('Name is required')); nameEl && nameEl.focus(); return; }
         const fd = new FormData(catForm);
         fd.set('name', nm);
         const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body: fd });
         let js = {};
         try { js = await r.json(); } catch { }
-        if (!r.ok || !js.ok) { alert(js.error || 'تعذر إنشاء الفئة'); return; }
+        if (!r.ok || !js.ok) { alert(js.error || t('Failed to create category')); return; }
         const opt = document.createElement('option');
         opt.value = js.id; opt.textContent = js.name || nm; opt.selected = true;
         catSelect.appendChild(opt);
@@ -369,7 +395,7 @@
           const js = await res.json();
           const rows = js?.data || [];
           if (!rows.length) {
-            if (badgeEl) badgeEl.textContent = 'لا يوجد أونلاين';
+            if (badgeEl) badgeEl.textContent = t('No online warehouse');
             if (alertNoOnline) alertNoOnline.classList.remove('d-none');
             if (onlineForm) onlineForm.classList.add('d-none');
             return null;
@@ -382,14 +408,14 @@
           }
           return onlineWid;
         } catch {
-          if (badgeEl) badgeEl.textContent = 'فشل الجلب';
+          if (badgeEl) badgeEl.textContent = t('Fetch failed');
           return null;
         }
       };
 
       const loadOnlineData = async () => {
         if (!onlineWid) return;
-        setStatus('جاري تحميل بيانات الأونلاين...', true);
+        setStatus(t('Loading online data...'), true);
         try {
           const res = await fetch(prodTpl.replace('PLACEHOLDER', String(onlineWid)), { headers: { 'X-CSRFToken': csrf() } });
           const js = await res.json();
@@ -399,24 +425,24 @@
             if (qtyEl) qtyEl.value = data.quantity ?? 0;
             if (imgUrlEl && (data.online_image || '')) imgUrlEl.textContent = data.online_image || '';
           }
-          setStatus('تم التحميل.');
+          setStatus(t('Loaded.'));
         } catch {
-          setStatus('تعذر تحميل البيانات.');
+          setStatus(t('Unable to load data.'));
         }
       };
 
       const uploadOnlineImage = async () => {
-        if (!fileEl?.files?.length) { alert('اختر صورة أولاً'); return; }
+        if (!fileEl?.files?.length) { alert(t('Choose an image first')); return; }
         const fd = new FormData();
         fd.append('file', fileEl.files[0]);
         fd.append('subdir', 'products');
         fd.append('max_side', '1200');
         fd.append('quality', '82');
-        setStatus('جاري رفع الصورة...', true);
+        setStatus(t('Uploading image...'), true);
         try {
           const r = await fetch(uploadUrl, { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body: fd });
           const js = await r.json();
-          if (!r.ok || !js.ok) { alert(js.error || 'فشل الرفع'); setStatus('فشل الرفع'); return; }
+          if (!r.ok || !js.ok) { alert(js.error || t('Upload failed')); setStatus(t('Upload failed')); return; }
           const url = js.url || js.thumb_url;
           if (thumbEl && url) thumbEl.src = js.thumb_url || url;
           if (imgUrlEl) imgUrlEl.textContent = url;
@@ -433,12 +459,12 @@
           
           // تم رفع الصورة - يجب الضغط على "حفظ" لحفظ التغييرات
         } catch {
-          setStatus('تعذر رفع الصورة');
+          setStatus(t('Unable to upload image'));
         }
       };
 
       const saveOnline = async () => {
-        if (!onlineWid) { alert('لا يوجد مستودع أونلاين'); return; }
+        if (!onlineWid) { alert(t('No online warehouse selected')); return; }
         const payload = {};
         const p = (priceEl?.value || '').trim();
         if (p !== '') {
@@ -454,9 +480,9 @@
         const u = (imgUrlEl?.textContent || '').trim();
         if (u) payload.online_image = u;
 
-        if (!Object.keys(payload).length) { alert('لا يوجد أي تغيير للحفظ'); return; }
+        if (!Object.keys(payload).length) { alert(t('No changes to save')); return; }
 
-        setStatus('جارٍ الحفظ...', true);
+        setStatus(t('Saving...'), true);
         try {
           const url = updTpl.replace('PLACEHOLDER1', String(onlineWid)).replace('PLACEHOLDER2', String(pid));
           const res = await fetch(url, {
@@ -466,14 +492,14 @@
           });
           const js = await res.json();
           if (!res.ok || !js.ok) {
-            alert(js.error || js.message || 'تعذر الحفظ');
-            setStatus('تعذر الحفظ');
+            alert(js.error || js.message || t('Unable to save'));
+            setStatus(t('Unable to save'));
             return;
           }
-          alert(js.message || 'تم حفظ إعدادات الأونلاين');
-          setStatus('تم الحفظ.');
+          alert(js.message || t('Online settings saved'));
+          setStatus(t('Saved.'));
         } catch {
-          setStatus('تعذر الحفظ');
+          setStatus(t('Unable to save'));
         }
       };
 
@@ -553,7 +579,7 @@
           const fd = new FormData(form);
           try {
             const r = await fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': csrf(), Accept: 'application/json' }, body: fd });
-            if (!r.ok) { alert('فشل العملية'); return; }
+            if (!r.ok) { alert(t('Operation failed')); return; }
             const ct = (r.headers.get('content-type') || '').toLowerCase();
             if (ct.includes('application/json')) {
               const js = await r.json();
@@ -570,7 +596,7 @@
             const rows = document.querySelectorAll('.cart-row');
             if (rows.length) recalcSummary(); else location.reload();
           } catch {
-            alert('خطأ في الاتصال');
+            alert(t('Connection error'));
           }
         })();
       }
@@ -626,10 +652,10 @@
             // تم رفع الصورة - يجب الضغط على "حفظ" لحفظ التغييرات
             this.value = '';
           } else {
-            alert(js.error || 'فشل الرفع');
+            alert(js.error || t('Upload failed'));
           }
         } catch (error) {
-          alert('تعذر رفع الصورة');
+          alert(t('Unable to upload image'));
         }
       });
 

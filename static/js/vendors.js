@@ -8,8 +8,8 @@
   }
 
   function directionBadge(dir) {
-    if (dir === "IN") return '<span class="badge bg-success">وارد</span>';
-    if (dir === "OUT") return '<span class="badge bg-danger">صادر</span>';
+    if (dir === "IN") return `<span class="badge bg-success">${t('Incoming')}</span>`;
+    if (dir === "OUT") return `<span class="badge bg-danger">${t('Outgoing')}</span>`;
     return '<span class="badge bg-secondary">—</span>';
   }
 
@@ -155,18 +155,18 @@
       var w = window.open("", "printWin");
       var now = new Date().toLocaleString();
       var methodText = dom.method.options[dom.method.selectedIndex].text;
-      var dirText = (dom.direction.dataset.dir || dir) === "IN" ? "وارد" : "صادر";
+      var dirText = (dom.direction.dataset.dir || dir) === "IN" ? t('Incoming') : t('Outgoing');
       var html =
-        '<html dir="rtl"><head><meta charset="utf-8"><title>كشف تسوية</title>' +
+        '<html dir="rtl"><head><meta charset="utf-8"><title>' + t('Settlement statement') + '</title>' +
         '<style>body{font-family:sans-serif;padding:20px} .row{margin:6px 0} .h{color:#666}</style>' +
         "</head><body>" +
-        "<h3>كشف تسوية مختصر</h3>" +
-        '<div class="row"><span class="h">الجهة:</span> ' + (payload.name || "") + "</div>" +
-        '<div class="row"><span class="h">النوع:</span> ' + (dom.entityType.value === "PARTNER" ? "شريك" : "مورد") + "</div>" +
-        '<div class="row"><span class="h">الرصيد الحالي:</span> ' + fmt(payload.balance) + " " + (payload.currency || "") + "</div>" +
-        '<div class="row"><span class="h">المبلغ للتسوية:</span> ' + (dom.amount.value || "0") + " " + dom.currency.value + "</div>" +
-        '<div class="row"><span class="h">الاتجاه:</span> ' + dirText + "</div>" +
-        '<div class="row"><span class="h">الطريقة:</span> ' + methodText + "</div>" +
+        "<h3>" + t('Brief settlement statement') + "</h3>" +
+        '<div class="row"><span class="h">' + t('Entity:') + '</span> ' + (payload.name || "") + "</div>" +
+        '<div class="row"><span class="h">' + t('Type:') + '</span> ' + (dom.entityType.value === "PARTNER" ? t('Partner') : t('Supplier')) + "</div>" +
+        '<div class="row"><span class="h">' + t('Current balance:') + '</span> ' + fmt(payload.balance) + " " + (payload.currency || "") + "</div>" +
+        '<div class="row"><span class="h">' + t('Amount to settle:') + '</span> ' + (dom.amount.value || "0") + " " + dom.currency.value + "</div>" +
+        '<div class="row"><span class="h">' + t('Direction:') + '</span> ' + dirText + "</div>" +
+        '<div class="row"><span class="h">' + t('Method:') + '</span> ' + methodText + "</div>" +
         "<hr><small>" + now + "</small>" +
         '<script>window.onload=function(){window.print();setTimeout(function(){window.close()},300)}</' + "script>" +
         "</body></html>";

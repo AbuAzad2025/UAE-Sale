@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تعديل بيانات المورد{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Edit Supplier Details') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>تعديل بيانات المورد: {{ supplier.name }}</h1>
+    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>{{ t('Edit Supplier Details') }}: {{ supplier.name }}</h1>
   </div>
   <div>
     <a href="{{ url_for('suppliers.view', id=supplier.id) }}" class="btn btn-info">
-      <i class="fas fa-eye mr-2"></i>عرض
+      <i class="fas fa-eye mr-2"></i>{{ t('View') }}
     </a>
     <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to List') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -69,7 +69,7 @@
 {% block content %}
 <div class="card card-warning">
   <div class="card-header">
-    <h3 class="card-title"><i class="fas fa-edit mr-2"></i>تعديل بيانات المورد</h3>
+    <h3 class="card-title"><i class="fas fa-edit mr-2"></i>{{ t('Edit Supplier Details') }}</h3>
   </div>
   
   <form method="POST" action="{{ url_for('suppliers.edit', id=supplier.id) }}" class="supplier-edit-form">
@@ -80,7 +80,7 @@
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-warning mb-3">
-            <i class="fas fa-info-circle"></i> المعلومات الأساسية
+            <i class="fas fa-info-circle"></i> {{ t('Basic Information') }}
           </h5>
         </div>
       </div>
@@ -89,9 +89,9 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-truck text-warning"></i> الاسم 
+              <i class="fas fa-truck text-warning"></i> {{ t('Name') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم المورد (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Supplier name (required)') }}"></i>
             </label>
             <input type="text" name="name" class="form-control" required
                    value="{{ supplier.name }}">
@@ -101,8 +101,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-font text-info"></i> الاسم بالإنجليزية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الاسم بالإنجليزية (اختياري)"></i>
+              <i class="fas fa-font text-info"></i> {{ t('Name in English') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Name in English (optional)') }}"></i>
             </label>
             <input type="text" name="name_en" class="form-control"
                    value="{{ supplier.name_en or '' }}">
@@ -112,8 +112,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-building text-primary"></i> اسم الشركة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الاسم التجاري (اختياري)"></i>
+              <i class="fas fa-building text-primary"></i> {{ t('Company Name') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Business name (optional)') }}"></i>
             </label>
             <input type="text" name="company_name" class="form-control"
                    value="{{ supplier.company_name or '' }}">
@@ -124,11 +124,11 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label>نوع المورد</label>
+            <label>{{ t('Supplier Type') }}</label>
             <select name="supplier_type" class="form-control select2">
-              <option value="" {% if not supplier.supplier_type %}selected{% endif %}>بلا</option>
+              <option value="" {% if not supplier.supplier_type %}selected{% endif %}>{{ t('None') }}</option>
               {% for code, meta in lookups.get('supplier_types', []) %}
-              <option value="{{ code }}" {% if supplier.supplier_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if supplier.supplier_type == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -136,11 +136,11 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>التقييم</label>
+            <label>{{ t('Rating') }}</label>
             <select name="rating" class="form-control select2">
-              <option value="" {% if supplier.rating is none %}selected{% endif %}>بلا</option>
+              <option value="" {% if supplier.rating is none %}selected{% endif %}>{{ t('None') }}</option>
               {% for code, meta in lookups.get('supplier_ratings', []) %}
-              <option value="{{ code }}" {% if supplier.rating|string == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if supplier.rating|string == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -148,10 +148,10 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>العملة المفضلة</label>
+            <label>{{ t('Preferred Currency') }}</label>
             <select name="preferred_currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if supplier.preferred_currency == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              <option value="{{ code }}" {% if supplier.preferred_currency == code %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -164,7 +164,7 @@
               <input type="checkbox" class="custom-control-input" id="is_verified" name="is_verified"
                      {% if supplier.is_verified %}checked{% endif %}>
               <label class="custom-control-label" for="is_verified">
-                <i class="fas fa-check-circle text-success"></i> مورد موثوق
+                <i class="fas fa-check-circle text-success"></i> {{ t('Verified Supplier') }}
               </label>
             </div>
           </div>
@@ -176,7 +176,7 @@
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-warning mb-3">
-            <i class="fas fa-phone"></i> معلومات الاتصال
+            <i class="fas fa-phone"></i> {{ t('Contact Information') }}
           </h5>
         </div>
       </div>
@@ -184,7 +184,7 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label>الهاتف 1</label>
+            <label>{{ t('Phone 1') }}</label>
             <input type="text" name="phone" class="form-control"
                    value="{{ supplier.phone or '' }}">
           </div>
@@ -192,7 +192,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>الهاتف 2</label>
+            <label>{{ t('Phone 2') }}</label>
             <input type="text" name="phone2" class="form-control"
                    value="{{ supplier.phone2 or '' }}">
           </div>
@@ -208,7 +208,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>الموقع الإلكتروني</label>
+            <label>{{ t('Website') }}</label>
             <input type="url" name="website" class="form-control"
                    value="{{ supplier.website or '' }}">
           </div>
@@ -246,7 +246,7 @@
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-warning mb-3">
-            <i class="fas fa-file-contract"></i> المعلومات القانونية والمالية
+            <i class="fas fa-file-contract"></i> {{ t('Legal and Financial Information') }}
           </h5>
         </div>
       </div>
@@ -254,7 +254,7 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label>الرقم الضريبي (TRN)</label>
+            <label>{{ t('Tax Number (TRN)') }}</label>
             <input type="text" name="tax_number" class="form-control"
                    value="{{ supplier.tax_number or '' }}">
           </div>
@@ -262,7 +262,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>السجل التجاري</label>
+            <label>{{ t('Commercial Registration') }}</label>
             <input type="text" name="commercial_registration" class="form-control"
                    value="{{ supplier.commercial_registration or '' }}">
           </div>
@@ -270,7 +270,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>الحد الائتماني ({{ base_currency }})</label>
+            <label>{{ t('Credit Limit') }} ({{ base_currency }})</label>
             <input type="number" name="credit_limit" class="form-control"
                    value="{{ supplier.credit_limit or 0 }}" step="0.01" min="0">
           </div>
@@ -278,7 +278,7 @@
         
         <div class="col-md-3">
           <div class="form-group">
-            <label>شروط الدفع (أيام)</label>
+            <label>{{ t('Payment Terms (days)') }}</label>
             <input type="number" name="payment_terms_days" class="form-control"
                    value="{{ supplier.payment_terms_days or 30 }}" min="0">
           </div>
@@ -289,12 +289,11 @@
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-success mb-2">
-            <i class="fas fa-scale-balanced mr-1"></i> الرصيد الافتتاحي
+            <i class="fas fa-scale-balanced mr-1"></i> {{ t('Opening Balance') }}
           </h5>
           <small class="text-muted d-block mb-2">
             <i class="fas fa-info-circle"></i>
-            المبلغ المستحق للمورد قبل بدء استخدام النظام — يُحفظ منفصلاً عن
-            إجمالي المشتريات ويُضاف إلى رصيد المورد المستحق.
+            {{ t('The amount owed to the supplier before starting to use the system - stored separately from total purchases and added to the supplier due balance.') }}
           </small>
         </div>
       </div>
@@ -302,7 +301,7 @@
       <div class="row">
         <div class="col-md-3">
           <div class="form-group">
-            <label>مبلغ الرصيد الافتتاحي</label>
+            <label>{{ t('Opening Balance Amount') }}</label>
             <input type="number" name="opening_balance" class="form-control"
                    step="0.001" placeholder="0.00"
                    value="{{ request.form.get('opening_balance', supplier.opening_balance if supplier.opening_balance is not none else '0') }}">
@@ -311,11 +310,11 @@
 
         <div class="col-md-3">
           <div class="form-group">
-            <label>عملة الرصيد الافتتاحي</label>
+            <label>{{ t('Opening Balance Currency') }}</label>
             <select name="opening_balance_currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}"
-                      {% if (request.form.get('opening_balance_currency') or supplier.opening_balance_currency or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+                      {% if (request.form.get('opening_balance_currency') or supplier.opening_balance_currency or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -323,19 +322,19 @@
 
         <div class="col-md-3">
           <div class="form-group">
-            <label>سعر الصرف إلى {{ base_currency }}</label>
+            <label>{{ t('Exchange Rate to') }} {{ base_currency }}</label>
             <input type="number" name="opening_balance_rate" class="form-control"
                    step="0.000001" min="0.000001"
                    value="{{ request.form.get('opening_balance_rate', supplier.opening_balance_rate if supplier.opening_balance_rate is not none else '1') }}">
             <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> كم وحدة من {{ base_currency }} تساوي وحدة واحدة من عملة الرصيد
+              <i class="fas fa-info-circle"></i> {{ t('How many units of') }} {{ base_currency }} {{ t('equal one unit of the balance currency') }}
             </small>
           </div>
         </div>
 
         <div class="col-md-3">
           <div class="form-group">
-            <label>تاريخ الرصيد الافتتاحي</label>
+            <label>{{ t('Opening Balance Date') }}</label>
             <input type="date" name="opening_balance_date" class="form-control"
                    value="{{ request.form.get('opening_balance_date', supplier.opening_balance_date.isoformat() if supplier.opening_balance_date else '') }}">
           </div>
@@ -347,7 +346,7 @@
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
-            <label>الوسوم (Tags)</label>
+            <label>{{ t('Tags') }}</label>
             <input type="text" name="tags" class="form-control"
                    value="{{ supplier.tags or '' }}">
           </div>
@@ -364,14 +363,14 @@
     
     <div class="card-footer">
       <button type="submit" class="btn btn-warning btn-lg">
-        <i class="fas fa-save mr-2"></i> حفظ التعديلات
+        <i class="fas fa-save mr-2"></i> {{ t('Save Changes') }}
       </button>
       <a href="{{ url_for('suppliers.view', id=supplier.id) }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i> إلغاء
+        <i class="fas fa-times mr-2"></i> {{ t('Cancel') }}
       </a>
       <button type="button" class="btn btn-danger btn-lg float-left" 
               onclick="deleteSupplier({{ supplier.id }})">
-        <i class="fas fa-trash mr-2"></i> حذف المورد
+        <i class="fas fa-trash mr-2"></i> {{ t('Delete Supplier') }}
       </button>
     </div>
   </form>
@@ -388,7 +387,7 @@ $(function () {
 });
 
 function deleteSupplier(id) {
-  if (confirm('هل أنت متأكد من حذف هذا المورد؟')) {
+  if (confirm({{ t('Delete Supplier Confirm')|tojson }})) {
     $.ajax({
       url: `/suppliers/${id}/delete`,
       method: 'POST',
@@ -396,11 +395,11 @@ function deleteSupplier(id) {
         'X-CSRFToken': $('input[name="csrf_token"]').val()
       },
       success: function() {
-        toastr.success(' تم حذف المورد بنجاح');
+        toastr.success({{ t('Supplier deleted successfully')|tojson }});
         window.location.href = '{{ url_for("suppliers.index") }}';
       },
       error: function() {
-        toastr.error(' خطأ في حذف المورد');
+        toastr.error({{ t('Error deleting supplier')|tojson }});
       }
     });
   }

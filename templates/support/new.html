@@ -1,41 +1,41 @@
 {% extends 'base.html' %}
-{% block title %}تذكرة جديدة{% endblock %}
+{% block title %}{{ t('New Ticket') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
-    <a href="{{ url_for('support.tickets_list') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للتذاكر</a>
+    <a href="{{ url_for('support.tickets_list') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Tickets') }}</a>
   </div>
 
   <div class="card">
-    <div class="card-header"><h3 class="mb-0"><i class="fas fa-envelope-open text-primary"></i> تذكرة دعم جديدة</h3></div>
+    <div class="card-header"><h3 class="mb-0"><i class="fas fa-envelope-open text-primary"></i> {{ t('New Support Ticket') }}</h3></div>
     <div class="card-body">
       <form method="POST" action="{{ url_for('support.ticket_new') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
           <div class="col-md-8">
-            <div class="form-group"><label>الموضوع *</label><input class="form-control" name="subject" required maxlength="200" placeholder="مثال: فاتورة لا تظهر في الطباعة"></div>
+            <div class="form-group"><label>{{ t('Subject') }} *</label><input class="form-control" name="subject" required maxlength="200" placeholder="{{ t('Example: invoice does not appear in printing') }}"></div>
           </div>
           <div class="col-md-4">
-            <div class="form-group"><label>الأولوية</label>
+            <div class="form-group"><label>{{ t('Priority') }}</label>
               <select class="form-control" name="priority">
-                <option value="low">منخفضة</option>
-                <option value="normal" selected>عادية</option>
-                <option value="high">عالية</option>
-                <option value="urgent">عاجل — توقف كامل</option>
+                <option value="low">{{ t('Low') }}</option>
+                <option value="normal" selected>{{ t('Normal') }}</option>
+                <option value="high">{{ t('High') }}</option>
+                <option value="urgent">{{ t('Urgent - Complete Stop') }}</option>
               </select>
             </div>
           </div>
         </div>
-        <div class="form-group"><label>الفئة</label>
+        <div class="form-group"><label>{{ t('Category') }}</label>
           <select class="form-control" name="category">
             {% for code, label in category_label.items() %}
             <option value="{{ code }}">{{ label }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="form-group"><label>الوصف التفصيلي *</label><textarea class="form-control" name="description" rows="6" required placeholder="متى حدث، ما كانت تحاول فعله، ما الخطأ بالضبط. كلما زادت التفاصيل كلما كان الحل أسرع."></textarea></div>
-        <button class="btn btn-primary btn-lg"><i class="fas fa-paper-plane"></i> فتح التذكرة</button>
-        <p class="text-muted small mt-2 mb-0">سنرد ضمن SLA المتفق عليه: عاجل ≤4h، عالية ≤24h، عادية ≤72h، منخفضة ≤أسبوع.</p>
+        <div class="form-group"><label>{{ t('Detailed Description') }} *</label><textarea class="form-control" name="description" rows="6" required placeholder="{{ t('When it happened, what you were trying to do, what the exact error was. The more details, the faster the solution.') }}"></textarea></div>
+        <button class="btn btn-primary btn-lg"><i class="fas fa-paper-plane"></i> {{ t('Open Ticket') }}</button>
+        <p class="text-muted small mt-2 mb-0">{{ t('We respond within the agreed SLA: urgent ≤4h, high ≤24h, normal ≤72h, low ≤1 week.') }}</p>
       </form>
     </div>
   </div>

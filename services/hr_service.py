@@ -411,7 +411,12 @@ class HRService:
             ("Hajj Leave", "إجازة حج", "hajj", 30, True),
         ]
         for name, name_ar, code, days, paid in defaults:
-            if not LeaveType.query.filter_by(code=code).first():
+            # Check by both name and code: the DB now enforces uniqueness per
+            # tenant, and a pre-existing row may differ on either column.
+            exists = LeaveType.query.filter(
+                db.or_(LeaveType.code == code, LeaveType.name == name)
+            ).first()
+            if not exists:
                 lt = LeaveType(
                     name=name,
                     name_ar=name_ar,

@@ -1,38 +1,38 @@
 {% extends 'base.html' %}
-{% block title %}صندوق وارد الدعم{% endblock %}
+{% block title %}{{ t('Support Inbox') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3 d-flex justify-content-between align-items-center">
-    <h2 class="mb-0"><i class="fas fa-inbox text-info"></i> صندوق وارد الدعم</h2>
-    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> رجوع للوحة المالك</a>
+    <h2 class="mb-0"><i class="fas fa-inbox text-info"></i> {{ t('Support Inbox') }}</h2>
+    <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> {{ t('Back to Owner Dashboard') }}</a>
   </div>
 
   <div class="row mb-3">
-    <div class="col-md-3"><div class="small-box bg-danger"><div class="inner"><h4>{{ stats.open }}</h4><p>مفتوحة</p></div><div class="icon"><i class="fas fa-exclamation-circle"></i></div></div></div>
-    <div class="col-md-3"><div class="small-box bg-warning"><div class="inner"><h4>{{ stats.in_progress }}</h4><p>قيد المعالجة</p></div><div class="icon"><i class="fas fa-hourglass-half"></i></div></div></div>
-    <div class="col-md-3"><div class="small-box bg-dark"><div class="inner"><h4>{{ stats.overdue }}</h4><p>متجاوزة لـSLA</p></div><div class="icon"><i class="fas fa-stopwatch"></i></div></div></div>
-    <div class="col-md-3"><div class="small-box bg-info"><div class="inner"><h4>{{ stats.total }}</h4><p>إجمالي التذاكر</p></div><div class="icon"><i class="fas fa-ticket-alt"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-danger"><div class="inner"><h4>{{ stats.open }}</h4><p>{{ t('Open') }}</p></div><div class="icon"><i class="fas fa-exclamation-circle"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-warning"><div class="inner"><h4>{{ stats.in_progress }}</h4><p>{{ t('In Progress') }}</p></div><div class="icon"><i class="fas fa-hourglass-half"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-dark"><div class="inner"><h4>{{ stats.overdue }}</h4><p>{{ t('SLA Breached') }}</p></div><div class="icon"><i class="fas fa-stopwatch"></i></div></div></div>
+    <div class="col-md-3"><div class="small-box bg-info"><div class="inner"><h4>{{ stats.total }}</h4><p>{{ t('Total Tickets') }}</p></div><div class="icon"><i class="fas fa-ticket-alt"></i></div></div></div>
   </div>
 
   <form method="GET" class="form-inline mb-3">
-    <label class="mr-2">الحالة:</label>
+    <label class="mr-2">{{ t('Status:') }}</label>
     <select class="form-control mr-2" name="status" onchange="this.form.submit()">
-      <option value="">الكل</option>
-      <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوحة</option>
-      <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>قيد المعالجة</option>
-      <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>محلولة</option>
-      <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلقة</option>
+      <option value="">{{ t('All') }}</option>
+      <option value="open" {% if status_filter == 'open' %}selected{% endif %}>{{ t('Open') }}</option>
+      <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>{{ t('In Progress') }}</option>
+      <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>{{ t('Resolved') }}</option>
+      <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>{{ t('Closed Tickets') }}</option>
     </select>
-    <label class="mr-2">الفئة:</label>
+    <label class="mr-2">{{ t('Category:') }}</label>
     <select class="form-control mr-2" name="category" onchange="this.form.submit()">
-      <option value="">الكل</option>
+      <option value="">{{ t('All') }}</option>
       {% for c in category_choices %}
       <option value="{{ c }}" {% if category_filter == c %}selected{% endif %}>{{ c }}</option>
       {% endfor %}
     </select>
-    <label class="mr-2">الأولوية:</label>
+    <label class="mr-2">{{ t('Priority:') }}</label>
     <select class="form-control" name="priority" onchange="this.form.submit()">
-      <option value="">الكل</option>
+      <option value="">{{ t('All') }}</option>
       {% for p in priority_choices %}
       <option value="{{ p }}" {% if priority_filter == p %}selected{% endif %}>{{ p }}</option>
       {% endfor %}
@@ -43,7 +43,7 @@
     <div class="card-body p-0">
       <table class="table table-striped mb-0">
         <thead class="thead-light">
-          <tr><th>#</th><th>الشركة</th><th>الموضوع</th><th>الأولوية</th><th>الفئة</th><th>الحالة</th><th>SLA</th><th></th></tr>
+          <tr><th>#</th><th>{{ t('Company') }}</th><th>{{ t('Subject') }}</th><th>{{ t('Priority') }}</th><th>{{ t('Category') }}</th><th>{{ t('Status') }}</th><th>SLA</th><th></th></tr>
         </thead>
         <tbody>
           {% for t in tickets %}
@@ -64,13 +64,13 @@
                   <option value="resolved" {% if t.status == 'resolved' %}selected{% endif %}>resolved</option>
                   <option value="closed" {% if t.status == 'closed' %}selected{% endif %}>closed</option>
                 </select>
-                <input class="form-control form-control-sm mr-1" name="resolution_notes" placeholder="ملاحظة الحل…" size="22">
-                <button class="btn btn-sm btn-primary">حفظ</button>
+                <input class="form-control form-control-sm mr-1" name="resolution_notes" placeholder="{{ t('Resolution note...') }}" size="22">
+                <button class="btn btn-sm btn-primary">{{ t('Save') }}</button>
               </form>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="text-center text-muted py-4">لا توجد تذاكر مطابقة.</td></tr>
+          <tr><td colspan="8" class="text-center text-muted py-4">{{ t('No matching tickets.') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

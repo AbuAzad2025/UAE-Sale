@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}نظام الطباعة الاحترافي - Professional Printing System{% endblock %}
+{% block title %}{{ t('Professional Printing System') }}{% endblock %}
 
 {% block styles %}
 <style>
@@ -239,19 +239,19 @@
     <div class="row">
       <div class="col-md-6">
         <h3 class="text-white mb-3">
-          <i class="fas fa-print mr-2"></i>نظام الطباعة الاحترافي
+          <i class="fas fa-print mr-2"></i>{{ t('Professional Printing System') }}
         </h3>
-        <p class="text-white-50">طباعة تقارير فاخرة بتصميم خليجي مميز</p>
+        <p class="text-white-50">{{ t('Print luxury reports with a distinctive Gulf design') }}</p>
       </div>
       <div class="col-md-6 text-right">
         <button class="print-btn" onclick="printReport()">
-          <i class="fas fa-print mr-2"></i>طباعة فاخرة
+          <i class="fas fa-print mr-2"></i>{{ t('Luxury Print') }}
         </button>
         <button class="print-btn" onclick="printPDF()">
-          <i class="fas fa-file-pdf mr-2"></i>تصدير PDF
+          <i class="fas fa-file-pdf mr-2"></i>{{ t('Export PDF') }}
         </button>
         <button class="print-btn" onclick="printExcel()">
-          <i class="fas fa-file-excel mr-2"></i>تصدير Excel
+          <i class="fas fa-file-excel mr-2"></i>{{ t('Export Excel') }}
         </button>
       </div>
     </div>
@@ -267,34 +267,34 @@
       </div>
       <div class="company-name">Azad Systems</div>
       <div class="company-details">
-        دولة الإمارات العربية المتحدة | دبي | ص.ب: 12345<br>
-        هاتف: +971 4 123 4567 | فاكس: +971 4 123 4568<br>
-        البريد الإلكتروني: info@emirates-garage.ae
+        {{ t('United Arab Emirates') }} | {{ t('Dubai') }} | {{ t('P.O. Box') }}: 12345<br>
+        {{ t('Phone') }}: +971 4 123 4567 | {{ t('Fax') }}: +971 4 123 4568<br>
+        {{ t('Email') }}: info@emirates-garage.ae
       </div>
     </div>
 
     
     <div class="report-title">
       <i class="fas fa-chart-line mr-2"></i>
-      تقرير ميزان المراجعة الشامل
+      {{ t('Comprehensive Trial Balance Report') }}
     </div>
 
     
     <div class="report-info">
       <div class="info-row">
-        <span class="info-label">تاريخ التقرير:</span>
+        <span class="info-label">{{ t('Report Date') }}:</span>
         <span class="info-value">{{ date.today().strftime('%Y-%m-%d') }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">فترة التقرير:</span>
-        <span class="info-value">من {{ date_from.strftime('%Y-%m-%d') }} إلى {{ date_to.strftime('%Y-%m-%d') }}</span>
+        <span class="info-label">{{ t('Report Period') }}:</span>
+        <span class="info-value">{{ t('From') }} {{ date_from.strftime('%Y-%m-%d') }} {{ t('to') }} {{ date_to.strftime('%Y-%m-%d') }}</span>
       </div>
       <div class="info-row">
-        <span class="info-label">العملة:</span>
+        <span class="info-label">{{ t('Currency') }}:</span>
         <span class="info-value">{{ base_currency_name }} ({{ base_currency }})</span>
       </div>
       <div class="info-row">
-        <span class="info-label">رقم التقرير:</span>
+        <span class="info-label">{{ t('Report Number') }}:</span>
         <span class="info-value">TB-{{ date.today().strftime('%Y%m%d') }}-001</span>
       </div>
     </div>
@@ -303,12 +303,12 @@
     <table class="luxury-table">
       <thead>
         <tr>
-          <th>كود الحساب</th>
-          <th>اسم الحساب</th>
-          <th>نوع الحساب</th>
-          <th>الرصيد المدين</th>
-          <th>الرصيد الدائن</th>
-          <th>الرصيد الصافي</th>
+          <th>{{ t('Account Code') }}</th>
+          <th>{{ t('Account Name') }}</th>
+          <th>{{ t('Account Type') }}</th>
+          <th>{{ t('Debit Balance') }}</th>
+          <th>{{ t('Credit Balance') }}</th>
+          <th>{{ t('Net Balance') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -335,13 +335,13 @@
       </tbody>
       <tfoot>
         <tr style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; font-weight: bold;">
-          <td colspan="3"><strong>الإجمالي</strong></td>
+          <td colspan="3"><strong>{{ t('Total') }}</strong></td>
           <td>{{ "{:,.2f}".format(total_debit) }}</td>
           <td>{{ "{:,.2f}".format(total_credit) }}</td>
           <td>
             {% set difference = total_debit - total_credit %}
             {% if difference == 0 %}
-              <span class="badge badge-success">متوازن</span>
+              <span class="badge badge-success">{{ t('Balanced') }}</span>
             {% else %}
               {{ "{:,.2f}".format(difference) }}
             {% endif %}
@@ -352,41 +352,41 @@
 
     
     <div class="alert alert-info" style="margin-top: 30px; border-radius: 15px; border-right: 5px solid #17a2b8;">
-      <h5><i class="fas fa-info-circle mr-2"></i>ملاحظات مهمة:</h5>
+      <h5><i class="fas fa-info-circle mr-2"></i>{{ t('Important Notes') }}:</h5>
       <ul class="mb-0">
-        <li>تم إعداد هذا التقرير وفقاً للمعايير المحاسبية الدولية</li>
-        <li>جميع المبالغ بـ {{ base_currency_name }} ({{ base_currency }})</li>
-        <li>التقرير معتمد من النظام المحاسبي المتقدم</li>
-        <li>تاريخ الطباعة: {{ datetime.now().strftime('%Y-%m-%d %H:%M') }}</li>
+        <li>{{ t('This report was prepared in accordance with international accounting standards') }}</li>
+        <li>{{ t('All amounts in') }} {{ base_currency_name }} ({{ base_currency }})</li>
+        <li>{{ t('The report is approved by the advanced accounting system') }}</li>
+        <li>{{ t('Print Date') }}: {{ datetime.now().strftime('%Y-%m-%d %H:%M') }}</li>
       </ul>
     </div>
 
     
     <div class="print-footer">
-      <h5><i class="fas fa-certificate mr-2"></i>شهادة صحة البيانات</h5>
-      <p>نؤكد أن البيانات الواردة في هذا التقرير صحيحة ومطابقة للسجلات المحاسبية</p>
+      <h5><i class="fas fa-certificate mr-2"></i>{{ t('Data Accuracy Certificate') }}</h5>
+      <p>{{ t('We confirm that the data in this report is correct and matches the accounting records') }}</p>
       
       <div class="footer-signatures">
         <div class="signature-box">
           <div class="signature-line"></div>
-          <div>المحاسب المختص</div>
-          <div>توقيع وختم</div>
+          <div>{{ t('Accountant') }}</div>
+          <div>{{ t('Signature and Stamp') }}</div>
         </div>
         <div class="signature-box">
           <div class="signature-line"></div>
-          <div>مدير المالية</div>
-          <div>توقيع وختم</div>
+          <div>{{ t('Finance Manager') }}</div>
+          <div>{{ t('Signature and Stamp') }}</div>
         </div>
         <div class="signature-box">
           <div class="signature-line"></div>
-          <div>المدير العام</div>
-          <div>توقيع وختم</div>
+          <div>{{ t('General Manager') }}</div>
+          <div>{{ t('Signature and Stamp') }}</div>
         </div>
       </div>
       
       <div style="margin-top: 30px; font-size: 12px; opacity: 0.8;">
-        <p>صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
-        <p>تم إنشاء هذا التقرير بواسطة النظام المحاسبي المتقدم</p>
+        <p>{{ t('Generated by AzadERP') }} © {{ current_year if current_year is defined else 2026 }}</p>
+        <p>{{ t('This report was generated by the advanced accounting system') }}</p>
       </div>
     </div>
   </div>
@@ -415,11 +415,11 @@ function printPDF() {
     const element = document.getElementById('printContent');
     
     doc.setFontSize(20);
-    doc.text('تقرير ميزان المراجعة', 105, 20, { align: 'center' });
+    doc.text({{ t('Trial Balance Report')|tojson }}, 105, 20, { align: 'center' });
     
     doc.save('trial_balance_' + new Date().toISOString().split('T')[0] + '.pdf');
   } else {
-    alert('مكتبة jsPDF غير متوفرة');
+    alert({{ t('jsPDF library is not available')|tojson }});
   }
 }
 
@@ -438,12 +438,12 @@ function printExcel() {
   {% endfor %}
   
   const ws = XLSX.utils.aoa_to_sheet([
-    ['كود الحساب', 'اسم الحساب', 'نوع الحساب', 'مدين', 'دائن', 'رصيد صافي'],
+    [{{ t('Account Code')|tojson }}, {{ t('Account Name')|tojson }}, {{ t('Account Type')|tojson }}, {{ t('Debit')|tojson }}, {{ t('Credit')|tojson }}, {{ t('Net Balance')|tojson }}],
     ...data
   ]);
   
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ميزان المراجعة');
+  XLSX.utils.book_append_sheet(wb, ws, {{ t('Trial Balance')|tojson }});
   
   XLSX.writeFile(wb, 'trial_balance_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }

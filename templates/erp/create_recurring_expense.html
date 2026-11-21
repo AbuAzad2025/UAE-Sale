@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
-{% block title %}مصروف دوري{% endblock %}
-{% block page_title %}<i class="fas fa-plus mr-2"></i>مصروف دوري جديد{% endblock %}
+{% block title %}{{ t('Recurring Expense') }}{% endblock %}
+{% block page_title %}<i class="fas fa-plus mr-2"></i>{{ t('New Recurring Expense') }}{% endblock %}
 {% block content %}
 <div class="row"><div class="col-lg-8">
 <div class="card"><div class="card-body">
   <form method="POST">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
-      <div class="col-md-6"><div class="form-group"><label>الاسم <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required placeholder="مثال: إيجار المكتب"></div></div>
-      <div class="col-md-6"><div class="form-group"><label>الفئة <span class="text-danger">*</span></label><select name="category_id" class="form-control" required><option value="">— اختر —</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>المبلغ <span class="text-danger">*</span></label><input type="number" name="amount" class="form-control" step="0.01" required></div></div>
-      <div class="col-md-4"><div class="form-group"><label>التكرار</label><select name="frequency" class="form-control select2">{% for code, meta in lookups.get('recurring_frequencies', []) %}<option value="{{ code }}">{{ meta.ar }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>التالي تاريخ الاستحقاق <span class="text-danger">*</span></label><input type="date" name="next_due_date" class="form-control" required></div></div>
-      <div class="col-md-4"><div class="form-group"><label>طريقة الدفع</label><select name="payment_method" class="form-control select2">{% for code, meta in lookups.get('payment_methods', []) %}<option value="{{ code }}">{{ meta.ar }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>المورد</label><input type="text" name="supplier_name" class="form-control"></div></div>
-      <div class="col-12"><div class="form-group"><label>الوصف</label><textarea name="description" class="form-control" rows="2"></textarea></div></div>
+      <div class="col-md-6"><div class="form-group"><label>{{ t('Name') }} <span class="text-danger">*</span></label><input type="text" name="name" class="form-control" required placeholder="{{ t('e.g. Office Rent') }}"></div></div>
+      <div class="col-md-6"><div class="form-group"><label>{{ t('Category') }} <span class="text-danger">*</span></label><select name="category_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Amount') }} <span class="text-danger">*</span></label><input type="number" name="amount" class="form-control" step="0.01" required></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Frequency') }}</label><select name="frequency" class="form-control select2">{% for code, meta in lookups.get('recurring_frequencies', []) %}<option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Next Due Date') }} <span class="text-danger">*</span></label><input type="date" name="next_due_date" class="form-control" required></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Payment Method') }}</label><select name="payment_method" class="form-control select2">{% for code, meta in lookups.get('payment_methods', []) %}<option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Supplier') }}</label><input type="text" name="supplier_name" class="form-control"></div></div>
+      <div class="col-12"><div class="form-group"><label>{{ t('Description') }}</label><textarea name="description" class="form-control" rows="2"></textarea></div></div>
     </div>
-    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ</button>
-    <a href="{{ url_for('erp_modules.recurring_expenses') }}" class="btn btn-secondary">إلغاء</a>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ t('Save') }}</button>
+    <a href="{{ url_for('erp_modules.recurring_expenses') }}" class="btn btn-secondary">{{ t('Cancel') }}</a>
   </form>
 </div></div>
 </div></div>

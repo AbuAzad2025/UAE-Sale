@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}فئات المصروفات المتقدمة{% endblock %}
+{% block title %}{{ t('Advanced Expense Categories') }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,11 +9,11 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-folder-open"></i> فئات المصروفات المتقدمة
+            <i class="fas fa-folder-open"></i> {{ t('Advanced Expense Categories') }}
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('advanced_ledger.add_expense_category') }}" class="btn btn-success">
-              <i class="fas fa-plus"></i> إضافة فئة
+              <i class="fas fa-plus"></i> {{ t('Add Category') }}
             </a>
           </div>
         </div>
@@ -21,13 +21,13 @@
           <table class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>الكود</th>
-                <th>الاسم</th>
-                <th>الفئة الأب</th>
-                <th>الحساب المحاسبي</th>
-                <th>عدد الفرعية</th>
-                <th>الحالة</th>
-                <th>الإجراءات</th>
+                <th>{{ t('Code') }}</th>
+                <th>{{ t('Name') }}</th>
+                <th>{{ t('Parent Category') }}</th>
+                <th>{{ t('GL Account') }}</th>
+                <th>{{ t('Subcategories Count') }}</th>
+                <th>{{ t('Status') }}</th>
+                <th>{{ t('Actions') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -40,9 +40,9 @@
                 <td>{{ category.children.count() }}</td>
                 <td>
                   {% if category.is_active %}
-                    <span class="badge badge-success">نشط</span>
+                    <span class="badge badge-success">{{ t('Active') }}</span>
                   {% else %}
-                    <span class="badge badge-secondary">غير نشط</span>
+                    <span class="badge badge-secondary">{{ t('Inactive') }}</span>
                   {% endif %}
                 </td>
                 <td>
@@ -53,7 +53,7 @@
               </tr>
               {% else %}
               <tr>
-                <td colspan="7" class="text-center">لا توجد فئات</td>
+                <td colspan="7" class="text-center">{{ t('No categories found') }}</td>
               </tr>
               {% endfor %}
             </tbody>

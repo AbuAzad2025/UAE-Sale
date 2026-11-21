@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}الفترات المالية{% endblock %}
-{% block page_title %}<i class="fas fa-lock mr-2"></i>الفترات المالية{% endblock %}
+{% block title %}{{ t('Fiscal Periods') }}{% endblock %}
+{% block page_title %}<i class="fas fa-lock mr-2"></i>{{ t('Fiscal Periods') }}{% endblock %}
 {% block content %}
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_fiscal_period') }}" class="d-inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="input-group" style="width:250px"><input type="number" name="year" class="form-control" placeholder="السنة" value="{{ now.year }}" required><div class="input-group-append"><button type="submit" class="btn btn-primary">إنشاء</button></div></div>
+    <div class="input-group" style="width:250px"><input type="number" name="year" class="form-control" placeholder="{{ t('Year') }}" value="{{ now.year }}" required><div class="input-group-append"><button type="submit" class="btn btn-primary">{{ t('Create') }}</button></div></div>
   </form>
 </div>
 <div class="card"><div class="card-body">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>السنة</th><th>الاسم</th><th>من</th><th>إلى</th><th>الحالة</th><th>أغلقها</th></tr></thead>
+    <thead><tr><th>{{ t('Year') }}</th><th>{{ t('Name') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Status') }}</th><th>{{ t('Close it') }}</th></tr></thead>
     <tbody>
     {% for p in periods %}
     <tr>
@@ -20,14 +20,14 @@
       <td>
         {% if p.is_closed %}
         <form method="POST" action="{{ url_for('erp_modules.reopen_fiscal_period', id=p.id) }}" style="display:inline">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('إعادة فتح الفترة؟')"><i class="fas fa-unlock mr-1"></i>فتح</button></form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('{{ t('Reopen the period?') }}')"><i class="fas fa-unlock mr-1"></i>{{ t('Open') }}</button></form>
         {% else %}
         <form method="POST" action="{{ url_for('erp_modules.close_fiscal_period', id=p.id) }}" style="display:inline">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('إغلاق الفترة المالية؟ لن تتمكن من إضافة قيود تاريخية بعد الآن!')"><i class="fas fa-lock mr-1"></i>إغلاق</button></form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('{{ t('Close the fiscal period? You will not be able to add historical entries anymore!') }}')"><i class="fas fa-lock mr-1"></i>{{ t('Close') }}</button></form>
         {% endif %}
       </td>
     </tr>
-    {% else %}<tr><td colspan="6" class="text-center text-muted">لا توجد فترات مالية</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No fiscal periods') }}</td></tr>{% endfor %}
     </tbody>
   </table>
 </div></div>

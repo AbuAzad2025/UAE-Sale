@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
-{% block title %}قيد رقم {{ entry.entry_number }}{% endblock %}
-{% block page_title %}تفاصيل القيد{% endblock %}
+{% block title %}{{ t('Entry No.') }} {{ entry.entry_number }}{% endblock %}
+{% block page_title %}{{ t('Entry Details') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('ledger.journal_entries') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقيود
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Entries') }}
     </a>
     <button class="btn btn-primary" onclick="window.print()">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </button>
     {% if not entry.is_reversed and entry.entry_type != 'reversing' %}
     <button class="btn btn-warning" data-toggle="modal" data-target="#reverseModal">
-      <i class="fas fa-undo mr-2"></i>عكس القيد
+      <i class="fas fa-undo mr-2"></i>{{ t('Reverse Entry') }}
     </button>
     {% endif %}
     {% if not entry.is_posted and not entry.is_reversed and current_user.is_admin() %}
     <form method="post" action="{{ url_for('ledger.approve_entry', id=entry.id) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-success"><i class="fas fa-check mr-2"></i>اعتماد وترحيل</button>
+      <button class="btn btn-success"><i class="fas fa-check mr-2"></i>{{ t('Approve and Post') }}</button>
     </form>
     <form method="post" action="{{ url_for('ledger.delete_entry', id=entry.id) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button class="btn btn-danger" onclick="return confirm('حذف هذه المسودة نهائياً؟')"><i class="fas fa-trash mr-2"></i>حذف المسودة</button>
+      <button class="btn btn-danger" onclick='return confirm({{ t('Delete this draft permanently?')|tojson }})'><i class="fas fa-trash mr-2"></i>{{ t('Delete Draft') }}</button>
     </form>
     {% endif %}
   </div>
@@ -33,14 +33,14 @@
   <div class="card-header bg-gradient-{{ 'success' if entry.is_balanced() else 'danger' }}">
     <h3 class="card-title text-white">
       <i class="fas fa-file-invoice mr-2"></i>
-      قيد رقم: {{ entry.entry_number }}
+      {{ t('Entry No.') }}: {{ entry.entry_number }}
     </h3>
     <div class="card-tools">
       {% if entry.is_reversed %}
-      <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>تم عكسه</span>
+      <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>{{ t('Reversed') }}</span>
       {% endif %}
       {% if entry.entry_type == 'reversing' %}
-      <span class="badge badge-warning"><i class="fas fa-undo mr-1"></i>قيد عكسي</span>
+      <span class="badge badge-warning"><i class="fas fa-undo mr-1"></i>{{ t('Reversing Entry') }}</span>
       {% endif %}
     </div>
   </div>
@@ -48,15 +48,15 @@
     
     <div class="row mb-3">
       <div class="col-md-3">
-        <strong>رقم القيد:</strong>
+        <strong>{{ t('Entry Number') }}:</strong>
         <p>{{ entry.entry_number }}</p>
       </div>
       <div class="col-md-3">
-        <strong>التاريخ:</strong>
+        <strong>{{ t('Date') }}:</strong>
         <p>{{ entry.entry_date.strftime('%Y-%m-%d %H:%M') }}</p>
       </div>
       <div class="col-md-3">
-        <strong>النوع:</strong>
+        <strong>{{ t('Type') }}:</strong>
         <p>
           <span class="badge badge-{{ 'primary' if entry.entry_type == 'manual' else ('success' if entry.entry_type == 'auto' else 'warning') }}">
             {{ entry.entry_type_ar }}
@@ -64,12 +64,12 @@
         </p>
       </div>
       <div class="col-md-3">
-        <strong>الحالة:</strong>
+        <strong>{{ t('Status') }}:</strong>
         <p>
           {% if entry.is_balanced() %}
-          <span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>متوازن</span>
+          <span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>{{ t('Balanced') }}</span>
           {% else %}
-          <span class="badge badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i>غير متوازن</span>
+          <span class="badge badge-danger"><i class="fas fa-exclamation-triangle mr-1"></i>{{ t('Not Balanced') }}</span>
           {% endif %}
         </p>
       </div>
@@ -77,12 +77,12 @@
 
     <div class="row mb-3">
       <div class="col-md-6">
-        <strong>الوصف:</strong>
+        <strong>{{ t('Description') }}:</strong>
         <p>{{ entry.description }}</p>
       </div>
       <div class="col-md-6">
         {% if entry.reference_type and entry.reference_id %}
-        <strong>المرجع:</strong>
+        <strong>{{ t('Reference') }}:</strong>
         <p>{{ entry.reference_type }} #{{ entry.reference_id }}</p>
         {% endif %}
       </div>
@@ -91,7 +91,7 @@
     {% if entry.notes %}
     <div class="row mb-3">
       <div class="col-12">
-        <strong>ملاحظات:</strong>
+        <strong>{{ t('Notes') }}:</strong>
         <p class="text-muted">{{ entry.notes }}</p>
       </div>
     </div>
@@ -100,7 +100,7 @@
     {% if entry.reversed_entry_id %}
     <div class="alert alert-info">
       <i class="fas fa-info-circle mr-2"></i>
-      هذا القيد هو عكس للقيد رقم: 
+      {{ t('This entry reverses entry No.') }}: 
       <a href="{{ url_for('ledger.view_entry', id=entry.reversed_entry_id) }}">
         JE-{{ entry.reversed_entry_id }}
       </a>
@@ -109,18 +109,18 @@
 
     
     <h5 class="mt-4 mb-3">
-      <i class="fas fa-list mr-2"></i>سطور القيد
+      <i class="fas fa-list mr-2"></i>{{ t('Entry Lines') }}
     </h5>
     <div class="table-responsive">
       <table class="table table-bordered table-striped">
         <thead class="bg-light">
           <tr>
             <th width="5%">#</th>
-            <th width="15%">كود الحساب</th>
-            <th width="30%">اسم الحساب</th>
-            <th width="25%">البيان</th>
-            <th width="12%" class="text-center">مدين</th>
-            <th width="13%" class="text-center">دائن</th>
+            <th width="15%">{{ t('Account Code') }}</th>
+            <th width="30%">{{ t('Account Name') }}</th>
+            <th width="25%">{{ t('Description') }}</th>
+            <th width="12%" class="text-center">{{ t('Debit') }}</th>
+            <th width="13%" class="text-center">{{ t('Credit') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -132,7 +132,7 @@
                 {{ line.account.code }}
               </a>
             </td>
-            <td>{{ line.account.name_ar or line.account.name }}</td>
+            <td>{{ display_name(line.account) }}</td>
             <td>{{ line.description }}</td>
             <td class="text-center text-success">
               {% if line.debit > 0 %}
@@ -153,7 +153,7 @@
         </tbody>
         <tfoot class="bg-light">
           <tr>
-            <th colspan="4" class="text-left">الإجمالي:</th>
+            <th colspan="4" class="text-left">{{ t('Total') }}:</th>
             <th class="text-center text-success">
               {{ "{:,.2f}".format(entry.total_debit) }}
             </th>
@@ -162,7 +162,7 @@
             </th>
           </tr>
           <tr>
-            <th colspan="4" class="text-left">الفرق:</th>
+            <th colspan="4" class="text-left">{{ t('Difference') }}:</th>
             <th colspan="2" class="text-center">
               {% set diff = entry.total_debit - entry.total_credit %}
               <span class="badge badge-{{ 'success' if diff|abs < 0.01 else 'danger' }}">
@@ -180,14 +180,14 @@
         {% if entry.user %}
         <small class="text-muted">
           <i class="fas fa-user mr-1"></i>
-          أنشأه: {{ entry.user.name }}
+          {{ t('Created by') }}: {{ entry.user.name }}
         </small>
         {% endif %}
       </div>
       <div class="col-md-6 text-left">
         <small class="text-muted">
           <i class="fas fa-clock mr-1"></i>
-          تاريخ الإنشاء: {{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+          {{ t('Creation Date') }}: {{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
         </small>
       </div>
     </div>
@@ -201,7 +201,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header bg-warning">
           <h5 class="modal-title">
-            <i class="fas fa-undo mr-2"></i>عكس القيد
+            <i class="fas fa-undo mr-2"></i>{{ t('Reverse Entry') }}
           </h5>
           <button type="button" class="close" data-dismiss="modal">
             <span>&times;</span>
@@ -210,18 +210,18 @@
         <div class="modal-body">
           <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>تحذير:</strong> سيتم إنشاء قيد جديد معاكس لهذا القيد. هل أنت متأكد؟
+            <strong>{{ t('Warning') }}:</strong> {{ t('A new reversing entry will be created for this entry. Are you sure?') }}
           </div>
           <div class="form-group">
-            <label>سبب العكس:</label>
+            <label>{{ t('Reversal Reason') }}:</label>
             <textarea name="description" class="form-control" rows="3" 
-                      placeholder="اختياري: اذكر سبب عكس هذا القيد"></textarea>
+                      placeholder="{{ t('Optional: state the reason for reversing this entry') }}"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">إلغاء</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ t('Cancel') }}</button>
           <button type="submit" class="btn btn-warning">
-            <i class="fas fa-undo mr-2"></i>تأكيد العكس
+            <i class="fas fa-undo mr-2"></i>{{ t('Confirm Reversal') }}
           </button>
         </div>
       </form>

@@ -1,49 +1,49 @@
 {% extends 'base.html' %}
-{% block title %}تقرير تكاليف الصيانة{% endblock %}
-{% block page_title %}<i class="fas fa-chart-pie mr-2"></i>تقرير تكاليف الصيانة{% endblock %}
+{% block title %}{{ t('Maintenance Cost Report') }}{% endblock %}
+{% block page_title %}<i class="fas fa-chart-pie mr-2"></i>{{ t('Maintenance Cost Report') }}{% endblock %}
 {% block content %}
 <div class="card mb-4">
   <div class="card-header">
-    <h5 class="mb-0">تقرير تكاليف الصيانة والإيرادات</h5>
+    <h5 class="mb-0">{{ t('Maintenance Cost & Revenue Report') }}</h5>
   </div>
   <div class="card-body">
     <form method="get" class="row g-3 mb-4">
       <div class="col-md-3">
-        <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control" placeholder="من تاريخ">
+        <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control" placeholder="{{ t('From Date') }}">
       </div>
       <div class="col-md-3">
-        <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control" placeholder="إلى تاريخ">
+        <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control" placeholder="{{ t('To Date') }}">
       </div>
       <div class="col-md-2">
-        <button type="submit" class="btn btn-primary w-100">تصفية</button>
+        <button type="submit" class="btn btn-primary w-100">{{ t('Apply Filter') }}</button>
       </div>
       <div class="col-md-2">
-        <a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="btn btn-outline-secondary w-100">إعادة</button>
+        <a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="btn btn-outline-secondary w-100">{{ t('Reset') }}</button>
       </div>
     </form>
 
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="bg-primary text-white p-3 rounded">
-          <h6>الإيرادات الإجمالية (صافي من الضريبة)</h6>
+          <h6>{{ t('Total Revenue (Net of VAT)') }}</h6>
           <h2>{{ "{:,.3f}".format(total_revenue) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-danger text-white p-3 rounded">
-          <h6>التكلفة الإجمالية</h6>
+          <h6>{{ t('Total Cost') }}</h6>
           <h2>{{ "{:,.3f}".format(total_cost) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-success text-white p-3 rounded">
-          <h6>الربح الإجمالي</h6>
+          <h6>{{ t('Gross Profit') }}</h6>
           <h2>{{ "{:,.3f}".format(gross_profit) }}</h2>
         </div>
       </div>
       <div class="col-md-3">
         <div class="bg-info text-white p-3 rounded">
-          <h6>هامش الربح</h6>
+          <h6>{{ t('Profit Margin') }}</h6>
           <h2>{{ "%.1f"|format(profit_margin) }}%</h2>
         </div>
       </div>
@@ -52,25 +52,25 @@
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="p-3 rounded border">
-          <h6>الخصم الإجمالي</h6>
+          <h6>{{ t('Total Discount') }}</h6>
           <p class="mb-0">{{ "{:,.3f}".format(total_discount) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
-          <h6>الضريبة الإجمالية</h6>
+          <h6>{{ t('Total Tax') }}</h6>
           <p class="mb-0">{{ "{:,.3f}".format(total_tax) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
-          <h6>المدفوع</h6>
+          <h6>{{ t('Paid') }}</h6>
           <p class="mb-0">{{ "{:,.3f}".format(total_paid) }}</p>
         </div>
       </div>
       <div class="col-md-3">
         <div class="p-3 rounded border">
-          <h6>عدد الأوامر</h6>
+          <h6>{{ t('Order Count') }}</h6>
           <p class="mb-0">{{ total_orders }}</p>
         </div>
       </div>
@@ -81,21 +81,21 @@
 <div class="row mb-4">
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">أداء المهندسين</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Engineer Performance') }}</h5></div>
       <div class="card-body">
         <table class="table table-bordered">
           <thead>
-            <tr><th>المهندس</th><th class="text-right">عدد الأوامر</th><th class="text-right">الإيرادات</th></tr>
+            <tr><th>{{ t('Engineer') }}</th><th class="text-right">{{ t('Order Count') }}</th><th class="text-right">{{ t('Revenue') }}</th></tr>
           </thead>
           <tbody>
           {% for eng_id, stats in engineer_stats.items() %}
           <tr>
-            <td>المهندس #{{ eng_id }}</td>
+            <td>{{ t('Engineer') }} #{{ eng_id }}</td>
             <td class="text-right">{{ stats.orders }}</td>
             <td class="text-right">{{ "{:,.3f}".format(stats.revenue) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="3" class="text-center text-muted">لا توجد بيانات</td></tr>
+          <tr><td colspan="3" class="text-center text-muted">{{ t('No Data') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -104,11 +104,11 @@
   </div>
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">الاتجاه الشهري (آخر 6 أشهر)</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Monthly Trend (Last 6 Months)') }}</h5></div>
       <div class="card-body">
         <table class="table table-bordered">
           <thead>
-            <tr><th>الشهر</th><th class="text-right">عدد الأوامر</th><th class="text-right">الإيرادات</th><th class="text-right">التكلفة</th><th class="text-right">الربح</th></tr>
+            <tr><th>{{ t('Month') }}</th><th class="text-right">{{ t('Order Count') }}</th><th class="text-right">{{ t('Revenue') }}</th><th class="text-right">{{ t('Cost') }}</th><th class="text-right">{{ t('Profit') }}</th></tr>
           </thead>
           <tbody>
           {% for m in monthly %}
@@ -120,7 +120,7 @@
             <td class="text-right">{{ "{:,.3f}".format(m.profit) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="text-center text-muted">لا توجد بيانات</td></tr>
+          <tr><td colspan="5" class="text-center text-muted">{{ t('No Data') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -130,20 +130,20 @@
 </div>
 
 <div class="card">
-  <div class="card-header"><h5 class="mb-0">تفاصيل الأوامر</h5></div>
+  <div class="card-header"><h5 class="mb-0">{{ t('Order Details') }}</h5></div>
   <div class="card-body">
     <table class="table table-bordered table-hover">
       <thead>
         <tr>
-          <th>رقم الأمر</th>
-          <th>العميل</th>
-          <th>التاريخ</th>
-          <th class="text-right">الإيرادات (صافي)</th>
-          <th class="text-right">تكلفة القطع</th>
-          <th class="text-right">تكلفة العمل</th>
-          <th class="text-right">التكلفة</th>
-          <th class="text-right">الربح</th>
-          <th class="text-right">الربح %</th>
+          <th>{{ t('Order Number') }}</th>
+          <th>{{ t('Customer') }}</th>
+          <th>{{ t('Date') }}</th>
+          <th class="text-right">{{ t('Revenue (Net)') }}</th>
+          <th class="text-right">{{ t('Parts Cost') }}</th>
+          <th class="text-right">{{ t('Labor Cost') }}</th>
+          <th class="text-right">{{ t('Cost') }}</th>
+          <th class="text-right">{{ t('Profit') }}</th>
+          <th class="text-right">{{ t('Profit %') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -161,7 +161,7 @@
         <td class="text-right">{{ "%.1f"|format(d.profit_pct) }}%</td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="text-center text-muted">لا توجد أوامر</td></tr>
+      <tr><td colspan="7" class="text-center text-muted">{{ t('No Orders') }}</td></tr>
       {% endfor %}
       </tbody>
     </table>

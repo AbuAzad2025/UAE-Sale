@@ -1,34 +1,34 @@
 {% extends 'base.html' %}
 
-{% block title %}ثوابت: {{ meta.title_ar }}{% endblock %}
+{% block title %}{{ t('Constants') }}: {{ meta.title_ar }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap">
     <h3 class="mb-0">
       <i class="fas fa-list mr-2"></i>{{ meta.title_ar }}
-      {% if meta.locked_codes %}<span class="badge badge-secondary"> مقفلة منطقياً (التسميات فقط)</span>{% endif %}
+      {% if meta.locked_codes %}<span class="badge badge-secondary"> {{ t('Logically locked (labels only)') }}</span>{% endif %}
     </h3>
-    <a href="{{ url_for('owner.constants_index') }}" class="btn btn-secondary btn-sm">رجوع للمجموعات</a>
+    <a href="{{ url_for('owner.constants_index') }}" class="btn btn-secondary btn-sm">{{ t('Back to Groups') }}</a>
   </div>
 </div>
 
 {% if not meta.locked_codes %}
 <div class="card shadow-sm mb-3">
-  <div class="card-header bg-gradient-success text-white"><h5 class="mb-0">إضافة قيمة جديدة</h5></div>
+  <div class="card-header bg-gradient-success text-white"><h5 class="mb-0">{{ t('Add New Value') }}</h5></div>
   <div class="card-body">
     <form method="POST" action="{{ url_for('owner.constants_add', group=group) }}" class="form-inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group mr-2 mb-2">
-        <input type="text" name="code" class="form-control" placeholder="الكود" required maxlength="60" dir="ltr">
+        <input type="text" name="code" class="form-control" placeholder="{{ t('Code') }}" required maxlength="60" dir="ltr">
       </div>
       <div class="form-group mr-2 mb-2">
-        <input type="text" name="ar" class="form-control" placeholder="التسمية العربية *" required maxlength="200">
+        <input type="text" name="ar" class="form-control" placeholder="{{ t('Arabic Label') }} *" required maxlength="200">
       </div>
       <div class="form-group mr-2 mb-2">
-        <input type="text" name="en" class="form-control" placeholder="التسمية الإنجليزية" maxlength="200" dir="ltr">
+        <input type="text" name="en" class="form-control" placeholder="{{ t('English Label') }}" maxlength="200" dir="ltr">
       </div>
-      <button type="submit" class="btn btn-success mb-2"><i class="fas fa-plus mr-1"></i>إضافة</button>
+      <button type="submit" class="btn btn-success mb-2"><i class="fas fa-plus mr-1"></i>{{ t('Add') }}</button>
     </form>
   </div>
 </div>
@@ -39,12 +39,12 @@
     <table class="table table-bordered table-striped mb-0">
       <thead>
         <tr>
-          <th>الكود</th>
-          <th>العربية</th>
-          <th>الإنجليزية</th>
-          <th>النوع</th>
-          <th>الحالة</th>
-          <th>إجراءات</th>
+          <th>{{ t('Code') }}</th>
+          <th>{{ t('Arabic') }}</th>
+          <th>{{ t('English') }}</th>
+          <th>{{ t('Type') }}</th>
+          <th>{{ t('Status') }}</th>
+          <th>{{ t('Row Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -54,18 +54,18 @@
           <td>{{ r.ar }}</td>
           <td dir="ltr" class="text-left">{{ r.en }}</td>
           <td>
-            {% if r.custom %}<span class="badge badge-info">مضافة</span>
-            {% elif r.locked %}<span class="badge badge-secondary"> نظام</span>
-            {% else %}<span class="badge badge-primary">نظام</span>{% endif %}
+            {% if r.custom %}<span class="badge badge-info">{{ t('Custom') }}</span>
+            {% elif r.locked %}<span class="badge badge-secondary"> {{ t('System') }}</span>
+            {% else %}<span class="badge badge-primary">{{ t('System') }}</span>{% endif %}
           </td>
-          <td>{% if r.disabled %}<span class="badge badge-warning">مخفية</span>{% else %}<span class="badge badge-success">ظاهرة</span>{% endif %}</td>
+          <td>{% if r.disabled %}<span class="badge badge-warning">{{ t('Hidden') }}</span>{% else %}<span class="badge badge-success">{{ t('Visible') }}</span>{% endif %}</td>
           <td class="text-nowrap">
             <form method="POST" action="{{ url_for('owner.constants_label', group=group) }}" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="code" value="{{ r.code }}">
               <input type="text" name="ar" value="{{ r.ar }}" class="form-control form-control-sm d-inline" style="width:130px;" required maxlength="200">
               <input type="text" name="en" value="{{ r.en }}" class="form-control form-control-sm d-inline" style="width:110px;" maxlength="200" dir="ltr">
-              <button type="submit" class="btn btn-warning btn-sm" title="حفظ التسمية"><i class="fas fa-save"></i></button>
+              <button type="submit" class="btn btn-warning btn-sm" title="{{ t('Save label') }}"><i class="fas fa-save"></i></button>
             </form>
             {% if not meta.locked_codes and not r.custom %}
             <form method="POST" action="{{ url_for('owner.constants_visibility', group=group) }}" style="display:inline;">
@@ -73,10 +73,10 @@
               <input type="hidden" name="code" value="{{ r.code }}">
               {% if r.disabled %}
               <input type="hidden" name="disabled" value="0">
-              <button type="submit" class="btn btn-success btn-sm" title="إظهار"><i class="fas fa-eye"></i></button>
+              <button type="submit" class="btn btn-success btn-sm" title="{{ t('Show') }}"><i class="fas fa-eye"></i></button>
               {% else %}
               <input type="hidden" name="disabled" value="1">
-              <button type="submit" class="btn btn-secondary btn-sm" title="إخفاء"><i class="fas fa-eye-slash"></i></button>
+              <button type="submit" class="btn btn-secondary btn-sm" title="{{ t('Hide') }}"><i class="fas fa-eye-slash"></i></button>
               {% endif %}
             </form>
             {% endif %}

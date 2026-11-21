@@ -28,7 +28,7 @@
   // =====================================
   const PAYMENT_METHODS = {
     cash: {
-      title_ar: 'دفع نقدي',
+      title_ar: t('Cash Payment'),
       title_en: 'Cash Payment',
       icon: 'fas fa-money-bill-wave',
       color: 'success',
@@ -36,7 +36,7 @@
     },
     
     card: {
-      title_ar: 'دفع ببطاقة',
+      title_ar: t('Card Payment'),
       title_en: 'Card Payment',
       icon: 'fas fa-credit-card',
       color: 'primary',
@@ -44,7 +44,7 @@
         {
           name: 'card_last4',
           type: 'text',
-          label_ar: 'آخر 4 أرقام البطاقة',
+          label_ar: t('Card Last 4 Digits'),
           label_en: 'Card Last 4 Digits',
           required: false,
           maxlength: 4,
@@ -54,20 +54,20 @@
         {
           name: 'card_type',
           type: 'select',
-          label_ar: 'نوع البطاقة',
+          label_ar: t('Card Type'),
           label_en: 'Card Type',
           required: false,
           options: lookupOptions('card_types', [
             { value: 'visa', label: 'Visa' },
             { value: 'mastercard', label: 'Mastercard' },
             { value: 'amex', label: 'American Express' },
-            { value: 'other', label: 'أخرى' }
-          ], 'اختر...')
+            { value: 'other', label: t('Other') }
+          ], t('Select...'))
         },
         {
           name: 'reference_number',
           type: 'text',
-          label_ar: 'رقم المعاملة',
+          label_ar: t('Transaction Number'),
           label_en: 'Transaction Number',
           required: false,
           placeholder: 'REF-123456'
@@ -76,7 +76,7 @@
     },
     
     bank_transfer: {
-      title_ar: 'تحويل بنكي',
+      title_ar: t('Bank Transfer'),
       title_en: 'Bank Transfer',
       icon: 'fas fa-university',
       color: 'info',
@@ -84,7 +84,7 @@
         {
           name: 'reference_number',
           type: 'text',
-          label_ar: 'رقم الحوالة',
+          label_ar: t('Transfer Reference'),
           label_en: 'Transfer Reference',
           required: true,
           placeholder: 'TRF-123456'
@@ -92,7 +92,7 @@
         {
           name: 'bank_name',
           type: 'text',
-          label_ar: 'اسم البنك',
+          label_ar: t('Bank Name'),
           label_en: 'Bank Name',
           required: false,
           placeholder: 'Emirates NBD'
@@ -100,7 +100,7 @@
         {
           name: 'transfer_date',
           type: 'date',
-          label_ar: 'تاريخ التحويل',
+          label_ar: t('Transfer Date'),
           label_en: 'Transfer Date',
           required: false
         }
@@ -108,7 +108,7 @@
     },
     
     cheque: {
-      title_ar: 'دفع بشيك',
+      title_ar: t('Cheque Payment'),
       title_en: 'Cheque Payment',
       icon: 'fas fa-file-invoice',
       color: 'warning',
@@ -116,7 +116,7 @@
         {
           name: 'cheque_number',
           type: 'text',
-          label_ar: 'رقم الشيك',
+          label_ar: t('Cheque Number'),
           label_en: 'Cheque Number',
           required: true,
           placeholder: 'CHQ-123456'
@@ -124,14 +124,14 @@
         {
           name: 'cheque_date',
           type: 'date',
-          label_ar: 'تاريخ الاستحقاق',
+          label_ar: t('Due Date'),
           label_en: 'Due Date',
           required: true
         },
         {
           name: 'bank_name',
           type: 'text',
-          label_ar: 'اسم البنك',
+          label_ar: t('Bank Name'),
           label_en: 'Bank Name',
           required: true,
           placeholder: 'Emirates NBD'
@@ -139,20 +139,20 @@
         {
           name: 'cheque_status',
           type: 'select',
-          label_ar: 'حالة الشيك',
+          label_ar: t('Cheque Status'),
           label_en: 'Cheque Status',
           required: false,
           options: lookupOptions('cheque_statuses', [
-            { value: 'pending', label: 'معلق' },
-            { value: 'cleared', label: 'تم الصرف' },
-            { value: 'bounced', label: 'مرتد' }
+            { value: 'pending', label: t('Pending') },
+            { value: 'cleared', label: t('Cleared') },
+            { value: 'bounced', label: t('Bounced') }
           ])
         }
       ]
     },
     
     e_wallet: {
-      title_ar: 'محفظة إلكترونية',
+      title_ar: t('E-Wallet'),
       title_en: 'E-Wallet',
       icon: 'fas fa-wallet',
       color: 'purple',
@@ -160,7 +160,7 @@
         {
           name: 'wallet_provider',
           type: 'select',
-          label_ar: 'مزود المحفظة',
+          label_ar: t('Wallet Provider'),
           label_en: 'Wallet Provider',
           required: true,
           options: lookupOptions('ewallets', [
@@ -168,13 +168,13 @@
             { value: 'google_pay', label: 'Google Pay' },
             { value: 'samsung_pay', label: 'Samsung Pay' },
             { value: 'paypal', label: 'PayPal' },
-            { value: 'other', label: 'أخرى' }
-          ], 'اختر...')
+            { value: 'other', label: t('Other') }
+          ], t('Select...'))
         },
         {
           name: 'reference_number',
           type: 'text',
-          label_ar: 'رقم المعاملة',
+          label_ar: t('Transaction ID'),
           label_en: 'Transaction ID',
           required: true,
           placeholder: 'TXN-123456'
@@ -182,7 +182,7 @@
         {
           name: 'wallet_phone',
           type: 'text',
-          label_ar: 'رقم المحفظة',
+          label_ar: t('Wallet Phone'),
           label_en: 'Wallet Phone',
           required: false,
           placeholder: '+971-xxx-xxx-xxx'
@@ -191,7 +191,7 @@
     },
     
     credit: {
-      title_ar: 'آجل (على الحساب)',
+      title_ar: t('Credit'),
       title_en: 'Credit',
       icon: 'fas fa-calendar-check',
       color: 'danger',
@@ -199,7 +199,7 @@
         {
           name: 'credit_days',
           type: 'number',
-          label_ar: 'مدة الائتمان (أيام)',
+          label_ar: t('Credit Days'),
           label_en: 'Credit Days',
           required: false,
           min: 1,
@@ -208,7 +208,7 @@
         {
           name: 'due_date',
           type: 'date',
-          label_ar: 'تاريخ الاستحقاق',
+          label_ar: t('Due Date'),
           label_en: 'Due Date',
           required: false
         }
@@ -234,7 +234,7 @@
       $container.html(`
         <div class="alert alert-success">
           <i class="${methodConfig.icon} mr-2"></i>
-          <strong>${methodConfig.title_ar}</strong> - لا توجد حقول إضافية مطلوبة
+          <strong>${methodConfig.title_ar}</strong> - ${t('No additional fields required')}
         </div>
       `);
       return;

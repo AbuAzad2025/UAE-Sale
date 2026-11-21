@@ -1,33 +1,33 @@
 {% extends "base.html" %}
-{% block title %}إرسالية جديدة{% endblock %}
+{% block title %}{{ t('New Shipment') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
-  <h3>إرسالية جديدة — من مستودع إلى موقع بيع ميداني</h3>
+  <h3>{{ t('New Shipment') }} — {{ t('From Warehouse to Field Sales Site') }}</h3>
   <form method="POST" id="shipment-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row g-3">
-      <div class="col-md-4"><label class="form-label">من مستودع *</label>
+      <div class="col-md-4"><label class="form-label">{{ t('From Warehouse') }} *</label>
         <select name="from_warehouse_id" class="form-control" required>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div>
-      <div class="col-md-4"><label class="form-label">إلى موقع *</label>
-        <input type="text" name="destination_name" class="form-control" required placeholder="مثال: موقع الرياض - معرض متنقل"></div>
-      <div class="col-md-2"><label class="form-label">المسؤول</label>
+      <div class="col-md-4"><label class="form-label">{{ t('To Site') }} *</label>
+        <input type="text" name="destination_name" class="form-control" required placeholder="{{ t('Example: Riyadh site - mobile exhibition') }}"></div>
+      <div class="col-md-2"><label class="form-label">{{ t('Assigned To') }}</label>
         <select name="assigned_to_id" class="form-control"><option value="">—</option>{% for u in users %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}</select></div>
-      <div class="col-md-2"><label class="form-label">الملاحظات</label><input type="text" name="notes" class="form-control"></div>
+      <div class="col-md-2"><label class="form-label">{{ t('Notes') }}</label><input type="text" name="notes" class="form-control"></div>
     </div>
     <hr>
-    <h5>البنود</h5>
+    <h5>{{ t('Items') }}</h5>
     <div id="items-wrapper" data-index="0" data-url-products="{{ url_for('shipments.api_products') }}" data-url-warehouses="{{ url_for('shipments.api_warehouses') }}">
       <div class="shipment-item border rounded p-3 mb-2">
         <div class="row g-2">
-          <div class="col-md-6"><label>المنتج *</label><select name="lines[0][product_id]" class="form-control" required><option value="">اختر</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — {{ p.sku }}</option>{% endfor %}</select></div>
-          <div class="col-md-2"><label>الكمية *</label><input type="number" step="0.001" name="lines[0][quantity]" class="form-control" required></div>
-          <div class="col-md-2"><label>سعر التكلفة</label><input type="number" step="0.001" name="lines[0][unit_cost]" class="form-control"></div>
-          <div class="col-md-2"><label>سعر البيع</label><input type="number" step="0.001" name="lines[0][unit_price]" class="form-control"></div>
+          <div class="col-md-6"><label>{{ t('Product') }} *</label><select name="lines[0][product_id]" class="form-control" required><option value="">{{ t('Choose') }}</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }} — {{ p.sku }}</option>{% endfor %}</select></div>
+          <div class="col-md-2"><label>{{ t('Quantity') }} *</label><input type="number" step="0.001" name="lines[0][quantity]" class="form-control" required></div>
+          <div class="col-md-2"><label>{{ t('Unit Cost') }}</label><input type="number" step="0.001" name="lines[0][unit_cost]" class="form-control"></div>
+          <div class="col-md-2"><label>{{ t('Unit Price') }}</label><input type="number" step="0.001" name="lines[0][unit_price]" class="form-control"></div>
         </div>
       </div>
     </div>
-    <button type="submit" class="btn btn-primary mt-3">حفظ الإرسالية</button>
-    <a href="{{ url_for('shipments.list_shipments') }}" class="btn btn-secondary mt-3">إلغاء</a>
+    <button type="submit" class="btn btn-primary mt-3">{{ t('Save Shipment') }}</button>
+    <a href="{{ url_for('shipments.list_shipments') }}" class="btn btn-secondary mt-3">{{ t('Cancel') }}</a>
   </form>
 </div>
 {% endblock %}

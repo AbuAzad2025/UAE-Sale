@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}ترحيل الرصيد الافتتاحي للمخزون{% endblock %}
-{% block page_title %}ترحيل الرصيد الافتتاحي للمخزون{% endblock %}
+{% block title %}{{ t("Carry Forward Opening Stock Balance") }}{% endblock %}
+{% block page_title %}{{ t("Carry Forward Opening Stock Balance") }}{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-body">
     <div class="alert alert-info">
       <i class="fas fa-info-circle mr-1"></i>
-      حركات المخزون الأولية التي أُنشئت مع المنتجات ولم يُرحَّل لها قيد بعد. عند الترحيل يُنشأ قيد متوازن:
-      <strong>مدين المخزون 1140</strong> / <strong>دائن رأس المال 3100</strong>. العملية آمنة ولا تتكرر.
+      {{ t("Initial stock movements created with products that have not been posted yet. Posting creates a balanced entry:") }}
+      <strong>{{ t("Inventory Debit 1140") }}</strong> / <strong>{{ t("Capital Credit 3100") }}</strong>. {{ t("The operation is safe and non-repeating.") }}
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">الحركات بانتظار الترحيل: {{ pending|length }}</h5>
+      <h5 class="mb-0">{{ t("Movements pending posting:") }} {{ pending|length }}</h5>
       <form method="post" action="{{ url_for('warehouse.post_opening_stock') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-primary" {% if not pending %}disabled{% endif %}>
-          <i class="fas fa-check mr-1"></i> ترحيل الكل إلى الأستاذ
+          <i class="fas fa-check mr-1"></i> {{ t("Post All to Ledger") }}
         </button>
       </form>
     </div>
@@ -23,7 +23,7 @@
     <div class="table-responsive" style="overflow-x:auto;">
       <table class="table table-bordered table-sm">
         <thead class="thead-light">
-          <tr><th>#</th><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>القيمة</th><th>المستودع</th></tr>
+          <tr><th>#</th><th>{{ t("Product") }}</th><th>{{ t("Quantity") }}</th><th>{{ t("Unit Price") }}</th><th>{{ t("Value") }}</th><th>{{ t("Warehouse") }}</th></tr>
         </thead>
         <tbody>
           {% for m in pending %}
@@ -36,11 +36,11 @@
             <td>{{ m.warehouse.name if m.warehouse else '-' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">لا توجد حركات بانتظار الترحيل ✅</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">{{ t("No movements pending posting ✅") }}</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr><th colspan="4" class="text-left">الإجمالي</th><th colspan="2">{{ '{:,.2f}'.format(total) }}</th></tr>
+          <tr><th colspan="4" class="text-left">{{ t("Total Amount") }}</th><th colspan="2">{{ '{:,.2f}'.format(total) }}</th></tr>
         </tfoot>
       </table>
     </div>

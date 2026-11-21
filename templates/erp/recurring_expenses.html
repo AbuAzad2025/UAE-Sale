@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}المصروفات الدورية{% endblock %}
-{% block page_title %}<i class="fas fa-redo mr-2"></i>المصروفات الدورية{% endblock %}
+{% block title %}{{ t('Recurring Expenses') }}{% endblock %}
+{% block page_title %}<i class="fas fa-redo mr-2"></i>{{ t('Recurring Expenses') }}{% endblock %}
 {% block content %}
-<div class="mb-3"><a href="{{ url_for('erp_modules.create_recurring_expense') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>مصروف دوري جديد</a></div>
+<div class="mb-3"><a href="{{ url_for('erp_modules.create_recurring_expense') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('New Recurring Expense') }}</a></div>
 <div class="card"><div class="card-body">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>الاسم</th><th>الفئة</th><th>المبلغ</th><th>التكرار</th><th>التالي</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <thead><tr><th>{{ t('Name') }}</th><th>{{ t('Category') }}</th><th>{{ t('Amount') }}</th><th>{{ t('Frequency') }}</th><th>{{ t('Next') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for re in recurring_expenses %}
     <tr>
@@ -14,15 +14,15 @@
       <td>{{ "{:,.2f}".format(re.amount|float) }} {{ re.currency }}</td>
       <td>{{ re.frequency }}</td>
       <td>{{ re.next_due_date.strftime('%Y-%m-%d') if re.next_due_date else '-' }}</td>
-      <td><span class="badge badge-{{ 'success' if re.is_active else 'secondary' }}">{{ 'نشط' if re.is_active else 'متوقف' }}</span></td>
+      <td><span class="badge badge-{{ 'success' if re.is_active else 'secondary' }}">{{ t('Active') if re.is_active else t('Paused') }}</span></td>
       <td>
         <form method="POST" action="{{ url_for('erp_modules.toggle_recurring_expense', id=re.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-sm btn-{{ 'warning' if re.is_active else 'success' }}">{{ 'إيقاف' if re.is_active else 'تفعيل' }}</button>
+          <button class="btn btn-sm btn-{{ 'warning' if re.is_active else 'success' }}">{{ t('Deactivate') if re.is_active else t('Activate') }}</button>
         </form>
       </td>
     </tr>
-    {% else %}<tr><td colspan="7" class="text-center text-muted">لا توجد مصروفات دورية</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="7" class="text-center text-muted">{{ t('No recurring expenses') }}</td></tr>{% endfor %}
     </tbody>
   </table>
 </div></div>

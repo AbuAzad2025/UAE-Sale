@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - فاتورة مبيعات #{{ sale.sale_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Sales Invoice") }} #{{ sale.sale_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap">
   <div>
@@ -12,28 +12,28 @@
     
     <div class="btn-group d-flex align-items-center" role="group">
       <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-        <i class="fas fa-file-alt mr-1"></i> قالب الطباعة
+        <i class="fas fa-file-alt mr-1"></i> {{ t("Print Template") }}
       </button>
       <div class="dropdown-menu dropdown-menu-right">
-        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='modern') }}"><i class="fas fa-file-alt mr-2"></i> مودرن</a>
-        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='classic') }}"><i class="fas fa-file-alt mr-2"></i> كلاسيك</a>
-        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='gulf') }}"><i class="fas fa-file-alt mr-2"></i> خليجي</a>
-        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='minimal') }}"><i class="fas fa-file-alt mr-2"></i> بسيط</a>
-        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='simple') }}"><i class="fas fa-file-alt mr-2"></i> مبسط</a>
+        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='modern') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Modern") }}</a>
+        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='classic') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Classic") }}</a>
+        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='gulf') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Gulf") }}</a>
+        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='minimal') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Simple") }}</a>
+        <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='simple') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Basic") }}</a>
       </div>
     </div>
     <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" class="btn btn-secondary btn-lg" target="_blank">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t("Print") }}
     </a>
     <a href="{{ url_for('sales.index') }}" class="btn btn-info btn-lg">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t("Back to List") }}
     </a>
     <button type="button" class="btn btn-danger btn-lg" 
             onclick="deleteItem('sales', {{ sale.id }}, {{ sale.sale_number|tojson }})">
-      <i class="fas fa-trash mr-2"></i>حذف
+      <i class="fas fa-trash mr-2"></i>{{ t("Delete") }}
     </button>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t("Home") }}
     </a>
   </div>
 </div>
@@ -86,14 +86,14 @@
       <div class="invoice-header">
         <div class="row">
           <div class="col-6">
-            <h2 class="mb-3"><i class="fas fa-file-invoice mr-2"></i>فاتورة بيع</h2>
-            <p class="mb-1"><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
-            <p class="mb-0"><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
+            <h2 class="mb-3"><i class="fas fa-file-invoice mr-2"></i>{{ t("Sales Invoice") }}</h2>
+            <p class="mb-1"><strong>{{ t("Invoice Number") }}:</strong> {{ sale.sale_number }}</p>
+            <p class="mb-0"><strong>{{ t("Date") }}:</strong> {{ sale.sale_date.strftime('%Y-%m-%d %H:%M') }}</p>
             <p class="mb-0">
-              <strong>تاريخ الاستحقاق:</strong>
+              <strong>{{ t("Due Date") }}:</strong>
               {{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}
               {% if sale.balance_due > 0 and sale.days_overdue > 0 %}
-              <span class="badge badge-danger">متأخر {{ sale.days_overdue }} يوم</span>
+              <span class="badge badge-danger">{{ t("Overdue") }} {{ sale.days_overdue }} {{ t("days") }}</span>
               {% endif %}
             </p>
           </div>
@@ -111,44 +111,44 @@
       <div class="card-body">
         <div class="row mb-4">
           <div class="col-md-6">
-            <h5 class="text-primary"><i class="fas fa-user-circle mr-2"></i>معلومات الزبون</h5>
+            <h5 class="text-primary"><i class="fas fa-user-circle mr-2"></i>{{ t("Client Info") }}</h5>
             <div class="p-3 bg-light rounded">
               <p class="mb-2">
-                <strong>الاسم:</strong> 
+                <strong>{{ t("Name") }}:</strong> 
                 <a href="{{ url_for('customers.view', id=sale.customer.id) }}" class="text-primary">
                   {{ sale.customer.name }}
                 </a>
               </p>
               {% if sale.customer.phone %}
-              <p class="mb-2"><strong>الهاتف:</strong> {{ sale.customer.phone }}</p>
+              <p class="mb-2"><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone }}</p>
               {% endif %}
               {% if sale.customer.email %}
-              <p class="mb-0"><strong>البريد:</strong> {{ sale.customer.email }}</p>
+              <p class="mb-0"><strong>{{ t("Email") }}:</strong> {{ sale.customer.email }}</p>
               {% endif %}
             </div>
           </div>
           <div class="col-md-6">
-            <h5 class="text-success"><i class="fas fa-user-tie mr-2"></i>معلومات البائع</h5>
+            <h5 class="text-success"><i class="fas fa-user-tie mr-2"></i>{{ t("Seller Info") }}</h5>
             <div class="p-3 bg-light rounded">
-              <p class="mb-2"><strong>الاسم:</strong> {{ sale.seller.full_name or sale.seller.username }}</p>
-              <p class="mb-0"><strong>العملة:</strong> {{ sale.currency }}</p>
+              <p class="mb-2"><strong>{{ t("Name") }}:</strong> {{ sale.seller.full_name or sale.seller.username }}</p>
+              <p class="mb-0"><strong>{{ t("Currency") }}:</strong> {{ sale.currency }}</p>
               {% if sale.exchange_rate != 1 %}
-              <p class="mb-0"><strong>سعر الصرف:</strong> {{ "{:,.6f}".format(sale.exchange_rate) }}</p>
+              <p class="mb-0"><strong>{{ t("Exchange Rate") }}:</strong> {{ "{:,.6f}".format(sale.exchange_rate) }}</p>
               {% endif %}
             </div>
           </div>
         </div>
 
-        <h5 class="text-primary mb-3"><i class="fas fa-list mr-2"></i>الأصناف</h5>
+        <h5 class="text-primary mb-3"><i class="fas fa-list mr-2"></i>{{ t("Items") }}</h5>
         <div class="table-responsive">
           <table class="table table-hover">
             <thead style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
               <tr>
                 <th>#</th>
-                <th>المنتج</th>
+                <th>{{ t("Product") }}</th>
                 <th class="text-center">{{ t('Quantity') }}</th>
                 <th class="text-center">{{ t('Price') }}</th>
-                <th class="text-center">الخصم%</th>
+                <th class="text-center">{{ t("Discount%") }}</th>
                 <th class="text-center">{{ t('Total') }}</th>
               </tr>
             </thead>
@@ -189,23 +189,23 @@
         
         {% if sale.notes %}
         <div class="alert alert-info mt-3">
-          <h6><i class="fas fa-sticky-note mr-2"></i>ملاحظات:</h6>
+          <h6><i class="fas fa-sticky-note mr-2"></i>{{ t("Notes") }}:</h6>
           <p class="mb-0">{{ sale.notes }}</p>
         </div>
         {% endif %}
         
         
         {% if sale.payments %}
-        <h5 class="text-primary mb-3 mt-4"><i class="fas fa-money-bill-wave mr-2"></i>الدفعات</h5>
+        <h5 class="text-primary mb-3 mt-4"><i class="fas fa-money-bill-wave mr-2"></i>{{ t("Payments") }}</h5>
         <div class="table-responsive">
           <table class="table table-bordered">
             <thead class="bg-light">
               <tr>
-                <th>رقم الدفعة</th>
-                <th>التاريخ</th>
-                <th>المبلغ</th>
-                <th>طريقة الدفع</th>
-                <th>التفاصيل</th>
+                <th>{{ t("Payment Number") }}</th>
+                <th>{{ t("Date") }}</th>
+                <th>{{ t("Amount") }}</th>
+                <th>{{ t("Payment Method") }}</th>
+                <th>{{ t("Details") }}</th>
               </tr>
             </thead>
             <tbody>
@@ -216,25 +216,25 @@
                 <td><strong class="text-success">{{ "{:,.2f}".format(payment.amount_base) }} {{ base_currency }}</strong></td>
                 <td>
                   {% if payment.payment_method == 'cash' %}
-                    <span class="badge badge-success"><i class="fas fa-money-bill-wave"></i> نقدي</span>
+                    <span class="badge badge-success"><i class="fas fa-money-bill-wave"></i> {{ t("Cash") }}</span>
                   {% elif payment.payment_method == 'card' %}
-                    <span class="badge badge-info"><i class="fas fa-credit-card"></i> بطاقة</span>
+                    <span class="badge badge-info"><i class="fas fa-credit-card"></i> {{ t("Card") }}</span>
                   {% elif payment.payment_method == 'bank_transfer' %}
-                    <span class="badge badge-primary"><i class="fas fa-university"></i> تحويل بنكي</span>
+                    <span class="badge badge-primary"><i class="fas fa-university"></i> {{ t("Bank Transfer") }}</span>
                   {% elif payment.payment_method == 'cheque' %}
-                    <span class="badge badge-warning"><i class="fas fa-file-invoice"></i> شيك</span>
+                    <span class="badge badge-warning"><i class="fas fa-file-invoice"></i> {{ t("Cheque") }}</span>
                   {% else %}
-                    <span class="badge badge-secondary"><i class="fas fa-wallet"></i> محفظة إلكترونية</span>
+                    <span class="badge badge-secondary"><i class="fas fa-wallet"></i> {{ t("E-Wallet") }}</span>
                   {% endif %}
                 </td>
                 <td>
                   {% if payment.payment_method == 'cheque' and payment.cheque_number %}
                     <div class="cheque-details">
                       <small>
-                        <i class="fas fa-hashtag"></i> <strong>رقم الشيك:</strong> {{ payment.cheque_number }}<br>
-                        <i class="fas fa-calendar"></i> <strong>تاريخ الاستحقاق:</strong> 
+                        <i class="fas fa-hashtag"></i> <strong>{{ t("Cheque Number") }}:</strong> {{ payment.cheque_number }}<br>
+                        <i class="fas fa-calendar"></i> <strong>{{ t("Due Date") }}:</strong> 
                         <span class="badge badge-info">{{ payment.cheque_date.strftime('%Y-%m-%d') if payment.cheque_date else '-' }}</span><br>
-                        <i class="fas fa-university"></i> <strong>البنك:</strong> {{ payment.bank_name or '-' }}
+                        <i class="fas fa-university"></i> <strong>{{ t("Bank") }}:</strong> {{ payment.bank_name or '-' }}
                       </small>
                     </div>
                   {% elif payment.reference_number %}
@@ -257,18 +257,18 @@
     
     <div class="card mb-3">
       <div class="card-body text-center">
-        <h5 class="mb-3">حالة الدفع</h5>
+        <h5 class="mb-3">{{ t("Payment Status") }}</h5>
         {% if sale.payment_status == 'paid' %}
         <div class="status-badge badge-success">
-          <i class="fas fa-check-circle"></i> مدفوعة بالكامل
+          <i class="fas fa-check-circle"></i> {{ t("Fully Paid") }}
         </div>
         {% elif sale.payment_status == 'partial' %}
         <div class="status-badge badge-warning">
-          <i class="fas fa-clock"></i> مدفوعة جزئياً
+          <i class="fas fa-clock"></i> {{ t("Partially Paid") }}
         </div>
         {% else %}
         <div class="status-badge badge-danger">
-          <i class="fas fa-hourglass-half"></i> آجلة
+          <i class="fas fa-hourglass-half"></i> {{ t("Due") }}
         </div>
         {% endif %}
       </div>
@@ -278,26 +278,26 @@
     <div class="card mb-3">
       <div class="card-header" style="background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%); color: white;">
         <h3 class="card-title text-white mb-0">
-          <i class="fas fa-calculator mr-2"></i>الإجماليات
+          <i class="fas fa-calculator mr-2"></i>{{ t("Totals") }}
         </h3>
       </div>
       <div class="card-body">
         <div class="invoice-summary">
           <div class="d-flex justify-content-between mb-2">
-            <span>المجموع الفرعي:</span>
+            <span>{{ t("Subtotal") }}:</span>
             <strong>{{ "{:,.2f}".format(sale.subtotal) }}</strong>
           </div>
           
           {% if sale.discount_amount > 0 %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-tag text-danger mr-1"></i>الخصم:</span>
+            <span><i class="fas fa-tag text-danger mr-1"></i>{{ t("Discount") }}:</span>
             <strong class="text-danger">-{{ "{:,.2f}".format(sale.discount_amount) }}</strong>
           </div>
           {% endif %}
           
           {% if sale.shipping_cost > 0 %}
           <div class="d-flex justify-content-between mb-2">
-            <span><i class="fas fa-truck text-info mr-1"></i>الشحن:</span>
+            <span><i class="fas fa-truck text-info mr-1"></i>{{ t("Shipping") }}:</span>
             <strong class="text-info">+{{ "{:,.2f}".format(sale.shipping_cost) }}</strong>
           </div>
           {% endif %}
@@ -313,7 +313,7 @@
         <hr class="my-3">
         
         <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 1.3rem;">
-          <strong>الإجمالي:</strong>
+          <strong>{{ t("Total Amount") }}:</strong>
           <strong style="color: #007A3D;">
             {{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}
           </strong>
@@ -321,28 +321,28 @@
         
         {% if sale.currency != base_currency and sale.amount_base %}
         <div class="d-flex justify-content-between mb-3 text-muted">
-          <span>بـ {{ base_currency }}:</span>
+          <span>{{ t("In") }} {{ base_currency }}:</span>
           <strong>{{ "{:,.2f}".format(sale.amount_base) }} {{ base_currency }}</strong>
         </div>
         {% endif %}
         
         <div class="d-flex justify-content-between mb-2">
-          <span><i class="fas fa-check-circle text-success mr-1"></i>المدفوع المؤكد:</span>
+          <span><i class="fas fa-check-circle text-success mr-1"></i>{{ t("Confirmed Paid") }}:</span>
           <strong class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} {{ base_currency }}</strong>
         </div>
         
         {% if sale.pending_cheques_amount > 0 %}
         <div class="d-flex justify-content-between mb-2">
-          <span><i class="fas fa-hourglass-half text-warning mr-1"></i>شيكات معلقة:</span>
+          <span><i class="fas fa-hourglass-half text-warning mr-1"></i>{{ t("Pending Cheques") }}:</span>
           <strong class="text-warning">{{ "{:,.2f}".format(sale.pending_cheques_amount) }} {{ base_currency }}</strong>
         </div>
         <small class="text-muted d-block mb-2">
-          <i class="fas fa-info-circle"></i> هذه الشيكات لم تُصرف بعد من البنك
+          <i class="fas fa-info-circle"></i> {{ t("These cheques have not been cashed yet") }}
         </small>
         {% endif %}
         
         <div class="d-flex justify-content-between mb-3">
-          <span><i class="fas fa-exclamation-circle text-danger mr-1"></i>الباقي:</span>
+          <span><i class="fas fa-exclamation-circle text-danger mr-1"></i>{{ t("Remaining") }}:</span>
           <strong class="text-danger" style="font-size: 1.2rem;">
             {{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}
           </strong>
@@ -351,12 +351,12 @@
         {% if sale.balance_due > 0 %}
         <a href="{{ url_for('payments.create_receipt') }}?customer_id={{ sale.customer_id }}" 
            class="btn btn-success btn-block btn-lg">
-          <i class="fas fa-money-bill-wave mr-2"></i>إضافة دفعة
+          <i class="fas fa-money-bill-wave mr-2"></i>{{ t("Add Payment") }}
         </a>
         {% else %}
         <div class="alert alert-success text-center mb-0">
           <i class="fas fa-check-circle fa-2x mb-2"></i>
-          <p class="mb-0"><strong>الفاتورة مدفوعة بالكامل</strong></p>
+          <p class="mb-0"><strong>{{ t("Invoice Fully Paid") }}</strong></p>
         </div>
         {% endif %}
       </div>
@@ -365,20 +365,20 @@
     
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>الإجراءات</h3>
+        <h3 class="card-title"><i class="fas fa-cog mr-2"></i>{{ t("Actions") }}</h3>
       </div>
       <div class="card-body">
         <div class="btn-group-vertical w-100">
           <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" 
              class="btn btn-secondary mb-2" target="_blank">
-            <i class="fas fa-print mr-2"></i>طباعة الفاتورة
+            <i class="fas fa-print mr-2"></i>{{ t("Print Invoice") }}
           </a>
           <a href="{{ url_for('sales.index') }}" class="btn btn-info mb-2">
-            <i class="fas fa-list mr-2"></i>كل الفواتير
+            <i class="fas fa-list mr-2"></i>{{ t("All Invoices") }}
           </a>
           {% if current_user.is_owner and sale.status != 'cancelled' %}
           <button type="button" class="btn btn-danger" onclick="confirmCancel()">
-            <i class="fas fa-ban mr-2"></i>إلغاء الفاتورة
+            <i class="fas fa-ban mr-2"></i>{{ t("Cancel Invoice") }}
           </button>
           <form id="cancelForm" action="{{ url_for('sales.cancel', id=sale.id) }}" method="POST" style="display:none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -387,7 +387,7 @@
           <hr>
           
           <button type="button" class="btn btn-outline-danger w-100" onclick="confirmDelete()">
-            <i class="fas fa-trash-alt mr-2"></i>حذف الفاتورة
+            <i class="fas fa-trash-alt mr-2"></i>{{ t("Delete Invoice") }}
           </button>
           <form id="deleteForm" action="{{ url_for('sales.delete', id=sale.id) }}" method="POST" style="display:none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -402,13 +402,13 @@
 
 <script>
 function confirmCancel() {
-  if (confirm('هل أنت متأكد من إلغاء هذه الفاتورة؟\nلا يمكن التراجع عن هذا الإجراء.')) {
+  if (confirm('{{ t("Are you sure you want to cancel this invoice?\\nThis action cannot be undone.") }}')) {
     document.getElementById('cancelForm').submit();
   }
 }
 
 function confirmDelete() {
-  if (confirm('هل أنت متأكد من حذف هذه الفاتورة؟\n\nتنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.')) {
+  if (confirm('{{ t("Are you sure you want to delete this invoice?\\n\\nNote: the invoice will be archived if it has financial links (payments/cheques), or permanently deleted otherwise.") }}')) {
     document.getElementById('deleteForm').submit();
   }
 }
@@ -416,13 +416,13 @@ function confirmDelete() {
 
 <div class="card mt-4">
   <div class="card-header bg-gradient-danger">
-    <h5 class="card-title text-white mb-0"><i class="fas fa-undo mr-2"></i>تسجيل مرتجع على هذه الفاتورة</h5>
+    <h5 class="card-title text-white mb-0"><i class="fas fa-undo mr-2"></i>{{ t("Register Return on This Invoice") }}</h5>
   </div>
   <div class="card-body">
     <div class="table-responsive">
       <table class="table table-sm table-bordered mb-3">
         <thead class="thead-light">
-          <tr><th>المنتج</th><th>المباع</th><th>مرتجع سابق</th><th>المتبقي للإرجاع</th><th>الكمية المرتجعة</th></tr>
+          <tr><th>{{ t("Product") }}</th><th>{{ t("Sold") }}</th><th>{{ t("Previously Returned") }}</th><th>{{ t("Remaining to Return") }}</th><th>{{ t("Returned Quantity") }}</th></tr>
         </thead>
         <tbody>
           {% for line in sale.lines %}
@@ -441,11 +441,11 @@ function confirmDelete() {
       </table>
     </div>
     <div class="form-group">
-      <label>ملاحظات المرتجع</label>
-      <textarea id="return_notes" class="form-control" rows="2" placeholder="سبب الإرجاع..."></textarea>
+      <label>{{ t("Return Notes") }}</label>
+      <textarea id="return_notes" class="form-control" rows="2" placeholder="{{ t("Reason for return...") }}"></textarea>
     </div>
     <button type="button" class="btn btn-danger" onclick="submitReturn()">
-      <i class="fas fa-undo mr-1"></i>تسجيل المرتجع
+      <i class="fas fa-undo mr-1"></i>{{ t("Register Return") }}
     </button>
   </div>
 </div>
@@ -464,7 +464,7 @@ function submitReturn() {
       });
     }
   });
-  if (!lines.length) { alert('أدخل كمية واحدة على الأقل'); return; }
+  if (!lines.length) { alert('{{ t("Enter at least one quantity") }}'); return; }
   var notes = document.getElementById('return_notes').value || '';
   fetch('/returns/api/create', {
     method: 'POST',
@@ -475,8 +475,8 @@ function submitReturn() {
     body: JSON.stringify({sale_id: {{ sale.id }}, lines: lines, notes: notes})
   }).then(function (r) { return r.json(); }).then(function (j) {
     if (j.success) { location.reload(); }
-    else { alert(j.message || 'تعذر تسجيل المرتجع'); }
-  }).catch(function () { alert('تعذر تسجيل المرتجع'); });
+    else { alert(j.message || '{{ t("Unable to register return") }}'); }
+  }).catch(function () { alert('{{ t("Unable to register return") }}'); });
 }
 </script>
 

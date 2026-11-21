@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}سجل الأجهزة{% endblock %}
-{% block page_title %}<i class="fas fa-mobile-alt mr-2"></i>سجل الأجهزة/workshop{% endblock %}
+{% block title %}{{ t('Device Registry') }}{% endblock %}
+{% block page_title %}<i class="fas fa-mobile-alt mr-2"></i>{{ t('Device Registry') }}/workshop{% endblock %}
 {% block content %}
-<div class="alert alert-info">سجل الأجهزة يوثّق الكفالة. إدخال سجل جديد يتطلب صلاحية إعدادات الصيانة.</div>
+<div class="alert alert-info">{{ t('The device registry records warranties. Adding a new record requires maintenance settings permission.') }}</div>
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">سجل الأجهزة</h5>
+    <h5 class="mb-0">{{ t('Device Registry') }}</h5>
     {% if current_user.has_permission('maintenance_settings') %}
-    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal"><i class="fas fa-plus mr-1"></i>جهاز جديد</button>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal"><i class="fas fa-plus mr-1"></i>{{ t('New Device') }}</button>
     {% endif %}
   </div>
   <div class="card-body">
@@ -15,16 +15,16 @@
       <table class="table table-bordered table-hover">
         <thead>
           <tr>
-            <th>العميل</th>
-            <th>العلامة التجارية</th>
-            <th>الموديل</th>
-            <th>الرقم التسلسلي</th>
-            <th>الـ IMEI</th>
-            <th>اللوحة</th>
-            <th>تاريخ الشراء</th>
-            <th>انتهاء الكفالة</th>
-            <th>نوع الكفالة</th>
-            <th>تحت الكفالة</th>
+            <th>{{ t('Customer') }}</th>
+            <th>{{ t('Brand') }}</th>
+            <th>{{ t('Model') }}</th>
+            <th>{{ t('Serial Number') }}</th>
+            <th>{{ t('IMEI') }}</th>
+            <th>{{ t('Plate') }}</th>
+            <th>{{ t('Purchase Date') }}</th>
+            <th>{{ t('Warranty Expiry') }}</th>
+            <th>{{ t('Warranty Type') }}</th>
+            <th>{{ t('Under Warranty') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -39,10 +39,10 @@
             <td>{{ d.purchase_date.strftime('%Y-%m-%d') if d.purchase_date else '-' }}</td>
             <td>{{ d.warranty_end_date.strftime('%Y-%m-%d') if d.warranty_end_date else '-' }}</td>
             <td>{{ d.warranty_type or '-' }}</td>
-            <td><span class="badge bg-{{ 'success' if d.is_under_warranty else 'secondary' }}">{{ 'نعم' if d.is_under_warranty else 'لا' }}</span></td>
+            <td><span class="badge bg-{{ 'success' if d.is_under_warranty else 'secondary' }}">{{ t('Yes') if d.is_under_warranty else t('No') }}</span></td>
           </tr>
         {% else %}
-          <tr><td colspan="10" class="text-center text-muted py-4">لا توجد أجهزة</td></tr>
+          <tr><td colspan="10" class="text-center text-muted py-4">{{ t('No Devices') }}</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -58,80 +58,80 @@
       <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header">
-          <h5 class="modal-title">إضافة جهاز للسجل</h5>
+          <h5 class="modal-title">{{ t('Add Device to Registry') }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">العميل</label>
+            <label class="form-label">{{ t('Customer') }}</label>
             <select name="customer_id" class="form-select" required>
-              <option value="">اختر العميل</option>
+              <option value="">{{ t('Select Customer') }}</option>
               {% for c in customers %}
               <option value="{{ c.id }}">{{ c.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">المنتج</label>
+            <label class="form-label">{{ t('Product') }}</label>
             <select name="product_id" class="form-select">
-              <option value="">اختر المنتج (اختياري)</option>
+              <option value="">{{ t('Select Product (optional)') }}</option>
               {% for p in products %}
               <option value="{{ p.id }}">{{ p.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">الرقم التسلسلي</label>
+            <label class="form-label">{{ t('Serial Number') }}</label>
             <input type="text" name="serial_number" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">الـ IMEI</label>
+            <label class="form-label">{{ t('IMEI') }}</label>
             <input type="text" name="imei" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">لوحة السيارة</label>
+            <label class="form-label">{{ t('Car Plate') }}</label>
             <input type="text" name="plate" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">الماركة</label>
+            <label class="form-label">{{ t('Make') }}</label>
             <input type="text" name="brand" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">الموديل</label>
+            <label class="form-label">{{ t('Model') }}</label>
             <input type="text" name="model" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">تاريخ الشراء</label>
+            <label class="form-label">{{ t('Purchase Date') }}</label>
             <input type="date" name="purchase_date" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">انتهاء الكفالة</label>
+            <label class="form-label">{{ t('Warranty Expiry') }}</label>
             <input type="date" name="warranty_end_date" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">نوع الكفالة</label>
+            <label class="form-label">{{ t('Warranty Type') }}</label>
             <select name="warranty_type" class="form-select">
-              <option value="">اختر النوع</option>
-              <option value="manufacturer">الشركة المصنعة</option>
-              <option value="extended">ممددة</option>
-              <option value="dealer">وكيل</option>
-              <option value="insurance">تأمين</option>
+              <option value="">{{ t('Select Type') }}</option>
+              <option value="manufacturer">{{ t('Manufacturer') }}</option>
+              <option value="extended">{{ t('Extended') }}</option>
+              <option value="dealer">{{ t('Dealer') }}</option>
+              <option value="insurance">{{ t('Insurance') }}</option>
             </select>
           </div>
           <div class="mb-3">
             <div class="form-check">
               <input type="checkbox" name="is_under_warranty" class="form-check-input">
-              <label class="form-check-label">تحت الكفالة حالياً</label>
+              <label class="form-check-label">{{ t('Currently under warranty') }}</label>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">ملاحظات الكفالة</label>
+            <label class="form-label">{{ t('Warranty Notes') }}</label>
             <textarea name="warranty_notes" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary">إضافة الجهاز</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+          <button type="submit" class="btn btn-primary">{{ t('Add Device') }}</button>
         </div>
       </form>
     </div>

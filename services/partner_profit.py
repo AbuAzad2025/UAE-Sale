@@ -281,7 +281,7 @@ def post_partner_shares_for_return(product_return, sale=None):
     )
 
 
-def compute_net_income(period_from=None, period_to=None):
+def compute_net_income(period_from=None, period_to=None, tenant_id=None):
     """النتيجة الدفترية للفترة (إيرادات − مصروفات، بعد ضريبة الدخل إن رُحِّلت).
 
     القيمة سالبة = خسارة الفترة. تُرحَّل على الشركاء بعلامتها.
@@ -307,6 +307,10 @@ def compute_net_income(period_from=None, period_to=None):
             GLAccount.type == "revenue",
         )
     )
+    if tenant_id is not None:
+        revenue_q = revenue_q.filter(
+            GLJournalLine.tenant_id == tenant_id, _Entry.tenant_id == tenant_id
+        )
     expense_q = (
         db.session.query(
             func.coalesce(func.sum(GLJournalLine.amount_base), 0)
@@ -319,12 +323,16 @@ def compute_net_income(period_from=None, period_to=None):
             GLAccount.type == "expense",
         )
     )
+    if tenant_id is not None:
+        expense_q = expense_q.filter(
+            GLJournalLine.tenant_id == tenant_id, _Entry.tenant_id == tenant_id
+        )
     if period_from is not None:
-        revenue_q = revenue_q.filter(_Entry.entry_date >= period_from)
-        expense_q = expense_q.filter(_Entry.entry_date >= period_from)
+        revenue_q = revenue_q.filter(func.date(_Entry.entry_date) >= period_from)
+        expense_q = expense_q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
-        revenue_q = revenue_q.filter(_Entry.entry_date <= period_to)
-        expense_q = expense_q.filter(_Entry.entry_date <= period_to)
+        revenue_q = revenue_q.filter(func.date(_Entry.entry_date) <= period_to)
+        expense_q = expense_q.filter(func.date(_Entry.entry_date) <= period_to)
 
     revenue = _num(revenue_q.scalar())
     expenses = _num(expense_q.scalar())
@@ -364,9 +372,9 @@ def _draws_for_partner(partner_id, period_from=None, period_to=None):
         )
     )
     if period_from is not None:
-        q = q.filter(_Entry.entry_date >= period_from)
+        q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
-        q = q.filter(_Entry.entry_date <= period_to)
+        q = q.filter(func.date(_Entry.entry_date) <= period_to)
     return _q3(q.scalar())
 
 
@@ -386,9 +394,9 @@ def _sales_to_partner(partner_id, period_from=None, period_to=None):
         )
     ).filter(Sale.customer_id == partner_id, Sale.status != "cancelled")
     if period_from is not None:
-        q = q.filter(Sale.sale_date >= period_from)
+        q = q.filter(func.date(Sale.sale_date) >= period_from)
     if period_to is not None:
-        q = q.filter(Sale.sale_date <= period_to)
+        q = q.filter(func.date(Sale.sale_date) <= period_to)
     return _q3(q.scalar())
 
 
@@ -414,9 +422,9 @@ def _product_shares_in_period(partner_id, period_from=None, period_to=None):
         )
     )
     if period_from is not None:
-        q = q.filter(_Entry.entry_date >= period_from)
+        q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
-        q = q.filter(_Entry.entry_date <= period_to)
+        q = q.filter(func.date(_Entry.entry_date) <= period_to)
     return _q3(q.scalar())
 
 
@@ -426,7 +434,7 @@ def preview_partner_distributions(period_from=None, period_to=None, tenant_id=No
 
     period_from = _to_date(period_from)
     period_to = _to_date(period_to)
-    net = compute_net_income(period_from, period_to)
+    net = compute_net_income(period_from, period_to, tenant_id=tenant_id)
 
     query = Customer.query.filter_by(partner_scope="company", is_active=True).filter(
         Customer.partner_share.isnot(None)
@@ -580,7 +588,7 @@ def post_partner_distributions(
     if not force:
         _guard_against_overlapping_periods(period_from, period_to, tid)
 
-    net = compute_net_income(period_from, period_to)
+    net = compute_net_income(period_from, period_to, tenant_id=tenant_id)
     if net == ZERO:
         return None
 
@@ -779,6 +787,8 @@ def main(argv=None):
     import sys
 
     parser = argparse.ArgumentParser(description="Partner profit-sharing tools")
+    parser.add_argument("--tenant", dest="tenant", type=int, required=True,
+                        help="معرف المستأجر — إلزامي لمنع خلط بيانات المستأجرين")
     parser.add_argument("--from", dest="from_", default=None)
     parser.add_argument("--to", dest="to", default=None)
     parser.add_argument("--preview", action="store_true")
@@ -791,7 +801,7 @@ def main(argv=None):
     args = parser.parse_args(argv or sys.argv[1:])
 
     if args.preview:
-        rows = preview_partner_distributions(args.from_, args.to)
+        rows = preview_partner_distributions(args.from_, args.to, tenant_id=args.tenant)
         for r in rows:
             print(
                 f"{r['partner_name']}: حصة {r['partner_share_pct']}% = {r['share_amount']}"
@@ -801,7 +811,7 @@ def main(argv=None):
                 f" — الإجمالي {r.get('total_entitlement', r['net_payout'])}"
             )
     elif args.distribute:
-        entry = post_partner_distributions(args.from_, args.to, force=args.force)
+        entry = post_partner_distributions(args.from_, args.to, tenant_id=args.tenant, force=args.force)
         print(
             f"Distributed: {entry.entry_number}" if entry else "Nothing to distribute."
         )
@@ -835,9 +845,9 @@ def _product_shares_bulk(partner_ids, period_from=None, period_to=None):
         )
     )
     if period_from is not None:
-        q = q.filter(_Entry.entry_date >= period_from)
+        q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
-        q = q.filter(_Entry.entry_date <= period_to)
+        q = q.filter(func.date(_Entry.entry_date) <= period_to)
     q = q.group_by(GLJournalLine.party_id)
     return {pid: _q3(total) for pid, total in q.all()}
 
@@ -873,9 +883,9 @@ def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None):
         )
     )
     if period_from is not None:
-        q = q.filter(_Entry.entry_date >= period_from)
+        q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
-        q = q.filter(_Entry.entry_date <= period_to)
+        q = q.filter(func.date(_Entry.entry_date) <= period_to)
     q = q.group_by(GLJournalLine.party_id)
     return {pid: _q3(total) for pid, total in q.all()}
 
@@ -894,8 +904,8 @@ def _sales_to_partners_bulk(partner_ids, period_from=None, period_to=None):
         ),
     ).filter(Sale.customer_id.in_(list(partner_ids)), Sale.status != "cancelled")
     if period_from is not None:
-        q = q.filter(Sale.sale_date >= period_from)
+        q = q.filter(func.date(Sale.sale_date) >= period_from)
     if period_to is not None:
-        q = q.filter(Sale.sale_date <= period_to)
+        q = q.filter(func.date(Sale.sale_date) <= period_to)
     q = q.group_by(Sale.customer_id)
     return {pid: _q3(total) for pid, total in q.all()}

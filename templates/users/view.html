@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تفاصيل المستخدم - {{ user.username }}{% endblock %}
+{% block title %}{{ t("User Details") }} - {{ user.username }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,15 +9,15 @@
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-user"></i> تفاصيل المستخدم - {{ user.username }}
-            {% if user.is_owner %}<span class="badge badge-warning">مالك</span>{% endif %}
+            <i class="fas fa-user"></i> {{ t("User Details") }} - {{ user.username }}
+            {% if user.is_owner %}<span class="badge badge-warning">{{ t("Owner") }}</span>{% endif %}
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('users.edit', id=user.id) }}" class="btn btn-warning">
-              <i class="fas fa-edit"></i> تعديل
+              <i class="fas fa-edit"></i> {{ t("Edit") }}
             </a>
             <a href="{{ url_for('users.index') }}" class="btn btn-secondary">
-              <i class="fas fa-arrow-left"></i> رجوع
+              <i class="fas fa-arrow-left"></i> {{ t("Back") }}
             </a>
           </div>
         </div>
@@ -25,31 +25,31 @@
           <div class="row">
             
             <div class="col-md-6">
-              <h4>المعلومات الأساسية</h4>
+              <h4>{{ t("Basic Information") }}</h4>
               <table class="table table-bordered">
                 <tr>
-                  <th width="40%">اسم المستخدم</th>
+                  <th width="40%">{{ t("Username") }}</th>
                   <td>{{ user.username }}</td>
                 </tr>
                 <tr>
-                  <th>الاسم الكامل</th>
+                  <th>{{ t("Full Name") }}</th>
                   <td>{{ user.full_name or '-' }}</td>
                 </tr>
                 <tr>
-                  <th>البريد الإلكتروني</th>
+                  <th>{{ t("Email") }}</th>
                   <td>{{ user.email or '-' }}</td>
                 </tr>
                 <tr>
-                  <th>الهاتف</th>
+                  <th>{{ t("Phone") }}</th>
                   <td dir="ltr" class="text-left">{{ user.phone or '-' }}</td>
                 </tr>
                 <tr>
-                  <th>الدور</th>
+                  <th>{{ t("Role") }}</th>
                   <td>
                     {% if user.is_owner %}
-                      <span class="badge badge-danger">مالك</span>
+                      <span class="badge badge-danger">{{ t("Owner") }}</span>
                     {% elif user.is_admin %}
-                      <span class="badge badge-warning">مدير</span>
+                      <span class="badge badge-warning">{{ t("Manager") }}</span>
                     {% else %}
                       <span class="badge badge-info">{{ user.role.name_ar if user.role else '-' }}</span>
                     {% endif %}
@@ -57,17 +57,17 @@
                 </tr>
                 {% if current_user.is_owner %}
                 <tr>
-                  <th>المستأجر</th>
+                  <th>{{ t("Tenant") }}</th>
                   <td>{{ user.tenant.name_ar if user.tenant else '—' }}</td>
                 </tr>
                 {% endif %}
                 <tr>
-                  <th>الحالة</th>
+                  <th>{{ t("Status") }}</th>
                   <td>
                     {% if user.is_active %}
-                      <span class="badge badge-success">نشط</span>
+                      <span class="badge badge-success">{{ t("Active") }}</span>
                     {% else %}
-                      <span class="badge badge-secondary">غير نشط</span>
+                      <span class="badge badge-secondary">{{ t("Inactive") }}</span>
                     {% endif %}
                   </td>
                 </tr>
@@ -76,30 +76,30 @@
 
             
             <div class="col-md-6">
-              <h4>معلومات إضافية</h4>
+              <h4>{{ t("Additional Information") }}</h4>
               <table class="table table-bordered">
                 <tr>
-                  <th width="40%">تاريخ الإنشاء</th>
+                  <th width="40%">{{ t("Created At") }}</th>
                   <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
                 </tr>
                 <tr>
-                  <th>آخر دخول</th>
+                  <th>{{ t("Last Login") }}</th>
                   <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '-' }}</td>
                 </tr>
                 <tr>
-                  <th>آخر ظهور</th>
+                  <th>{{ t("Last Seen") }}</th>
                   <td>{{ user.last_seen.strftime('%Y-%m-%d %H:%M') if user.last_seen else '-' }}</td>
                 </tr>
                 <tr>
-                  <th>عدد المبيعات</th>
+                  <th>{{ t("Sales Count") }}</th>
                   <td>{{ stats.sales_count }}</td>
                 </tr>
                 <tr>
-                  <th>إجمالي المبيعات</th>
+                  <th>{{ t("Total Sales") }}</th>
                   <td>{{ "{:,.2f}".format(stats.sales_total) }}</td>
                 </tr>
                 <tr>
-                  <th>إجمالي المدفوعات</th>
+                  <th>{{ t("Total Payments") }}</th>
                   <td>{{ "{:,.2f}".format(stats.payments_total) }}</td>
                 </tr>
               </table>
@@ -108,9 +108,9 @@
 
           <div class="row mt-3">
             <div class="col-md-6">
-              <h5>أحدث المبيعات</h5>
+              <h5>{{ t("Recent Sales") }}</h5>
               <table class="table table-bordered table-striped">
-                <thead><tr><th>الرقم</th><th>الإجمالي</th><th>الحالة</th></tr></thead>
+                <thead><tr><th>{{ t("Number") }}</th><th>{{ t("Total Amount") }}</th><th>{{ t("Status") }}</th></tr></thead>
                 <tbody>
                   {% for s in recent_sales %}
                   <tr>
@@ -119,15 +119,15 @@
                     <td>{{ s.status }}</td>
                   </tr>
                   {% else %}
-                  <tr><td colspan="3" class="text-center text-muted">لا مبيعات.</td></tr>
+                  <tr><td colspan="3" class="text-center text-muted">{{ t("No sales.") }}</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
             <div class="col-md-6">
-              <h5>أحدث سجل التدقيق ({{ stats.audits_count }})</h5>
+              <h5>{{ t("Recent Audit Log") }} ({{ stats.audits_count }})</h5>
               <table class="table table-bordered table-striped">
-                <thead><tr><th>الإجراء</th><th>الجدول</th><th>التاريخ</th></tr></thead>
+                <thead><tr><th>{{ t("Action") }}</th><th>{{ t("Table") }}</th><th>{{ t("Date") }}</th></tr></thead>
                 <tbody>
                   {% for a in recent_audits %}
                   <tr>
@@ -136,7 +136,7 @@
                     <td>{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '-' }}</td>
                   </tr>
                   {% else %}
-                  <tr><td colspan="3" class="text-center text-muted">لا سجلات.</td></tr>
+                  <tr><td colspan="3" class="text-center text-muted">{{ t("No records.") }}</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
@@ -147,7 +147,7 @@
           {% if current_user.is_admin %}
           <button type="button" class="btn btn-danger"
                   onclick="deleteItem('users', {{ user.id }}, {{ user.username|tojson }}, {{ url_for('users.index')|tojson }})">
-            <i class="fas fa-trash"></i> حذف
+            <i class="fas fa-trash"></i> {{ t("Delete") }}
           </button>
           {% endif %}
         </div>

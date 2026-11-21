@@ -54,7 +54,7 @@
         dom: hasButtons ? "Bfrtip" : "frtip",
         buttons: hasButtons ? [
           { extend: "excelHtml5", text: '<i class="fas fa-file-excel"></i> Excel' },
-          { extend: "print", text: '<i class="fas fa-print"></i> طباعة' }
+          { extend: "print", text: '<i class="fas fa-print"></i> ' + t('Print') }
         ] : [],
         pageLength: pageLen,
         responsive: true,
@@ -93,7 +93,7 @@
         dir: "rtl",
         width: "100%",
         language: "ar",
-        placeholder: $el.attr("placeholder") || "اختر...",
+        placeholder: $el.attr("placeholder") || t('Select...'),
         // Short lists stay clean (no search box); long lookup lists
         // automatically gain a filter box. Uniform UX everywhere.
         minimumResultsForSearch: 6,
@@ -123,7 +123,7 @@
         dir: "rtl",
         width: "100%",
         language: "ar",
-        placeholder: $el.attr("placeholder") || "اختر...",
+        placeholder: $el.attr("placeholder") || t('Select...'),
         allowClear: String($el.data("allow-clear") || "").toLowerCase() === "true" || $el.data("allowClear") == 1,
         minimumInputLength: minLen,
         dropdownParent: parent.length ? parent : $(document.body),
@@ -172,7 +172,7 @@
         if ($btn.prop("disabled")) return;
         const original = $btn.html();
         $btn.data("original-html", original).prop("disabled", true).attr("aria-busy", "true")
-          .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> جاري المعالجة...');
+          .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + t('Processing'));
         setTimeout(() => {
           if (!$btn.closest("form").length) {
             $btn.prop("disabled", false).attr("aria-busy", "false").html(original);
@@ -229,17 +229,17 @@
     
     $.get(`/api/search/${target}`, { q: query })
       .done(data => {
-        $container.html(data.html || 'لا توجد نتائج');
+        $container.html(data.html || t('No results found'));
       })
       .fail(() => {
-        $container.html('<div class="alert alert-danger">خطأ في البحث</div>');
+        $container.html('<div class="alert alert-danger">' + t('Search error') + '</div>');
       });
   }
 
   function saveFormData($form) {
     const formData = $form.serialize();
     localStorage.setItem(`form_${$form.attr('id')}`, formData);
-    showNotification('تم حفظ البيانات تلقائياً', 'success');
+    showNotification(t('Data saved automatically'), 'success');
   }
 
   function initNotifications() {
@@ -359,7 +359,7 @@
     const $alert = $(`
       <div class="alert ${alertClass} alert-dismissible fade show system-alert" role="alert">
         <i class="${icon} me-2"></i>
-        <strong>تنبيه النظام:</strong> ${message}
+        <strong>${t('System alert:')}</strong> ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     `);

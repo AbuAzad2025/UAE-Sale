@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دليل المالك — {{ config.COMPANY_NAME_AR }}</title>
+    <title>{{ t('Owner Guide') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <style>
@@ -47,232 +47,232 @@
 <body>
 
 <nav class="navbar">
-    <div class="logo">{{ config.COMPANY_NAME_AR }} — Owner Guide</div>
+    <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }} — {{ t('Owner Guide') }}</div>
     <div>
         <a href="{{ url_for('owner.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> خروج</a>
+        <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> {{ t('Sign Out') }}</a>
     </div>
 </nav>
 
 <header class="header">
-    <h1> دليل المالك (Owner Guide)</h1>
-    <p>دليل شامل لجميع ميزات لوحة المالك — للتحكم الكامل في النظام</p>
+    <h1> {{ t('Owner Guide') }}</h1>
+    <p>{{ t('A comprehensive guide to all owner dashboard features - for full control of the system') }}</p>
 </header>
 
 <div class="warning">
-     هذا الدليل للمالك فقط — يحتوي على معلومات تقنية حساسة
+     {{ t('This guide is for the owner only - it contains sensitive technical information') }}
 </div>
 
 <div class="container">
 
     <div class="section">
-        <h2>1. لوحة تحكم المالك (Owner Dashboard)</h2>
+        <h2>1. {{ t('Owner Control Panel') }}</h2>
         <p><code>/owner/dashboard</code></p>
-        <p>لوحة التحكم الرئيسية تعرض:</p>
+        <p>{{ t('The main dashboard displays:') }}</p>
         <ul>
-            <li>إجمالي المستخدمين</li>
-            <li>إجمالي العملاء</li>
-            <li>إجمالي المبيعات</li>
-            <li>إجمالي الإيرادات</li>
+            <li>{{ t('Total Users') }}</li>
+            <li>{{ t('Total Clients') }}</li>
+            <li>{{ t('Total Sales') }}</li>
+            <li>{{ t('Total Revenue') }}</li>
         </ul>
-        <p>يمكنك النقر على أي بطاقة للانتقال إلى التفاصيل.</p>
+        <p>{{ t('You can click any card to view details.') }}</p>
     </div>
 
     <div class="section">
-        <h2>2. إدارة المستخدمين والأدوار (Users & Roles)</h2>
+        <h2>2. {{ t('Users & Roles Management') }}</h2>
         <p><code>/owner/roles-permissions</code></p>
-        <p>إدارة الأدوار والصلاحيات (RBAC):</p>
+        <p>{{ t('Manage roles and permissions (RBAC):') }}</p>
         <ul>
-            <li>عرض جميع الأدوار (owner, super_admin, admin, accountant, sales, warehouse)</li>
-            <li>تعديل صلاحيات كل دور</li>
-            <li>إضافة أدوار جديدة</li>
+            <li>{{ t('View all roles (owner, super_admin, admin, accountant, sales, warehouse)') }}</li>
+            <li>{{ t('Edit each role permissions') }}</li>
+            <li>{{ t('Add new roles') }}</li>
         </ul>
         <div class="step-box">
-            <h4>كيفية تعديل دور:</h4>
+            <h4>{{ t('How to edit a role:') }}</h4>
             <ol>
-                <li>انتقل إلى <code>/owner/roles-permissions</code></li>
-                <li>اختر الدور</li>
-                <li>فعّل/عطّل الصلاحيات</li>
-                <li>احفظ</li>
+                <li>{{ t('Go to') }} <code>/owner/roles-permissions</code></li>
+                <li>{{ t('Select the role') }}</li>
+                <li>{{ t('Enable/disable permissions') }}</li>
+                <li>{{ t('Save Action') }}</li>
             </ol>
         </div>
     </div>
 
     <div class="section">
-        <h2>3. إدارة التينانتات (Tenants — Multi-Tenant)</h2>
+        <h2>3. {{ t('Tenant Management (Multi-Tenant)') }}</h2>
         <p><code>/owner/tenants</code></p>
-        <p>إدارة جميع التينانتات (المستأجرين) في النظام:</p>
+        <p>{{ t('Manage all tenants in the system:') }}</p>
         <ul>
-            <li><strong>القائمة:</strong> /owner/tenants</li>
-            <li><strong>إنشاء:</strong> /owner/tenants/new</li>
-            <li><strong>تفاصيل:</strong> /owner/tenants/&lt;id&gt;</li>
-            <li><strong>تعديل:</strong> /owner/tenants/&lt;id&gt;/edit</li>
-            <li><strong>تعليق:</strong> /owner/tenants/&lt;id&gt;/suspend</li>
-            <li><strong>تفعيل:</strong> /owner/tenants/&lt;id&gt;/activate</li>
+            <li><strong>{{ t('The List') }}:</strong> /owner/tenants</li>
+            <li><strong>{{ t('Create') }}:</strong> /owner/tenants/new</li>
+            <li><strong>{{ t('Details') }}:</strong> /owner/tenants/&lt;id&gt;</li>
+            <li><strong>{{ t('Edit') }}:</strong> /owner/tenants/&lt;id&gt;/edit</li>
+            <li><strong>{{ t('Suspend') }}:</strong> /owner/tenants/&lt;id&gt;/suspend</li>
+            <li><strong>{{ t('Activate') }}:</strong> /owner/tenants/&lt;id&gt;/activate</li>
         </ul>
         <div class="step-box">
-            <h4>كيفية إنشاء تينانت:</h4>
+            <h4>{{ t('How to create a tenant:') }}</h4>
             <ol>
-                <li>انتقل إلى <code>/owner/tenants/new</code></li>
-                <li>املأ المعلومات (الاسم، الشعار، الألوان، بيانات الاتصال)</li>
-                <li>راجع حدود المستخدمين والمنتجات والعملاء حسب الحاجة</li>
-                <li>احفظ</li>
+                <li>{{ t('Go to') }} <code>/owner/tenants/new</code></li>
+                <li>{{ t('Fill in the information (name, logo, colors, contact details)') }}</li>
+                <li>{{ t('Review user, product and customer limits as needed') }}</li>
+                <li>{{ t('Save Action') }}</li>
             </ol>
         </div>
-        <div class="note"><strong> تخصيص التينانت:</strong> يمكنك تعيين شعار ولون مخصص لكل تينانت.</div>
+        <div class="note"><strong> {{ t('Tenant customization') }}:</strong> {{ t('You can assign a custom logo and color to each tenant.') }}</div>
     </div>
 
     <div class="section">
-        <h2>4. إعدادات الشركة (Company Info)</h2>
+        <h2>4. {{ t('Company Settings') }}</h2>
         <p><code>/owner/company-info</code></p>
-        <p>تعديل معلومات الشركة:</p>
+        <p>{{ t('Edit company information:') }}</p>
         <ul>
-            <li>الاسم (عربي/إنجليزي)</li>
-            <li>العنوان، الهاتف، البريد، الموقع</li>
-            <li>الشعار + الألوان</li>
-            <li>معلومات قانونية (ضريبة، سجل تجاري)</li>
+            <li>{{ t('Name (Arabic/English)') }}</li>
+            <li>{{ t('Address, phone, email, website') }}</li>
+            <li>{{ t('Logo + colors') }}</li>
+            <li>{{ t('Legal information (tax, commercial register)') }}</li>
         </ul>
     </div>
 
     <div class="section">
-        <h2>5. إعدادات النظام (System Config)</h2>
+        <h2>5. {{ t('System Config') }}</h2>
         <p><code>/owner/system-config</code></p>
-        <p>إعدادات النظام العامة:</p>
+        <p>{{ t('General system settings:') }}</p>
         <ul>
-            <li><code>/owner/tax-settings</code> - الضرائب العامة</li>
-            <li><code>/owner/tax-rulesets</code> - قواعد الضريبة للدول (قابل للتعديل بلا كود)</li>
-            <li><code>/owner/compliance-credentials</code> - اعتمادات الامتثال لكل شركة لكل سلطة (ZATCA/FTA/ETA…)</li>
-            <li><code>/owner/currency-settings</code> — العملات</li>
-            <li><code>/owner/payment-gateways</code> — بوابات الدفع</li>
-            <li><code>/owner/email-settings</code> — البريد الإلكتروني</li>
-            <li><code>/owner/sms-settings</code> — الرسائل القصيرة</li>
+            <li><code>/owner/tax-settings</code> - {{ t('General Taxes') }}</li>
+            <li><code>/owner/tax-rulesets</code> - {{ t('Country tax rulesets (editable without code)') }}</li>
+            <li><code>/owner/compliance-credentials</code> - {{ t('Compliance credentials per company per authority (ZATCA/FTA/ETA...)') }}</li>
+            <li><code>/owner/currency-settings</code> — {{ t('Currencies') }}</li>
+            <li><code>/owner/payment-gateways</code> — {{ t('Payment Gateways') }}</li>
+            <li><code>/owner/email-settings</code> — {{ t('Email') }}</li>
+            <li><code>/owner/sms-settings</code> — {{ t('SMS') }}</li>
             <li><code>/owner/whatsapp-settings</code> — WhatsApp</li>
         </ul>
     </div>
 
     <div class="section">
-        <h2>6. ثوابت النظام (Constants / Lookups)</h2>
+        <h2>6. {{ t('System Constants') }}</h2>
         <p><code>/owner/constants</code></p>
-        <p>إدارة القيم (lookups) المستخدمة في قوائم الاختيار:</p>
+        <p>{{ t('Manage lookup values used in dropdown lists:') }}</p>
         <ul>
-            <li>أصناف المنتجات، وحدات القياس</li>
-            <li>أنواع العملاء والموردين</li>
-            <li>طرق الدفع</li>
-            <li>العملات، المناطق الزمنية، اللغات</li>
-            <li>أنواع الشيكات، حالات الشيكات</li>
+            <li>{{ t('Product categories, units of measure') }}</li>
+            <li>{{ t('Customer and supplier types') }}</li>
+            <li>{{ t('Payment methods') }}</li>
+            <li>{{ t('Currencies, time zones, languages') }}</li>
+            <li>{{ t('Cheque types, cheque statuses') }}</li>
         </ul>
-        <div class="note"><strong> Locked Groups:</strong> بعض المجموعات مقفلة (لا يمكن إضافة/تعطيل قيم، فقط تعديل الاسم).</div>
+        <div class="note"><strong> {{ t('Locked Groups') }}:</strong> {{ t('Some groups are locked (cannot add/disable values, only edit labels).') }}</div>
     </div>
 
     <div class="section">
-        <h2>7. إعدادات الفواتير (Invoice Settings)</h2>
+        <h2>7. {{ t('Invoice Settings') }}</h2>
         <p><code>/owner/invoice-settings</code></p>
-        <p>تخصيص الفواتير:</p>
+        <p>{{ t('Customize invoices:') }}</p>
         <ul>
-            <li>القالب (default, modern, classic)</li>
-            <li>حجم الورق (A4, Letter, Legal)</li>
-            <li>الاتجاه (Portrait, Landscape)</li>
-            <li>اللغة (عربية، إنجليزية)</li>
+            <li>{{ t('Template (default, modern, classic)') }}</li>
+            <li>{{ t('Paper size (A4, Letter, Legal)') }}</li>
+            <li>{{ t('Orientation (Portrait, Landscape)') }}</li>
+            <li>{{ t('Language (Arabic, English)') }}</li>
         </ul>
-        <p>معاينة: <code>/owner/preview-invoice/&lt;template&gt;</code></p>
+        <p>{{ t('Preview') }}: <code>/owner/preview-invoice/&lt;template&gt;</code></p>
     </div>
 
     <div class="section">
-        <h2>8. التدقيق (Audit & Logs)</h2>
-        <p>مراقبة نشاط النظام:</p>
+        <h2>8. {{ t('Audit & Logs') }}</h2>
+        <p>{{ t('Monitor system activity:') }}</p>
         <ul>
-            <li><code>/owner/audit-logs</code> — سجلات التدقيق (كل الإجراءات)</li>
-            <li><code>/owner/error-logs</code> — سجلات الأخطاء</li>
-            <li><code>/owner/login-history</code> — سجل تسجيل الدخول</li>
-            <li><code>/owner/security-alerts</code> — تنبيهات أمنية</li>
-            <li><code>/owner/ip-whitelist</code> — قائمة IP المسموحة</li>
-            <li><code>/owner/api-keys</code> — مفاتيح API</li>
+            <li><code>/owner/audit-logs</code> — {{ t('Audit logs (all actions)') }}</li>
+            <li><code>/owner/error-logs</code> — {{ t('Error logs') }}</li>
+            <li><code>/owner/login-history</code> — {{ t('Login history') }}</li>
+            <li><code>/owner/security-alerts</code> — {{ t('Security alerts') }}</li>
+            <li><code>/owner/ip-whitelist</code> — {{ t('Allowed IP list') }}</li>
+            <li><code>/owner/api-keys</code> — {{ t('API keys') }}</li>
         </ul>
-        <div class="danger"><strong> تنبيه:</strong> أي تغيير في صلاحيات/أدوار يُسجل في Audit Log.</div>
+        <div class="danger"><strong> {{ t('Alert') }}:</strong> {{ t('Any change to permissions/roles is recorded in the Audit Log.') }}</div>
     </div>
 
     <div class="section">
-        <h2>9. النسخ الاحتياطي (Backups)</h2>
-        <p>إدارة النسخ الاحتياطية:</p>
+        <h2>9. {{ t('Backup Section') }}</h2>
+        <p>{{ t('Manage backups:') }}</p>
         <ul>
-            <li><code>/owner/database-tools</code> — أدوات قاعدة البيانات</li>
-            <li><code>/owner/backup-now</code> — نسخ احتياطي فوري</li>
-            <li><code>/owner/backups/list</code> — قائمة النسخ</li>
-            <li><code>/owner/backups/restore/&lt;filename&gt;</code> — استعادة نسخة</li>
-            <li><code>/owner/scheduled-backups</code> — النسخ المجدولة</li>
-            <li><code>/owner/database-optimize</code> — تحسين قاعدة البيانات</li>
+            <li><code>/owner/database-tools</code> — {{ t('Database tools') }}</li>
+            <li><code>/owner/backup-now</code> — {{ t('Instant backup') }}</li>
+            <li><code>/owner/backups/list</code> — {{ t('Backup list') }}</li>
+            <li><code>/owner/backups/restore/&lt;filename&gt;</code> — {{ t('Restore a backup') }}</li>
+            <li><code>/owner/scheduled-backups</code> — {{ t('Scheduled backups') }}</li>
+            <li><code>/owner/database-optimize</code> — {{ t('Database optimization') }}</li>
         </ul>
-        <div class="note"><strong> نصيحة:</strong> قم بعمل نسخ احتياطية مجدولة يومياً.</div>
+        <div class="note"><strong> {{ t('Tip') }}:</strong> {{ t('Create scheduled backups daily.') }}</div>
     </div>
 
     <div class="section">
-        <h2>10. التقارير (Reports)</h2>
-        <p>تقارير المالك:</p>
-        <ul>
-        </ul>
-    </div>
-
-    <div class="section">
-        <h2>11. التحليلات (Analytics)</h2>
-        <p>تحليلات متقدمة:</p>
+        <h2>10. {{ t('Reports') }}</h2>
+        <p>{{ t('Owner reports:') }}</p>
         <ul>
         </ul>
     </div>
 
     <div class="section">
-        <h2>12. صحة النظام (System Health)</h2>
-        <p>مراقبة صحة النظام:</p>
+        <h2>11. {{ t('Analytics') }}</h2>
+        <p>{{ t('Advanced analytics:') }}</p>
         <ul>
-            <li><code>/owner/system-health</code> — صحة النظام</li>
-            <li><code>/owner/performance-metrics</code> — مقاييس الأداء</li>
         </ul>
     </div>
 
     <div class="section">
-        <h2>13. إدارة البيانات (Data Management)</h2>
-        <p>أدوات متقدمة للبيانات:</p>
+        <h2>12. {{ t('System Health') }}</h2>
+        <p>{{ t('Monitor system health:') }}</p>
         <ul>
-            <li><code>/owner/data-cleanup</code> — تنظيف البيانات</li>
-            <li><code>/owner/import-export-tools</code> — استيراد/تصدير</li>
-            <li><code>/owner/export-excel/&lt;table&gt;</code> — تصدير جدول</li>
-            <li><code>/owner/archived</code> — السجلات المؤرشفة</li>
-            <li><code>/owner/clear-cache</code> — مسح Cache</li>
-            <li><code>/owner/browse-table/&lt;table&gt;</code> — تصفح جدول</li>
-            <li><code>/owner/export-database</code> — تصدير قاعدة البيانات</li>
+            <li><code>/owner/system-health</code> — {{ t('System Health') }}</li>
+            <li><code>/owner/performance-metrics</code> — {{ t('Performance metrics') }}</li>
         </ul>
     </div>
 
     <div class="section">
-        <h2>14. التكامل (Integrations)</h2>
+        <h2>13. {{ t('Data Management') }}</h2>
+        <p>{{ t('Advanced data tools:') }}</p>
+        <ul>
+            <li><code>/owner/data-cleanup</code> — {{ t('Data Cleanup') }}</li>
+            <li><code>/owner/import-export-tools</code> — {{ t('Import/Export') }}</li>
+            <li><code>/owner/export-excel/&lt;table&gt;</code> — {{ t('Export table') }}</li>
+            <li><code>/owner/archived</code> — {{ t('Archived Records') }}</li>
+            <li><code>/owner/clear-cache</code> — {{ t('Clear cache') }}</li>
+            <li><code>/owner/browse-table/&lt;table&gt;</code> — {{ t('Browse table') }}</li>
+            <li><code>/owner/export-database</code> — {{ t('Export database') }}</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>14. {{ t('Integrations Section') }}</h2>
         <p><code>/owner/integrations</code></p>
-        <p>قائمة التكاملات وبوابات الدفع والخدمات.</p>
+        <p>{{ t('List of integrations, payment gateways and services.') }}</p>
     </div>
 
     <div class="section">
-        <h2>15. خزنة البطاقات (Cards Vault)</h2>
+        <h2>15. {{ t('Cards Vault') }}</h2>
         <p><code>/owner/cards-vault</code></p>
-        <p>خزنة مشفرة للبطاقات (AES-256):</p>
+        <p>{{ t('Encrypted vault for cards (AES-256):') }}</p>
         <ul>
-            <li>إضافة/عرض/حذف بطاقات</li>
-            <li>جميع البيانات مشفرة</li>
+            <li>{{ t('Add/view/delete cards') }}</li>
+            <li>{{ t('All data is encrypted') }}</li>
         </ul>
     </div>
 
     <div class="section">
-        <h2>16. إعادة تقييم العملات (FX Revaluation)</h2>
+        <h2>16. {{ t('FX Revaluation') }}</h2>
         <p><code>/owner/fx-revaluation/</code></p>
-        <p>إعادة تقييم الذمم المدينة والدائنة حسب سعر الصرف.</p>
+        <p>{{ t('Revalue receivables and payables by exchange rate.') }}</p>
         <ul>
-            <li>Dry run (معاينة)</li>
-            <li>Execute (تطبيق)</li>
+            <li>Dry run ({{ t('Preview') }})</li>
+            <li>Execute ({{ t('Apply') }})</li>
         </ul>
     </div>
 
 </div>
 
 <footer>
-    <p>&copy; {{ current_year }} {{ config.COMPANY_NAME_AR }} — Owner Guide</p>
-    <p><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a> | <a href="{{ url_for('auth.logout') }}">خروج</a></p>
+    <p>&copy; {{ current_year }} {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }} — {{ t('Owner Guide') }}</p>
+    <p><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a> | <a href="{{ url_for('auth.logout') }}">{{ t('Sign Out') }}</a></p>
 </footer>
 
 </body>

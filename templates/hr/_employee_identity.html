@@ -1,58 +1,58 @@
 
 <div class="col-md-3">
   <div class="form-group">
-    <label>رقم الهوية</label>
+    <label>{{ t('National ID') }}</label>
     <input type="text" name="national_id" class="form-control" value="{{ employee.national_id if employee else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>رقم الجواز</label>
+    <label>{{ t('Passport Number') }}</label>
     <input type="text" name="passport_number" class="form-control" value="{{ employee.passport_number if employee else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>رقم التأشيرة</label>
+    <label>{{ t('Visa Number') }}</label>
     <input type="text" name="visa_number" class="form-control" value="{{ employee.visa_number if employee else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>انتهاء التأشيرة</label>
+    <label>{{ t('Visa Expiry') }}</label>
     <input type="date" name="visa_expiry" class="form-control" value="{{ employee.visa_expiry.isoformat() if employee and employee.visa_expiry else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>تاريخ الميلاد</label>
+    <label>{{ t('Date of Birth') }}</label>
     <input type="date" name="date_of_birth" class="form-control" value="{{ employee.date_of_birth.isoformat() if employee and employee.date_of_birth else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>الجنس</label>
+    <label>{{ t('Gender') }}</label>
     <select name="gender" class="form-control select2">
-      <option value="">— اختر —</option>
+      <option value="">{{ t('Select') }}</option>
       {% for code, meta in lookups.get('genders', []) %}
-      <option value="{{ code }}" {% if employee and employee.gender == code %}selected{% endif %}>{{ meta.ar }}</option>
+      <option value="{{ code }}" {% if employee and employee.gender == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
       {% endfor %}
     </select>
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>الجنسية</label>
+    <label>{{ t('Nationality') }}</label>
     <input type="text" name="nationality" class="form-control" value="{{ employee.nationality if employee else '' }}">
   </div>
 </div>
 <div class="col-md-3">
   <div class="form-group">
-    <label>الحالة الاجتماعية</label>
+    <label>{{ t('Marital Status') }}</label>
     <select name="marital_status" class="form-control select2">
-      <option value="">— اختر —</option>
+      <option value="">{{ t('Select') }}</option>
       {% for code, meta in lookups.get('marital_statuses', []) %}
-      <option value="{{ code }}" {% if employee and employee.marital_status == code %}selected{% endif %}>{{ meta.ar }}</option>
+      <option value="{{ code }}" {% if employee and employee.marital_status == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
       {% endfor %}
     </select>
   </div>

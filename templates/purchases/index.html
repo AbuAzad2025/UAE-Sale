@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة المشتريات والفواتير{% endblock %}
-{% block page_title %}المشتريات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Purchase Management and Invoices') }}{% endblock %}
+{% block page_title %}{{ t('Purchases') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -74,14 +74,14 @@
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h3 class="card-title mb-0">
-      <i class="fas fa-file-invoice-dollar mr-2"></i>سجل المشتريات
+      <i class="fas fa-file-invoice-dollar mr-2"></i>{{ t('Purchase Register') }}
     </h3>
     <div class="btn-group">
       <button type="button" class="btn btn-sm btn-outline-info" id="printPurchasesBtn">
-        <i class="fas fa-print mr-1"></i>طباعة
+        <i class="fas fa-print mr-1"></i>{{ t('Print') }}
       </button>
       <a href="{{ url_for('purchases.create') }}" class="btn btn-primary">
-        <i class="fas fa-plus mr-2"></i>فاتورة شراء جديدة
+        <i class="fas fa-plus mr-2"></i>{{ t('New Purchase Invoice') }}
       </a>
     </div>
   </div>
@@ -91,16 +91,16 @@
       <thead>
         <tr>
           <th>{{ t('Invoice Number') }}</th>
-          <th>المورد</th>
+          <th>{{ t('Supplier') }}</th>
           <th>{{ t('Date') }}</th>
-          <th>المبلغ الإجمالي</th>
-          <th>المدفوع</th>
-          <th>المتبقي</th>
-          <th>الحالة</th>
-          <th>تاريخ الاستحقاق</th>
-          <th>العملة</th>
-          <th>الضريبة</th>
-          <th>الإجراءات</th>
+          <th>{{ t('Total Amount') }}</th>
+          <th>{{ t('Paid') }}</th>
+          <th>{{ t('Remaining') }}</th>
+          <th>{{ t('Status') }}</th>
+          <th>{{ t('Due Date') }}</th>
+          <th>{{ t('Currency') }}</th>
+          <th>{{ t('Tax') }}</th>
+          <th>{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -121,22 +121,22 @@
             {% set balance = (purchase.total_amount - purchase.get_paid_amount()) %}
             {% if balance <= 0 %}
               <span class="badge badge-success px-3">
-                <i class="fas fa-check mr-1"></i>مدفوع
+                <i class="fas fa-check mr-1"></i>{{ t('Paid') }}
               </span>
             {% elif balance > 0 and purchase.get_paid_amount() > 0 %}
               <span class="badge badge-warning px-3">
-                <i class="fas fa-clock mr-1"></i>جزئي
+                <i class="fas fa-clock mr-1"></i>{{ t('Partial') }}
               </span>
             {% else %}
               <span class="badge badge-danger px-3">
-                <i class="fas fa-hourglass-half mr-1"></i>آجل
+                <i class="fas fa-hourglass-half mr-1"></i>{{ t('Deferred') }}
               </span>
             {% endif %}
           </td>
           <td>
             <span class="text-muted">{{ purchase.effective_due_date.strftime('%Y-%m-%d') if purchase.effective_due_date else '-' }}</span>
             {% if purchase.get_paid_amount() < purchase.total_amount and purchase.days_overdue > 0 %}
-              <br><span class="badge badge-danger px-2">متأخر {{ purchase.days_overdue }} يوم</span>
+              <br><span class="badge badge-danger px-2">{{ t('Overdue') }} {{ purchase.days_overdue }} {{ t('days') }}</span>
             {% endif %}
           </td>
           <td>{{ purchase.currency }}</td>
@@ -144,9 +144,9 @@
             {% if purchase.reverse_charge %}
               <span class="badge badge-warning px-2">RC</span>
             {% elif purchase.tax_treatment == 'zero' %}
-              <span class="badge badge-info px-2">صفرية</span>
+              <span class="badge badge-info px-2">{{ t('Zero-rated') }}</span>
             {% elif purchase.tax_treatment == 'exempt' %}
-              <span class="badge badge-secondary px-2">معفاة</span>
+              <span class="badge badge-secondary px-2">{{ t('Exempt') }}</span>
             {% elif purchase.vat_recoverable == False %}
               <span class="badge badge-dark px-2">NR</span>
             {% elif purchase.tax_rate and purchase.tax_rate > 0 %}
@@ -164,12 +164,12 @@
               {% set balance = (purchase.total_amount - purchase.get_paid_amount()) %}
               {% if balance > 0 %}
               <a href="{{ url_for('payments.create_payment', purchase_id=purchase.id) }}" 
-                 class="btn btn-danger" title="سند صرف">
+                 class="btn btn-danger" title="{{ t('Payment Voucher') }}">
                 <i class="fas fa-money-bill-wave"></i>
               </a>
               {% endif %}
               <button type="button" class="btn btn-danger delete-purchase-btn" 
-                      data-id="{{ purchase.id }}" title="حذف">
+                      data-id="{{ purchase.id }}" title="{{ t('Delete') }}">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -188,7 +188,7 @@
 $(document).ready(function() {
   const $tableEl = $('#purchasesTable');
   const printOptions = {
-    title: 'سجل المشتريات',
+    title: {{ t('Purchase Register')|tojson }},
     headerColor: '#0d6efd'
   };
 
@@ -197,7 +197,7 @@ $(document).ready(function() {
     table = $tableEl.DataTable();
   } else {
     table = $tableEl.DataTable({
-      language: { url: "{{ url_for('static', filename='datatables/Arabic.json') }}" },
+      language: { url: "{{ url_for('static', filename=('datatables/English.json' if current_language == 'en' else 'datatables/Arabic.json')) }}" },
       order: [[2, 'desc']],
       pageLength: 25,
       dom: 'Bfrtip',

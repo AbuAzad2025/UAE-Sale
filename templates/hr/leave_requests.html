@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}طلبات الإجازة{% endblock %}
-{% block page_title %}<i class="fas fa-calendar-check mr-2"></i>طلبات الإجازة{% endblock %}
+{% block title %}{{ t('Leave Requests') }}{% endblock %}
+{% block page_title %}<i class="fas fa-calendar-check mr-2"></i>{{ t('Leave Requests') }}{% endblock %}
 
 {% block content %}
 <div class="mb-3">
-  <a href="{{ url_for('hr.create_leave') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>طلب إجازة جديد</a>
-  <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right mr-2"></i>لوحة التحكم</a>
+  <a href="{{ url_for('hr.create_leave') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('New Leave Request') }}</a>
+  <a href="{{ url_for('hr.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-right mr-2"></i>{{ t('Dashboard') }}</a>
 </div>
 
 <div class="card mb-3">
@@ -13,22 +13,22 @@
     <form method="GET" class="row">
       <div class="col-md-3">
         <select name="status" class="form-control select2">
-          <option value="">— كل الحالات —</option>
+          <option value="">{{ t('All Statuses') }}</option>
           {% for code, meta in lookups.get('leave_statuses', []) %}
-          <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
+          <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-md-3">
         <select name="employee" class="form-control">
-          <option value="">— كل الموظفين —</option>
+          <option value="">{{ t('All Employees') }}</option>
           {% for emp in employees %}
           <option value="{{ emp.id }}" {% if request.args.get('employee', 0)|int == emp.id %}selected{% endif %}>{{ emp.employee_number }} - {{ emp.user.full_name if emp.user else '' }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-md-2">
-        <button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1"></i>بحث</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1"></i>{{ t('Search') }}</button>
       </div>
     </form>
   </div>
@@ -39,14 +39,14 @@
     <table class="table table-bordered table-striped">
       <thead>
         <tr>
-          <th>الموظف</th>
-          <th>نوع الإجازة</th>
-          <th>من</th>
-          <th>إلى</th>
-          <th>الأيام</th>
-          <th>السبب</th>
-          <th>الحالة</th>
-          <th>الإجراءات</th>
+          <th>{{ t('Employee') }}</th>
+          <th>{{ t('Leave Type') }}</th>
+          <th>{{ t('From') }}</th>
+          <th>{{ t('To') }}</th>
+          <th>{{ t('Days') }}</th>
+          <th>{{ t('Reason') }}</th>
+          <th>{{ t('Status') }}</th>
+          <th>{{ t('Actions') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -66,21 +66,21 @@
             {% if req.status == 'pending' %}
             <form method="POST" action="{{ url_for('hr.approve_leave', id=req.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-success" title="موافقة" onclick="return confirm('هل تؤكد الموافقة على طلب الإجازة؟')">
+              <button type="submit" class="btn btn-sm btn-success" title="{{ t('Approve') }}" onclick='return confirm({{ t('Approve Leave Confirm')|tojson }})'>
                 <i class="fas fa-check"></i>
               </button>
             </form>
             <form method="POST" action="{{ url_for('hr.reject_leave', id=req.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="rejection_reason" value="تم الرفض من الإدارة">
-              <button type="submit" class="btn btn-sm btn-danger" title="رفض" onclick="return confirm('هل تؤكد رفض طلب الإجازة؟')">
+              <input type="hidden" name="rejection_reason" value="{{ t('Rejected by management') }}">
+              <button type="submit" class="btn btn-sm btn-danger" title="{{ t('Reject') }}" onclick='return confirm({{ t('Reject Leave Confirm')|tojson }})'>
                 <i class="fas fa-times"></i>
               </button>
             </form>
             {% elif req.status == 'approved' %}
             <form method="POST" action="{{ url_for('hr.cancel_leave', id=req.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-sm btn-secondary" title="إلغاء" onclick="return confirm('هل تؤكد إلغاء طلب الإجازة المعتمد؟')">
+              <button type="submit" class="btn btn-sm btn-secondary" title="{{ t('Cancel') }}" onclick='return confirm({{ t('Cancel Approved Leave Confirm')|tojson }})'>
                 <i class="fas fa-ban"></i>
               </button>
             </form>
@@ -88,7 +88,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted">لا توجد طلبات</td></tr>
+        <tr><td colspan="8" class="text-center text-muted">{{ t('No requests') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -99,13 +99,13 @@
     <nav>
       <ul class="pagination mb-0 justify-content-center">
         {% if pagination.has_prev %}
-        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}">السابق</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}">{{ t('Previous') }}</a></li>
         {% endif %}
         {% for p in pagination.iter_pages() %}
         <li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
         {% endfor %}
         {% if pagination.has_next %}
-        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}">التالي</a></li>
+        <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}">{{ t('Next') }}</a></li>
         {% endif %}
       </ul>
     </nav>

@@ -5,15 +5,15 @@
   <div class="container-fluid">
     <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
-        <h1 class="m-0"><i class="fas fa-key text-warning"></i> إدارة مفاتيح API</h1>
+        <h1 class="m-0"><i class="fas fa-key text-warning"></i> {{ t('API Key Management') }}</h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+            <i class="fas fa-arrow-right mr-1"></i> {{ t('Return to Owner Dashboard') }}
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a></li>
             <li class="breadcrumb-item active">API Keys</li>
           </ol>
         </div>
@@ -38,7 +38,7 @@
   <div class="container-fluid">
     <div class="card">
       <div class="card-header bg-gradient-warning text-white">
-        <h3 class="card-title"><i class="fas fa-user-shield mr-2"></i> إنشاء مفتاح جديد</h3>
+        <h3 class="card-title"><i class="fas fa-user-shield mr-2"></i> {{ t('Create New Key') }}</h3>
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('owner.api_keys') }}" class="api-keys-form mb-4">
@@ -46,41 +46,41 @@
           <div class="row align-items-end">
             <div class="col-md-5">
               <div class="form-group">
-                <label>اسم المفتاح</label>
+                <label>{{ t('Key Name') }}</label>
                 <input type="text" name="name" class="form-control" placeholder="My API Key" required>
-                <small class="form-text text-muted">اسم واضح يساعدك على تمييز استخدام المفتاح لاحقاً.</small>
+                <small class="form-text text-muted">{{ t("A clear name to help identify the key's use later.") }}</small>
               </div>
             </div>
             <div class="col-md-5">
               <div class="form-group">
-                <label>الخدمة</label>
+                <label>{{ t('Service') }}</label>
                 <select name="service" class="form-control select2" required>
                   {% for code, meta in lookups.get('api_key_services', []) %}
-                  <option value="{{ code }}">{{ meta.ar }} ({{ meta.en }})</option>
+                  <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }} ({{ meta.en }})</option>
                   {% endfor %}
                 </select>
-                <small class="form-text text-muted">حدد الغرض من المفتاح لضبط الصلاحيات المناسبة.</small>
+                <small class="form-text text-muted">{{ t('Select the key purpose to set the appropriate permissions.') }}</small>
               </div>
             </div>
             <div class="col-md-2">
               <button type="submit" class="btn btn-warning btn-block">
-                <i class="fas fa-plus mr-1"></i> إنشاء
+                <i class="fas fa-plus mr-1"></i> {{ t('Create') }}
               </button>
             </div>
           </div>
         </form>
 
-        <h5 class="mb-3"><i class="fas fa-list-alt text-warning"></i> مفاتيح مفعّلة</h5>
+        <h5 class="mb-3"><i class="fas fa-list-alt text-warning"></i> {{ t('Active Keys') }}</h5>
         <div class="table-responsive">
           <table class="table table-bordered table-hover">
             <thead class="thead-light">
               <tr>
-                <th>الاسم</th>
-                <th>الخدمة</th>
-                <th>جزء من المفتاح</th>
-                <th>آخر استخدام</th>
-                <th>الحالة</th>
-                <th class="text-center">إجراء</th>
+                <th>{{ t('Name') }}</th>
+                <th>{{ t('Service') }}</th>
+                <th>{{ t('Key Fragment') }}</th>
+                <th>{{ t('Last Used') }}</th>
+                <th>{{ t('Status') }}</th>
+                <th class="text-center">{{ t('Action Label') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -90,18 +90,18 @@
                   <td>{{ key.name }}</td>
                   <td><span class="badge badge-secondary">{{ key.service }}</span></td>
                   <td><code>{{ key.key[:20] }}...</code></td>
-                  <td>{{ key.last_used.strftime('%Y-%m-%d %H:%M') if key.last_used else 'لم يُستخدم بعد' }}</td>
+                  <td>{{ key.last_used.strftime('%Y-%m-%d %H:%M') if key.last_used else t('Never Used') }}</td>
                   <td>
                     {% if key.is_active %}
-                    <span class="badge badge-success">نشط</span>
+                    <span class="badge badge-success">{{ t('Active') }}</span>
                     {% else %}
-                    <span class="badge badge-secondary">معطل</span>
+                    <span class="badge badge-secondary">{{ t('Disabled') }}</span>
                     {% endif %}
                   </td>
                   <td class="text-center">
                     <form method="POST" action="{{ url_for('owner.toggle_api_key', id=key.id) }}" class="d-inline">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="btn btn-sm btn-outline-warning" title="تفعيل/تعطيل">
+                      <button type="submit" class="btn btn-sm btn-outline-warning" title="{{ t('Enable/Disable') }}">
                         <i class="fas fa-toggle-on"></i>
                       </button>
                     </form>
@@ -111,7 +111,7 @@
               {% else %}
                 <tr>
                   <td colspan="6" class="text-center text-muted">
-                    <i class="fas fa-info-circle"></i> لا توجد مفاتيح API حتى الآن.
+                    <i class="fas fa-info-circle"></i> {{ t('No API keys yet.') }}
                   </td>
                 </tr>
               {% endif %}

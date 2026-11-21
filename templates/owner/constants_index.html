@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}ثوابت النظام{% endblock %}
+{% block title %}{{ t('System Constants') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
-    <h3 class="mb-0"><i class="fas fa-list-alt mr-2"></i>ثوابت النظام</h3>
-    <p class="text-muted">القوائم المنسدلة الموحدة في كل النظام من مصدر واحد. المجموعات المقفلة  تحرك منطق التطبيق — مسموح تعديل تسمياتها فقط.</p>
+    <h3 class="mb-0"><i class="fas fa-list-alt mr-2"></i>{{ t('System Constants') }}</h3>
+    <p class="text-muted">{{ t('Unified dropdown lists across the entire system from a single source. Locked groups drive application logic - only their labels may be edited.') }}</p>
   </div>
 </div>
 
@@ -15,11 +15,11 @@
     <table class="table table-bordered table-striped mb-0">
       <thead>
         <tr>
-          <th>المجموعة</th>
-          <th>الحالة</th>
-          <th>القيم</th>
-          <th>مضافة</th>
-          <th>مخفية</th>
+          <th>{{ t('Group') }}</th>
+          <th>{{ t('Status') }}</th>
+          <th>{{ t('Values') }}</th>
+          <th>{{ t('Custom') }}</th>
+          <th>{{ t('Hidden') }}</th>
           <th></th>
         </tr>
       </thead>
@@ -27,11 +27,11 @@
         {% for r in rows %}
         <tr>
           <td><strong>{{ r.title }}</strong><br><small class="text-muted"><code>{{ r.key }}</code></small></td>
-          <td>{% if r.locked %}<span class="badge badge-secondary"> مقفلة</span>{% else %}<span class="badge badge-success">قابلة للتوسعة</span>{% endif %}</td>
+          <td>{% if r.locked %}<span class="badge badge-secondary"> {{ t('Locked') }}</span>{% else %}<span class="badge badge-success">{{ t('Extendable') }}</span>{% endif %}</td>
           <td>{{ r.total }}</td>
           <td>{{ r.custom }}</td>
           <td>{{ r.disabled }}</td>
-          <td><a href="{{ url_for('owner.constants_group', group=r.key) }}" class="btn btn-info btn-sm"><i class="fas fa-eye mr-1"></i>إدارة</a></td>
+          <td><a href="{{ url_for('owner.constants_group', group=r.key) }}" class="btn btn-info btn-sm"><i class="fas fa-eye mr-1"></i>{{ t('Manage') }}</a></td>
         </tr>
         {% endfor %}
       </tbody>

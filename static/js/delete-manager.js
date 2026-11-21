@@ -12,20 +12,20 @@
   window.deleteItem = function(itemType, itemId, itemName, redirectUrl) {
     // رسائل مخصصة حسب نوع العنصر
     const messages = {
-      'customers': { title: 'حذف زبون', text: 'تنبيه: سيتم أرشفة الزبون إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.', url: `/customers/${itemId}/delete` },
-      'suppliers': { title: 'حذف مورد', text: 'تنبيه: سيتم أرشفة المورد إذا كان له سجلات مالية، أو حذفه نهائياً إذا كان جديداً.', url: `/suppliers/${itemId}/delete` },
-      'products': { title: 'حذف منتج', text: 'تنبيه: سيتم أرشفة المنتج إذا كان مرتبطاً بعمليات بيع/شراء، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/products/${itemId}/delete` },
-      'sales': { title: 'حذف فاتورة مبيعات', text: 'تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية (دفعات/شيكات)، أو حذفها نهائياً إذا كانت غير مرتبطة.', url: `/sales/${itemId}/delete` },
-      'purchases': { title: 'حذف فاتورة شراء', text: 'تنبيه: سيتم أرشفة الفاتورة إذا كان لها ارتباطات مالية، أو حذفها نهائياً إذا كانت غير مرتبطة.', url: `/purchases/${itemId}/delete` },
-      'receipts': { title: 'حذف سند قبض', text: 'تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بشيكات، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/payments/receipts/${itemId}/delete` },
-      'payments': { title: 'حذف سند صرف', text: 'تنبيه: سيتم أرشفة السند إذا كان مرتبطاً بعمليات أخرى، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/payments/payments/${itemId}/delete` },
-      'expenses': { title: 'حذف مصروف', text: 'تنبيه: سيتم أرشفة المصروف وعكس القيد المحاسبي.', url: `/expenses/${itemId}/delete` },
-      'cheques': { title: 'حذف شيك', text: 'تنبيه: سيتم أرشفة الشيك إذا كان مرتبطاً بسندات، أو حذفه نهائياً إذا كان غير مرتبط.', url: `/cheques/${itemId}/delete` },
-      'users': { title: 'حذف مستخدم', text: 'سيتم إلغاء تفعيل المستخدم وليس حذفه نهائياً', url: `/users/${itemId}/delete` },
-      'warehouses': { title: 'حذف مستودع', text: 'تنبيه: سيتم أرشفة المستودع إذا كان يحتوي على حركات مخزنية، أو حذفه نهائياً إذا كان فارغاً.', url: `/warehouse/${itemId}/delete` }
+      'customers': { title: t('Delete customer'), text: t('Note: The customer will be archived if it has financial records, or permanently deleted if it is new.'), url: `/customers/${itemId}/delete` },
+      'suppliers': { title: t('Delete supplier'), text: t('Note: The supplier will be archived if it has financial records, or permanently deleted if it is new.'), url: `/suppliers/${itemId}/delete` },
+      'products': { title: t('Delete product'), text: t('Note: The product will be archived if it is linked to sale/purchase operations, or permanently deleted if it is not linked.'), url: `/products/${itemId}/delete` },
+      'sales': { title: t('Delete sales invoice'), text: t('Note: The invoice will be archived if it has financial links (payments/cheques), or permanently deleted if it is not linked.'), url: `/sales/${itemId}/delete` },
+      'purchases': { title: t('Delete purchase invoice'), text: t('Note: The invoice will be archived if it has financial links, or permanently deleted if it is not linked.'), url: `/purchases/${itemId}/delete` },
+      'receipts': { title: t('Delete receipt voucher'), text: t('Note: The voucher will be archived if it is linked to cheques, or permanently deleted if it is not linked.'), url: `/payments/receipts/${itemId}/delete` },
+      'payments': { title: t('Delete payment voucher'), text: t('Note: The voucher will be archived if it is linked to other operations, or permanently deleted if it is not linked.'), url: `/payments/payments/${itemId}/delete` },
+      'expenses': { title: t('Delete expense'), text: t('Note: The expense will be archived and the accounting entry will be reversed.'), url: `/expenses/${itemId}/delete` },
+      'cheques': { title: t('Delete cheque'), text: t('Note: The cheque will be archived if it is linked to vouchers, or permanently deleted if it is not linked.'), url: `/cheques/${itemId}/delete` },
+      'users': { title: t('Delete user'), text: t('The user will be deactivated, not permanently deleted'), url: `/users/${itemId}/delete` },
+      'warehouses': { title: t('Delete warehouse'), text: t('Note: The warehouse will be archived if it contains inventory movements, or permanently deleted if it is empty.'), url: `/warehouse/${itemId}/delete` }
     };
     
-    const msg = messages[itemType] || { title: 'حذف', text: 'هل أنت متأكد من الحذف؟', url: `/${itemType}/${itemId}/delete` };
+    const msg = messages[itemType] || { title: t('Delete'), text: t('Are you sure you want to delete?'), url: `/${itemType}/${itemId}/delete` };
     
     Swal.fire({
       title: msg.title,
@@ -37,8 +37,8 @@
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: '<i class="fas fa-trash mr-2"></i>نعم، احذف',
-      cancelButtonText: '<i class="fas fa-times mr-2"></i>إلغاء',
+      confirmButtonText: `<i class="fas fa-trash mr-2"></i>${t('Yes, delete')}`,
+      cancelButtonText: `<i class="fas fa-times mr-2"></i>${t('Cancel')}`,
       reverseButtons: true,
       showLoaderOnConfirm: true,
       preConfirm: function() {
@@ -70,22 +70,22 @@
   // =====================================
   window.deleteMultiple = function(itemIds, itemType, redirectUrl) {
     if (!itemIds || itemIds.length === 0) {
-      toastr.warning(' يجب اختيار عنصر واحد على الأقل');
+      toastr.warning(' ' + t('You must select at least one item'));
       return;
     }
     
     Swal.fire({
-      title: 'حذف متعدد',
+      title: t('Delete multiple'),
       html: `
-        <p>سيتم حذف <strong>${itemIds.length}</strong> عنصر</p>
-        <p class="text-muted">سيتم أرشفة العناصر والحفاظ على السجلات المالية</p>
+        <p>${t('Will delete')} <strong>${itemIds.length}</strong> ${t('item(s)')}</p>
+        <p class="text-muted">${t('Items will be archived and financial records will be preserved')}</p>
       `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: '<i class="fas fa-trash mr-2"></i>نعم، احذف الكل',
-      cancelButtonText: '<i class="fas fa-times mr-2"></i>إلغاء',
+      confirmButtonText: `<i class="fas fa-trash mr-2"></i>${t('Yes, delete all')}`,
+      cancelButtonText: `<i class="fas fa-times mr-2"></i>${t('Cancel')}`,
       reverseButtons: true,
       showLoaderOnConfirm: true,
       preConfirm: function() {
@@ -100,7 +100,7 @@
         }).then(function(response) {
           return response;
         }).catch(function(error) {
-          Swal.showValidationMessage(`حدث خطأ: ${error.responseJSON?.message || 'خطأ غير معروف'}`);
+          Swal.showValidationMessage(`${t('An error occurred')}: ${error.responseJSON?.message || t('Unknown error')}`);
         });
       },
       allowOutsideClick: () => !Swal.isLoading()
@@ -108,8 +108,8 @@
       if (result.isConfirmed) {
         Swal.fire({
           icon: 'success',
-          title: 'تم الحذف بنجاح',
-          text: `تم حذف ${itemIds.length} عنصر بنجاح`,
+          title: t('Deleted successfully'),
+          text: t('Deleted {count} items successfully', { count: itemIds.length }),
           timer: 2000,
           showConfirmButton: false
         }).then(function() {
@@ -126,22 +126,22 @@
   // =====================================
   // حذف سطر (في الجداول)
   // =====================================
-  window.deleteTableRow = function(rowElement, confirmMessage = 'هل أنت متأكد من الحذف؟') {
+  window.deleteTableRow = function(rowElement, confirmMessage = t('Are you sure you want to delete?')) {
     Swal.fire({
-      title: 'تأكيد الحذف',
+      title: t('Confirm delete'),
       text: confirmMessage,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: '<i class="fas fa-trash mr-2"></i>نعم',
-      cancelButtonText: '<i class="fas fa-times mr-2"></i>إلغاء',
+      confirmButtonText: `<i class="fas fa-trash mr-2"></i>${t('Yes')}`,
+      cancelButtonText: `<i class="fas fa-times mr-2"></i>${t('Cancel')}`,
       reverseButtons: true
     }).then(function(result) {
       if (result.isConfirmed) {
         $(rowElement).fadeOut(300, function() {
           $(this).remove();
-          toastr.success(' تم الحذف');
+          toastr.success(' ' + t('Deleted'));
         });
       }
     });
@@ -152,14 +152,14 @@
   // =====================================
   window.restoreItem = function(itemId, itemType, itemName) {
     Swal.fire({
-      title: 'استعادة العنصر',
-      html: `<p>هل تريد استعادة: <strong>${itemName}</strong>؟</p>`,
+      title: t('Restore item'),
+      html: `<p>${t('Do you want to restore')}: <strong>${itemName}</strong>?</p>`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#28a745',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: '<i class="fas fa-undo mr-2"></i>نعم، استعد',
-      cancelButtonText: '<i class="fas fa-times mr-2"></i>إلغاء',
+      confirmButtonText: `<i class="fas fa-undo mr-2"></i>${t('Yes, restore')}`,
+      cancelButtonText: `<i class="fas fa-times mr-2"></i>${t('Cancel')}`,
       reverseButtons: true,
       showLoaderOnConfirm: true,
       preConfirm: function() {
@@ -172,7 +172,7 @@
         }).then(function(response) {
           return response;
         }).catch(function(error) {
-          Swal.showValidationMessage(`حدث خطأ: ${error.responseJSON?.message || 'خطأ غير معروف'}`);
+          Swal.showValidationMessage(`${t('An error occurred')}: ${error.responseJSON?.message || t('Unknown error')}`);
         });
       },
       allowOutsideClick: () => !Swal.isLoading()
@@ -180,8 +180,8 @@
       if (result.isConfirmed) {
         Swal.fire({
           icon: 'success',
-          title: 'تمت الاستعادة',
-          text: 'تم استعادة العنصر بنجاح',
+          title: t('Restored'),
+          text: t('Item restored successfully'),
           timer: 2000,
           showConfirmButton: false
         }).then(function() {
@@ -199,7 +199,7 @@
     const $btn = $(this);
     const itemId = $btn.data('delete-item');
     const itemType = $btn.data('item-type');
-    const itemName = $btn.data('item-name') || 'هذا العنصر';
+    const itemName = $btn.data('item-name') || t('This item');
     const redirectUrl = $btn.data('redirect-url');
     
     deleteItem(itemId, itemType, itemName, redirectUrl);
@@ -209,7 +209,7 @@
     e.preventDefault();
     const $btn = $(this);
     const rowElement = $btn.closest('tr, .product-line, [data-row]');
-    const confirmMessage = $btn.data('confirm-message') || 'هل أنت متأكد من حذف هذا السطر؟';
+    const confirmMessage = $btn.data('confirm-message') || t('Are you sure you want to delete this row?');
     
     deleteTableRow(rowElement, confirmMessage);
   });
@@ -219,7 +219,7 @@
     const $btn = $(this);
     const itemId = $btn.data('restore-item');
     const itemType = $btn.data('item-type');
-    const itemName = $btn.data('item-name') || 'هذا العنصر';
+    const itemName = $btn.data('item-name') || t('This item');
     
     restoreItem(itemId, itemType, itemName);
   });

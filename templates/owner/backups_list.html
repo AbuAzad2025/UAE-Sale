@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إدارة النسخ الاحتياطية وحماية البيانات{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Backup Management & Data Protection') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-database mr-2"></i>إدارة النسخ الاحتياطية</h1>
+    <h1 class="mb-0"><i class="fas fa-database mr-2"></i>{{ t('Backup Management') }}</h1>
     <p class="text-muted mb-0 mt-1">
       <i class="fas fa-info-circle mr-1"></i>
-      حماية بياناتك واستعادتها بسهولة - نسخ يدوية أو تلقائية مجدولة
+      {{ t('Protect and easily restore your data - manual or scheduled automatic backups') }}
     </p>
   </div>
   <div>
     {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
       <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-right mr-2"></i>لوحة المالك
+        <i class="fas fa-arrow-right mr-2"></i>{{ t('Owner Dashboard') }}
       </a>
     {% else %}
       <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-right mr-2"></i>لوحة التحكم
+        <i class="fas fa-arrow-right mr-2"></i>{{ t('Dashboard') }}
       </a>
     {% endif %}
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -57,7 +57,7 @@
     <div class="small-box bg-info">
       <div class="inner">
         <h3>{{ stats.total_count }}</h3>
-        <p>إجمالي النسخ</p>
+        <p>{{ t('Total Backups') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-archive"></i>
@@ -69,7 +69,7 @@
     <div class="small-box bg-success">
       <div class="inner">
         <h3>{{ stats.manual_count }}</h3>
-        <p>نسخ يدوية</p>
+        <p>{{ t('Manual Backups') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-hand-pointer"></i>
@@ -81,7 +81,7 @@
     <div class="small-box bg-primary">
       <div class="inner">
         <h3>{{ stats.auto_count }}</h3>
-        <p>نسخ تلقائية</p>
+        <p>{{ t('Automatic Backups') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-robot"></i>
@@ -93,7 +93,7 @@
     <div class="small-box bg-warning">
       <div class="inner">
         <h3>{{ stats.total_size_mb }}</h3>
-        <p>MB إجمالي المساحة</p>
+        <p>{{ t('MB total storage') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-hdd"></i>
@@ -107,13 +107,13 @@
     <div class="alert alert-info d-flex align-items-start" style="border-radius: 10px; border-left: 4px solid #17a2b8;">
       <i class="fas fa-lightbulb mr-3" style="font-size: 1.5rem; margin-top: 3px;"></i>
       <div>
-        <h5 class="mb-2"><i class="fas fa-question-circle mr-2"></i>كيف تعمل النسخ الاحتياطية؟</h5>
+        <h5 class="mb-2"><i class="fas fa-question-circle mr-2"></i>{{ t('How do backups work?') }}</h5>
         <ul class="mb-0" style="padding-right: 20px;">
-          <li><strong>نسخة يدوية:</strong> تُنشأ فوراً عند الضغط على الزر - تحفظ كل البيانات الحالية</li>
-          <li><strong>نسخة تلقائية:</strong> تُنشأ تلقائياً حسب الجدولة (كل 24 ساعة افتراضياً)</li>
-          <li><strong>استعادة كاملة:</strong> تستعيد قاعدة البيانات بالكامل (يُنشأ نسخة احتياطية قبل الاستعادة)</li>
-          <li><strong>استعادة مخصصة:</strong> تستعيد جداول محددة فقط (للحالات الطارئة)</li>
-          <li><strong>التحقق:</strong> فحص سلامة النسخة والتأكد من عدم تلفها</li>
+          <li><strong>{{ t('Manual backup') }}:</strong> {{ t('Created immediately when you click the button - saves all current data') }}</li>
+          <li><strong>{{ t('Automatic backup') }}:</strong> {{ t('Created automatically according to the schedule (every 24 hours by default)') }}</li>
+          <li><strong>{{ t('Full restore') }}:</strong> {{ t('Restores the entire database (a backup is created before restoring)') }}</li>
+          <li><strong>{{ t('Custom restore') }}:</strong> {{ t('Restores only specific tables (for emergencies)') }}</li>
+          <li><strong>{{ t('Verification') }}:</strong> {{ t('Checks backup integrity and ensures it is not corrupted') }}</li>
         </ul>
       </div>
     </div>
@@ -125,7 +125,7 @@
     <div class="card shadow">
       <div class="card-header bg-gradient-primary">
         <h5 class="card-title mb-0">
-          <i class="fas fa-tools mr-2"></i>إجراءات النسخ الاحتياطي
+          <i class="fas fa-tools mr-2"></i>{{ t('Backup Actions') }}
         </h5>
       </div>
       <div class="card-body">
@@ -136,20 +136,20 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <label class="font-weight-bold mb-2">
                 <i class="fas fa-hand-pointer text-success mr-1"></i>
-                نسخة احتياطية يدوية فورية
+                {{ t('Instant Manual Backup') }}
               </label>
               <div class="input-group">
-                <input type="text" name="description" placeholder="وصف النسخة (اختياري)" 
+                <input type="text" name="description" placeholder="{{ t('Backup description (optional)') }}" 
                        class="form-control">
                 <div class="input-group-append">
                   <button type="submit" class="btn btn-success">
-                    <i class="fas fa-download mr-1"></i> نسخ الآن
+                    <i class="fas fa-download mr-1"></i> {{ t('Backup Now') }}
                   </button>
                 </div>
               </div>
               <small class="form-text text-muted">
                 <i class="fas fa-info-circle mr-1"></i>
-                تُنشأ نسخة فورية من كامل قاعدة البيانات - مضغوطة وآمنة
+                {{ t('An instant backup of the entire database is created - compressed and secure') }}
               </small>
             </form>
           </div>
@@ -158,16 +158,16 @@
           <div class="col-md-6">
             <label class="font-weight-bold mb-2">
               <i class="fas fa-clock text-primary mr-1"></i>
-              النسخ الاحتياطي المجدول التلقائي
+              {{ t('Scheduled Automatic Backup') }}
             </label>
             <div>
               <a href="{{ url_for('owner.scheduled_backups') }}" class="btn btn-primary btn-block">
-                <i class="fas fa-cog mr-1"></i> إعدادات الجدولة
+                <i class="fas fa-cog mr-1"></i> {{ t('Schedule Settings') }}
               </a>
             </div>
             <small class="form-text text-muted">
               <i class="fas fa-info-circle mr-1"></i>
-              جدولة نسخ تلقائية كل 24 ساعة أو حسب الإعدادات المخصصة
+              {{ t('Schedule automatic backups every 24 hours or as customized') }}
             </small>
           </div>
         </div>
@@ -177,11 +177,11 @@
         
         <div class="text-center">
           <button class="btn btn-info" onclick="location.reload()">
-            <i class="fas fa-sync mr-1"></i> تحديث القائمة
+            <i class="fas fa-sync mr-1"></i> {{ t('Refresh List') }}
           </button>
           <small class="d-block text-muted mt-2">
             <i class="fas fa-clock mr-1"></i>
-            آخر تحديث: {{ now.strftime('%Y-%m-%d %H:%M:%S') if now else 'الآن' }}
+            {{ t('Last updated') }}: {{ now.strftime('%Y-%m-%d %H:%M:%S') if now else t('Now') }}
           </small>
         </div>
       </div>
@@ -197,9 +197,9 @@
         <div class="card-header">
           <h5 class="card-title mb-0">
             {% if backup.manual %}
-            <i class="fas fa-hand-pointer text-success"></i> يدوية
+            <i class="fas fa-hand-pointer text-success"></i> {{ t('Manual') }}
             {% else %}
-            <i class="fas fa-robot text-info"></i> تلقائية
+            <i class="fas fa-robot text-info"></i> {{ t('Automatic') }}
             {% endif %}
           </h5>
         </div>
@@ -207,20 +207,20 @@
           
           <p class="mb-2">
             <i class="far fa-calendar-alt text-primary"></i>
-            <strong>التاريخ:</strong> 
+            <strong>{{ t('Date') }}:</strong> 
             {{ backup.timestamp[:4] }}-{{ backup.timestamp[4:6] }}-{{ backup.timestamp[6:8] }}
           </p>
           
           <p class="mb-2">
             <i class="far fa-clock text-info"></i>
-            <strong>الوقت:</strong> 
+            <strong>{{ t('Time') }}:</strong> 
             {{ backup.timestamp[9:11] }}:{{ backup.timestamp[11:13] }}:{{ backup.timestamp[13:15] }}
           </p>
 
           
           <p class="mb-2">
             <i class="fas fa-hdd text-warning"></i>
-            <strong>الحجم:</strong> 
+            <strong>{{ t('Size') }}:</strong> 
             <span class="badge badge-warning">{{ backup.size_mb }} MB</span>
           </p>
 
@@ -228,10 +228,10 @@
           <p class="mb-2">
             <i class="fas fa-info-circle text-secondary"></i>
             {% if backup.compressed %}
-            <span class="badge badge-info"><i class="fas fa-compress"></i> مضغوط</span>
+            <span class="badge badge-info"><i class="fas fa-compress"></i> {{ t('Compressed') }}</span>
             {% endif %}
             {% if backup.encrypted %}
-            <span class="badge badge-success"><i class="fas fa-lock"></i> مشفّر</span>
+            <span class="badge badge-success"><i class="fas fa-lock"></i> {{ t('Encrypted') }}</span>
             {% endif %}
           </p>
 
@@ -265,19 +265,19 @@
           <div class="btn-group" role="group">
             <button type="button" class="btn btn-sm btn-warning" 
                     onclick="confirmRestore('{{ backup.filename }}')"
-                    title="استعادة كاملة لقاعدة البيانات">
-              <i class="fas fa-undo mr-1"></i> استعادة كاملة
+                    title="{{ t('Full database restore') }}">
+              <i class="fas fa-undo mr-1"></i> {{ t('Full Restore') }}
             </button>
             {% if backup.filename.endswith('.dump') %}
             <button type="button" class="btn btn-sm btn-outline-warning" 
                     onclick="customRestore('{{ backup.filename }}')"
-                    title="اختيار جداول محددة للاستعادة">
-              <i class="fas fa-list-check mr-1"></i> استعادة مخصصة
+                    title="{{ t('Select specific tables to restore') }}">
+              <i class="fas fa-list-check mr-1"></i> {{ t('Custom Restore') }}
             </button>
             {% else %}
             <button type="button" class="btn btn-sm btn-outline-secondary" disabled
-                    title="الاستعادة المخصصة تتطلب نسخة بصيغة .dump">
-              <i class="fas fa-list-check mr-1"></i> استعادة مخصصة
+                    title="{{ t('Custom restore requires a .dump backup') }}">
+              <i class="fas fa-list-check mr-1"></i> {{ t('Custom Restore') }}
             </button>
             {% endif %}
           </div>
@@ -286,27 +286,27 @@
           
           <form method="POST" action="{{ url_for('owner.delete_backup') }}" 
                 style="display: inline-block;"
-                onsubmit="return confirm(' هل أنت متأكد من حذف النسخة الاحتياطية؟\n\n {{ backup.filename }}\n\n{% if not backup.manual %} تنبيه: هذه نسخة تلقائية.\n{% endif %} لا يمكن التراجع عن هذا الإجراء!');">
+                onsubmit="return confirm(' {{ t('Are you sure you want to delete the backup?') }}\n\n {{ backup.filename }}\n\n{% if not backup.manual %} {{ t('Note: This is an automatic backup.') }}\n{% endif %} {{ t('This action cannot be undone!') }}');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="filename" value="{{ backup.filename }}">
-            <button type="submit" class="btn btn-sm btn-danger" title="حذف النسخة نهائياً">
-              <i class="fas fa-trash mr-1"></i> حذف
+            <button type="submit" class="btn btn-sm btn-danger" title="{{ t('Delete backup permanently') }}">
+              <i class="fas fa-trash mr-1"></i> {{ t('Delete') }}
             </button>
           </form>
 
           
           <a href="{{ url_for('owner.download_backup', filename=backup.filename) }}" 
              class="btn btn-sm btn-success"
-             title="تحميل النسخة الاحتياطية"
+             title="{{ t('Download the backup') }}"
              download>
-            <i class="fas fa-download mr-1"></i> تحميل
+            <i class="fas fa-download mr-1"></i> {{ t('Download') }}
           </a>
 
           
           <button type="button" class="btn btn-sm btn-info" 
                   onclick="verifyBackup('{{ backup.filename }}')"
-                  title="التحقق من سلامة النسخة">
-            <i class="fas fa-check-circle mr-1"></i> تحقق
+                  title="{{ t('Verify backup integrity') }}">
+            <i class="fas fa-check-circle mr-1"></i> {{ t('Verify') }}
           </button>
         </div>
       </div>
@@ -318,12 +318,12 @@
     <div class="card">
       <div class="card-body text-center py-5">
         <i class="fas fa-inbox fa-5x text-muted mb-3"></i>
-        <h4>لا توجد نسخ احتياطية</h4>
-        <p class="text-muted">قم بإنشاء أول نسخة احتياطية الآن</p>
+        <h4>{{ t('No backups found') }}</h4>
+        <p class="text-muted">{{ t('Create your first backup now') }}</p>
         <form method="POST" action="{{ url_for('owner.backup_now') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-success btn-lg">
-            <i class="fas fa-plus-circle"></i> إنشاء نسخة احتياطية
+            <i class="fas fa-plus-circle"></i> {{ t('Create Backup') }}
           </button>
         </form>
       </div>
@@ -337,26 +337,26 @@
   <div class="col-md-12">
     <div class="card card-outline card-success">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-star"></i> آخر نسخة احتياطية</h3>
+        <h3 class="card-title"><i class="fas fa-star"></i> {{ t('Latest Backup') }}</h3>
       </div>
       <div class="card-body">
         <div class="row">
           <div class="col-md-3">
-            <strong>التاريخ:</strong><br>
+            <strong>{{ t('Date') }}:</strong><br>
             {{ stats.latest_backup.timestamp[:8] }}
           </div>
           <div class="col-md-3">
-            <strong>الحجم:</strong><br>
+            <strong>{{ t('Size') }}:</strong><br>
             {{ stats.latest_backup.size_mb }} MB
           </div>
           <div class="col-md-3">
-            <strong>النوع:</strong><br>
-            {% if stats.latest_backup.manual %}يدوية{% else %}تلقائية{% endif %}
+            <strong>{{ t('Type') }}:</strong><br>
+            {% if stats.latest_backup.manual %}{{ t('Manual') }}{% else %}{{ t('Automatic') }}{% endif %}
           </div>
           <div class="col-md-3">
-            <strong>الحالة:</strong><br>
+            <strong>{{ t('Status') }}:</strong><br>
             <span class="badge badge-success">
-              <i class="fas fa-check-circle"></i> جاهزة
+              <i class="fas fa-check-circle"></i> {{ t('Ready') }}
             </span>
           </div>
         </div>
@@ -371,7 +371,7 @@
     <div class="modal-content">
       <div class="modal-header bg-warning">
         <h5 class="modal-title">
-          <i class="fas fa-exclamation-triangle"></i> تأكيد الاستعادة الكاملة
+          <i class="fas fa-exclamation-triangle"></i> {{ t('Confirm Full Restore') }}
         </h5>
         <button type="button" class="close" data-dismiss="modal">
           <span>&times;</span>
@@ -382,30 +382,30 @@
         <div class="modal-body">
           <div class="alert alert-danger">
             <i class="fas fa-shield-alt"></i>
-            <strong>تحذير:</strong> الاستعادة ستستبدل قاعدة البيانات الحالية بالكامل!
+            <strong>{{ t('Warning') }}:</strong> {{ t('Restoring will completely replace the current database!') }}
           </div>
           
-          <p><i class="fas fa-check-circle text-success mr-1"></i>سيتم إنشاء نسخة احتياطية من الوضع الحالي قبل الاستعادة.</p>
+          <p><i class="fas fa-check-circle text-success mr-1"></i>{{ t('A backup of the current state will be created before restoring.') }}</p>
           
           <div class="form-group">
-            <label><i class="fas fa-key mr-1"></i>أدخل كلمة المرور للتأكيد:</label>
+            <label><i class="fas fa-key mr-1"></i>{{ t('Enter your password to confirm:') }}</label>
             <input type="password" name="confirm_password" class="form-control" 
-                   required placeholder="كلمة مرور المالك">
+                   required placeholder="{{ t('Owner password') }}">
           </div>
 
           <p class="text-muted">
             <small>
               <i class="fas fa-file mr-1"></i>
-              ملف الاستعادة: <strong id="restoreFilename"></strong>
+              {{ t('Restore file:') }} <strong id="restoreFilename"></strong>
             </small>
           </p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">
-            <i class="fas fa-times mr-1"></i>إلغاء
+            <i class="fas fa-times mr-1"></i>{{ t('Cancel') }}
           </button>
           <button type="submit" class="btn btn-warning">
-            <i class="fas fa-undo mr-1"></i> استعادة الآن
+            <i class="fas fa-undo mr-1"></i> {{ t('Restore Now') }}
           </button>
         </div>
       </form>
@@ -418,7 +418,7 @@
     <div class="modal-content">
       <div class="modal-header bg-gradient-warning">
         <h5 class="modal-title">
-          <i class="fas fa-sliders-h"></i> استعادة مخصصة - اختيار الجداول
+          <i class="fas fa-sliders-h"></i> {{ t('Custom Restore - Select Tables') }}
         </h5>
         <button type="button" class="close" data-dismiss="modal">
           <span>&times;</span>
@@ -430,48 +430,48 @@
           
           <div class="alert alert-warning">
             <i class="fas fa-exclamation-circle"></i>
-            <strong>ملاحظة:</strong> سيتم استعادة الجداول المحددة فقط من النسخة الاحتياطية
+            <strong>{{ t('Note') }}:</strong> {{ t('Only the selected tables will be restored from the backup') }}
           </div>
           
           
           <div class="mb-3 p-3 bg-light border rounded">
-            <p class="mb-1"><i class="fas fa-file text-primary mr-1"></i><strong>النسخة:</strong> <span id="customRestoreFilename"></span></p>
-            <p class="mb-0"><i class="fas fa-info-circle text-info mr-1"></i><strong>نوع الاستعادة:</strong> استعادة جداول محددة فقط</p>
+            <p class="mb-1"><i class="fas fa-file text-primary mr-1"></i><strong>{{ t('Backup') }}:</strong> <span id="customRestoreFilename"></span></p>
+            <p class="mb-0"><i class="fas fa-info-circle text-info mr-1"></i><strong>{{ t('Restore Type') }}:</strong> {{ t('Restore selected tables only') }}</p>
           </div>
           
           
-          <h6 class="mb-3"><i class="fas fa-table mr-2"></i>اختر الجداول المراد استعادتها:</h6>
+          <h6 class="mb-3"><i class="fas fa-table mr-2"></i>{{ t('Select the tables to restore:') }}</h6>
           <div class="row" id="tablesCheckboxList">
             
             <div class="col-md-6">
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="sales" id="table_sales">
                 <label class="form-check-label" for="table_sales">
-                  <i class="fas fa-shopping-cart text-success mr-1"></i> المبيعات (sales)
+                  <i class="fas fa-shopping-cart text-success mr-1"></i> {{ t('Sales') }} (sales)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="customers" id="table_customers">
                 <label class="form-check-label" for="table_customers">
-                  <i class="fas fa-users text-info mr-1"></i> العملاء (customers)
+                  <i class="fas fa-users text-info mr-1"></i> {{ t('Clients') }} (customers)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="products" id="table_products">
                 <label class="form-check-label" for="table_products">
-                  <i class="fas fa-box text-warning mr-1"></i> المنتجات (products)
+                  <i class="fas fa-box text-warning mr-1"></i> {{ t('Products') }} (products)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="purchases" id="table_purchases">
                 <label class="form-check-label" for="table_purchases">
-                  <i class="fas fa-cart-plus text-primary mr-1"></i> المشتريات (purchases)
+                  <i class="fas fa-cart-plus text-primary mr-1"></i> {{ t('Purchases') }} (purchases)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="suppliers" id="table_suppliers">
                 <label class="form-check-label" for="table_suppliers">
-                  <i class="fas fa-truck text-secondary mr-1"></i> الموردين (suppliers)
+                  <i class="fas fa-truck text-secondary mr-1"></i> {{ t('Suppliers') }} (suppliers)
                 </label>
               </div>
             </div>
@@ -479,31 +479,31 @@
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="payments" id="table_payments">
                 <label class="form-check-label" for="table_payments">
-                  <i class="fas fa-money-bill text-success mr-1"></i> المدفوعات (payments)
+                  <i class="fas fa-money-bill text-success mr-1"></i> {{ t('Payments') }} (payments)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="expenses" id="table_expenses">
                 <label class="form-check-label" for="table_expenses">
-                  <i class="fas fa-receipt text-danger mr-1"></i> المصروفات (expenses)
+                  <i class="fas fa-receipt text-danger mr-1"></i> {{ t('Expenses') }} (expenses)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="cheques" id="table_cheques">
                 <label class="form-check-label" for="table_cheques">
-                  <i class="fas fa-money-check text-info mr-1"></i> الشيكات (cheques)
+                  <i class="fas fa-money-check text-info mr-1"></i> {{ t('Cheques') }} (cheques)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="users" id="table_users">
                 <label class="form-check-label" for="table_users">
-                  <i class="fas fa-user-shield text-danger mr-1"></i> المستخدمين (users)
+                  <i class="fas fa-user-shield text-danger mr-1"></i> {{ t('Users') }} (users)
                 </label>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" name="tables[]" value="invoice_settings" id="table_invoice_settings">
                 <label class="form-check-label" for="table_invoice_settings">
-                  <i class="fas fa-file-invoice text-warning mr-1"></i> إعدادات الفواتير (invoice_settings)
+                  <i class="fas fa-file-invoice text-warning mr-1"></i> {{ t('Invoice Settings') }} (invoice_settings)
                 </label>
               </div>
             </div>
@@ -514,26 +514,26 @@
           
           <div class="mb-3">
             <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllTables()">
-              <i class="fas fa-check-double mr-1"></i>تحديد الكل
+              <i class="fas fa-check-double mr-1"></i>{{ t('Select All') }}
             </button>
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllTables()">
-              <i class="fas fa-times mr-1"></i>إلغاء الكل
+              <i class="fas fa-times mr-1"></i>{{ t('Deselect All') }}
             </button>
           </div>
           
           
           <div class="form-group">
-            <label><i class="fas fa-key mr-1"></i>أدخل كلمة المرور للتأكيد:</label>
+            <label><i class="fas fa-key mr-1"></i>{{ t('Enter your password to confirm:') }}</label>
             <input type="password" name="confirm_password" class="form-control" 
-                   required placeholder="كلمة مرور المالك">
+                   required placeholder="{{ t('Owner password') }}">
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">
-            <i class="fas fa-times mr-1"></i>إلغاء
+            <i class="fas fa-times mr-1"></i>{{ t('Cancel') }}
           </button>
           <button type="submit" class="btn btn-warning">
-            <i class="fas fa-check mr-1"></i> استعادة الجداول المحددة
+            <i class="fas fa-check mr-1"></i> {{ t('Restore Selected Tables') }}
           </button>
         </div>
       </form>
@@ -570,8 +570,8 @@ function deselectAllTables() {
 
 function verifyBackup(filename) {
   Swal.fire({
-    title: 'جاري التحقق...',
-    text: 'فحص سلامة النسخة الاحتياطية',
+    title: {{ t('Verifying...')|tojson }},
+    text: {{ t('Checking backup integrity')|tojson }},
     icon: 'info',
     showConfirmButton: false,
     allowOutsideClick: false
@@ -600,26 +600,26 @@ function verifyBackup(filename) {
       }
       if (payload && payload.verified) {
         Swal.fire({
-          title: 'نجح التحقق!',
-          text: 'النسخة الاحتياطية سليمة وجاهزة للاستخدام',
+          title: {{ t('Verification successful!')|tojson }},
+          text: {{ t('The backup is intact and ready to use')|tojson }},
           icon: 'success',
-          confirmButtonText: 'حسناً'
+          confirmButtonText: {{ t('OK')|tojson }}
         });
       } else {
         Swal.fire({
-          title: 'فشل التحقق!',
-          text: 'النسخة الاحتياطية تالفة أو غير صالحة',
+          title: {{ t('Verification failed!')|tojson }},
+          text: {{ t('The backup is corrupt or invalid')|tojson }},
           icon: 'error',
-          confirmButtonText: 'حسناً'
+          confirmButtonText: {{ t('OK')|tojson }}
         });
       }
     })
     .catch((err) => {
       Swal.fire({
-        title: 'خطأ!',
-        text: err && err.message ? err.message : 'تعذر التحقق من النسخة الاحتياطية',
+        title: {{ t('Error!')|tojson }},
+        text: err && err.message ? err.message : {{ t('Unable to verify the backup')|tojson }},
         icon: 'error',
-        confirmButtonText: 'حسناً'
+        confirmButtonText: {{ t('OK')|tojson }}
       });
     });
 }

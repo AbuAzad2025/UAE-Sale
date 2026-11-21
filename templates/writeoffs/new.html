@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - مشطوبة ديون جديدة{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('New Debt Write-off') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>مشطوبة ديون جديدة</h1>
-    <p class="text-muted">ترحيل قيد: مدين مديونية مشطوبة / دائن ذمم مدينة</p>
+    <h1 class="mb-0"><i class="fas fa-file-circle-xmark mr-2"></i>{{ t('New Debt Write-off') }}</h1>
+    <p class="text-muted">{{ t('Posting entry: Debit written-off receivables / Credit accounts receivable') }}</p>
   </div>
   <div>
     <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة لقائمة المشطوبات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Write-offs') }}
     </a>
   </div>
 </div>
@@ -24,12 +24,12 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-user text-primary"></i> العميل
+              <i class="fas fa-user text-primary"></i> {{ t('Client') }}
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="صاحب الديون المشطوبة (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Owner of the written-off debts (required)') }}"></i>
             </label>
             <select name="customer_id" id="customer_id" class="form-control" required>
-              <option value="">— اختر العميل —</option>
+              <option value="">— {{ t('Select Customer') }} —</option>
               {% for customer in customers %}
               <option value="{{ customer.id }}" {% if selected_customer and selected_customer.id == customer.id %}selected{% endif %}>
                 {{ customer.name_ar or customer.name }} - {{ customer.name }}
@@ -42,11 +42,11 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-file-invoice text-info"></i> الفاتورة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الفاتورة المرتبطة بالمشتربة (اختياري)"></i>
+              <i class="fas fa-file-invoice text-info"></i> {{ t('Invoice') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Related invoice (optional)') }}"></i>
             </label>
             <select name="sale_id" id="sale_id" class="form-control">
-              <option value="">— بدون فاتورة —</option>
+              <option value="">— {{ t('No Invoice') }} —</option>
               {% for sale in sales %}
               <option value="{{ sale.id }}">
                 {{ sale.sale_number }} - {{ sale.customer.name if sale.customer else '' }} - {{ "{:,.2f}".format(sale.balance_due) }}
@@ -61,9 +61,9 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-money-bill-wave text-success"></i> المبلغ
+              <i class="fas fa-money-bill-wave text-success"></i> {{ t('Amount') }}
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="المبلغ المشطوب (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Written-off amount (required)') }}"></i>
             </label>
             <input type="number" name="amount" class="form-control" step="0.001" min="0.001" placeholder="0.00" required>
           </div>
@@ -72,12 +72,12 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-warning"></i> العملة
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عملة المبلغ (افتراضي: {{ base_currency }})"></i>
+              <i class="fas fa-dollar-sign text-warning"></i> {{ t('Currency') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Amount currency (default:') }} {{ base_currency }})"></i>
             </label>
             <select name="currency" id="currency" class="form-control">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.ar }} ({{ code }})</option>
+              <option value="{{ code }}" {% if code == base_currency %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }} ({{ code }})</option>
               {% endfor %}
             </select>
           </div>
@@ -86,8 +86,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-exchange-alt text-info"></i> سعر الصرف
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="مطلوب فقط إذا اختلفت العملة عن {{ base_currency }}. 1 وحدة من العملة المختارة = كم من {{ base_currency }}"></i>
+              <i class="fas fa-exchange-alt text-info"></i> {{ t('Exchange Rate') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Required only if the currency differs from') }} {{ base_currency }}. {{ t('1 unit of the selected currency equals how much of') }} {{ base_currency }}"></i>
             </label>
             <input type="number" name="exchange_rate" id="exchange_rate" class="form-control" step="0.000001" min="0.000001" value="1.000000" dir="ltr">
           </div>
@@ -96,37 +96,37 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-align-left text-secondary"></i> السبب
+              <i class="fas fa-align-left text-secondary"></i> {{ t('Reason') }}
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="سبب المشطوبة (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Write-off reason (required)') }}"></i>
             </label>
             <input type="text" name="reason" class="form-control" maxlength="500"
-                   placeholder="مثال: العميل هاجر ولا يمكن الوصول إليه" required>
+                   placeholder="{{ t('Example: the customer emigrated and cannot be reached') }}" required>
           </div>
         </div>
       </div>
 
       <div class="form-group">
         <label>
-          <i class="fas fa-sticky-note text-secondary"></i> ملاحظات
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات إضافية (اختياري)"></i>
+          <i class="fas fa-sticky-note text-secondary"></i> {{ t('Notes') }}
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Additional notes (optional)') }}"></i>
         </label>
-        <textarea name="notes" class="form-control" rows="3" placeholder="أي ملاحظات إضافية عن المشطوبة..."></textarea>
+        <textarea name="notes" class="form-control" rows="3" placeholder="{{ t('Any additional notes about the write-off...') }}"></textarea>
       </div>
 
       <div class="alert alert-info">
         <i class="fas fa-circle-info mr-2"></i>
-        سيُرحَّل قيد متوازن: <strong>مدين</strong> مديونية مشطوبة (6960) و<strong>دائن</strong> ذمم مدينة (1130)،
-        وينقص رصيد العميل بمقدار المبلغ المشطوب.
+        {{ t('A balanced entry will be posted:') }} <strong>{{ t('Debit') }}</strong> {{ t('written-off receivables (6960)') }} {{ t('and') }}<strong>{{ t('Credit') }}</strong> {{ t('accounts receivable (1130)') }},
+        {{ t('and the customer balance decreases by the written-off amount.') }}
       </div>
     </div>
 
     <div class="card-footer">
       <button type="submit" class="btn btn-danger btn-lg">
-        <i class="fas fa-save mr-2"></i>تنفيذ المشطوبة
+        <i class="fas fa-save mr-2"></i>{{ t('Execute Write-off') }}
       </button>
       <a href="{{ url_for('writeoffs.index') }}" class="btn btn-secondary btn-lg">
-        <i class="fas fa-times mr-2"></i>إلغاء
+        <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
       </a>
     </div>
   </form>

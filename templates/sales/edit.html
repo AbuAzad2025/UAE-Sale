@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل فاتورة #{{ sale.sale_number }}{% endblock %}
+{% block title %}{{ t("Edit Invoice") }} #{{ sale.sale_number }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,13 +8,13 @@
     <div class="col-12">
       <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
-        <strong>تنبيه محاسبي:</strong> يمكن تعديل الملاحظات والخصم فقط. لا يمكن تعديل المنتجات أو الكميات بعد إنشاء الفاتورة.
+        <strong>{{ t("Accounting Note:") }}</strong> {{ t("Only notes and discount can be edited. Products and quantities cannot be changed after invoice creation.") }}
       </div>
 
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">
-            <i class="fas fa-edit"></i> تعديل فاتورة #{{ sale.sale_number }}
+            <i class="fas fa-edit"></i> {{ t("Edit Invoice") }} #{{ sale.sale_number }}
           </h3>
         </div>
         <div class="card-body">
@@ -24,40 +24,40 @@
             
             <div class="row mb-4">
               <div class="col-md-6">
-                <h5>معلومات الفاتورة</h5>
-                <p><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</p>
-                <p><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
-                <p><strong>تاريخ الاستحقاق:</strong> {{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}
+                <h5>{{ t("Invoice Details") }}</h5>
+                <p><strong>{{ t("Invoice Number") }}:</strong> {{ sale.sale_number }}</p>
+                <p><strong>{{ t("Date") }}:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>{{ t("Due Date") }}:</strong> {{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '-' }}
                   {% if sale.days_overdue > 0 %}
-                  <span class="badge badge-danger">متأخر {{ sale.days_overdue }} يوم</span>
+                  <span class="badge badge-danger">{{ t("Overdue") }} {{ sale.days_overdue }} {{ t("days") }}</span>
                   {% endif %}
                 </p>
-                <p><strong>العميل:</strong> {{ sale.customer.name }}</p>
-                <p><strong>البائع:</strong> {{ sale.seller.full_name }}</p>
+                <p><strong>{{ t("Customer") }}:</strong> {{ sale.customer.name }}</p>
+                <p><strong>{{ t("Seller") }}:</strong> {{ sale.seller.full_name }}</p>
                 {% if sale.warehouse %}
-                <p><strong><i class="fas fa-warehouse text-info"></i> المستودع:</strong> {{ sale.warehouse.name_ar or sale.warehouse.name }}</p>
+                <p><strong><i class="fas fa-warehouse text-info"></i> {{ t("Warehouse") }}:</strong> {{ sale.warehouse.name_ar or sale.warehouse.name }}</p>
                 {% endif %}
               </div>
               <div class="col-md-6">
-                <h5>الإجماليات</h5>
-                <p><strong>المجموع الفرعي:</strong> {{ sale.subtotal }} {{ base_currency }}</p>
-                <p><strong>الضريبة:</strong> {{ sale.tax_amount }} {{ base_currency }}</p>
-                <p><strong>الإجمالي:</strong> {{ sale.total_amount }} {{ base_currency }}</p>
-                <p><strong>المدفوع:</strong> {{ sale.paid_amount }} {{ base_currency }}</p>
-                <p><strong>المتبقي:</strong> {{ sale.balance_due }} {{ base_currency }}</p>
+                <h5>{{ t("Totals") }}</h5>
+                <p><strong>{{ t("Subtotal") }}:</strong> {{ sale.subtotal }} {{ base_currency }}</p>
+                <p><strong>{{ t("Tax") }}:</strong> {{ sale.tax_amount }} {{ base_currency }}</p>
+                <p><strong>{{ t("Total Amount") }}:</strong> {{ sale.total_amount }} {{ base_currency }}</p>
+                <p><strong>{{ t("Paid") }}:</strong> {{ sale.paid_amount }} {{ base_currency }}</p>
+                <p><strong>{{ t("Remaining") }}:</strong> {{ sale.balance_due }} {{ base_currency }}</p>
               </div>
             </div>
 
             
-            <h5>المنتجات (لا يمكن تعديلها)</h5>
+            <h5>{{ t("Products (Cannot Be Edited)") }}</h5>
             <table class="table table-bordered mb-4">
               <thead>
                 <tr>
-                  <th>المنتج</th>
-                  <th>الكمية</th>
-                  <th>السعر</th>
-                  <th>الخصم</th>
-                  <th>الإجمالي</th>
+                  <th>{{ t("Product") }}</th>
+                  <th>{{ t("Quantity") }}</th>
+                  <th>{{ t("Price") }}</th>
+                  <th>{{ t("Discount") }}</th>
+                  <th>{{ t("Total Amount") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,25 +77,25 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>الخصم الإضافي ({{ base_currency }})</label>
+                  <label>{{ t("Additional Discount") }} ({{ base_currency }})</label>
                   <input type="number" name="discount_amount" class="form-control" 
                          value="{{ sale.discount_amount or 0 }}" step="0.01" min="0">
-                  <small class="text-muted">خصم إضافي على إجمالي الفاتورة</small>
+                  <small class="text-muted">{{ t("Additional discount on invoice total") }}</small>
                 </div>
               </div>
               
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>تاريخ الاستحقاق</label>
+                  <label>{{ t("Due Date") }}</label>
                   <input type="date" name="due_date" class="form-control"
                          value="{{ sale.effective_due_date.strftime('%Y-%m-%d') if sale.effective_due_date else '' }}">
-                  <small class="text-muted">اتركه فارغاً ليُحسب من شروط دفع العميل</small>
+                  <small class="text-muted">{{ t("Leave empty to be calculated from customer payment terms") }}</small>
                 </div>
               </div>
 
               <div class="col-md-12">
                 <div class="form-group">
-                  <label>الملاحظات</label>
+                  <label>{{ t("Notes") }}</label>
                   <textarea name="notes" class="form-control" rows="3">{{ sale.notes or '' }}</textarea>
                 </div>
               </div>
@@ -103,10 +103,10 @@
 
             <div class="form-group">
               <button type="submit" class="btn btn-success">
-                <i class="fas fa-save"></i> حفظ التعديلات
+                <i class="fas fa-save"></i> {{ t("Save Changes") }}
               </button>
               <a href="{{ url_for('sales.view', id=sale.id) }}" class="btn btn-secondary">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t("Cancel") }}
               </a>
             </div>
           </form>

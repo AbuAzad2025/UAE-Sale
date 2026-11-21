@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المبيعات والمستودعات والمحاسبة</title>
+    <title>{{ t('Azad Smart Systems - All-in-One Sales, Inventory & Accounting Software') }}</title>
     
     
-    <meta name="description" content="شركة أزاد للأنظمة الذكية - نظام إدارة مبيعات ومشتريات ومخزون متكامل مع ذكاء اصطناعي. برنامج محاسبة احترافي للشركات: فواتير إلكترونية، إدارة مخزون، كشوفات حسابات، تقارير مالية شاملة.">
+    <meta name="description" content="{{ t('Azad Smart Systems - an integrated sales, purchasing and inventory management system with AI assistance. Professional accounting software for businesses: e-invoicing, stock control, account statements and comprehensive financial reports.') }}">
     <meta name="keywords" content="نظام إدارة مستودعات، برنامج محاسبة، فواتير إلكترونية، إدارة المخزون، برنامج مبيعات، نظام نقاط البيع POS، قطع غيار سيارات، ذكاء اصطناعي محاسبة، ERP، كشف حساب، برنامج حسابات، سندات قبض، إدارة شيكات، تقارير مالية، نظام محاسبي، cloud accounting، المحاسبة السحابية">
-    <meta name="author" content="شركة أزاد للأنظمة الذكية">
+    <meta name="author" content="{{ t('Azad Smart Systems') }}">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="language" content="Arabic">
     
     
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:title" content="شركة أزاد للأنظمة الذكية - نظام متكامل لإدارة المبيعات والمستودعات">
-    <meta property="og:description" content="نظام متكامل لإدارة المبيعات والمشتريات والمخزون مع ذكاء اصطناعي متقدم. حل احترافي للشركات والمحلات التجارية.">
+    <meta property="og:title" content="{{ t('Azad Smart Systems - All-in-One Sales and Inventory Management') }}">
+    <meta property="og:description" content="{{ t('An integrated sales, purchasing and inventory system with advanced AI assistance. A professional solution for businesses and retail stores.') }}">
     <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
     <meta property="og:locale" content="ar">
-    <meta property="og:site_name" content="شركة أزاد للأنظمة الذكية">
+    <meta property="og:site_name" content="{{ t('Azad Smart Systems') }}">
     
     
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="شركة أزاد للأنظمة الذكية - نظام إدارة متكامل">
-    <meta name="twitter:description" content="نظام متكامل لإدارة المبيعات والمخزون والحسابات مع ذكاء اصطناعي. فواتير، مخزون، حسابات، تقارير.">
+    <meta name="twitter:title" content="{{ t('Azad Smart Systems - Integrated Management System') }}">
+    <meta name="twitter:description" content="{{ t('An integrated sales, inventory and accounting system with AI. Invoices, stock, accounts, reports.') }}">
     <meta name="twitter:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
     
     
@@ -165,28 +165,28 @@
                     <i class="fas fa-warehouse"></i>
                 </div>
             </div>
-            <h1>{{ config.COMPANY_NAME_AR }}</h1>
+            <h1>{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</h1>
             <p class="hero-subtitle">
-                <strong>نظام متكامل لإدارة المبيعات والمستودعات والمحاسبة</strong>
+                <strong>{{ t('An All-in-One System for Sales, Inventory & Accounting') }}</strong>
             </p>
             <p class="hero-tagline" style="font-size: 1.2rem; margin-top: 15px;">
-                برنامج محاسبة متكامل | فواتير إلكترونية | إدارة المخزون | تقارير مالية
+                {{ t('Integrated accounting | E-invoicing | Stock control | Financial reports') }}
             </p>
             <p class="hero-tagline" style="font-size: 1rem; margin-top: 10px; color: rgba(255,255,255,0.9);">
-                حل احترافي للشركات والمحلات التجارية: مبيعات، مشتريات، مخزون وحسابات في مكان واحد
+                {{ t('A professional solution for companies and stores: sales, purchasing, stock and accounts in one place') }}
             </p>
             <div class="hero-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-width: 900px; margin: 0 auto;">
                 <a href="{{ url_for('auth.support') }}?tab=purchase" class="btn-hero btn-success" style="flex: 1;">
-                    <i class="fas fa-shopping-cart"></i> اشترِ الآن
+                    <i class="fas fa-shopping-cart"></i> {{ t('Buy Now') }}
                 </a>
                 <a href="{{ url_for('public.demo') }}" class="btn-hero btn-primary" style="flex: 1;">
-                    <i class="fas fa-rocket"></i> تجربة مجانية
+                    <i class="fas fa-rocket"></i> {{ t('Free Trial') }}
                 </a>
                 <a href="{{ url_for('auth.support') }}?tab=donation" class="btn-hero btn-warning" style="flex: 1;">
-                    <i class="fas fa-heart"></i> ادعم المشروع
+                    <i class="fas fa-heart"></i> {{ t('Support the Project') }}
                 </a>
                 <a href="{{ url_for('auth.login') }}" class="btn-hero btn-login" style="flex: 1;">
-                    <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+                    <i class="fas fa-sign-in-alt"></i> {{ t('Sign In') }}
                 </a>
             </div>
             
@@ -197,40 +197,40 @@
 
     
     <section class="features">
-        <h2>لماذا تختار نظام أزاد لإدارة أعمالك؟</h2>
+        <h2>{{ t('Why Choose Azad for Your Business?') }}</h2>
         <p class="features-subtitle">
-            نقدم لك <strong>برنامج محاسبة وإدارة متكامل</strong> بميزات عملية تجعل إدارة أعمالك أسهل وأسرع وأكثر ربحية.
+            {{ t('We offer you') }} <strong>{{ t('an integrated accounting and management suite') }}</strong> {{ t('with practical features that make running your business easier, faster and more profitable.') }}
         </p>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-brain"></i></div>
-                <h3>ذكاء اصطناعي مساعد</h3>
-                <p><strong>مساعد ذكي</strong> يوفر توصيات أسعار، تحليل المبيعات، وتنبؤات تساعدك على اتخاذ قرارات أفضل. <strong>يتعلم من بيانات عملك</strong> ويتحسن باستمرار.</p>
+                <h3>{{ t('AI-Powered Assistant') }}</h3>
+                <p><strong>{{ t('A smart assistant') }}</strong> {{ t('offers price recommendations, sales analysis and forecasts to help you make better decisions.') }} <strong>{{ t('It learns from your business data') }}</strong> {{ t('and improves continuously.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-warehouse"></i></div>
-                <h3>إدارة مخزون احترافية</h3>
-                <p><strong>تتبع دقيق للمخزون</strong> في الوقت الفعلي، تنبيهات تلقائية عند انخفاض الكميات، إدارة متعددة المستودعات والفروع، باركود وQR Code، وجرد سريع.</p>
+                <h3>{{ t('Professional Inventory Management') }}</h3>
+                <p><strong>{{ t('Accurate stock tracking') }}</strong> {{ t('in real time, automatic low-quantity alerts, multi-warehouse and multi-branch management, barcode and QR Code, and fast stock counting.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-cash-register"></i></div>
-                <h3>مبيعات ومشتريات متكاملة</h3>
-                <p><strong>فواتير إلكترونية احترافية</strong> بتصاميم متعددة، 3 مستويات أسعار (جملة، نص جملة، قطاعي)، دعم عملات متعددة، طباعة حرارية، وربط مع نقاط البيع POS.</p>
+                <h3>{{ t('Integrated Sales & Purchases') }}</h3>
+                <p><strong>{{ t('Professional e-invoices') }}</strong> {{ t('with multiple designs, 3 price levels (wholesale, semi-wholesale, retail), multi-currency support, thermal printing and POS integration.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-users"></i></div>
-                <h3>إدارة عملاء وموردين شاملة</h3>
-                <p>قاعدة بيانات شاملة للعملاء والموردين، <strong>كشوفات حساب تفصيلية</strong>، إدارة الشيكات والسندات، متابعة المستحقات، وتقارير الذمم المدينة.</p>
+                <h3>{{ t('Comprehensive Customer & Supplier Management') }}</h3>
+                <p>{{ t('A comprehensive database of customers and suppliers,') }} <strong>{{ t('detailed account statements,') }}</strong> {{ t('cheque and voucher management, due-date follow-up and receivables reports.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
-                <h3>تقارير شاملة</h3>
-                <p>لوحات تحكم تفاعلية، تقارير مالية دقيقة، دفتر أستاذ GL</p>
+                <h3>{{ t('Comprehensive Reports') }}</h3>
+                <p>{{ t('Interactive dashboards, accurate financial reports, GL ledger') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
-                <h3>أمان متقدم</h3>
-                <p>حماية من SQL Injection و XSS، تشفير البيانات، سجل تدقيق كامل</p>
+                <h3>{{ t('Advanced Security') }}</h3>
+                <p>{{ t('Protection against SQL Injection and XSS, data encryption, full audit log') }}</p>
             </div>
         </div>
     </section>
@@ -240,36 +240,36 @@
 
     
     <section class="contact">
-        <h2>تواصل معنا</h2>
-        <p style="color: rgba(255,255,255,0.9); font-size: 1rem; margin-bottom: 8px;">فريقنا جاهز لمساعدتك</p>
+        <h2>{{ t('Contact Us') }}</h2>
+        <p style="color: rgba(255,255,255,0.9); font-size: 1rem; margin-bottom: 8px;">{{ t('Our team is ready to help') }}</p>
         <div class="contact-info">
             <div class="contact-item">
                 <i class="fab fa-whatsapp"></i>
-                <strong>واتساب</strong>
+                <strong>{{ t('WhatsApp') }}</strong>
                 <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank">+{{ config.COMPANY_WHATSAPP }}</a>
             </div>
             <div class="contact-item">
                 <i class="fas fa-phone"></i>
-                <strong>جوال</strong>
+                <strong>{{ t('Mobile') }}</strong>
                 <a href="tel:{{ config.COMPANY_PHONE }}">{{ config.COMPANY_PHONE }}</a>
             </div>
             <div class="contact-item">
                 <i class="fas fa-mobile-alt"></i>
-                <strong>وطنية</strong>
+                <strong>{{ t('Wataniya') }}</strong>
                 <a href="tel:{{ config.COMPANY_PHONE_2 }}">{{ config.COMPANY_PHONE_2 }}</a>
             </div>
             <div class="contact-item">
                 <i class="fas fa-map-marker-alt"></i>
                 <strong>{{ t('Address') }}</strong>
-                <a style="cursor: default;">{{ config.COMPANY_ADDRESS }}</a>
+                <a style="cursor: default;">{{ company_address }}</a>
             </div>
         </div>
         <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
             <a href="{{ url_for('public.user_guide') }}" class="btn-hero btn-primary">
-                <i class="fas fa-book"></i> دليل المستخدم
+                <i class="fas fa-book"></i> {{ t('User Guide') }}
             </a>
             <a href="{{ url_for('public.contact') }}" class="btn-hero btn-outline">
-                <i class="fas fa-envelope"></i> راسلنا
+                <i class="fas fa-envelope"></i> {{ t('Message Us') }}
             </a>
         </div>
     </section>
@@ -279,17 +279,17 @@
         <div style="max-width: 1000px; margin: 0 auto;">
             <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 30px; color: var(--gulf-blue);">
                 <i class="fas fa-building" style="margin-left: 10px;"></i>
-                من نحن - شركة أزاد للأنظمة الذكية
+                {{ t('About Us - Azad Smart Systems') }}
             </h2>
             <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
                 <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
-                    <strong>شركة أزاد للأنظمة الذكية</strong> هي شركة متخصصة في تطوير <strong>حلول برمجيات إدارة الأعمال</strong>. نتخصص في تقديم <strong>أنظمة إدارة المبيعات والمستودعات</strong> لمساعدة الشركات على تحقيق النمو والكفاءة.
+                    <strong>{{ t('Azad Smart Systems') }}</strong> {{ t('is a company specialized in developing') }} <strong>{{ t('business management software') }}</strong>. {{ t('We provide') }} <strong>{{ t('sales and warehouse management systems') }}</strong> {{ t('to help companies grow efficiently.') }}
                 </p>
                 <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify; margin-bottom: 25px;">
-                    يجمع <strong>نظام أزاد</strong> بين التكنولوجيا المتقدمة والتصميم السهل الاستخدام، مما يجعله <strong>الخيار الأمثل</strong> لأصحاب الأعمال الذين يبحثون عن <strong>برنامج محاسبة شامل</strong> يوفر الوقت ويزيد الأرباح.
+                    {{ t('The') }} <strong>{{ t('Azad system') }}</strong> {{ t('combines advanced technology with easy-to-use design, making it') }} <strong>{{ t('the ideal choice') }}</strong> {{ t('for business owners looking for a') }} <strong>{{ t('comprehensive accounting suite') }}</strong> {{ t('that saves time and grows profits.') }}
                 </p>
                 <p style="font-size: 1.15rem; line-height: 2; color: #333; text-align: justify;">
-                    نفتخر بتقديم <strong>دعم فني عربي متميز</strong>، تدريب شامل، وتحديثات مجانية مستمرة. فريقنا المتخصص جاهز لمساعدتك في <strong>التحول الرقمي</strong> وتحسين إدارة أعمالك بأحدث التقنيات.
+                    {{ t('We pride ourselves on') }} <strong>{{ t('excellent Arabic technical support') }}</strong>{{ t(', comprehensive training and continuous free updates. Our specialized team is ready to help you with your') }} <strong>{{ t('digital transformation') }}</strong> {{ t('and improve your business management using the latest technologies.') }}
                 </p>
             </div>
         </div>
@@ -300,50 +300,50 @@
         <div style="max-width: 1000px; margin: 0 auto;">
                 <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; color: var(--gulf-blue);">
                     <i class="fas fa-users-cog" style="margin-left: 10px;"></i>
-                    من يستفيد من نظام أزاد؟
+                    {{ t('Who Benefits from Azad?') }}
                 </h2>
                 <p style="text-align: center; color: #666; margin-bottom: 50px; font-size: 1.1rem;">
-                    حلول مخصصة لمختلف القطاعات التجارية
+                    {{ t('Tailored solutions for different business sectors') }}
                 </p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
                     <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
                         <i class="fas fa-car" style="margin-left: 10px;"></i>
-                        محلات قطع غيار السيارات
+                        {{ t('Auto Spare Parts Stores') }}
                     </h3>
                     <p style="line-height: 1.8; opacity: 0.95;">
-                        نظام متخصص لـ <strong>قطع غيار السيارات</strong> مع ميزات فريدة: معرفة توافق القطع، 3 مستويات أسعار، باركود، وإدارة مخزون دقيقة.
+                        {{ t('A specialized system for') }} <strong>{{ t('auto spare parts') }}</strong> {{ t('with unique features: part compatibility, 3 price levels, barcode and accurate stock control.') }}
                     </p>
                 </div>
                 
                 <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
                     <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
                         <i class="fas fa-store" style="margin-left: 10px;"></i>
-                        المحلات التجارية والسوبرماركت
+                        {{ t('Retail Stores & Supermarkets') }}
                     </h3>
                     <p style="line-height: 1.8; opacity: 0.95;">
-                        <strong>نظام نقاط بيع POS</strong> سريع وسهل، باركود، طباعة حرارية، إدارة موردين، كشوفات حساب، وتقارير يومية. حل متكامل لتجار التجزئة.
+                        <strong>{{ t('POS system') }}</strong> {{ t('fast and easy, with barcodes, thermal printing, supplier management, account statements and daily reports. A complete retail solution.') }}
                     </p>
                 </div>
                 
                 <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
                     <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
                         <i class="fas fa-industry" style="margin-left: 10px;"></i>
-                        الشركات الصغيرة والمتوسطة
+                        {{ t('Small & Medium Businesses') }}
                     </h3>
                     <p style="line-height: 1.8; opacity: 0.95;">
-                        <strong>ERP متكامل</strong> لإدارة جميع عملياتك: مبيعات، مشتريات، مخزون، حسابات، موارد بشرية، وتقارير شاملة. <strong>سحابي 100%</strong> - تابع أعمالك من أي مكان.
+                        <strong>{{ t('Integrated ERP') }}</strong> {{ t('for all your operations: sales, purchasing, stock, accounts, HR and comprehensive reports.') }} <strong>{{ t('100% cloud') }}</strong> {{ t('- follow your business from anywhere.') }}
                     </p>
                 </div>
                 
                 <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 35px; border-radius: 15px; color: white; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
                     <h3 style="font-size: 1.5rem; margin-bottom: 15px;">
                         <i class="fas fa-wrench" style="margin-left: 10px;"></i>
-                        ورش الصيانة والخدمات
+                        {{ t('Maintenance & Service Workshops') }}
                     </h3>
                     <p style="line-height: 1.8; opacity: 0.95;">
-                        إدارة <strong>أوامر العمل</strong>، تتبع القطع المستخدمة، فواتير خدمات، جدولة المواعيد، وإدارة عملاء مع سجل كامل. مثالي لـ <strong>ورش السيارات والصيانة</strong>.
+                        {{ t('Work order') }} {{ t('management, used-parts tracking, service invoices, appointment scheduling and customer management with a full history. Ideal for') }} <strong>{{ t('auto repair and maintenance workshops') }}</strong>.
                     </p>
                 </div>
             </div>
@@ -354,10 +354,10 @@
     <section class="faq-section" style="padding: 80px 20px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
         <div style="max-width: 900px; margin: 0 auto;">
             <h2 style="text-align: center; font-size: 2.5rem; margin-bottom: 20px; background: var(--gradient-gulf); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                الأسئلة الشائعة
+                {{ t('Frequently Asked Questions') }}
             </h2>
             <p style="text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 50px; font-size: 1.1rem;">
-                إجابات على أكثر الأسئلة شيوعاً حول نظام إدارة المبيعات والمخزون
+                {{ t('Answers to the most common questions about the sales and inventory management system') }}
             </p>
             
             <div class="faq-container">
@@ -365,10 +365,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        ما هو نظام أزاد لإدارة الأعمال؟
+                        {{ t('What is the Azad business management system?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نظام أزاد هو <strong>برنامج محاسبة وإدارة متكامل</strong> للشركات والمحلات التجارية. يوفر النظام إدارة شاملة للمبيعات، المشتريات، المخزون، الفواتير الإلكترونية، كشوفات الحسابات، إدارة الشيكات، والتقارير المالية.
+                        {{ t('Azad is an') }} <strong>{{ t('integrated accounting and management suite') }}</strong> {{ t('for companies and retail stores. It provides comprehensive management of sales, purchasing, inventory, e-invoicing, account statements, cheque management and financial reports.') }}
                     </p>
                 </div>
                 
@@ -376,10 +376,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        هل البرنامج مناسب لمحلات قطع غيار السيارات؟
+                        {{ t('Is the software suitable for auto spare parts stores?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نعم! النظام يتضمن ميزات متخصصة مثل: معرفة توافق القطع مع موديلات السيارات، إدارة 3 مستويات أسعار (جملة، نص جملة، قطاعي)، تتبع المخزون بدقة، <strong>فواتير احترافية</strong> مع شعار شركتك، وتحليل المبيعات.
+                        {{ t('Yes! The system includes specialized features such as part-to-vehicle compatibility, 3 price levels (wholesale, semi-wholesale, retail), accurate stock tracking,') }} <strong>{{ t('professional invoices') }}</strong> {{ t('with your company logo, and sales analytics.') }}
                     </p>
                 </div>
                 
@@ -387,20 +387,20 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        كم تكلفة الاشتراك؟
+                        {{ t('How much does a subscription cost?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نوفر <strong>باقة موحّدة واحدة</strong> تناسب جميع أحجام الأعمال. الباقة تشمل: دعم فني، تحديثات مجانية، وتدريب.                    </p>
+                        {{ t('We offer') }} <strong>{{ t('one unified package') }}</strong> {{ t('for businesses of all sizes. The package includes: technical support, free updates and training.') }}                    </p>
                 </div>
                 
                 
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        هل يدعم النظام الفواتير الإلكترونية؟
+                        {{ t('Does the system support e-invoicing?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نعم! النظام يدعم <strong>الفواتير الإلكترونية</strong> بالكامل. يمكنك إنشاء فواتير احترافية بتصاميم متعددة، طباعة بأحجام مختلفة (A4, A5, Thermal)، إضافة شعارك وبياناتك، QR Code، وتصدير PDF.
+                        {{ t('Yes! The system supports') }} <strong>{{ t('e-invoicing') }}</strong>{{ t('. You can create professional invoices in multiple designs, print in different sizes (A4, A5, thermal), add your logo and details, QR Code, and export PDF.') }}
                     </p>
                 </div>
                 
@@ -408,10 +408,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        ما هي مميزات الذكاء الاصطناعي في البرنامج؟
+                        {{ t('What AI features does the software offer?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        <strong>الذكاء الاصطناعي المتقدم</strong> في نظام أزاد يوفر: توصيات أسعار ذكية بناءً على السوق، تحليل سلوك العملاء، تنبؤ بالمبيعات المستقبلية، تحليل أداء المنتجات، كشف الأنماط المخفية، توصيات لزيادة الأرباح، مساعد محادثة ذكي يجيب عن أسئلتك، ويتعلم من بيانات عملك لتحسين الأداء باستمرار.
+                        <strong>{{ t('Advanced AI') }}</strong> {{ t('in Azad offers: smart price recommendations based on the market, customer behavior analysis, sales forecasting, product performance analysis, hidden pattern detection, profit-boosting recommendations, a conversational assistant that answers your questions, and continuous learning from your business data.') }}
                     </p>
                 </div>
                 
@@ -419,10 +419,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        هل يمكن استخدام البرنامج في أكثر من فرع؟
+                        {{ t('Can the software be used in multiple branches?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        نعم! النظام يدعم <strong>إدارة متعددة المستودعات</strong> والفروع. يمكنك متابعة المخزون في كل فرع، نقل البضائع بين المستودعات، تقارير منفصلة لكل فرع، ومركزية كاملة في الإدارة.
+                        {{ t('Yes! The system supports') }} <strong>{{ t('multi-warehouse') }}</strong> {{ t('and branch management. You can track stock in each branch, transfer goods between warehouses, separate reports per branch, and full centralized control.') }}
                     </p>
                 </div>
                 
@@ -430,10 +430,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        كيف أبدأ باستخدام نظام أزاد؟
+                        {{ t('How do I get started with Azad?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        البداية سهلة! <strong>3 خطوات فقط:</strong> (1) <a href="{{ url_for('public.demo') }}" style="color: var(--gulf-gold); text-decoration: underline;">احجز عرضاً توضيحياً مجانياً</a>، (2) أكمل الاشتراك، (3) ابدأ فوراً! نوفر <strong>تدريب مجاني</strong> لفريقك، استيراد بياناتك القديمة، ودعم فني مستمر.
+                        {{ t('Getting started is easy!') }} <strong>{{ t('Just 3 steps:') }}</strong> (1) <a href="{{ url_for('public.demo') }}" style="color: var(--gulf-gold); text-decoration: underline;">{{ t('book a free live demo') }}</a>{{ t(', (2) complete the subscription, (3) start immediately! We provide') }} <strong>{{ t('free training') }}</strong> {{ t('for your team, import of your legacy data, and ongoing technical support.') }}
                     </p>
                 </div>
                 
@@ -441,10 +441,10 @@
                 <div class="faq-item" style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px; border: 1px solid rgba(212, 175, 55, 0.2);">
                     <h3 style="color: var(--gulf-gold); margin-bottom: 15px; font-size: 1.3rem;">
                         <i class="fas fa-question-circle" style="margin-left: 10px;"></i>
-                        هل النظام آمن ويحمي بياناتي؟
+                        {{ t('Is the system secure? Does it protect my data?') }}
                     </h3>
                     <p style="color: rgba(255,255,255,0.9); line-height: 1.8; font-size: 1.05rem;">
-                        <strong>الأمان أولويتنا!</strong> نستخدم: تشفير SSL كامل، نسخ احتياطي تلقائي يومي، حماية من الاختراق، صلاحيات متقدمة للمستخدمين، سجل تدقيق شامل، وخزنة آمنة للبطاقات الائتمانية. بياناتك محمية بأعلى معايير الأمان العالمية.
+                        <strong>{{ t('Security is our priority!') }}</strong> {{ t('We use full SSL encryption, daily automatic backups, intrusion protection, advanced user permissions, a comprehensive audit log and a secure vault for credit cards. Your data is protected with the highest global security standards.') }}
                     </p>
                 </div>
             </div>
@@ -452,7 +452,7 @@
             <div style="text-align: center; margin-top: 50px;">
                 <a href="{{ url_for('public.contact') }}" class="btn-hero btn-primary" style="display: inline-block; padding: 18px 45px; background: var(--gulf-gold); color: var(--gulf-blue); border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 1.2rem; box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);">
                     <i class="fas fa-phone-alt" style="margin-left: 10px;"></i>
-                    تواصل معنا للمزيد من المعلومات
+                    {{ t('Contact us for more information') }}
                 </a>
             </div>
         </div>
@@ -461,28 +461,28 @@
     
     <footer>
         <div style="margin-bottom: 15px;">
-            <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="شركة أزاد للأنظمة الذكية - نظام إدارة متكامل" style="max-height: 50px;">
+            <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="{{ t('Azad Smart Systems - Integrated Management System') }}" style="max-height: 50px;">
         </div>
-        <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME_AR }}. جميع الحقوق محفوظة.</p>
+        <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}. {{ t('All rights reserved.') }}</p>
         <p class="developer" style="font-size: 0.9rem;">{{ config.DEVELOPER_CREDIT }}</p>
         <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem;">
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.features') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">المميزات</a>
+            <a href="{{ url_for('public.features') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Features') }}</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.user_guide') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">دليل</a>
+            <a href="{{ url_for('public.user_guide') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Guide') }}</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.contact') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">اتصل بنا</a>
+            <a href="{{ url_for('public.contact') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Contact Us') }}</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
             <a href="{{ url_for('public.sla') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">SLA</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.contract') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">العقد</a>
+            <a href="{{ url_for('public.contract') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Contract') }}</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.terms') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">الشروط</a>
+            <a href="{{ url_for('public.terms') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Terms') }}</a>
             <span style="color: rgba(255,255,255,0.3);">|</span>
-            <a href="{{ url_for('public.privacy') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">الخصوصية</a>
+            <a href="{{ url_for('public.privacy') }}" style="color: rgba(255,255,255,0.7); text-decoration: none;">{{ t('Privacy') }}</a>
         </div>
         <p style="margin-top: 15px; color: var(--gulf-gold); font-size: 0.85rem;">
-            <i class="fas fa-shield-alt"></i> محمي بأعلى معايير الأمان
+            <i class="fas fa-shield-alt"></i> {{ t('Protected with top security standards') }}
         </p>
     </footer>
 

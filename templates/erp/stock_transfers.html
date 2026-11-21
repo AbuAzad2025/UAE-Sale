@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}نقل المخزون{% endblock %}
-{% block page_title %}<i class="fas fa-exchange-alt mr-2"></i>نقل المخزون بين المستودعات{% endblock %}
+{% block title %}{{ t('Stock Transfer') }}{% endblock %}
+{% block page_title %}<i class="fas fa-exchange-alt mr-2"></i>{{ t('Stock Transfer Between Warehouses') }}{% endblock %}
 {% block content %}
-<div class="mb-3"><a href="{{ url_for('erp_modules.create_stock_transfer') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>طلب نقل جديد</a></div>
+<div class="mb-3"><a href="{{ url_for('erp_modules.create_stock_transfer') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('New Transfer Request') }}</a></div>
 <div class="card"><div class="card-body">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>الرقم</th><th>من</th><th>إلى</th><th>التاريخ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+    <thead><tr><th>{{ t('Number') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Date') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for t in transfers %}
     <tr>
@@ -17,15 +17,15 @@
       <td>
         {% if t.status == 'pending' %}
         <form method="POST" action="{{ url_for('erp_modules.send_stock_transfer', id=t.id) }}" style="display:inline">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-info" onclick="return confirm('إرسال الشحنة؟')"><i class="fas fa-truck"></i></button></form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-info" onclick="return confirm('{{ t('Send the shipment?') }}')"><i class="fas fa-truck"></i></button></form>
         {% endif %}
         {% if t.status == 'in_transit' %}
         <form method="POST" action="{{ url_for('erp_modules.receive_stock_transfer', id=t.id) }}" style="display:inline">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-success" onclick="return confirm('استلام الشحنة وتحديث المخزون؟')"><i class="fas fa-check"></i></button></form>
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-success" onclick="return confirm('{{ t('Receive the shipment and update inventory?') }}')"><i class="fas fa-check"></i></button></form>
         {% endif %}
       </td>
     </tr>
-    {% else %}<tr><td colspan="6" class="text-center text-muted">لا توجد عمليات نقل</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No transfers') }}</td></tr>{% endfor %}
     </tbody>
   </table>
 </div></div>

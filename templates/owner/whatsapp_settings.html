@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}إعدادات واتساب{% endblock %}
+{% block title %}{{ t('WhatsApp Settings') }}{% endblock %}
 {% block content %}
 <div class="container-fluid">
   <div class="mb-3">
     <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right"></i> رجوع للوحة المالك
+      <i class="fas fa-arrow-right"></i> {{ t('Back to Owner Dashboard') }}
     </a>
     <a href="{{ url_for('owner.email_settings') }}" class="btn btn-info">
-      <i class="fas fa-envelope"></i> البريد
+      <i class="fas fa-envelope"></i> {{ t('Mail') }}
     </a>
     <a href="{{ url_for('owner.sms_settings') }}" class="btn btn-warning">
-      <i class="fas fa-sms"></i> الرسائل
+      <i class="fas fa-sms"></i> {{ t('Messages') }}
     </a>
   </div>
   <div class="card">
     <div class="card-header">
-      <h3><i class="fab fa-whatsapp"></i> إعدادات واتساب</h3>
+      <h3><i class="fab fa-whatsapp"></i> {{ t('WhatsApp Settings') }}</h3>
     </div>
     <div class="card-body">
       <form method="post" action="">
@@ -39,7 +39,7 @@
         </div>
         
         <div class="form-group">
-          <label>رقم الهاتف</label>
+          <label>{{ t('Phone Number') }}</label>
           <input type="text" 
                  name="whatsapp_phone_number" 
                  class="form-control" 
@@ -55,13 +55,13 @@
                    name="whatsapp_enabled" 
                    {% if settings.whatsapp_enabled %}checked{% endif %}>
             <label class="custom-control-label" for="whatsapp_enabled">
-              تفعيل واتساب
+              {{ t('Enable WhatsApp Service') }}
             </label>
           </div>
         </div>
         
         <button type="submit" class="btn btn-success btn-lg">
-          <i class="fas fa-save"></i> حفظ
+          <i class="fas fa-save"></i> {{ t('Save') }}
         </button>
       </form>
     </div>

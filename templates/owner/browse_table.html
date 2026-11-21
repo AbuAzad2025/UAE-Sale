@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تصفح {{ table_name }} وإدارة البيانات{% endblock %}
-{% block page_title %}تصفح جدول: <code>{{ table_name }}</code>{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Browse') }} {{ table_name }} - {{ t('And Data Management') }}{% endblock %}
+{% block page_title %}{{ t('Browse Table') }}: <code>{{ table_name }}</code>{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -10,11 +10,11 @@
       <div class="card-header">
         <h3 class="card-title">
           <i class="fas fa-table"></i> {{ table_name }}
-          <span class="badge badge-info">{{ total }} سجل</span>
+          <span class="badge badge-info">{{ total }} {{ t('records') }}</span>
         </h3>
         <div class="card-tools">
           <a href="{{ url_for('owner.database_tools') }}" class="btn btn-sm btn-secondary">
-            <i class="fas fa-arrow-left"></i> عودة
+            <i class="fas fa-arrow-left"></i> {{ t('Return') }}
           </a>
         </div>
       </div>
@@ -45,17 +45,17 @@
           <ul class="pagination pagination-sm m-0">
             {% if page > 1 %}
             <li class="page-item">
-              <a class="page-link" href="{{ url_for('owner.browse_table', table_name=table_name, page=page-1) }}">السابق</a>
+              <a class="page-link" href="{{ url_for('owner.browse_table', table_name=table_name, page=page-1) }}">{{ t('Previous') }}</a>
             </li>
             {% endif %}
             
             <li class="page-item active">
-              <span class="page-link">صفحة {{ page }} من {{ total_pages }}</span>
+              <span class="page-link">{{ t('Page') }} {{ page }} / {{ total_pages }}</span>
             </li>
             
             {% if page < total_pages %}
             <li class="page-item">
-              <a class="page-link" href="{{ url_for('owner.browse_table', table_name=table_name, page=page+1) }}">التالي</a>
+              <a class="page-link" href="{{ url_for('owner.browse_table', table_name=table_name, page=page+1) }}">{{ t('Next') }}</a>
             </li>
             {% endif %}
           </ul>

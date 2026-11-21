@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - كشف حساب المورد {{ supplier.name }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Supplier Statement') }} {{ supplier.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -25,17 +25,17 @@
 </style>
 {% endblock %}
 
-{% block page_title %}كشف حساب المورد{% endblock %}
+{% block page_title %}{{ t('Supplier Statement') }}{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center flex-wrap mb-3 no-print">
-  <p class="text-muted mb-0">{{ supplier.name }} <span class="st-label">· رقم المورد #{{ supplier.id }}</span></p>
+  <p class="text-muted mb-0">{{ supplier.name }} <span class="st-label">· {{ t('Supplier Number') }} #{{ supplier.id }}</span></p>
   <div>
     <a href="{{ url_for('suppliers.statement_print', id=supplier.id) }}" class="btn btn-primary">
-      <i class="fas fa-print mr-2"></i>معاينة الطباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print Preview') }}
     </a>
     <a href="{{ url_for('suppliers.view', id=supplier.id) }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>تفاصيل المورد
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Supplier Details') }}
     </a>
   </div>
 </div>
@@ -43,35 +43,35 @@
   <div class="card-body">
     <div class="st-summary">
       <div class="st-card">
-        <h6>إجمالي المشتريات</h6><h3 class="text-info">{{ purchases|length }}</h3>
+        <h6>{{ t('Total Purchases') }}</h6><h3 class="text-info">{{ purchases|length }}</h3>
       </div>
       <div class="st-card">
-        <h6>إجمالي المبلغ</h6><h3 class="text-success">{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }}</h3>
+        <h6>{{ t('Total Amount') }}</h6><h3 class="text-success">{{ '{:,.2f}'.format(supplier.total_purchases_aed or 0) }}</h3>
       </div>
       <div class="st-card">
-        <h6>إجمالي الدفعات</h6><h3 class="text-primary">{{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }}</h3>
+        <h6>{{ t('Total Payments') }}</h6><h3 class="text-primary">{{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }}</h3>
       </div>
       <div class="st-card">
-        <h6>الرصيد {{ 'المستحق للمورد' if final_balance < 0 else 'لصالحنا' }}</h6>
+        <h6>{{ t('Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}</h6>
         <h3 class="{{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
           {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
         </h3>
       </div>
     </div>
 
-    <h5 class="mb-3"><i class="fas fa-list mr-2"></i>حركة الحساب</h5>
+    <h5 class="mb-3"><i class="fas fa-list mr-2"></i>{{ t('Account Transactions') }}</h5>
     <div class="table-responsive">
       <table class="table table-bordered table-sm table-striped mb-0">
         <thead class="thead-light">
           <tr>
             <th class="text-center">#</th>
             <th>{{ t('Date') }}</th>
-            <th>المرجع</th>
-            <th>البيان</th>
-            <th class="text-left">مدين</th>
-            <th class="text-left">دائن</th>
-            <th class="text-left">الرصيد</th>
-            <th class="text-center no-print">التفاصيل</th>
+            <th>{{ t('Reference') }}</th>
+            <th>{{ t('Description') }}</th>
+            <th class="text-left">{{ t('Debit') }}</th>
+            <th class="text-left">{{ t('Credit') }}</th>
+            <th class="text-left">{{ t('Balance') }}</th>
+            <th class="text-center no-print">{{ t('Details') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -83,16 +83,16 @@
             <td>
               {{ tr.description }}
               {% if tr.type == 'payment' and tr.status == 'pending' %}
-                <span class="badge badge-warning">معلق</span>
+                <span class="badge badge-warning">{{ t('Pending') }}</span>
               {% endif %}
             </td>
             <td class="text-left">{{ '{:,.2f}'.format(tr.debit) if tr.debit else '-' }}</td>
             <td class="text-left">{{ '{:,.2f}'.format(tr.credit) if tr.credit else '-' }}</td>
             <td class="text-left"><strong>{{ '{:,.2f}'.format(tr.balance|abs) }}</strong>
-              <small class="text-muted">{{ 'دائن' if tr.balance < 0 else 'مدين' }}</small>
+              <small class="text-muted">{{ t('Credit') if tr.balance < 0 else t('Debit') }}</small>
             </td>
             <td class="text-center no-print">
-              <button type="button" class="st-toggle" data-target="st-d-{{ loop.index }}" aria-expanded="false">▸ تفاصيل</button>
+              <button type="button" class="st-toggle" data-target="st-d-{{ loop.index }}" aria-expanded="false">▸ {{ t('Details') }}</button>
             </td>
           </tr>
           <tr class="st-detail-row" id="st-d-{{ loop.index }}">
@@ -100,43 +100,43 @@
               <div class="st-detail-box">
                 {% if tr.type == 'purchase' %}
                   <h6>
-                    <i class="fas fa-file-invoice mr-1"></i> منتجات الفاتورة
-                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">فتح الفاتورة الأصلية</a>
+                    <i class="fas fa-file-invoice mr-1"></i> {{ t('Invoice Products') }}
+                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">{{ t('Open Original Invoice') }}</a>
                   </h6>
                   <table class="table table-sm table-bordered mb-2">
-                    <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+                    <thead><tr><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Unit Price') }}</th><th>{{ t('Sum') }}</th></tr></thead>
                     <tbody>
                       {% for ln in tr.details.lines %}
                       <tr><td>{{ ln.product }}</td><td>{{ '{:,.2f}'.format(ln.quantity) }}</td><td>{{ '{:,.2f}'.format(ln.unit_cost) }}</td><td>{{ '{:,.2f}'.format(ln.total) }}</td></tr>
                       {% endfor %}
                     </tbody>
                   </table>
-                  <small class="text-muted">الضريبة: {{ '{:,.2f}'.format(tr.details.tax) }} · الإجمالي: {{ '{:,.2f}'.format(tr.details.total) }} · الاستحقاق: {{ tr.details.due_date }}</small>
+                  <small class="text-muted">{{ t('Tax') }}: {{ '{:,.2f}'.format(tr.details.tax) }} · {{ t('Sum') }}: {{ '{:,.2f}'.format(tr.details.total) }} · {{ t('Due Date') }}: {{ tr.details.due_date }}</small>
                 {% else %}
                   <h6>
-                    <i class="fas fa-receipt mr-1"></i> تفاصيل سند الدفع
-                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">فتح السند الأصلي</a>
+                    <i class="fas fa-receipt mr-1"></i> {{ t('Payment Voucher Details') }}
+                    <a href="{{ tr.url }}" class="btn btn-xs btn-outline-primary ml-2">{{ t('Open Original Voucher') }}</a>
                   </h6>
                   <small>
-                    الطريقة: <strong>{{ tr.details.method }}</strong> ·
-                    الحالة: <strong>{{ 'مؤكد' if tr.details.confirmed else 'معلق' }}</strong> ·
-                    رقم الشيك: <strong>{{ tr.details.cheque_number }}</strong> ·
-                    البنك: <strong>{{ tr.details.bank_name }}</strong> ·
-                    الحساب: <strong>{{ tr.details.account_number }}</strong> ·
-                    استحقاق الشيك: <strong>{{ tr.details.due_date }}</strong>
+                    {{ t('Method') }}: <strong>{{ tr.details.method }}</strong> ·
+                    {{ t('Status') }}: <strong>{{ t('Confirmed') if tr.details.confirmed else t('Pending') }}</strong> ·
+                    {{ t('Cheque Number') }}: <strong>{{ tr.details.cheque_number }}</strong> ·
+                    {{ t('Bank') }}: <strong>{{ tr.details.bank_name }}</strong> ·
+                    {{ t('Account') }}: <strong>{{ tr.details.account_number }}</strong> ·
+                    {{ t('Cheque Due Date') }}: <strong>{{ tr.details.due_date }}</strong>
                   </small>
-                  {% if tr.details.notes %}<div class="mt-1"><small class="text-muted">الملاحظات: {{ tr.details.notes }}</small></div>{% endif %}
+                  {% if tr.details.notes %}<div class="mt-1"><small class="text-muted">{{ t('Notes') }}: {{ tr.details.notes }}</small></div>{% endif %}
                 {% endif %}
               </div>
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="text-center text-muted py-4">لا توجد حركات لهذا المورد</td></tr>
+          <tr><td colspan="8" class="text-center text-muted py-4">{{ t('No transactions for this supplier') }}</td></tr>
           {% endfor %}
         </tbody>
         <tfoot class="font-weight-bold">
           <tr>
-            <td colspan="4" class="text-left">الرصيد النهائي {{ 'المستحق للمورد' if final_balance < 0 else 'لصالحنا' }}</td>
+            <td colspan="4" class="text-left">{{ t('Final Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}</td>
             <td colspan="4" class="text-left {{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
               {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
             </td>
@@ -147,7 +147,7 @@
 
     <div class="mt-4 text-muted no-print" style="font-size:11px;">
       <i class="fas fa-info-circle mr-1"></i>
-      الشيكات المعلقة تظهر في الحركة ولا تُعتبر مُسدَّدة حتى تأكيد صرفها. استخدم «معاينة الطباعة» للحصول على ورقة A4 نظيفة.
+      {{ t('Pending cheques appear in the transactions and are not considered settled until their issuance is confirmed. Use "Print Preview" to get a clean A4 sheet.') }}
     </div>
   </div>
 </div>
@@ -162,7 +162,7 @@
       if (!row) return;
       var open = row.classList.toggle('open');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      btn.textContent = open ? '▾ إخفاء' : '▸ تفاصيل';
+      btn.textContent = open ? {{ t('▾ Hide')|tojson }} : {{ t('▸ Details')|tojson }};
     });
   });
 })();

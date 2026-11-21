@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}فاتورة شراء #{{ purchase.purchase_number }}{% endblock %}
+{% block print_title %}{{ t('Purchase Invoice') }} #{{ purchase.purchase_number }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -44,13 +44,13 @@
 <div class="document">
   <div class="no-print template-selector">
     <div class="selector-wrapper">
-      <span class="template-label">القالب:</span>
+      <span class="template-label">{{ t('Template:') }}</span>
       <div class="template-buttons">
         {% for tpl_key, tpl_name in available_templates %}
           <button type="button" class="template-btn {% if tpl_key == current_template %}active{% endif %}" data-template="{{ tpl_key }}" onclick="switchTemplate('{{ tpl_key }}')">{{ tpl_name }}</button>
         {% endfor %}
       </div>
-      <button type="button" class="print-btn-fixed" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+      <button type="button" class="print-btn-fixed" onclick="window.print()"><i class="fas fa-print"></i> {{ t('Print') }}</button>
     </div>
   </div>
 
@@ -63,41 +63,41 @@
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
         <div> {{ settings.phone_1 or '' }}{% if settings.email %} |  {{ settings.email }}{% endif %}{% if settings.website %} |  {{ settings.website }}{% endif %}</div>
-        {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">الرقم الضريبي: {{ settings.tax_number }}</div>{% endif %}
+        {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">{{ t('Tax Number:') }} {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
 
     <div class="purchase-title">
-      <h2> فاتورة شراء</h2>
+      <h2> {{ t('Purchase Invoice') }}</h2>
       <div class="purchase-number">{{ purchase.purchase_number }}</div>
     </div>
 
     <div class="content">
       <div class="info-grid">
         <div class="info-box">
-          <h3> معلومات المورد</h3>
-          <p><strong>المورد:</strong> {{ purchase.supplier_name }}</p>
-          {% if purchase.supplier and purchase.supplier.tax_number %}<p><strong>الرقم الضريبي للمورد:</strong> {{ purchase.supplier.tax_number }}</p>{% endif %}
-          {% if purchase.reverse_charge %}<p><strong>Reverse Charge:</strong> ضريبة ذاتية التقييم — المورد لا يضيف ضريبة</p>{% endif %}
-          <p><strong>الهاتف:</strong> {{ purchase.supplier_phone }}</p>
+          <h3> {{ t('Supplier Information') }}</h3>
+          <p><strong>{{ t('Supplier:') }}</strong> {{ purchase.supplier_name }}</p>
+          {% if purchase.supplier and purchase.supplier.tax_number %}<p><strong>{{ t('Supplier Tax Number:') }}</strong> {{ purchase.supplier.tax_number }}</p>{% endif %}
+          {% if purchase.reverse_charge %}<p><strong>Reverse Charge:</strong> {{ t('Self-assessed tax - supplier does not add tax') }}</p>{% endif %}
+          <p><strong>{{ t('Phone:') }}</strong> {{ purchase.supplier_phone }}</p>
         </div>
         <div class="info-box">
-          <h3> بيانات الفاتورة</h3>
-          <p><strong>التاريخ:</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') if purchase.purchase_date else '' }}</p>
-          <p><strong>المبلغ الإجمالي:</strong> {{ purchase.amount_base }} {{ base_currency }}</p>
-          <p><strong>المدفوع:</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
-          <p><strong>المتبقي:</strong> {{ purchase.amount_base - purchase.get_paid_amount() }} {{ base_currency }}</p>
+          <h3> {{ t('Invoice Details') }}</h3>
+          <p><strong>{{ t('Date:') }}</strong> {{ purchase.purchase_date.strftime('%Y-%m-%d') if purchase.purchase_date else '' }}</p>
+          <p><strong>{{ t('Total Amount:') }}</strong> {{ purchase.amount_base }} {{ base_currency }}</p>
+          <p><strong>{{ t('Paid:') }}</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
+          <p><strong>{{ t('Remaining:') }}</strong> {{ purchase.amount_base - purchase.get_paid_amount() }} {{ base_currency }}</p>
         </div>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>المنتج</th>
-            <th>الكمية</th>
-            <th>السعر</th>
-            <th>المعاملة</th>
-            <th>الإجمالي</th>
+            <th>{{ t('Product') }}</th>
+            <th>{{ t('Quantity') }}</th>
+            <th>{{ t('Price') }}</th>
+            <th>{{ t('Treatment') }}</th>
+            <th>{{ t('Total') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -114,14 +114,14 @@
       </table>
 
       <div class="total-section">
-        <div class="total-row"><span>الإجمالي الفرعي:</span><strong>{{ "{:,.2f}".format(purchase.subtotal) }} {{ base_currency }}</strong></div>
+        <div class="total-row"><span>{{ t('Subtotal:') }}</span><strong>{{ "{:,.2f}".format(purchase.subtotal) }} {{ base_currency }}</strong></div>
         {% if purchase.tax_amount > 0 or purchase.tax_treatment in ('zero', 'exempt') %}
-        <div class="total-row"><span>الضريبة ({{ purchase.tax_rate or 0 }}% — {{ purchase.tax_treatment or 'standard' }}{% if purchase.tax_inclusive %} — شاملة{% else %} — إضافية{% endif %}):</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        <div class="total-row"><span>{{ t('Tax') }} ({{ purchase.tax_rate or 0 }}% — {{ purchase.tax_treatment or 'standard' }}{% if purchase.tax_inclusive %} — {{ t('inclusive') }}{% else %} — {{ t('exclusive') }}{% endif %}):</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
         {% endif %}
         {% if purchase.reverse_charge %}
-        <div class="total-row"><span>Reverse Charge — ضريبة ذاتية التقييم:</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
+        <div class="total-row"><span>Reverse Charge — {{ t('Self-assessed tax:') }}</span><strong>{{ "{:,.2f}".format(purchase.tax_amount) }} {{ base_currency }}</strong></div>
         {% endif %}
-        <div class="total-row final"><span>الإجمالي النهائي:</span><strong>{{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}</strong></div>
+        <div class="total-row final"><span>{{ t('Grand Total:') }}</span><strong>{{ "{:,.2f}".format(purchase.total_amount) }} {{ base_currency }}</strong></div>
       </div>
       <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
         {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
@@ -130,16 +130,16 @@
 
       {% if purchase.notes %}
       <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">
-        <strong>ملاحظات:</strong>
+        <strong>{{ t('Notes:') }}</strong>
         <p>{{ purchase.notes }}</p>
       </div>
       {% endif %}
     </div>
 
     <div class="footer">
-      <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else 'الدفع نقداً أو بالتحويل البنكي' }}</p>
+      <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Payment in cash or by bank transfer') }}</p>
     </div>
   </div>
-<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
+<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">{{ t('Generated by') }} AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 {% endblock %}

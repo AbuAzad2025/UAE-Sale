@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}الخزينة السرية - Payment Vault{% endblock %}
+{% block title %}{{ t('Secret Vault') }}{% endblock %}
 
 {% block page_title %}
 <div class="d-flex align-items-center">
     <i class="fas fa-vault text-warning mr-3" style="font-size: 2rem;"></i>
     <div>
-        <h1 class="mb-0"> الخزينة السرية</h1>
-        <p class="text-muted mb-0">وحدة الدفع المحمية بكلمة مرور منفصلة</p>
+        <h1 class="mb-0"> {{ t('Secret Vault') }}</h1>
+        <p class="text-muted mb-0">{{ t('Payment unit protected by a separate password') }}</p>
     </div>
 </div>
 {% endblock %}
@@ -108,23 +108,23 @@
                     <i class="fas fa-shield-alt" style="font-size: 4rem; color: #ffc107;"></i>
                 </div>
                 
-                <h2 class="text-center mb-4"> الخزينة السرية للدفع</h2>
+                <h2 class="text-center mb-4"> {{ t('Secret Payment Vault') }}</h2>
                 <p class="text-center mb-4">
-                    وحدة محمية بكلمة مرور منفصلة لإدارة جميع عمليات الدفع والتبرعات
+                    {{ t('A unit protected by a separate password to manage all payments and donations') }}
                 </p>
                 
                 <div class="text-center">
                     <span class="security-badge">
-                        <i class="fas fa-lock mr-1"></i>محمي بكلمة مرور
+                        <i class="fas fa-lock mr-1"></i>{{ t('Password protected') }}
                     </span>
                     <span class="security-badge">
-                        <i class="fas fa-shield-alt mr-1"></i>تشفير متقدم
+                        <i class="fas fa-shield-alt mr-1"></i>{{ t('Advanced encryption') }}
                     </span>
                     <span class="security-badge">
-                        <i class="fas fa-user-secret mr-1"></i>خصوصية كاملة
+                        <i class="fas fa-user-secret mr-1"></i>{{ t('Full privacy') }}
                     </span>
                     <span class="security-badge">
-                        <i class="fas fa-key mr-1"></i>وصول محدود
+                        <i class="fas fa-key mr-1"></i>{{ t('Restricted access') }}
                     </span>
                 </div>
             </div>
@@ -136,26 +136,26 @@
                 <div class="card">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">
-                            <i class="fas fa-cogs mr-2"></i>الميزات الأمنية
+                            <i class="fas fa-cogs mr-2"></i>{{ t('Security Features') }}
                         </h5>
                     </div>
                     <div class="card-body">
                         <div class="feature-list">
                             <div class="feature-item">
                                 <i class="fas fa-key"></i>
-                                <strong>كلمة مرور منفصلة:</strong> كلمة مرور خاصة للخزينة
+                                <strong>{{ t('Separate password') }}:</strong> {{ t('A dedicated password for the vault') }}
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-clock"></i>
-                                <strong>قفل تلقائي:</strong> قفل تلقائي بعد 30 دقيقة
+                                <strong>{{ t('Auto lock') }}:</strong> {{ t('Automatic lock after 30 minutes') }}
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-ban"></i>
-                                <strong>حماية من التكرار:</strong> قفل بعد 3 محاولات فاشلة
+                                <strong>{{ t('Brute force protection') }}:</strong> {{ t('Lock after 3 failed attempts') }}
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-history"></i>
-                                <strong>سجل مفصل:</strong> تسجيل جميع العمليات
+                                <strong>{{ t('Detailed log') }}:</strong> {{ t('Record all operations') }}
                             </div>
                         </div>
                     </div>
@@ -166,26 +166,26 @@
                 <div class="card">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">
-                            <i class="fas fa-credit-card mr-2"></i>إدارة الدفع
+                            <i class="fas fa-credit-card mr-2"></i>{{ t('Payment Management') }}
                         </h5>
                     </div>
                     <div class="card-body">
                         <div class="feature-list">
                             <div class="feature-item">
                                 <i class="fab fa-bitcoin"></i>
-                                <strong>العملات الرقمية:</strong> Bitcoin, Ethereum, USDT
+                                <strong>{{ t('Cryptocurrencies') }}:</strong> Bitcoin, Ethereum, USDT
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-chart-line"></i>
-                                <strong>إحصائيات مفصلة:</strong> تتبع جميع المعاملات
+                                <strong>{{ t('Detailed statistics') }}:</strong> {{ t('Track all transactions') }}
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-cog"></i>
-                                <strong>إعدادات متقدمة:</strong> حدود وقيود الدفع
+                                <strong>{{ t('Advanced settings') }}:</strong> {{ t('Payment limits and restrictions') }}
                             </div>
                             <div class="feature-item">
                                 <i class="fas fa-bell"></i>
-                                <strong>إشعارات فورية:</strong> تنبيهات للعمليات
+                                <strong>{{ t('Instant notifications') }}:</strong> {{ t('Alerts for operations') }}
                             </div>
                         </div>
                     </div>
@@ -197,22 +197,22 @@
         <div class="text-center mt-4">
             <a href="{{ url_for('payment_vault.unlock_vault') }}" class="btn-vault">
                 <i class="fas fa-unlock mr-2"></i>
-                فتح الخزينة
+                {{ t('Unlock Vault') }}
             </a>
             
             <a href="{{ url_for('owner.dashboard') }}" class="btn-vault">
                 <i class="fas fa-arrow-right mr-2"></i>
-                العودة للوحة المالك
+                {{ t('Back to Owner Dashboard') }}
             </a>
         </div>
         
         
         <div class="alert alert-warning mt-4">
-            <h5><i class="fas fa-exclamation-triangle mr-2"></i>تنبيه أمني</h5>
+            <h5><i class="fas fa-exclamation-triangle mr-2"></i>{{ t('Security Alert') }}</h5>
             <p class="mb-0">
-                <strong>كلمة مرور الخزينة:</strong> هي عنوان محفظة Bitcoin الخاص بك
+                <strong>{{ t('Vault Password') }}:</strong> {{ t('is your Bitcoin wallet address') }}
                 <br>
-                <strong>مثال:</strong> REDACTED-BITCOIN-ADDR
+                <strong>{{ t('Example') }}:</strong> REDACTED-BITCOIN-ADDR
             </p>
         </div>
     </div>

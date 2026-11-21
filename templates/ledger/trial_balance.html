@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - ميزان المراجعة{% endblock %}
-{% block page_title %}ميزان المراجعة - Trial Balance{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Trial Balance') }}{% endblock %}
+{% block page_title %}{{ t('Trial Balance') }}{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
   <div class="col-12">
     <button onclick="window.print()" class="btn btn-secondary">
-      <i class="fas fa-print mr-2"></i>طباعة
+      <i class="fas fa-print mr-2"></i>{{ t('Print') }}
     </button>
-    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">العودة</a>
+    <a href="{{ url_for('ledger.index') }}" class="btn btn-info">{{ t('Back') }}</a>
   </div>
 </div>
 
@@ -16,15 +16,15 @@
   <div class="card-body">
     <form method="GET" class="form-inline" action="">
       <div class="form-group mr-2">
-        <label class="mr-2">من:</label>
+        <label class="mr-2">{{ t('From') }}:</label>
         <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
       </div>
       <div class="form-group mr-2">
-        <label class="mr-2">إلى:</label>
+        <label class="mr-2">{{ t('To') }}:</label>
         <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
       </div>
-      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> تطبيق</button>
-      <a href="{{ url_for('ledger.trial_balance') }}" class="btn btn-secondary">الكل</a>
+      <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-filter"></i> {{ t('Apply') }}</button>
+      <a href="{{ url_for('ledger.trial_balance') }}" class="btn btn-secondary">{{ t('All') }}</a>
     </form>
   </div>
 </div>
@@ -35,11 +35,11 @@
     <div class="card-tools">
       {% if is_balanced %}
       <span class="badge badge-success" style="font-size: 14px;">
-        <i class="fas fa-check-circle"></i> متوازن
+        <i class="fas fa-check-circle"></i> {{ t('Balanced') }}
       </span>
       {% else %}
       <span class="badge badge-danger" style="font-size: 14px;">
-        <i class="fas fa-exclamation-triangle"></i> غير متوازن
+        <i class="fas fa-exclamation-triangle"></i> {{ t('Not Balanced') }}
       </span>
       {% endif %}
     </div>
@@ -48,26 +48,26 @@
     <table class="table table-bordered table-striped">
       <thead>
         <tr>
-          <th>كود الحساب</th>
-          <th>اسم الحساب</th>
-          <th>النوع</th>
-          <th class="text-danger">حركة مدينة</th>
-          <th class="text-success">حركة دائنة</th>
-          <th class="text-danger">رصيد مدين</th>
-          <th class="text-success">رصيد دائن</th>
+          <th>{{ t('Account Code') }}</th>
+          <th>{{ t('Account Name') }}</th>
+          <th>{{ t('Type') }}</th>
+          <th class="text-danger">{{ t('Debit Movement') }}</th>
+          <th class="text-success">{{ t('Credit Movement') }}</th>
+          <th class="text-danger">{{ t('Debit Balance') }}</th>
+          <th class="text-success">{{ t('Credit Balance') }}</th>
         </tr>
       </thead>
       <tbody>
         {% for item in trial_data %}
         <tr>
           <td><strong>{{ item.account.code }}</strong></td>
-          <td>{{ item.account.name }}</td>
+          <td>{{ display_name(item.account) }}</td>
           <td>
-            {% if item.account.type == 'asset' %}<span class="badge badge-success">أصل</span>
-            {% elif item.account.type == 'liability' %}<span class="badge badge-danger">خصم</span>
-            {% elif item.account.type == 'equity' %}<span class="badge badge-info">حقوق ملكية</span>
-            {% elif item.account.type == 'revenue' %}<span class="badge badge-primary">إيراد</span>
-            {% else %}<span class="badge badge-warning">مصروف</span>{% endif %}
+            {% if item.account.type == 'asset' %}<span class="badge badge-success">{{ t('Asset') }}</span>
+            {% elif item.account.type == 'liability' %}<span class="badge badge-danger">{{ t('Liability') }}</span>
+            {% elif item.account.type == 'equity' %}<span class="badge badge-info">{{ t('Equity') }}</span>
+            {% elif item.account.type == 'revenue' %}<span class="badge badge-primary">{{ t('Revenue') }}</span>
+            {% else %}<span class="badge badge-warning">{{ t('Expense') }}</span>{% endif %}
           </td>
           <td class="text-danger">{{ "{:,.2f}".format(item.debit) }}</td>
           <td class="text-success">{{ "{:,.2f}".format(item.credit) }}</td>
@@ -81,7 +81,7 @@
           <td colspan="3" class="text-center">
             {{ t('Total') }}
             <small class="text-muted d-block" style="font-size: 11px; font-weight: 400;">
-              جميع المبالغ بعملة الأساس ({{ base_currency }})
+              {{ t('All amounts in base currency') }} ({{ base_currency }})
             </small>
           </td>
           <td class="text-danger">{{ "{:,.2f}".format(total_debit) }}</td>
@@ -92,14 +92,14 @@
         <tr>
           <td colspan="7" class="text-center">
             {% if is_balanced and is_net_balanced %}
-            <span class="badge badge-success p-2" style="font-size: 1rem;"><i class="fas fa-check-circle"></i> الميزان متطابق (حركات وأرصدة)</span>
+            <span class="badge badge-success p-2" style="font-size: 1rem;"><i class="fas fa-check-circle"></i> {{ t('Trial balance matched (movements and balances)') }}</span>
             {% else %}
             <div class="d-flex justify-content-center gap-3">
               {% if not is_balanced %}
-              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> فرق الحركات: {{ "{:,.2f}".format((total_debit - total_credit)|abs) }}</span>
+              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> {{ t('Movements difference') }}: {{ "{:,.2f}".format((total_debit - total_credit)|abs) }}</span>
               {% endif %}
               {% if not is_net_balanced %}
-              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> فرق الأرصدة: {{ "{:,.2f}".format((total_debit_balance - total_credit_balance)|abs) }}</span>
+              <span class="badge badge-danger p-2 mx-1"><i class="fas fa-times-circle"></i> {{ t('Balances difference') }}: {{ "{:,.2f}".format((total_debit_balance - total_credit_balance)|abs) }}</span>
               {% endif %}
             </div>
             {% endif %}

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}إدارة التبرعات - Manage Donations{% endblock %}
+{% block title %}{{ t('Donation Management') }}{% endblock %}
 
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
     <div>
-        <h1 class="mb-0"><i class="fas fa-heart text-danger"></i> إدارة التبرعات</h1>
-        <p class="text-muted mb-0">جميع التبرعات والدعم المالي</p>
+        <h1 class="mb-0"><i class="fas fa-heart text-danger"></i> {{ t('Donation Management') }}</h1>
+        <p class="text-muted mb-0">{{ t('All donations and financial support') }}</p>
     </div>
     <div>
         <a href="{{ url_for('payment_vault.dashboard') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> العودة للوحة التحكم
+            <i class="fas fa-arrow-right"></i> {{ t('Back to Dashboard') }}
         </a>
     </div>
 </div>
@@ -62,22 +62,22 @@
         <div class="donation-stats">
             <div class="stat-box primary">
                 <div class="stat-number text-primary">{{ total_donations }}</div>
-                <div class="stat-label">إجمالي التبرعات</div>
+                <div class="stat-label">{{ t('Total Donations') }}</div>
             </div>
             
             <div class="stat-box success">
                 <div class="stat-number text-success">${{ total_amount|default(0) }}</div>
-                <div class="stat-label">المبلغ الإجمالي</div>
+                <div class="stat-label">{{ t('Total Amount') }}</div>
             </div>
             
             <div class="stat-box success">
                 <div class="stat-number text-success">{{ completed_count }}</div>
-                <div class="stat-label">مكتملة</div>
+                <div class="stat-label">{{ t('Completed') }}</div>
             </div>
             
             <div class="stat-box warning">
                 <div class="stat-number text-warning">{{ pending_count }}</div>
-                <div class="stat-label">قيد الانتظار</div>
+                <div class="stat-label">{{ t('Pending') }}</div>
             </div>
         </div>
         
@@ -85,19 +85,19 @@
         <div class="filters-card">
             <form method="GET" class="row" action="">
                 <div class="col-md-3">
-                    <label>الحالة</label>
+                    <label>{{ t('Status') }}</label>
                     <select name="status" class="form-control select2" onchange="this.form.submit()">
-                        <option value="">بلا</option>
+                        <option value="">{{ t('None') }}</option>
                         {% for code, meta in lookups.get('donation_statuses', []) %}
-                        <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.ar }}</option>
+                        <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 
                 <div class="col-md-3">
-                    <label>العملة الرقمية</label>
+                    <label>{{ t('Cryptocurrency') }}</label>
                     <select name="crypto" class="form-control" onchange="this.form.submit()">
-                        <option value="">بلا</option>
+                        <option value="">{{ t('None') }}</option>
                         <option value="btc" {% if request.args.get('crypto') == 'btc' %}selected{% endif %}>Bitcoin</option>
                         <option value="eth" {% if request.args.get('crypto') == 'eth' %}selected{% endif %}>Ethereum</option>
                         <option value="usdttrc20" {% if request.args.get('crypto') == 'usdttrc20' %}selected{% endif %}>USDT</option>
@@ -105,16 +105,16 @@
                 </div>
                 
                 <div class="col-md-4">
-                    <label>بحث</label>
+                    <label>{{ t('Search') }}</label>
                     <input type="text" name="search" class="form-control" 
-                           placeholder="ابحث باسم المتبرع أو البريد..." 
+                           placeholder="{{ t('Search by donor name or email...') }}" 
                            value="{{ request.args.get('search', '') }}">
                 </div>
                 
                 <div class="col-md-2">
                     <label>&nbsp;</label>
                     <button type="submit" class="btn btn-primary btn-block">
-                        <i class="fas fa-search"></i> بحث
+                        <i class="fas fa-search"></i> {{ t('Search') }}
                     </button>
                 </div>
             </form>
@@ -124,7 +124,7 @@
         <div class="card">
             <div class="card-header bg-gradient-danger">
                 <h5 class="mb-0 text-white">
-                    <i class="fas fa-list"></i> قائمة التبرعات
+                    <i class="fas fa-list"></i> {{ t('Donation List') }}
                 </h5>
             </div>
             <div class="card-body">
@@ -133,13 +133,13 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>التاريخ</th>
-                                <th>المتبرع</th>
-                                <th>المبلغ</th>
-                                <th>العملة</th>
-                                <th>الحالة</th>
+                                <th>{{ t('Date') }}</th>
+                                <th>{{ t('Donor') }}</th>
+                                <th>{{ t('Amount') }}</th>
+                                <th>{{ t('Currency') }}</th>
+                                <th>{{ t('Status') }}</th>
                                 <th>Gateway</th>
-                                <th>الإجراءات</th>
+                                <th>{{ t('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -149,7 +149,7 @@
                                     <td>{{ loop.index }}</td>
                                     <td>{{ donation.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>
-                                        {{ donation.donor_name or 'مجهول' }}<br>
+                                        {{ donation.donor_name or t('Anonymous') }}<br>
                                         <small class="text-muted">{{ donation.donor_email or '-' }}</small>
                                     </td>
                                     <td><strong class="text-primary">${{ donation.amount_usd }}</strong></td>
@@ -158,11 +158,11 @@
                                     </td>
                                     <td>
                                         {% if donation.status == 'completed' %}
-                                            <span class="badge badge-success"> مكتملة</span>
+                                            <span class="badge badge-success"> {{ t('Completed') }}</span>
                                         {% elif donation.status == 'pending' %}
-                                            <span class="badge badge-warning">⏳ قيد الانتظار</span>
+                                            <span class="badge badge-warning">⏳ {{ t('Pending') }}</span>
                                         {% elif donation.status == 'failed' %}
-                                            <span class="badge badge-danger"> فاشلة</span>
+                                            <span class="badge badge-danger"> {{ t('Failed') }}</span>
                                         {% else %}
                                             <span class="badge badge-secondary">{{ donation.status }}</span>
                                         {% endif %}
@@ -177,19 +177,19 @@
                                         {% if donation.status == 'pending' %}
                                         <form method="POST" action="{{ url_for('payment_vault.approve_donation', donation_id=donation.id) }}" style="display: inline;">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('قبول هذا التبرع؟')">
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('{{ t('Approve this donation?') }}')">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ url_for('payment_vault.reject_donation', donation_id=donation.id) }}" style="display: inline;">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('رفض هذا التبرع؟')">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('{{ t('Reject this donation?') }}')">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </form>
                                         {% endif %}
                                         {% if donation.donor_email %}
-                                        <button class="btn btn-sm btn-primary" onclick="sendThankYou('{{ donation.donor_email }}', '{{ donation.donor_name or "متبرع" }}', {{ donation.amount_usd }})">
+                                        <button class="btn btn-sm btn-primary" onclick="sendThankYou('{{ donation.donor_email }}', '{{ donation.donor_name or t('Donor') }}', {{ donation.amount_usd }})">
                                             <i class="fas fa-envelope"></i>
                                         </button>
                                         {% endif %}
@@ -200,7 +200,7 @@
                                 <tr>
                                     <td colspan="8" class="text-center text-muted">
                                         <i class="fas fa-inbox fa-3x mb-3" style="display: block; opacity: 0.3;"></i>
-                                        لا توجد تبرعات
+                                        {{ t('No donations') }}
                                     </td>
                                 </tr>
                             {% endif %}
@@ -212,7 +212,7 @@
                 {% if pagination %}
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <div>
-                        عرض {{ donations|length }} من أصل {{ total_donations }}
+                        {{ t('Showing') }} {{ donations|length }} {{ t('of') }} {{ total_donations }}
                     </div>
                     <nav>
                         {{ pagination.links }}
@@ -233,8 +233,8 @@ function viewDonation(id) {
 }
 
 function sendThankYou(email, name, amount) {
-    const subject = 'شكراً على تبرعك - Azad Systems';
-    const body = `عزيزي/عزيزتي ${name},\n\nشكراً جزيلاً على تبرعك الكريم بمبلغ $${amount}\n\nتبرعك يساعدنا في تطوير النظام وتقديم خدمات أفضل.\n\nمع خالص الشكر والتقدير،\nفريق Azad Systems`;
+    const subject = {{ t('Thank you for your donation - Azad Systems')|tojson }};
+    const body = `${{ t('Dear') }} ${name},\n\n{{ t('Thank you very much for your generous donation of') }} $${amount}\n\n{{ t('Your donation helps us develop the system and provide better services.') }}\n\n{{ t('With thanks and appreciation,') }}\n{{ t('Azad Systems Team') }}`;
     
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

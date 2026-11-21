@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>سند قبض - {{ receipt.receipt_number }}</title>
+  <title>{{ t("Receipt") }} - {{ receipt.receipt_number }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
@@ -210,7 +210,7 @@
 <body class="receipt-print minimal-receipt">
   <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
     <button onclick="window.print()" style="background: {{ settings.header_color or '#28a745' }}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">
-      طباعة
+      {{ t("Print") }}
     </button>
   </div>
 
@@ -237,25 +237,25 @@
 
     <div class="content">
       <div class="section">
-        <div class="section-title">معلومات العميل</div>
+        <div class="section-title">{{ t("Customer Information") }}</div>
         <div class="info-row">
-          <label>الاسم:</label>
+          <label>{{ t("Name") }}:</label>
           <value>{{ receipt.customer.name }}</value>
         </div>
         {% if receipt.customer.phone %}
         <div class="info-row">
-          <label>الهاتف:</label>
+          <label>{{ t("Phone") }}:</label>
           <value>{{ receipt.customer.phone }}</value>
         </div>
         {% endif %}
         <div class="info-row">
-          <label>التاريخ:</label>
+          <label>{{ t("Date") }}:</label>
           <value>{{ receipt.receipt_date.strftime('%Y-%m-%d %H:%M') }}</value>
         </div>
       </div>
 
       <div class="amount-display">
-        <div class="amount-text">المبلغ المستلم</div>
+        <div class="amount-text">{{ t("Amount Received") }}</div>
         <div class="amount-big">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
       <div class="amount-words" style="margin-top:6px; font-size:9px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
         {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
@@ -266,32 +266,32 @@
 
       <div class="payment-box">
         <div style="margin-bottom: 10px;">
-          <span style="font-size: 8px; color: #7f8c8d;">طريقة الدفع:</span>
+          <span style="font-size: 8px; color: #7f8c8d;">{{ t("Payment Method:") }}</span>
           <span class="payment-method-badge">
-            {% if receipt.payment_method == 'cash' %} نقدي
-            {% elif receipt.payment_method == 'card' %} بطاقة
-            {% elif receipt.payment_method == 'bank_transfer' %} تحويل
-            {% elif receipt.payment_method == 'cheque' %} شيك
-            {% else %} محفظة{% endif %}
+            {% if receipt.payment_method == 'cash' %} {{ t("Cash") }}
+            {% elif receipt.payment_method == 'card' %} {{ t("Card") }}
+            {% elif receipt.payment_method == 'bank_transfer' %} {{ t("Transfer") }}
+            {% elif receipt.payment_method == 'cheque' %} {{ t("Cheque") }}
+            {% else %} {{ t("Wallet") }}{% endif %}
           </span>
         </div>
 
         {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
         <div class="cheque-card">
           <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 8px;">
-            معلومات الشيك
+            {{ t("Cheque Information") }}
           </div>
           <div class="cheque-grid">
             <div class="cheque-item">
-              <div class="cheque-item-label">رقم الشيك</div>
+              <div class="cheque-item-label">{{ t("Cheque Number") }}</div>
               <div class="cheque-item-value">{{ receipt.cheque_number }}</div>
             </div>
             <div class="cheque-item">
-              <div class="cheque-item-label">تاريخ الاستحقاق</div>
+              <div class="cheque-item-label">{{ t("Due Date") }}</div>
               <div class="cheque-item-value">{{ receipt.cheque_date.strftime('%Y-%m-%d') if receipt.cheque_date else '-' }}</div>
             </div>
             <div class="cheque-item">
-              <div class="cheque-item-label">البنك</div>
+              <div class="cheque-item-label">{{ t("Bank") }}</div>
               <div class="cheque-item-value">{{ receipt.bank_name or '-' }}</div>
             </div>
           </div>
@@ -303,7 +303,7 @@
       {% if source_info %}
       <div class="allocations-list">
         <div style="font-size: 9px; font-weight: 700; color: #1565c0; margin-bottom: 8px;">
-           تفاصيل الفاتورة
+           {{ t("Invoice Details") }}
         </div>
         <div class="allocation-item">
           <div>
@@ -320,18 +320,18 @@
 
       {% if receipt.notes %}
       <div class="notes-box">
-        <div class="notes-title"> ملاحظات وسبب الدفع</div>
+        <div class="notes-title"> {{ t("Notes and Payment Reason") }}</div>
         <div class="notes-text">{{ receipt.notes }}</div>
       </div>
       {% endif %}
 
       <div class="signatures">
         <div class="sig-box">
-          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">المحصل</div>
+          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Cashier") }}</div>
           <div class="sig-line"></div>
         </div>
         <div class="sig-box">
-          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">العميل</div>
+          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Customer") }}</div>
           <div class="sig-line"></div>
         </div>
       </div>
@@ -391,7 +391,7 @@
         </div>
       {% endif %}
     {% endif %}
-<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
+<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 </body>
 </html>

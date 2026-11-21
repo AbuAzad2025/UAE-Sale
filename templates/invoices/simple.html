@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}فاتورة #{{ sale.sale_number }}{% endblock %}
+{% block print_title %}{{ t("Invoice") }} #{{ sale.sale_number }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -34,7 +34,7 @@
 {% block document_content %}
 <div class="invoice">
   <div class="no-print" style="text-align: center; margin-bottom: 10px;">
-    <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 8px 20px; cursor: pointer; border-radius: 3px;">طباعة</button>
+    <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 8px 20px; cursor: pointer; border-radius: 3px;">{{ t("Print") }}</button>
   </div>
 
   <div class="invoice-header">
@@ -49,28 +49,28 @@
     </div>
   </div>
 
-  <div class="title">فاتورة</div>
+  <div class="title">{{ t("Invoice") }}</div>
 
   <div class="info-row">
-    <div><strong>رقم الفاتورة:</strong> {{ sale.sale_number }}</div>
-    <div><strong>التاريخ:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</div>
+    <div><strong>{{ t("Invoice Number") }}:</strong> {{ sale.sale_number }}</div>
+    <div><strong>{{ t("Date") }}:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</div>
   </div>
   <div class="info-row">
-    <div><strong>العميل:</strong> {{ sale.customer.name if sale.customer else '-' }}</div>
-    <div><strong>الهاتف:</strong> {{ sale.customer.phone if sale.customer and sale.customer.phone else '-' }}</div>
+    <div><strong>{{ t("Customer") }}:</strong> {{ sale.customer.name if sale.customer else '-' }}</div>
+    <div><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone if sale.customer and sale.customer.phone else '-' }}</div>
   </div>
   <div class="info-row">
-    <div><strong>الرقم الضريبي للعميل:</strong> {{ sale.customer.tax_number if sale.customer and sale.customer.tax_number else '-' }}</div>
+    <div><strong>{{ t("Customer Tax Number") }}:</strong> {{ sale.customer.tax_number if sale.customer and sale.customer.tax_number else '-' }}</div>
   </div>
 
   <table>
     <thead>
       <tr>
         <th style="width: 5%;">#</th>
-        <th style="width: 45%;">المنتج</th>
-        <th style="width: 15%;">الكمية</th>
-        <th style="width: 15%;">السعر</th>
-        <th style="width: 20%;">المجموع</th>
+        <th style="width: 45%;">{{ t("Product") }}</th>
+        <th style="width: 15%;">{{ t("Quantity") }}</th>
+        <th style="width: 15%;">{{ t("Price") }}</th>
+        <th style="width: 20%;">{{ t("Total") }}</th>
       </tr>
     </thead>
     <tbody>
@@ -88,7 +88,7 @@
 
   <div class="totals">
     <div class="total-line">
-      <span>المجموع:</span>
+      <span>{{ t("Total") }}:</span>
       <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency }}</strong>
     </div>
     {% if sale.tax_amount > 0 or sale.tax_treatment in ('zero', 'exempt') %}
@@ -98,7 +98,7 @@
     </div>
     {% endif %}
     <div class="total-line total-final">
-      <span>الإجمالي:</span>
+      <span>{{ t("Total Amount") }}:</span>
       <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
     </div>
     <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
@@ -110,17 +110,17 @@
   <div class="footer">
     {% if settings and (settings.bank_name or settings.iban) %}
     <div class="bank-info">
-      <strong>معلومات التحويل:</strong><br>
-      {% if settings.bank_name and settings.bank_name != 'None' %}البنك: {{ settings.bank_name }} • {% endif %}
+      <strong>{{ t("Transfer Information") }}:</strong><br>
+      {% if settings.bank_name and settings.bank_name != 'None' %}{{ t("Bank") }}: {{ settings.bank_name }} • {% endif %}
       {% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}
     </div>
     {% endif %}
     
     {% if settings and (settings.tax_number or settings.commercial_register) %}
     <div style="font-size: 9px; margin: 5px 0;">
-      {% if settings.tax_number %}ض.ر: {{ settings.tax_number }}{% endif %}
+      {% if settings.tax_number %}{{ t("TRN:") }} {{ settings.tax_number }}{% endif %}
       {% if settings.tax_number and settings.commercial_register %} • {% endif %}
-      {% if settings.commercial_register and settings.commercial_register != 'None' %}س.ت: {{ settings.commercial_register }}{% endif %}
+      {% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t("CR No:") }} {{ settings.commercial_register }}{% endif %}
     </div>
     {% endif %}
     
@@ -129,13 +129,13 @@
       {{ settings.default_invoice_note_ar }}
     </div>
     {% endif %}
-    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:8px;">صُدر بواسطة AzadERP © {{ current_year if current_year is defined else 2026 }}</p>
-    <div style="margin-top: 10px;">شكراً لتعاملكم معنا</div>
+    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:8px;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
+    <div style="margin-top: 10px;">{{ t("Thank you for dealing with us") }}</div>
   </div>
 
   <div class="signature">
-    <div class="sig-box"><div class="sig-line">البائع</div></div>
-    <div class="sig-box"><div class="sig-line">العميل</div></div>
+    <div class="sig-box"><div class="sig-line">{{ t("Seller") }}</div></div>
+    <div class="sig-box"><div class="sig-line">{{ t("Customer") }}</div></div>
   </div>
 </div>
 {% endblock %}

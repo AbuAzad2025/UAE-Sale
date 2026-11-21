@@ -76,14 +76,14 @@ document.addEventListener('DOMContentLoaded', function() {
     helpText.className = 'keyboard-shortcuts-help';
     helpText.innerHTML = `
         <div class="shortcuts-content">
-            <h5>اختصارات لوحة المفاتيح</h5>
+            <h5>${t('Keyboard Shortcuts')}</h5>
             <table>
-                <tr><td>Ctrl+N</td><td>إضافة جديد</td></tr>
-                <tr><td>Ctrl+K</td><td>بحث سريع</td></tr>
-                <tr><td>Ctrl+S</td><td>حفظ</td></tr>
-                <tr><td>Ctrl+H</td><td>الرئيسية</td></tr>
-                <tr><td>Alt+1-5</td><td>التنقل السريع</td></tr>
-                <tr><td>Esc</td><td>إغلاق النافذة</td></tr>
+                <tr><td>Ctrl+N</td><td>${t('Add New')}</td></tr>
+                <tr><td>Ctrl+K</td><td>${t('Quick Search')}</td></tr>
+                <tr><td>Ctrl+S</td><td>${t('Save')}</td></tr>
+                <tr><td>Ctrl+H</td><td>${t('Home')}</td></tr>
+                <tr><td>Alt+1-5</td><td>${t('Quick Navigation')}</td></tr>
+                <tr><td>Esc</td><td>${t('Close Window')}</td></tr>
             </table>
         </div>
     `;

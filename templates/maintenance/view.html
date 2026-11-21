@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
-{% block title %}أمر الصيانة {{ order.order_no }}{% endblock %}
-{% block page_title %}<i class="fas fa-file-contract mr-2"></i>أمر الصيانة: {{ order.order_no }}{% endblock %}
+{% block title %}{{ t('Maintenance Order') }} {{ order.order_no }}{% endblock %}
+{% block page_title %}<i class="fas fa-file-contract mr-2"></i>{{ t('Maintenance Order') }}: {{ order.order_no }}{% endblock %}
 {% block content %}
 {% if order.warranty_status == 'under_warranty' %}
 <div class="alert alert-success" role="alert">
-  <i class="fas fa-shield-alt mr-2"></i>الأمر مغطى بالضمان: لا تُحمَّل قيمته على العميل، وتُسجَّل تكلفة قطعه على مصروف الضمان.
+  <i class="fas fa-shield-alt mr-2"></i>{{ t('This order is covered by warranty: its value is not charged to the customer, and parts cost is recorded to warranty expense.') }}
 </div>
 {% endif %}
 {% if order.status in ('closed', 'cancelled') %}
-<div class="alert alert-secondary" role="alert">هذا الأمر منتهٍ. يمكن الأرشفة بعد التأكد من اكتمال القيود.</div>
+<div class="alert alert-secondary" role="alert">{{ t('This order is finished. It can be archived after confirming the entries are complete.') }}</div>
 {% endif %}
 
 <div class="row mb-3">
   <div class="col-12">
     <div class="btn-group" role="group">
-      <a href="{{ url_for('maintenance.print_intake', id=order.id) }}" class="btn btn-primary btn-sm"><i class="fas fa-print mr-1"></i>طباعة استلام الجهاز</a>
+      <a href="{{ url_for('maintenance.print_intake', id=order.id) }}" class="btn btn-primary btn-sm"><i class="fas fa-print mr-1"></i>{{ t('Print Device Intake') }}</a>
       {% for receipt in order.receipts %}
-      <a href="{{ url_for('maintenance.print_receipt', id=order.id, receipt_id=receipt.id) }}" class="btn btn-success btn-sm"><i class="fas fa-print mr-1"></i>إيصال {{ receipt.receipt_no }}</a>
+      <a href="{{ url_for('maintenance.print_receipt', id=order.id, receipt_id=receipt.id) }}" class="btn btn-success btn-sm"><i class="fas fa-print mr-1"></i>{{ t('Receipt') }} {{ receipt.receipt_no }}</a>
       {% endfor %}
       {% if order.invoice %}
-      <a href="{{ url_for('maintenance.print_invoice', id=order.id) }}" class="btn btn-info btn-sm"><i class="fas fa-file-invoice mr-1"></i>طباعة الفاتورة</a>
+      <a href="{{ url_for('maintenance.print_invoice', id=order.id) }}" class="btn btn-info btn-sm"><i class="fas fa-file-invoice mr-1"></i>{{ t('Print Invoice') }}</a>
       {% endif %}
-      <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>العودة للقائمة</a>
+      <a href="{{ url_for('maintenance.list_orders') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i>{{ t('Back to List') }}</a>
     </div>
   </div>
 </div>
@@ -29,62 +29,62 @@
 <div class="row">
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">معلومات الأمر</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Order Information') }}</h5></div>
       <div class="card-body">
-        <p><strong>رقم الأمر:</strong> {{ order.order_no }}</p>
-        <p><strong>العميل:</strong> {{ order.customer.name if order.customer else '-' }}</p>
-        <p><strong>التاريخ:</strong> {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</p>
-        <p><strong>الحالة:</strong>
+        <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
+        <p><strong>{{ t('Customer') }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p><strong>{{ t('Date:') }}</strong> {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</p>
+        <p><strong>{{ t('Status:') }}</strong>
           <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">
             {{ order.status }}
           </span>
         </p>
-        <p><strong>الأولوية:</strong> {{ order.priority }}</p>
-        <p><strong>طريقة الدفع:</strong> {{ order.payment_mode }}</p>
-        <p><strong>العملة:</strong> {{ order.currency or 'AED' }}
-          {% if order.exchange_rate %} (سعر الصرف: {{ "{:,.6f}".format(order.exchange_rate) }}){% endif %}</p>
-        <p><strong>الإجمالي بعملة الأساس:</strong> {{ "{:,.3f}".format(order.total_amount_base or 0) }}</p>
-        <p><strong>الكفالة:</strong> {{ order.warranty_status or '-' }}</p>
+        <p><strong>{{ t('Priority') }}:</strong> {{ order.priority }}</p>
+        <p><strong>{{ t('Payment Method:') }}</strong> {{ order.payment_mode }}</p>
+        <p><strong>{{ t('Currency') }}:</strong> {{ order.currency or 'AED' }}
+          {% if order.exchange_rate %} ({{ t('Exchange Rate') }}: {{ "{:,.6f}".format(order.exchange_rate) }}){% endif %}</p>
+        <p><strong>{{ t('Total in Base Currency') }}:</strong> {{ "{:,.3f}".format(order.total_amount_base or 0) }}</p>
+        <p><strong>{{ t('Warranty') }}:</strong> {{ order.warranty_status or '-' }}</p>
         <hr>
-        <p><strong>المجموع الفرعي:</strong> {{ "{:,.3f}".format(order.subtotal or 0) }}</p>
-        <p><strong>الخصم:</strong> {{ "{:,.3f}".format(order.discount_total_value or 0) }}
+        <p><strong>{{ t('Subtotal') }}:</strong> {{ "{:,.3f}".format(order.subtotal or 0) }}</p>
+        <p><strong>{{ t('Discount') }}:</strong> {{ "{:,.3f}".format(order.discount_total_value or 0) }}
           {% if order.discount_total_percent %}({{ order.discount_total_percent }}%){% endif %}</p>
-        <p><strong>الضريبة:</strong> {{ "{:,.3f}".format(order.tax_amount or 0) }}</p>
-        <p><strong>الإجمالي:</strong> {{ "{:,.3f}".format(order.total_amount or 0) }}</p>
-        <p><strong>الإيراد الصافي:</strong> {{ "{:,.3f}".format((order.total_amount or 0) - (order.tax_amount or 0)) }}</p>
-        <p><strong>المدفوع:</strong> {{ "{:,.3f}".format(order.paid_amount or 0) }}</p>
-        <p><strong>المتبقي:</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
+        <p><strong>{{ t('Tax') }}:</strong> {{ "{:,.3f}".format(order.tax_amount or 0) }}</p>
+        <p><strong>{{ t('Total') }}:</strong> {{ "{:,.3f}".format(order.total_amount or 0) }}</p>
+        <p><strong>{{ t('Net Revenue') }}:</strong> {{ "{:,.3f}".format((order.total_amount or 0) - (order.tax_amount or 0)) }}</p>
+        <p><strong>{{ t('Paid') }}:</strong> {{ "{:,.3f}".format(order.paid_amount or 0) }}</p>
+        <p><strong>{{ t('Remaining') }}:</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
         <hr>
-        <p class="mb-1"><strong>تكلفة القطع (فعلية):</strong> {{ "{:,.3f}".format(order.cost_price_total or 0) }}</p>
-        <p class="text-muted small mb-0"><i class="fas fa-info-circle mr-1"></i>تكلفة القطع من المخزون فعلية، وتكلفة العمل تقديرية وتُتابَع تحليلياً.</p>
+        <p class="mb-1"><strong>{{ t('Parts Cost (Actual)') }}:</strong> {{ "{:,.3f}".format(order.cost_price_total or 0) }}</p>
+        <p class="text-muted small mb-0"><i class="fas fa-info-circle mr-1"></i>{{ t('Parts cost from inventory is actual; labor cost is estimated and tracked analytically.') }}</p>
       </div>
     </div>
   </div>
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">بيانات الجهاز</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Device Details') }}</h5></div>
       <div class="card-body">
-        <p><strong>الماركة:</strong> {{ order.device_brand or '-' }}</p>
-        <p><strong>الموديل:</strong> {{ order.device_model or '-' }}</p>
-        <p><strong>الرقم التسلسلي:</strong> {{ order.device_serial or '-' }}</p>
-        <p><strong>الـ IMEI:</strong> {{ order.device_imei or '-' }}</p>
-        <p><strong>اللوحة:</strong> {{ order.device_plate or '-' }}</p>
-        <p><strong>المشكلة:</strong> {{ order.device_problem or '-' }}</p>
-        {% if order.notes %}<hr><p><strong>ملاحظات الاستقبال:</strong> {{ order.notes }}</p>{% endif %}
-        {% if order.technician_notes %}<hr><p><strong>ملاحظات الفني:</strong> {{ order.technician_notes }}</p>{% endif %}
+        <p><strong>{{ t('Make') }}:</strong> {{ order.device_brand or '-' }}</p>
+        <p><strong>{{ t('Model') }}:</strong> {{ order.device_model or '-' }}</p>
+        <p><strong>{{ t('Serial Number') }}:</strong> {{ order.device_serial or '-' }}</p>
+        <p><strong>{{ t('IMEI') }}:</strong> {{ order.device_imei or '-' }}</p>
+        <p><strong>{{ t('Plate') }}:</strong> {{ order.device_plate or '-' }}</p>
+        <p><strong>{{ t('Problem:') }}</strong> {{ order.device_problem or '-' }}</p>
+        {% if order.notes %}<hr><p><strong>{{ t('Intake Notes') }}:</strong> {{ order.notes }}</p>{% endif %}
+        {% if order.technician_notes %}<hr><p><strong>{{ t('Technician Notes') }}:</strong> {{ order.technician_notes }}</p>{% endif %}
         {% if order.quality_check_passed is not none %}
-        <hr><p><strong>فحص الجودة:</strong> {{ 'مقبول' if order.quality_check_passed else 'غير مقبول' }}
+        <hr><p><strong>{{ t('Quality Check') }}:</strong> {{ t('Accepted') if order.quality_check_passed else t('Rejected') }}
           {% if order.quality_check_at %}({{ order.quality_check_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}</p>
         {% endif %}
         {% if order.completion_time_hours %}
-        <p><strong>وقت الإصلاح:</strong> {{ order.completion_time_hours }} ساعة</p>
+        <p><strong>{{ t('Repair Time') }}:</strong> {{ order.completion_time_hours }} {{ t('hours') }}</p>
         {% endif %}
       </div>
     </div>
   </div>
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">الإجراءات</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Actions') }}</h5></div>
       <div class="card-body">
 
         
@@ -92,11 +92,11 @@
         <form method="POST" action="{{ url_for('maintenance.change_order_status', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="status" class="form-select form-select-sm">
-            {% set labels = {'received': 'الاستقبال', 'diagnosis': 'التشخيص', 'waiting_approval': 'انتظار الموافقة', 'in_progress': 'قيد التنفيذ', 'waiting_parts': 'انتظار القطع', 'ready': 'جاهز للتسليم', 'on_hold': 'معلّق', 'cancelled': 'إلغاء الأمر'} %}
+            {% set labels = {'received': t('Reception'), 'diagnosis': t('Diagnosis'), 'waiting_approval': t('Awaiting Approval'), 'in_progress': t('In Progress'), 'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'), 'on_hold': t('On Hold'), 'cancelled': t('Cancel Order')} %}
             {% for status in transitions %}<option value="{{ status }}">{{ labels.get(status, status) }}</option>{% endfor %}
           </select>
-          <input type="text" name="note" class="form-control form-control-sm mt-2" placeholder="ملاحظة (اختياري)">
-          <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">تغيير الحالة</button>
+          <input type="text" name="note" class="form-control form-control-sm mt-2" placeholder="{{ t('Note (optional)') }}">
+          <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">{{ t('Change Status') }}</button>
         </form>
         {% endif %}
 
@@ -106,12 +106,12 @@
         <form method="POST" action="{{ url_for('maintenance.notify_customer', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="channel" class="form-select form-select-sm">
-            <option value="whatsapp">واتساب</option>
-            <option value="email">بريد إلكتروني</option>
-            <option value="sms">رسالة نصية</option>
+            <option value="whatsapp">{{ t('WhatsApp') }}</option>
+            <option value="email">{{ t('Email') }}</option>
+            <option value="sms">{{ t('SMS') }}</option>
           </select>
-          <input type="text" name="message" class="form-control form-control-sm mt-2" placeholder="نص الرسالة (اختياري)">
-          <button type="submit" class="btn btn-sm btn-outline-info mt-2 w-100">إشعار العميل</button>
+          <input type="text" name="message" class="form-control form-control-sm mt-2" placeholder="{{ t('Message text (optional)') }}">
+          <button type="submit" class="btn btn-sm btn-outline-info mt-2 w-100">{{ t('Notify Customer') }}</button>
         </form>
 
         <hr>
@@ -119,12 +119,12 @@
         <form method="POST" action="{{ url_for('maintenance.warranty', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="action" class="form-select form-select-sm">
-            <option value="checked">فحص الكفالة</option>
-            <option value="void">إلغاء الكفالة (يلزم صلاحية)</option>
-            <option value="restore">إعادة الكفالة (يلزم صلاحية)</option>
+            <option value="checked">{{ t('Check Warranty') }}</option>
+            <option value="void">{{ t('Void Warranty (permission required)') }}</option>
+            <option value="restore">{{ t('Restore Warranty (permission required)') }}</option>
           </select>
-          <input type="text" name="reason" class="form-control form-control-sm mt-2" placeholder="سبب الإجراء">
-          <button type="submit" class="btn btn-sm btn-info mt-2 w-100">إجراء الكفالة</button>
+          <input type="text" name="reason" class="form-control form-control-sm mt-2" placeholder="{{ t('Action Reason') }}">
+          <button type="submit" class="btn btn-sm btn-info mt-2 w-100">{{ t('Apply Warranty Action') }}</button>
         </form>
 
         <hr>
@@ -133,16 +133,16 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="form-check">
             <input type="checkbox" name="passed" class="form-check-input" id="qcPassed" checked>
-            <label class="form-check-label" for="qcPassed">فحص الجودة مقبول</label>
+            <label class="form-check-label" for="qcPassed">{{ t('Quality check passed') }}</label>
           </div>
-          <input type="text" name="notes" class="form-control form-control-sm mt-2" placeholder="ملاحظات الفحص">
-          <button type="submit" class="btn btn-sm btn-outline-info mt-2 w-100">حفظ فحص الجودة</button>
+          <input type="text" name="notes" class="form-control form-control-sm mt-2" placeholder="{{ t('Check Notes') }}">
+          <button type="submit" class="btn btn-sm btn-outline-info mt-2 w-100">{{ t('Save Quality Check') }}</button>
         </form>
         <form method="POST" action="{{ url_for('maintenance.set_completion_time_order', id=order.id) }}" class="mt-2">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="input-group input-group-sm">
-            <input type="number" name="hours" step="0.25" min="0" class="form-control" placeholder="ساعات">
-            <button type="submit" class="btn btn-outline-secondary">وقت الإصلاح</button>
+            <input type="number" name="hours" step="0.25" min="0" class="form-control" placeholder="{{ t('Hours') }}">
+            <button type="submit" class="btn btn-outline-secondary">{{ t('Repair Time') }}</button>
           </div>
         </form>
         {% endif %}
@@ -152,16 +152,16 @@
         
         <form method="POST" action="{{ url_for('maintenance.set_warranty_period', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="number" name="warranty_days" value="30" min="0" class="form-control form-control-sm" placeholder="أيام الضمان">
-          <button type="submit" class="btn btn-sm btn-warning mt-2 w-100">تعيين ضمان ما بعد الصيانة</button>
+          <input type="number" name="warranty_days" value="30" min="0" class="form-control form-control-sm" placeholder="{{ t('Warranty Days') }}">
+          <button type="submit" class="btn btn-sm btn-warning mt-2 w-100">{{ t('Set Post-Repair Warranty') }}</button>
         </form>
         {% endif %}
 
         {% if order.status in ('closed', 'cancelled') %}
         <hr>
-        <form method="POST" action="{{ url_for('maintenance.archive_order', id=order.id) }}" onsubmit="return confirm('هل أنت متأكد من أرشفة هذا الأمر؟')">
+        <form method="POST" action="{{ url_for('maintenance.archive_order', id=order.id) }}" onsubmit="return confirm('{{ t('Are you sure you want to archive this order?') }}')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">أرشفة الأمر</button>
+          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">{{ t('Archive Order') }}</button>
         </form>
         {% endif %}
       </div>
@@ -173,36 +173,36 @@
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">الفاتورة</h5>
+        <h5 class="mb-0">{{ t('Invoice') }}</h5>
         {% if not order.invoice and order.status in billable_statuses and order.items or order.services %}
         <form method="POST" action="{{ url_for('maintenance.create_invoice', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-file-invoice mr-1"></i>إصدار وترحيل الفاتورة</button>
+          <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-file-invoice mr-1"></i>{{ t('Issue & Post Invoice') }}</button>
         </form>
         {% endif %}
       </div>
       <div class="card-body">
         {% if order.invoice %}
-        <p><strong>رقم الفاتورة:</strong> {{ order.invoice.invoice_no }}</p>
-        <p><strong>المجموع:</strong> {{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</p>
-        <p><strong>الضريبة:</strong> {{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</p>
-        <p><strong>الحالة المحاسبية:</strong>
+        <p><strong>{{ t('Invoice Number:') }}</strong> {{ order.invoice.invoice_no }}</p>
+        <p><strong>{{ t('Total') }}:</strong> {{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</p>
+        <p><strong>{{ t('Tax') }}:</strong> {{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</p>
+        <p><strong>{{ t('Accounting Status') }}:</strong>
           <span class="badge bg-{{ 'success' if order.invoice.gl_posted else 'warning' }}">
-            {{ 'مُرحَّلة' if order.invoice.gl_posted else 'غير مُرحَّلة' }}
+            {{ t('Posted') if order.invoice.gl_posted else t('Not Posted') }}
           </span></p>
         {% else %}
-        <p class="text-muted mb-0">لم تُصدر فاتورة لهذا الأمر بعد.
-          {% if order.warranty_status == 'under_warranty' %}الأمر مغطى بالضمان فلا تُصدر له فاتورة للعميل.{% endif %}</p>
+        <p class="text-muted mb-0">{{ t('No invoice has been issued for this order yet.') }}
+          {% if order.warranty_status == 'under_warranty' %}{{ t('The order is under warranty, so no customer invoice is issued.') }}{% endif %}</p>
         {% endif %}
       </div>
     </div>
   </div>
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">سندات القبض</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Receipt Vouchers') }}</h5></div>
       <div class="card-body">
         <table class="table table-bordered mb-0">
-          <thead><tr><th>رقم السند</th><th>المبلغ</th><th>الطريقة</th><th>التاريخ</th></tr></thead>
+          <thead><tr><th>{{ t('Voucher Number') }}</th><th>{{ t('Amount') }}</th><th>{{ t('Method') }}</th><th>{{ t('Date') }}</th></tr></thead>
           <tbody>
           {% for receipt in order.receipts %}
           <tr>
@@ -212,7 +212,7 @@
             <td>{{ receipt.posted_at.strftime('%Y-%m-%d %H:%M') if receipt.posted_at else '-' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="text-center text-muted">لا توجد سندات قبض</td></tr>
+          <tr><td colspan="4" class="text-center text-muted">{{ t('No Receipt Vouchers') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -220,16 +220,16 @@
         <form method="POST" action="{{ url_for('maintenance.receive', id=order.id) }}" class="mt-3">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="input-group input-group-sm mb-2">
-            <input type="number" name="amount" step="0.001" min="0" max="{{ order.balance_due }}" value="{{ order.balance_due }}" class="form-control" placeholder="المبلغ">
+            <input type="number" name="amount" step="0.001" min="0" max="{{ order.balance_due }}" value="{{ order.balance_due }}" class="form-control" placeholder="{{ t('Amount') }}">
             <select name="payment_method" class="form-select">
-              <option value="cash">نقدي</option>
-              <option value="card">بطاقة</option>
-              <option value="transfer">تحويل</option>
-              <option value="cheque">شيك</option>
+              <option value="cash">{{ t('Cash') }}</option>
+              <option value="card">{{ t('Card') }}</option>
+              <option value="transfer">{{ t('Transfer') }}</option>
+              <option value="cheque">{{ t('Cheque') }}</option>
             </select>
-            <button type="submit" class="btn btn-success">قبض</button>
+            <button type="submit" class="btn btn-success">{{ t('Receipt') }}</button>
           </div>
-          <small class="text-muted">المتبقي على الأمر: {{ "{:,.3f}".format(order.balance_due or 0) }}</small>
+          <small class="text-muted">{{ t('Balance on order:') }} {{ "{:,.3f}".format(order.balance_due or 0) }}</small>
         </form>
         {% endif %}
       </div>
@@ -242,20 +242,20 @@
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">إشعار دائن (لإلغاء الفاتورة)</h5>
+        <h5 class="mb-0">{{ t('Credit Note (to cancel invoice)') }}</h5>
       </div>
       <div class="card-body">
         <table class="table table-bordered mb-0">
-          <thead><tr><th>رقم الإشعار</th><th>المبلغ</th><th>الحالة المحاسبية</th></tr></thead>
+          <thead><tr><th>{{ t('Note Number') }}</th><th>{{ t('Amount') }}</th><th>{{ t('Accounting Status') }}</th></tr></thead>
           <tbody>
           {% for cn in order.credit_notes %}
           <tr>
             <td>{{ cn.credit_note_no }}</td>
             <td>{{ "{:,.3f}".format(cn.total_value or 0) }}</td>
-            <td><span class="badge bg-{{ 'success' if cn.gl_posted else 'warning' }}">{{ 'مرحّل' if cn.gl_posted else 'غير مرحّل' }}</span></td>
+            <td><span class="badge bg-{{ 'success' if cn.gl_posted else 'warning' }}">{{ t('Posted') if cn.gl_posted else t('Not Posted') }}</span></td>
           </tr>
           {% else %}
-          <tr><td colspan="3" class="text-center text-muted">لا توجد إشعارات دائن</td></tr>
+          <tr><td colspan="3" class="text-center text-muted">{{ t('No Credit Notes') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -263,11 +263,11 @@
         <form method="POST" action="{{ url_for('maintenance.create_credit_note', id=order.id) }}" class="mt-3">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-2">
-            <label class="form-label">سبب الإشعار</label>
-            <textarea name="reason" class="form-control" rows="2" placeholder="سبب إلغاء الفاتورة"></textarea>
+            <label class="form-label">{{ t('Note Reason') }}</label>
+            <textarea name="reason" class="form-control" rows="2" placeholder="{{ t('Reason for invoice cancellation') }}"></textarea>
           </div>
-          <button type="submit" class="btn btn-outline-danger">إنشاء إشعار دائن</button>
-          <small class="text-muted">سيُعكس الإيراد والضريبة، ويصبح الأمر مؤهلاً للمرتجع.</small>
+          <button type="submit" class="btn btn-outline-danger">{{ t('Create Credit Note') }}</button>
+          <small class="text-muted">{{ t('Revenue and VAT will be reversed, making the order eligible for return.') }}</small>
         </form>
         {% endif %}
       </div>
@@ -279,13 +279,13 @@
 <div class="row mt-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">سجل حالات الأمر</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Order Status History') }}</h5></div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-bordered mb-0">
-            <thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>المستخدم</th><th>الملاحظة</th></tr></thead>
+            <thead><tr><th>{{ t('Date') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('User') }}</th><th>{{ t('Note') }}</th></tr></thead>
             <tbody>
-              {% set history_labels = {'received': 'الاستقبال', 'diagnosis': 'التشخيص', 'waiting_approval': 'انتظار الموافقة', 'in_progress': 'قيد التنفيذ', 'waiting_parts': 'انتظار القطع', 'ready': 'جاهز للتسليم', 'on_hold': 'معلّق', 'cancelled': 'ملغي', 'closed': 'مغلق'} %}
+              {% set history_labels = {'received': t('Reception'), 'diagnosis': t('Diagnosis'), 'waiting_approval': t('Awaiting Approval'), 'in_progress': t('In Progress'), 'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'), 'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed')} %}
               {% for log in status_history %}
               <tr>
                 <td>{{ log.changed_at.strftime('%Y-%m-%d %H:%M') if log.changed_at else '-' }}</td>
@@ -295,7 +295,7 @@
                 <td style="white-space: pre-wrap">{{ log.note or '-' }}</td>
               </tr>
               {% else %}
-              <tr><td colspan="5" class="text-center text-muted">لا يوجد سجل للحالات</td></tr>
+              <tr><td colspan="5" class="text-center text-muted">{{ t('No status history') }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -309,31 +309,31 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">بنود القطع</h5>
+        <h5 class="mb-0">{{ t('Parts Items') }}</h5>
         {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="fas fa-plus mr-1"></i>إضافة قطعة</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="fas fa-plus mr-1"></i>{{ t('Add Part') }}</button>
         {% endif %}
       </div>
       <div class="card-body p-0">
         <table class="table table-bordered table-hover mb-0">
-          <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>التكلفة</th><th>الضريبة</th><th>الإجمالي</th><th></th></tr></thead>
+          <thead><tr><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Price') }}</th><th>{{ t('Cost') }}</th><th>{{ t('Tax') }}</th><th>{{ t('Total') }}</th><th></th></tr></thead>
           <tbody>
           {% for it in order.items %}
           <tr>
             <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else '-' }}</td>
-            <td>{{ it.quantity }} {% if it.returned_quantity %}<span class="badge bg-secondary">مرتجع {{ it.returned_quantity }}</span>{% endif %}</td>
+            <td>{{ it.quantity }} {% if it.returned_quantity %}<span class="badge bg-secondary">{{ t('Returned') }} {{ it.returned_quantity }}</span>{% endif %}</td>
             <td>{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.cost_price or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.tax_amount or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.line_total or 0) }}</td>
             <td>
               {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
-              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#returnModal{{ it.id }}">مرتجع</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#returnModal{{ it.id }}">{{ t('Returned') }}</button>
               {% endif %}
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="7" class="text-center text-muted">لا توجد بنود</td></tr>
+          <tr><td colspan="7" class="text-center text-muted">{{ t('No Items') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -344,14 +344,14 @@
   <div class="col-md-6">
     <div class="card">
       <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">البنود الخدمية</h5>
+        <h5 class="mb-0">{{ t('Service Items') }}</h5>
         {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>إضافة خدمة</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>{{ t('Add Service') }}</button>
         {% endif %}
       </div>
       <div class="card-body p-0">
         <table class="table table-bordered table-hover mb-0">
-          <thead><tr><th>الخدمة</th><th>السعر</th><th>التكلفة</th><th>المدة (دقيقة)</th><th>الإجمالي</th></tr></thead>
+          <thead><tr><th>{{ t('Service') }}</th><th>{{ t('Price') }}</th><th>{{ t('Cost') }}</th><th>{{ t('Duration (minutes)') }}</th><th>{{ t('Total') }}</th></tr></thead>
           <tbody>
           {% for sv in order.services %}
           <tr>
@@ -362,7 +362,7 @@
             <td>{{ "{:,.3f}".format(sv.line_total or 0) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="5" class="text-center text-muted">لا توجد خدمات</td></tr>
+          <tr><td colspan="5" class="text-center text-muted">{{ t('No Services') }}</td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -375,30 +375,30 @@
 <div class="row mt-4">
   <div class="col-12">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">تطبيق خصم على مستوى الأمر</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Apply Order-Level Discount') }}</h5></div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('maintenance.apply_discount', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-4">
-              <label class="form-label">الخصم نسبة %</label>
+              <label class="form-label">{{ t('Discount %') }}</label>
               <input type="number" name="discount_percent" value="{{ order.discount_total_percent or 0 }}" step="0.01" min="0" max="100" class="form-control">
             </div>
             <div class="col-md-4">
-              <label class="form-label">الخصم قيمة</label>
+              <label class="form-label">{{ t('Discount Value') }}</label>
               <input type="number" name="discount_value" value="0" step="0.001" min="0" class="form-control">
             </div>
             <div class="col-md-4">
               {% if current_user.has_permission('maintenance_settings') %}
               <div class="form-check mt-4">
                 <input type="checkbox" name="override" class="form-check-input" id="overrideDiscount">
-                <label class="form-check-label" for="overrideDiscount">تجاوز السقف (مدير فقط)</label>
+                <label class="form-check-label" for="overrideDiscount">{{ t('Override Cap (manager only)') }}</label>
               </div>
               {% endif %}
             </div>
             <div class="col-12">
-              <button type="submit" class="btn btn-warning"><i class="fas fa-percentage mr-1"></i>تطبيق الخصم</button>
-              <small class="text-muted d-block mt-1">يُطبَّق أحدهما فقط: النسبة أو القيمة، والنسبة تُحسب على قيمة البنود.</small>
+              <button type="submit" class="btn btn-warning"><i class="fas fa-percentage mr-1"></i>{{ t('Apply Discount') }}</button>
+              <small class="text-muted d-block mt-1">{{ t("Only one applies: percentage or value; the percentage is calculated on the items' value.") }}</small>
             </div>
           </div>
         </form>
@@ -413,29 +413,29 @@
   <div class="col-12">
     <div class="card border-warning">
       <div class="card-header bg-warning text-dark">
-        <h6 class="mb-0"><i class="fas fa-star mr-1"></i>تقييم العميل للخدمة</h6>
+        <h6 class="mb-0"><i class="fas fa-star mr-1"></i>{{ t('Customer Service Rating') }}</h6>
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('maintenance.rate_order', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="row g-3">
             <div class="col-md-4">
-              <label class="form-label">التقييم (من 5 نجوم)</label>
+              <label class="form-label">{{ t('Rating (out of 5 stars)') }}</label>
               <select name="rating" class="form-select" required>
-                <option value="">اختر التقييم</option>
-                <option value="5">5 - ممتاز</option>
-                <option value="4">4 - جيد جداً</option>
-                <option value="3">3 - جيد</option>
-                <option value="2">2 - ضعيف</option>
-                <option value="1">1 - سيء جداً</option>
+                <option value="">{{ t('Select Rating') }}</option>
+                <option value="5">{{ t('5 - Excellent') }}</option>
+                <option value="4">{{ t('4 - Very Good') }}</option>
+                <option value="3">{{ t('3 - Good') }}</option>
+                <option value="2">{{ t('2 - Poor') }}</option>
+                <option value="1">{{ t('1 - Very Bad') }}</option>
               </select>
             </div>
             <div class="col-md-8">
-              <label class="form-label">تعليق العميل</label>
-              <textarea name="comment" class="form-control" rows="3" placeholder="اكتب ملاحظات العميل حول الخدمة"></textarea>
+              <label class="form-label">{{ t('Customer Comment') }}</label>
+              <textarea name="comment" class="form-control" rows="3" placeholder="{{ t("Write the customer's feedback about the service") }}"></textarea>
             </div>
             <div class="col-12">
-              <button type="submit" class="btn btn-warning"><i class="fas fa-star mr-1"></i>حفظ التقييم</button>
+              <button type="submit" class="btn btn-warning"><i class="fas fa-star mr-1"></i>{{ t('Save Rating') }}</button>
             </div>
           </div>
         </form>
@@ -448,9 +448,9 @@
   <div class="col-12">
     <div class="card bg-success text-white">
       <div class="card-body">
-        <h6 class="mb-2"><i class="fas fa-star mr-1"></i>تقييم العميل: {{ order.customer_rating }}/5</h6>
+        <h6 class="mb-2"><i class="fas fa-star mr-1"></i>{{ t('Customer Rating:') }} {{ order.customer_rating }}/5</h6>
         {% if order.customer_comment %}<p class="mb-0">{{ order.customer_comment }}</p>{% endif %}
-        <p class="mb-0"><small>تم التقييم في: {{ order.rated_at.strftime('%Y-%m-%d %H:%M') if order.rated_at else '-' }}</small></p>
+        <p class="mb-0"><small>{{ t('Rated on:') }} {{ order.rated_at.strftime('%Y-%m-%d %H:%M') if order.rated_at else '-' }}</small></p>
       </div>
     </div>
   </div>
@@ -464,48 +464,48 @@
       <form method="POST" action="{{ url_for('maintenance.add_item', id=order.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header">
-          <h5 class="modal-title">إضافة قطعة غيار</h5>
+          <h5 class="modal-title">{{ t('Add Spare Part') }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">المنتج</label>
+            <label class="form-label">{{ t('Product') }}</label>
             <select name="product_id" class="form-select" required>
-              <option value="">اختر المنتج</option>
+              <option value="">{{ t('Select Product') }}</option>
               {% for p in products %}
               <option value="{{ p.id }}">{{ p.name }} ({{ p.sku }})</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">المستودع</label>
+            <label class="form-label">{{ t('Warehouse') }}</label>
             <select name="warehouse_id" class="form-select">
-              <option value="">اختر المستودع</option>
+              <option value="">{{ t('Select Warehouse') }}</option>
               {% for w in warehouses %}
               <option value="{{ w.id }}">{{ w.name }}</option>
               {% endfor %}
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">الكمية</label>
+            <label class="form-label">{{ t('Quantity') }}</label>
             <input type="number" name="quantity" value="1" step="0.001" min="0.001" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">السعر للوحدة</label>
+            <label class="form-label">{{ t('Unit Price') }}</label>
             <input type="number" name="unit_price" step="0.001" min="0.001" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">الخصم %</label>
+            <label class="form-label">{{ t('Discount') }} %</label>
             <input type="number" name="discount_percent" value="0" step="0.01" min="0" max="100" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">معدل الضريبة %</label>
+            <label class="form-label">{{ t('Tax Rate %') }}</label>
             <input type="number" name="tax_rate" value="5" step="0.01" min="0" max="100" class="form-control">
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary">إضافة</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+          <button type="submit" class="btn btn-primary">{{ t('Add') }}</button>
         </div>
       </form>
     </div>
@@ -520,42 +520,42 @@
       <form method="POST" action="{{ url_for('maintenance.add_service', id=order.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-header">
-          <h5 class="modal-title">إضافة خدمة</h5>
+          <h5 class="modal-title">{{ t('Add Service') }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">اسم الخدمة</label>
+            <label class="form-label">{{ t('Service Name') }}</label>
             <input type="text" name="service_name" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">الاسم بالعربية</label>
+            <label class="form-label">{{ t('Arabic Name') }}</label>
             <input type="text" name="service_name_ar" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">كود الخدمة</label>
-            <input type="text" name="service_code" class="form-control" placeholder="مثال: MECH-001">
+            <label class="form-label">{{ t('Service Code') }}</label>
+            <input type="text" name="service_code" class="form-control" placeholder="{{ t('e.g. MECH-001') }}">
           </div>
           <div class="mb-3">
-            <label class="form-label">السعر للوحدة</label>
+            <label class="form-label">{{ t('Unit Price') }}</label>
             <input type="number" name="unit_price" step="0.001" min="0.001" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">تكلفة العمل (تقديرية)</label>
+            <label class="form-label">{{ t('Labor Cost (estimated)') }}</label>
             <input type="number" name="cost_price" step="0.001" min="0" value="0" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">المدة (دقيقة)</label>
+            <label class="form-label">{{ t('Duration (minutes)') }}</label>
             <input type="number" name="duration_minutes" value="0" min="0" class="form-control">
           </div>
           <div class="mb-3">
-            <label class="form-label">معدل الضريبة %</label>
+            <label class="form-label">{{ t('Tax Rate %') }}</label>
             <input type="number" name="tax_rate" value="5" step="0.01" min="0" max="100" class="form-control">
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary">إضافة</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+          <button type="submit" class="btn btn-primary">{{ t('Add') }}</button>
         </div>
       </form>
     </div>
@@ -572,23 +572,23 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="order_item_id" value="{{ it.id }}">
         <div class="modal-header">
-          <h5 class="modal-title">مرتجع قطعة</h5>
+          <h5 class="modal-title">{{ t('Return Part') }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="mb-2">{{ it.product.name if it.product else '-' }} — المصروف {{ it.quantity }}</p>
+          <p class="mb-2">{{ it.product.name if it.product else '-' }} — {{ t('Expensed') }} {{ it.quantity }}</p>
           <div class="mb-3">
-            <label class="form-label">الكمية المرتجعة</label>
+            <label class="form-label">{{ t('Returned Quantity') }}</label>
             <input type="number" name="quantity" step="0.001" min="0.001" max="{{ it.quantity }}" value="1" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">سبب المرتجع</label>
+            <label class="form-label">{{ t('Return Reason') }}</label>
             <input type="text" name="reason" class="form-control">
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-danger">تسجيل المرتجع</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ t('Cancel') }}</button>
+          <button type="submit" class="btn btn-danger">{{ t('Record Return') }}</button>
         </div>
       </form>
     </div>

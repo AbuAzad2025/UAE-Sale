@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}جرد {{ stocktake.stocktake_number }}{% endblock %}
-{% block page_title %}<i class="fas fa-clipboard-check mr-2"></i>جرد: {{ stocktake.stocktake_number }}{% endblock %}
+{% block title %}{{ t('Stock Take') }} {{ stocktake.stocktake_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-clipboard-check mr-2"></i>{{ t('Stock Take') }}: {{ stocktake.stocktake_number }}{% endblock %}
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between">
@@ -12,7 +12,7 @@
     <form method="POST" action="{{ url_for('erp_modules.update_stocktake_count', id=stocktake.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <table class="table table-bordered">
-        <thead><tr><th>المنتج</th><th>الكمية بالنظام</th><th>العدد الفعلي</th><th>الفرق</th></tr></thead>
+        <thead><tr><th>{{ t('Product') }}</th><th>{{ t('System Quantity') }}</th><th>{{ t('Actual Count') }}</th><th>{{ t('Difference') }}</th></tr></thead>
         <tbody>
         {% for item in stocktake.items %}
         <tr>
@@ -24,11 +24,11 @@
         {% endfor %}
         </tbody>
       </table>
-      <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>حفظ نتائج الجرد</button>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ t('Save Stock Take Results') }}</button>
     </form>
     {% elif stocktake.status == 'completed' %}
     <table class="table table-bordered">
-      <thead><tr><th>المنتج</th><th>النظام</th><th>الفعلي</th><th>الفرق</th></tr></thead>
+      <thead><tr><th>{{ t('Product') }}</th><th>{{ t('System') }}</th><th>{{ t('Actual') }}</th><th>{{ t('Difference') }}</th></tr></thead>
       <tbody>
       {% for item in stocktake.items %}
       <tr><td>{{ item.product.name if item.product else '-' }}</td><td>{{ item.system_quantity }}</td><td>{{ item.counted_quantity or '-' }}</td><td><span class="badge badge-{{ 'success' if item.variance == 0 else 'danger' }}">{{ item.variance }}</span></td></tr>
@@ -37,10 +37,10 @@
     </table>
     <form method="POST" action="{{ url_for('erp_modules.approve_stocktake', id=stocktake.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit" class="btn btn-success" onclick="return confirm('اعتماد الجرد وتحديث المخزون؟')"><i class="fas fa-check mr-2"></i>اعتماد الجرد</button>
+      <button type="submit" class="btn btn-success" onclick="return confirm('{{ t('Approve the stock take and update inventory?') }}')"><i class="fas fa-check mr-2"></i>{{ t('Approve Stock Take') }}</button>
     </form>
     {% else %}
-    <p class="text-success"><i class="fas fa-check-circle mr-2"></i>تم اعتماد هذا الجرد</p>
+    <p class="text-success"><i class="fas fa-check-circle mr-2"></i>{{ t('This stock take has been approved') }}</p>
     {% endif %}
   </div>
 </div>

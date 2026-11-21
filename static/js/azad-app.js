@@ -42,7 +42,7 @@ function initializeSelect2() {
             width: '100%',
             // Same uniform rule as app.js: search box only for long lists.
             minimumResultsForSearch: 6,
-            placeholder: 'اختر...'
+            placeholder: t('Select...')
         });
     }
 }
@@ -59,7 +59,7 @@ function initializeDataTables() {
             },
             responsive: true,
             pageLength: 25,
-            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "الكل"]],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, t('All')]],
             dom: 'Bfrtip',
             buttons: [
                 {
@@ -74,7 +74,7 @@ function initializeDataTables() {
                 },
                 {
                     extend: 'print',
-                    text: '<i class="fas fa-print"></i> طباعة',
+                    text: '<i class="fas fa-print"></i> ' + t('Print'),
                     className: 'btn btn-info btn-sm'
                 }
             ]
@@ -123,7 +123,7 @@ function initializeFormValidation() {
             if (!$(this).val()) {
                 isValid = false;
                 $(this).addClass('is-invalid');
-                showError('يرجى ملء جميع الحقول المطلوبة');
+                showError(t('Please fill in all required fields'));
                 return false;
             } else {
                 $(this).removeClass('is-invalid');
@@ -220,7 +220,7 @@ function showAlert(message, type = 'info') {
 /**
  * Confirm Delete
  */
-function confirmDelete(message = 'هل أنت متأكد من الحذف؟') {
+function confirmDelete(message = t('Are you sure you want to delete?')) {
     return confirm(message);
 }
 
@@ -245,7 +245,7 @@ function copyToClipboard(text) {
     temp.val(text).select();
     document.execCommand('copy');
     temp.remove();
-    showSuccess('تم النسخ بنجاح');
+    showSuccess(t('Copied successfully'));
 }
 
 /**
@@ -277,7 +277,7 @@ function loadExchangeRate(fromCurrency, toCurrency = 'AED') {
             }
         },
         error: function() {
-            showError('فشل تحميل سعر الصرف');
+            showError(t('Failed to load exchange rate'));
         }
     });
 }
@@ -402,14 +402,14 @@ function exportToExcel(tableId, filename = 'export') {
  */
 function checkConnection() {
     if (!navigator.onLine) {
-        showError('لا يوجد اتصال بالإنترنت');
+        showError(t('No internet connection'));
         return false;
     }
     return true;
 }
 
 // Global error handler
-window.onerror = function(msg, url, lineNo, columnNo, error) {    showError('حدث خطأ غير متوقع');
+window.onerror = function(msg, url, lineNo, columnNo, error) {    showError(t('An unexpected error occurred'));
     return false;
 };
 
@@ -512,7 +512,7 @@ window.initAutoSave = function() {
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(() => {
                 sessionStorage.setItem('autosave_' + $form.attr('id'), $form.serialize());
-                if (window.Swal) Swal.fire({toast:true, position:'top-end', icon:'success', title:' محفوظ', timer:1000, showConfirmButton:false});
+                if (window.Swal) Swal.fire({toast:true, position:'top-end', icon:'success', title: ' ' + t('Saved'), timer:1000, showConfirmButton:false});
             }, 30000);
         });
     });
@@ -572,7 +572,7 @@ $(document).on('keydown', function(e) {
     
     // Esc = إلغاء/رجوع
     if (e.key === 'Escape') {
-        const cancelBtn = $('a:contains("إلغاء"), a:contains("العودة")').first();
+        const cancelBtn = $('a:contains("إلغاء"), a:contains("العودة"), a:contains("Cancel"), a:contains("Back")').first();
         if (cancelBtn.length) window.location = cancelBtn.attr('href');
     }
 });
@@ -714,7 +714,7 @@ $(document).on('dblclick', '.editable', function() {
                 // لكن الخادم رفض التعديل. بدون هذا الفحص كانت الخلية تعرض
                 // القيمة الجديدة رغم رفض الخادم لها.
                 if (!res.ok) {
-                    let message = 'تعذّر حفظ التعديل';
+                    let message = t('Failed to save the change');
                     try {
                         const body = await res.json();
                         message = body.error || body.message || message;

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - معلومات الشركة وإعدادات الهوية{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Company Info & Identity Settings') }}{% endblock %}
 
 {% block content %}
 <div class="company-profile-wrapper">
@@ -15,30 +15,30 @@
           {% endif %}
         </div>
         <div>
-          <h2 class="profile-card__name">{{ tenant.name_ar or 'اسم الشركة' }}</h2>
+          <h2 class="profile-card__name">{{ tenant.name_ar or t('Company Name') }}</h2>
           <p class="profile-card__industry">
             <i class="fas fa-industry"></i>
-            {{ tenant.get_industry_display() if tenant.get_industry_display else 'مجال العمل' }}
+            {{ tenant.get_industry_display() if tenant.get_industry_display else t('Field of Work') }}
           </p>
         </div>
       </div>
       <div class="profile-card__body">
         <div class="profile-card__stat">
-          <span class="label">نوع النشاط</span>
-          <span class="value">{{ tenant.get_business_type_display() if tenant.get_business_type_display else 'غير محدد' }}</span>
+          <span class="label">{{ t('Business Type') }}</span>
+          <span class="value">{{ tenant.get_business_type_display() if tenant.get_business_type_display else t('Not Specified') }}</span>
         </div>
         <div class="profile-card__stat">
-          <span class="label">الدولة</span>
-          <span class="value">{{ tenant.get_country_display() if tenant.get_country_display else 'غير محددة' }}</span>
+          <span class="label">{{ t('Country') }}</span>
+          <span class="value">{{ tenant.get_country_display() if tenant.get_country_display else t('Unspecified') }}</span>
         </div>
         <div class="profile-card__stat">
-          <span class="label">المدينة</span>
+          <span class="label">{{ t('City') }}</span>
           <span class="value">{{ tenant.city or '---' }}</span>
         </div>
       </div>
       <div class="profile-card__footer">
         <div class="brand-colors">
-          <span>ألوان الهوية</span>
+          <span>{{ t('Brand Colors') }}</span>
           <div class="brand-colors__swatches">
             <div class="color" style="--color: {{ tenant.brand_color_primary or '#007A3D' }}"></div>
             <div class="color" style="--color: {{ tenant.brand_color_secondary or '#D4AF37' }}"></div>
@@ -47,7 +47,7 @@
         <div class="profile-card__actions">
           <span class="badge badge-pill badge-info">
             <i class="fas fa-sync-alt"></i>
-            آخر تحديث: {{ tenant.updated_at.strftime('%Y-%m-%d') if tenant.updated_at else '---' }}
+            {{ t('Last updated') }}: {{ tenant.updated_at.strftime('%Y-%m-%d') if tenant.updated_at else '---' }}
           </span>
         </div>
       </div>
@@ -55,20 +55,20 @@
 
     <div class="quick-links card">
       <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-tools mr-2"></i>روابط سريعة</h3>
+        <h3 class="card-title"><i class="fas fa-tools mr-2"></i>{{ t('Quick Links') }}</h3>
       </div>
       <div class="card-body">
         <a href="{{ url_for('owner.invoice_settings') }}" class="quick-link">
           <i class="fas fa-file-invoice"></i>
-          <span>إعدادات الفواتير</span>
+          <span>{{ t('Invoice Settings') }}</span>
         </a>
-        <a href="#" class="quick-link disabled-link" title="قريباً">
+        <a href="#" class="quick-link disabled-link" title="{{ t('Coming Soon') }}">
           <i class="fas fa-palette"></i>
-          <span>الهوية البصرية</span>
+          <span>{{ t('Visual Identity') }}</span>
         </a>
-        <a href="#" class="quick-link disabled-link" title="قريباً">
+        <a href="#" class="quick-link disabled-link" title="{{ t('Coming Soon') }}">
           <i class="fas fa-warehouse"></i>
-          <span>المستودعات الرئيسية</span>
+          <span>{{ t('Main Warehouses') }}</span>
         </a>
       </div>
     </div>
@@ -79,15 +79,15 @@
   <div class="container-fluid">
     <div class="row mb-2 align-items-center">
       <div class="col-sm-6">
-        <h1 class="m-0"> معلومات الشركة/الكراج</h1>
+        <h1 class="m-0"> {{ t('Company / Garage Info') }}</h1>
       </div>
       <div class="col-sm-6 d-flex justify-content-end">
         <div class="d-flex align-items-center">
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary ml-2">
-            <i class="fas fa-arrow-right mr-1"></i> الرجوع للوحة المالك
+            <i class="fas fa-arrow-right mr-1"></i> {{ t('Return to Owner Dashboard') }}
           </a>
           <ol class="breadcrumb float-sm-left mb-0">
-            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">لوحة المالك</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a></li>
             <li class="breadcrumb-item active">{{ t('Company Info') }}</li>
           </ol>
         </div>
@@ -104,53 +104,53 @@
       
       <div class="card">
         <div class="card-header bg-gradient-primary">
-          <h3 class="card-title text-white"> المعلومات الأساسية</h3>
+          <h3 class="card-title text-white"> {{ t('Basic Information') }}</h3>
         </div>
         <div class="card-body">
           <div class="row gy-3">
             <div class="col-xl-4 col-lg-6">
               <div class="form-group">
-                <label>الاسم بالعربي *</label>
+                <label>{{ t('Name in Arabic') }} *</label>
                 <input type="text" name="name_ar" class="form-control compact-control" value="{{ tenant.name_ar or '' }}" required>
               </div>
             </div>
             <div class="col-xl-4 col-lg-6">
               <div class="form-group">
-                <label>الاسم بالإنجليزي</label>
+                <label>{{ t('Name in English') }}</label>
                 <input type="text" name="name_en" class="form-control compact-control" value="{{ tenant.name_en or '' }}">
               </div>
             </div>
             <div class="col-xl-4 col-lg-12">
               <div class="form-group">
-                <label>الكود (Slug)</label>
+                <label>{{ t('Code (Slug)') }}</label>
                 <input type="text" name="slug" class="form-control compact-control" value="{{ tenant.slug or '' }}" pattern="[a-z0-9-]+">
-                <small class="text-muted">حروف صغيرة وأرقام وشرطة فقط</small>
+                <small class="text-muted">{{ t('Lowercase letters, numbers and hyphens only') }}</small>
               </div>
             </div>
           </div>
           <div class="row gy-3">
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
-                <label>نوع النشاط</label>
+                <label>{{ t('Business Type') }}</label>
                 <select name="business_type" class="form-control compact-control select-center select2">
                   {% for code, meta in lookups.get('business_types', []) %}
-                  <option value="{{ code }}" {{ 'selected' if tenant.business_type == code }}>{{ meta.ar }}</option>
+                  <option value="{{ code }}" {{ 'selected' if tenant.business_type == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.business_type and tenant.business_type not in lookup_codes.business_types %}
-                  <option value="{{ tenant.business_type }}" selected>{{ tenant.business_type }} (قيمة سابقة)</option>
+                  <option value="{{ tenant.business_type }}" selected>{{ tenant.business_type }} ({{ t('Previous value') }})</option>
                   {% endif %}
                 </select>
               </div>
             </div>
             <div class="col-lg-8 col-md-7">
               <div class="form-group">
-                <label>الصناعة</label>
+                <label>{{ t('Industry') }}</label>
                 <select name="industry" class="form-control compact-control select-center select2">
                   {% for code, meta in lookups.get('industries', []) %}
-                  <option value="{{ code }}" {{ 'selected' if tenant.industry == code }}>{{ meta.ar }}</option>
+                  <option value="{{ code }}" {{ 'selected' if tenant.industry == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.industry and tenant.industry not in lookup_codes.industries %}
-                  <option value="{{ tenant.industry }}" selected>{{ tenant.industry }} (قيمة سابقة)</option>
+                  <option value="{{ tenant.industry }}" selected>{{ tenant.industry }} ({{ t('Previous value') }})</option>
                   {% endif %}
                 </select>
               </div>
@@ -162,19 +162,19 @@
       
       <div class="card">
         <div class="card-header bg-gradient-success">
-          <h3 class="card-title text-white"> معلومات الاتصال</h3>
+          <h3 class="card-title text-white"> {{ t('Contact Information') }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label>العنوان بالعربي</label>
+                <label>{{ t('Address in Arabic') }}</label>
                 <textarea name="address_ar" class="form-control" rows="2">{{ tenant.address_ar or '' }}</textarea>
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label>العنوان بالإنجليزي</label>
+                <label>{{ t('Address in English') }}</label>
                 <textarea name="address_en" class="form-control" rows="2">{{ tenant.address_en or '' }}</textarea>
               </div>
             </div>
@@ -186,10 +186,10 @@
                 <select name="city" class="form-control compact-control select-center select2">
                   <option value="">—</option>
                   {% for code, meta in lookups.get('cities', []) %}
-                  <option value="{{ code }}" {{ 'selected' if tenant.city == code }}>{{ meta.ar }}</option>
+                  <option value="{{ code }}" {{ 'selected' if tenant.city == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.city and tenant.city not in lookup_codes.cities %}
-                  <option value="{{ tenant.city }}" selected>{{ tenant.city }} (قيمة سابقة)</option>
+                  <option value="{{ tenant.city }}" selected>{{ tenant.city }} ({{ t('Previous value') }})</option>
                   {% endif %}
                 </select>
               </div>
@@ -199,7 +199,7 @@
                 <label>{{ t('Country') }}</label>
                 <select name="country" class="form-control compact-control select-center select2">
                   {% for code, meta in lookups.get('countries', []) %}
-                  <option value="{{ code }}" {{ 'selected' if tenant.country == code }}>{{ meta.ar }}</option>
+                  <option value="{{ code }}" {{ 'selected' if tenant.country == code }}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                   {% if tenant.country and tenant.country not in lookup_codes.countries %}
                   <option value="{{ tenant.country }}" selected>{{ tenant.country }} ({{ t('Other') }})</option>
@@ -209,7 +209,7 @@
             </div>
             <div class="col-xl-4 col-lg-6 col-md-7">
               <div class="form-group">
-                <label>الموقع الجغرافي</label>
+                <label>{{ t('Geographic Location') }}</label>
                 <input type="text" name="location_coords" class="form-control compact-control" value="{{ tenant.location_coords or '' }}" placeholder="25.2048,55.2708">
               </div>
             </div>
@@ -217,19 +217,19 @@
           <div class="row">
             <div class="col-md-3">
               <div class="form-group">
-                <label>هاتف 1</label>
+                <label>{{ t('Phone 1') }}</label>
                 <input type="tel" name="phone_1" class="form-control" value="{{ tenant.phone_1 or '' }}">
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>هاتف 2</label>
+                <label>{{ t('Phone 2') }}</label>
                 <input type="tel" name="phone_2" class="form-control" value="{{ tenant.phone_2 or '' }}">
               </div>
             </div>
             <div class="col-md-3">
               <div class="form-group">
-                <label>موبايل</label>
+                <label>{{ t('Mobile') }}</label>
                 <input type="tel" name="mobile" class="form-control" value="{{ tenant.mobile or '' }}">
               </div>
             </div>
@@ -241,7 +241,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label>الموقع الإلكتروني</label>
+            <label>{{ t('Website') }}</label>
             <input type="url" name="website" class="form-control" value="{{ tenant.website or '' }}" placeholder="https://example.com">
           </div>
         </div>
@@ -250,25 +250,25 @@
       
       <div class="card">
         <div class="card-header bg-gradient-warning">
-          <h3 class="card-title text-white"> المعلومات القانونية</h3>
+          <h3 class="card-title text-white"> {{ t('Legal Information') }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-4">
               <div class="form-group">
-                <label>الرقم الضريبي (TRN)</label>
+                <label>{{ t('Tax Number (TRN)') }}</label>
                 <input type="text" name="tax_number" class="form-control" value="{{ tenant.tax_number or '' }}">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>السجل التجاري</label>
+                <label>{{ t('Commercial Register') }}</label>
                 <input type="text" name="commercial_register" class="form-control" value="{{ tenant.commercial_register or '' }}">
               </div>
             </div>
             <div class="col-md-4">
               <div class="form-group">
-                <label>رقم الترخيص</label>
+                <label>{{ t('License Number') }}</label>
                 <input type="text" name="license_number" class="form-control" value="{{ tenant.license_number or '' }}">
               </div>
             </div>
@@ -279,26 +279,26 @@
       
       <div class="card">
         <div class="card-header bg-gradient-info">
-          <h3 class="card-title text-white"> العلامة التجارية</h3>
+          <h3 class="card-title text-white"> {{ t('Branding') }}</h3>
         </div>
         <div class="card-body">
           <div class="row">
             <div class="col-md-6">
               <div class="form-group">
-                <label>اللون الأساسي</label>
+                <label>{{ t('Primary Color') }}</label>
                 <input type="color" name="brand_color_primary" class="form-control" value="{{ tenant.brand_color_primary or '#007A3D' }}">
               </div>
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label>اللون الثانوي</label>
+                <label>{{ t('Secondary Color') }}</label>
                 <input type="color" name="brand_color_secondary" class="form-control" value="{{ tenant.brand_color_secondary or '#D4AF37' }}">
               </div>
             </div>
           </div>
           <div class="alert alert-info">
             <i class="fas fa-info-circle"></i>
-            <strong>ملاحظة:</strong> لتغيير الشعار، استخدم إعدادات ترويسات الفواتير.
+            <strong>{{ t('Note') }}:</strong> {{ t('To change the logo, use invoice header settings.') }}
           </div>
         </div>
       </div>
@@ -307,10 +307,10 @@
       <div class="row">
         <div class="col-12">
           <button type="submit" class="btn btn-primary btn-lg">
-            <i class="fas fa-save mr-2"></i>حفظ المعلومات
+            <i class="fas fa-save mr-2"></i>{{ t('Save Information') }}
           </button>
           <a href="{{ url_for('owner.dashboard') }}" class="btn btn-secondary btn-lg">
-            <i class="fas fa-times mr-2"></i>إلغاء
+            <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
           </a>
         </div>
       </div>

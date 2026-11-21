@@ -114,6 +114,11 @@ TRANSLATIONS = {
     "Trial Balance": {"ar": "ميزان المراجعة", "en": "Trial Balance"},
     "Income Statement": {"ar": "قائمة الدخل", "en": "Income Statement"},
     "Balance Sheet": {"ar": "الميزانية", "en": "Balance Sheet"},
+    "Reverse Charge VAT": {"ar": "ضريبة الشحن العكسي", "en": "Reverse Charge VAT"},
+    "Retained Earnings (cumulative net profit)": {
+        "ar": "الأرباح المبقاة (صافي الربح التراكمي)",
+        "en": "Retained Earnings (cumulative net profit)",
+    },
     "AI Assistant": {"ar": "المساعد الذكي", "en": "AI Assistant"},
     "Pending": {"ar": "معلق", "en": "Pending"},
     "Completed": {"ar": "مكتمل", "en": "Completed"},
@@ -134,6 +139,20 @@ TRANSLATIONS = {
         "en": "Complete inventory for all products and parts",
     },
 }
+
+
+# Per-area translation dictionaries live in utils/i18n_keys/agent_*.py.
+# They are auto-loaded so several independent contributors can add keys
+# without ever editing this shared file (no merge conflicts).
+import os as _os
+import importlib as _importlib
+
+_KEYS_DIR = _os.path.join(_os.path.dirname(__file__), "i18n_keys")
+if _os.path.isdir(_KEYS_DIR):
+    for _fn in sorted(_os.listdir(_KEYS_DIR)):
+        if _fn.startswith("agent_") and _fn.endswith(".py"):
+            _mod = _importlib.import_module(f"utils.i18n_keys.{_fn[:-3]}")
+            TRANSLATIONS.update(getattr(_mod, "TRANSLATIONS", {}))
 
 
 def t(key, **kwargs):

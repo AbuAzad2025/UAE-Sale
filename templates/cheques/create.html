@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - إضافة شيك جديد جديد{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Add New Cheque') }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>إضافة شيك جديد</h1>
+    <h1 class="mb-0"><i class="fas fa-plus-circle mr-2"></i>{{ t('Add New Cheque') }}</h1>
   </div>
   <div>
     <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للشيكات
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Cheques') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -75,7 +75,7 @@
 <div class="card">
   <div class="card-header bg-primary">
     <h3 class="card-title text-white">
-      <i class="fas fa-money-check mr-2"></i>معلومات الشيك
+      <i class="fas fa-money-check mr-2"></i>{{ t('Cheque Information') }}
     </h3>
   </div>
   <div class="card-body">
@@ -86,11 +86,11 @@
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
-            <label><i class="fas fa-exchange-alt"></i> نوع الشيك: <span class="text-danger">*</span></label>
+            <label><i class="fas fa-exchange-alt"></i> {{ t('Cheque Type') }}: <span class="text-danger">*</span></label>
             <select name="cheque_type" id="cheque_type" class="form-control select2" required>
-              <option value="">بلا</option>
+              <option value="">{{ t('None') }}</option>
               {% for code, meta in lookups.get('cheque_types', []) %}
-              <option value="{{ code }}">{{ meta.ar }}</option>
+              <option value="{{ code }}">{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -98,9 +98,9 @@
         
         <div class="col-md-6">
           <div class="form-group">
-            <label><i class="fas fa-hashtag"></i> رقم الشيك: <span class="text-danger">*</span></label>
+            <label><i class="fas fa-hashtag"></i> {{ t('Cheque Number') }}: <span class="text-danger">*</span></label>
             <input type="text" name="cheque_bank_number" class="form-control" 
-                   placeholder="رقم الشيك من البنك" required>
+                   placeholder="{{ t('Bank cheque number') }}" required>
           </div>
         </div>
       </div>
@@ -109,25 +109,25 @@
       <div class="row">
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-university"></i> البنك: <span class="text-danger">*</span></label>
+            <label><i class="fas fa-university"></i> {{ t('Bank') }}: <span class="text-danger">*</span></label>
             <input type="text" name="bank_name" class="form-control" 
-                   placeholder="اسم البنك" required>
+                   placeholder="{{ t('Bank name') }}" required>
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-map-marker-alt"></i> الفرع:</label>
+            <label><i class="fas fa-map-marker-alt"></i> {{ t('Branch') }}:</label>
             <input type="text" name="bank_branch" class="form-control" 
-                   placeholder="فرع البنك">
+                   placeholder="{{ t('Bank branch') }}">
           </div>
         </div>
         
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-credit-card"></i> رقم الحساب:</label>
+            <label><i class="fas fa-credit-card"></i> {{ t('Account Number') }}:</label>
             <input type="text" name="account_number" class="form-control" 
-                   placeholder="رقم الحساب">
+                   placeholder="{{ t('Account number') }}">
           </div>
         </div>
       </div>
@@ -136,7 +136,7 @@
       <div class="row">
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-money-bill-wave"></i> المبلغ: <span class="text-danger">*</span></label>
+            <label><i class="fas fa-money-bill-wave"></i> {{ t('Amount') }}: <span class="text-danger">*</span></label>
             <input type="number" name="amount" step="0.01" class="form-control" 
                    placeholder="0.00" required>
           </div>
@@ -144,10 +144,10 @@
         
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-dollar-sign"></i> العملة:</label>
+            <label><i class="fas fa-dollar-sign"></i> {{ t('Currency') }}:</label>
             <select name="currency" id="currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+              <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -155,7 +155,7 @@
         
         <div class="col-md-4">
           <div class="form-group">
-            <label><i class="fas fa-exchange-alt"></i> سعر الصرف:</label>
+            <label><i class="fas fa-exchange-alt"></i> {{ t('Exchange Rate') }}:</label>
             <input type="number" name="exchange_rate" step="0.000001" class="form-control" 
                    placeholder="1.0">
           </div>
@@ -166,7 +166,7 @@
       <div class="row">
         <div class="col-md-6">
           <div class="form-group">
-            <label><i class="far fa-calendar"></i> تاريخ الإصدار: <span class="text-danger">*</span></label>
+            <label><i class="far fa-calendar"></i> {{ t('Issue Date') }}: <span class="text-danger">*</span></label>
             <input type="date" name="issue_date" class="form-control" 
                    value="{{ today }}" required>
           </div>
@@ -174,7 +174,7 @@
         
         <div class="col-md-6">
           <div class="form-group">
-            <label><i class="far fa-calendar-check"></i> تاريخ الاستحقاق: <span class="text-danger">*</span></label>
+            <label><i class="far fa-calendar-check"></i> {{ t('Due Date') }}: <span class="text-danger">*</span></label>
             <input type="date" name="due_date" class="form-control" required>
           </div>
         </div>
@@ -183,15 +183,15 @@
       
       <div id="incomingFields" style="display: none;">
         <div class="alert alert-success">
-          <i class="fas fa-arrow-down mr-2"></i><strong>شيك وارد</strong> - من عميل
+          <i class="fas fa-arrow-down mr-2"></i><strong>{{ t('Incoming Cheque') }}</strong> - {{ t('From a customer') }}
         </div>
         
         <div class="row">
           <div class="col-md-6">
             <div class="form-group">
-              <label><i class="fas fa-user"></i> العميل (اختياري):</label>
+              <label><i class="fas fa-user"></i> {{ t('Customer (optional)') }}:</label>
               <select name="customer_id" class="form-control customer-select">
-                <option value="">بلا</option>
+                <option value="">{{ t('None') }}</option>
                 {% for customer in customers %}
                 <option value="{{ customer.id }}">{{ customer.name }}</option>
                 {% endfor %}
@@ -201,31 +201,31 @@
           
           <div class="col-md-6">
             <div class="form-group">
-              <label><i class="fas fa-signature"></i> اسم الساحب:</label>
+              <label><i class="fas fa-signature"></i> {{ t('Drawer Name') }}:</label>
               <input type="text" name="drawer_name" class="form-control" 
-                     placeholder="اسم الشخص الساحب للشيك">
+                     placeholder="{{ t('Name of the cheque drawer') }}">
             </div>
           </div>
         </div>
         
         <div class="form-group">
-          <label><i class="fas fa-id-card"></i> رقم الهوية:</label>
+          <label><i class="fas fa-id-card"></i> {{ t('ID Number') }}:</label>
           <input type="text" name="drawer_id_number" class="form-control" 
-                 placeholder="رقم الهوية أو الجواز">
+                 placeholder="{{ t('ID or passport number') }}">
         </div>
       </div>
 
       <div id="outgoingFields" style="display: none;">
         <div class="alert alert-danger">
-          <i class="fas fa-arrow-up mr-2"></i><strong>شيك صادر</strong> - لمورد أو مستفيد
+          <i class="fas fa-arrow-up mr-2"></i><strong>{{ t('Outgoing Cheque') }}</strong> - {{ t('To a supplier or beneficiary') }}
         </div>
         
         <div class="row">
           <div class="col-md-6">
             <div class="form-group">
-              <label><i class="fas fa-truck"></i> المورد (اختياري):</label>
+              <label><i class="fas fa-truck"></i> {{ t('Supplier (optional)') }}:</label>
               <select name="supplier_id" class="form-control supplier-select">
-                <option value="">بلا</option>
+                <option value="">{{ t('None') }}</option>
                 {% for supplier in suppliers %}
                 <option value="{{ supplier.id }}">{{ supplier.name }}</option>
                 {% endfor %}
@@ -235,9 +235,9 @@
           
           <div class="col-md-6">
             <div class="form-group">
-              <label><i class="fas fa-user-tie"></i> اسم المستفيد:</label>
+              <label><i class="fas fa-user-tie"></i> {{ t('Payee Name') }}:</label>
               <input type="text" name="payee_name" class="form-control" 
-                     placeholder="اسم المستفيد من الشيك">
+                     placeholder="{{ t('Name of the cheque payee') }}">
             </div>
           </div>
         </div>
@@ -245,18 +245,18 @@
 
       
       <div class="form-group">
-        <label><i class="fas fa-sticky-note"></i> ملاحظات:</label>
+        <label><i class="fas fa-sticky-note"></i> {{ t('Notes') }}:</label>
         <textarea name="notes" class="form-control" rows="3" 
-                  placeholder="أي ملاحظات إضافية..."></textarea>
+                  placeholder="{{ t('Any additional notes...') }}"></textarea>
       </div>
 
       
       <div class="form-group">
         <button type="submit" class="btn btn-success">
-          <i class="fas fa-save mr-2"></i>حفظ الشيك
+          <i class="fas fa-save mr-2"></i>{{ t('Save Cheque') }}
         </button>
         <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-          <i class="fas fa-times mr-2"></i>إلغاء
+          <i class="fas fa-times mr-2"></i>{{ t('Cancel') }}
         </a>
       </div>
     </form>
@@ -286,11 +286,11 @@ $(function() {
     $('.customer-select, .supplier-select').select2({
       theme: 'bootstrap4',
       language: 'ar',
-      placeholder: 'اختر...',
+      placeholder: {{ t('Select...')|tojson }},
       allowClear: true
     });
   } else {
-    console.warn('Select2 لم يتم تحميله، سيتم استخدام القائمة العادية.');
+    console.warn({{ t('Select2 failed to load; the regular list will be used.')|tojson }});
   }
   
   $('#currency').on('change', function() {
@@ -308,16 +308,16 @@ $(function() {
         if (data && data.rate) {
           $('input[name="exchange_rate"]').val(parseFloat(data.rate).toFixed(6));
         } else if (window.toastr) {
-          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning({{ t('Could not fetch the exchange rate; please enter the value manually.')|tojson }});
         } else {
-          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert({{ t('Could not fetch the exchange rate; please enter the value manually.')|tojson }});
         }
       },
       error: function() {
         if (window.toastr) {
-          toastr.warning('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          toastr.warning({{ t('Could not fetch the exchange rate; please enter the value manually.')|tojson }});
         } else {
-          alert('تعذر جلب سعر الصرف، يرجى إدخال القيمة يدوياً.');
+          alert({{ t('Could not fetch the exchange rate; please enter the value manually.')|tojson }});
         }
       }
     });

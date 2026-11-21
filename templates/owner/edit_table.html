@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}تعديل جدول {{ table_name }}{% endblock %}
+{% block title %}{{ t('Edit Table') }} {{ table_name }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>تعديل: {{ table_name }}</h1>
+    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>{{ t('Edit') }}: {{ table_name }}</h1>
   </div>
   <div>
     <a href="{{ url_for('owner.database_tools') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Go Back') }}
     </a>
   </div>
 </div>
@@ -19,21 +19,21 @@
   <div class="card-header bg-primary text-white">
     <h3 class="card-title">
       <i class="fas fa-edit mr-2"></i>
-      تعديل مرئي: <code>{{ table_name }}</code>
+      {{ t('Visual Edit') }}: <code>{{ table_name }}</code>
     </h3>
   </div>
   <div class="card-body">
     <div class="alert alert-warning">
       <i class="fas fa-exclamation-triangle mr-2"></i>
-      <strong>تحذير:</strong> يمكنك تعديل البيانات مباشرة. التعديلات ستحفظ في قاعدة البيانات فوراً!
+      <strong>{{ t('Warning') }}:</strong> {{ t('You can edit data directly. Changes will be saved to the database immediately!') }}
     </div>
 
     <div class="alert alert-info">
-      <strong> طريقة التعديل:</strong>
+      <strong> {{ t('How to edit') }}:</strong>
       <ol class="mb-0">
-        <li>اضغط زر <span class="badge badge-warning">تعديل</span> على السطر المطلوب</li>
-        <li>عدّل البيانات في الخانات</li>
-        <li>اضغط <span class="badge badge-success">حفظ</span> لحفظ التغييرات</li>
+        <li>{{ t('Click the') }} <span class="badge badge-warning">{{ t('Edit') }}</span> {{ t('button on the desired row') }}</li>
+        <li>{{ t('Edit the data in the fields') }}</li>
+        <li>{{ t('Click') }} <span class="badge badge-success">{{ t('Save') }}</span> {{ t('to save changes') }}</li>
       </ol>
     </div>
 
@@ -44,7 +44,7 @@
             {% for col in columns %}
             <th><i class="fas fa-database mr-1"></i>{{ col }}</th>
             {% endfor %}
-            <th width="200"><i class="fas fa-tools mr-1"></i>الإجراءات</th>
+            <th width="200"><i class="fas fa-tools mr-1"></i>{{ t('Actions List') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,13 +62,13 @@
             {% endfor %}
             <td class="text-center">
               <button class="btn btn-sm btn-warning edit-btn" onclick="enableEdit(this)">
-                <i class="fas fa-pencil-alt"></i> تعديل
+                <i class="fas fa-pencil-alt"></i> {{ t('Edit') }}
               </button>
               <button class="btn btn-sm btn-success save-btn" onclick="saveRow(this)" style="display: none;">
-                <i class="fas fa-save"></i> حفظ
+                <i class="fas fa-save"></i> {{ t('Save') }}
               </button>
               <button class="btn btn-sm btn-secondary cancel-btn" onclick="cancelEdit(this)" style="display: none;">
-                <i class="fas fa-times"></i> إلغاء
+                <i class="fas fa-times"></i> {{ t('Cancel') }}
               </button>
             </td>
           </tr>
@@ -80,13 +80,13 @@
     {% if not rows %}
     <div class="alert alert-warning text-center">
       <i class="fas fa-exclamation-triangle mr-2"></i>
-      لا توجد بيانات في هذا الجدول
+      {{ t('No data in this table') }}
     </div>
     {% endif %}
   </div>
   <div class="card-footer">
     <a href="{{ url_for('owner.database_tools') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i> العودة للجداول
+      <i class="fas fa-arrow-right mr-2"></i> {{ t('Back to Tables') }}
     </a>
   </div>
 </div>
@@ -144,26 +144,26 @@ function saveRow(btn) {
   
   if (!hasChanges) {
     Swal.fire({
-      title: 'لا توجد تعديلات',
-      text: 'لم تقم بتعديل أي بيانات',
+      title: {{ t('No changes')|tojson }},
+      text: {{ t('You did not modify any data')|tojson }},
       icon: 'info'
     });
     return;
   }
   
   Swal.fire({
-    title: 'تأكيد الحفظ',
+    title: {{ t('Confirm Save')|tojson }},
     html: `
-      <p>هل أنت متأكد من حفظ التعديلات؟</p>
-      <p class="text-muted small">الجدول: <code>{{ table_name }}</code></p>
-      <p class="text-muted small">السطر ID: ${rowId}</p>
+      <p>{{ t('Are you sure you want to save the changes?') }}</p>
+      <p class="text-muted small">{{ t('Table') }}: <code>{{ table_name }}</code></p>
+      <p class="text-muted small">{{ t('Row') }} ID: ${rowId}</p>
     `,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#28a745',
     cancelButtonColor: '#6c757d',
-    confirmButtonText: 'نعم، احفظ',
-    cancelButtonText: 'إلغاء'
+    confirmButtonText: {{ t('Yes, save')|tojson }},
+    cancelButtonText: {{ t('Cancel')|tojson }}
   }).then((result) => {
     if (result.isConfirmed) {
       fetch('/owner/update-row/{{ table_name }}/' + rowId, {
@@ -176,7 +176,7 @@ function saveRow(btn) {
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          Swal.fire('نجح!', 'تم حفظ التعديلات بنجاح', 'success');
+          Swal.fire({{ t('Success!')|tojson }}, {{ t('Changes saved successfully')|tojson }}, 'success');
           
           inputs.forEach(input => {
             input.dataset.original = input.value;
@@ -184,11 +184,11 @@ function saveRow(btn) {
           
           cancelEdit(btn);
         } else {
-          Swal.fire('خطأ!', data.error || 'فشل الحفظ', 'error');
+          Swal.fire({{ t('Error!')|tojson }}, data.error || {{ t('Save failed')|tojson }}, 'error');
         }
       })
       .catch(error => {
-        Swal.fire('خطأ!', 'حدث خطأ في الاتصال', 'error');
+        Swal.fire({{ t('Error!')|tojson }}, {{ t('A connection error occurred')|tojson }}, 'error');
       });
     }
   });

@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}سجل الشيكات{% endblock %}
+{% block title %}{{ t('Cheque Register') }}{% endblock %}
 {% block page_title %}
 <div class="card card-primary card-outline mb-3">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h3 class="card-title mb-0"><i class="fas fa-money-check-alt mr-2"></i>سجل الشيكات</h3>
+    <h3 class="card-title mb-0"><i class="fas fa-money-check-alt mr-2"></i>{{ t('Cheque Register') }}</h3>
     <div class="btn-group" role="group">
       <a href="{{ url_for('cheques.create') }}" class="btn btn-success">
-        <i class="fas fa-plus mr-1"></i>شيك جديد
+        <i class="fas fa-plus mr-1"></i>{{ t('New Cheque') }}
       </a>
       <button type="button" id="printChequesBtn" class="btn btn-primary font-weight-bold text-white px-4">
-        <i class="fas fa-print mr-1"></i>طباعة
+        <i class="fas fa-print mr-1"></i>{{ t('Print') }}
       </button>
     </div>
   </div>
@@ -119,13 +119,13 @@
     <div class="small-box bg-success">
       <div class="inner">
         <h3>{{ stats.total_incoming }}</h3>
-        <p>شيكات واردة</p>
+        <p>{{ t('Incoming Cheques') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-arrow-down"></i>
       </div>
       <a href="{{ url_for('cheques.incoming') }}" class="small-box-footer" style="color: #ffffff !important;">
-        المزيد <i class="fas fa-arrow-circle-left"></i>
+        {{ t('More') }} <i class="fas fa-arrow-circle-left"></i>
       </a>
     </div>
   </div>
@@ -134,13 +134,13 @@
     <div class="small-box bg-danger">
       <div class="inner">
         <h3>{{ stats.total_outgoing }}</h3>
-        <p>شيكات صادرة</p>
+        <p>{{ t('Outgoing Cheques') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-arrow-up"></i>
       </div>
       <a href="{{ url_for('cheques.outgoing') }}" class="small-box-footer">
-        المزيد <i class="fas fa-arrow-circle-left"></i>
+        {{ t('More') }} <i class="fas fa-arrow-circle-left"></i>
       </a>
     </div>
   </div>
@@ -149,13 +149,13 @@
     <div class="small-box bg-warning">
       <div class="inner">
         <h3>{{ stats.due_soon }}</h3>
-        <p>قريبة الاستحقاق</p>
+        <p>{{ t('Due Soon') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-exclamation-triangle"></i>
       </div>
       <a href="{{ url_for('cheques.alerts') }}" class="small-box-footer">
-        عرض <i class="fas fa-arrow-circle-left"></i>
+        {{ t('View') }} <i class="fas fa-arrow-circle-left"></i>
       </a>
     </div>
   </div>
@@ -164,13 +164,13 @@
     <div class="small-box bg-info">
       <div class="inner">
         <h3>{{ stats.overdue }}</h3>
-        <p>متأخرة</p>
+        <p>{{ t('Overdue') }}</p>
       </div>
       <div class="icon">
         <i class="fas fa-clock"></i>
       </div>
       <a href="{{ url_for('cheques.alerts') }}" class="small-box-footer">
-        عرض <i class="fas fa-arrow-circle-left"></i>
+        {{ t('View') }} <i class="fas fa-arrow-circle-left"></i>
       </a>
     </div>
   </div>
@@ -180,20 +180,20 @@
   <div class="card-header">
     <div class="d-flex justify-content-between align-items-center">
       <h3 class="card-title mb-0">
-        <i class="fas fa-filter mr-2"></i>فلاتر البحث
+        <i class="fas fa-filter mr-2"></i>{{ t('Search Filters') }}
       </h3>
       <div class="btn-group">
         <a href="{{ url_for('cheques.index') }}" class="btn btn-sm btn-outline-primary">
-          <i class="fas fa-list mr-1"></i>الكل
+          <i class="fas fa-list mr-1"></i>{{ t('All') }}
         </a>
         <a href="{{ url_for('cheques.incoming') }}" class="btn btn-sm btn-outline-success">
-          <i class="fas fa-arrow-down mr-1"></i>واردة
+          <i class="fas fa-arrow-down mr-1"></i>{{ t('Incoming') }}
         </a>
         <a href="{{ url_for('cheques.outgoing') }}" class="btn btn-sm btn-outline-danger">
-          <i class="fas fa-arrow-up mr-1"></i>صادرة
+          <i class="fas fa-arrow-up mr-1"></i>{{ t('Outgoing') }}
         </a>
         <a href="{{ url_for('cheques.alerts') }}" class="btn btn-sm btn-outline-warning">
-          <i class="fas fa-bell mr-1"></i>تنبيهات
+          <i class="fas fa-bell mr-1"></i>{{ t('Alerts') }}
         </a>
       </div>
     </div>
@@ -206,14 +206,14 @@
       <table id="chequesTable" class="table table-hover table-bordered">
         <thead class="cheques-table-head text-white">
           <tr>
-            <th><i class="fas fa-hashtag mr-2"></i>رقم الشيك</th>
-            <th><i class="fas fa-exchange-alt mr-2"></i>النوع</th>
-            <th><i class="fas fa-university mr-2"></i>البنك</th>
-            <th><i class="fas fa-user mr-2"></i>الطرف</th>
-            <th><i class="fas fa-money-bill-wave mr-2"></i>المبلغ</th>
-            <th><i class="far fa-calendar mr-2"></i>الاستحقاق</th>
-            <th><i class="fas fa-info-circle mr-2"></i>الحالة</th>
-            <th class="text-center"><i class="fas fa-cog mr-2"></i>الإجراءات</th>
+            <th><i class="fas fa-hashtag mr-2"></i>{{ t('Cheque Number') }}</th>
+            <th><i class="fas fa-exchange-alt mr-2"></i>{{ t('Type') }}</th>
+            <th><i class="fas fa-university mr-2"></i>{{ t('Bank') }}</th>
+            <th><i class="fas fa-user mr-2"></i>{{ t('Party') }}</th>
+            <th><i class="fas fa-money-bill-wave mr-2"></i>{{ t('Amount') }}</th>
+            <th><i class="far fa-calendar mr-2"></i>{{ t('Due Date') }}</th>
+            <th><i class="fas fa-info-circle mr-2"></i>{{ t('Status') }}</th>
+            <th class="text-center"><i class="fas fa-cog mr-2"></i>{{ t('Actions') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -228,11 +228,11 @@
             <td>
               {% if cheque.cheque_type == 'incoming' %}
                 <span class="badge badge-success">
-                  <i class="fas fa-arrow-down mr-1"></i>وارد
+                  <i class="fas fa-arrow-down mr-1"></i>{{ t('Incoming') }}
                 </span>
               {% else %}
                 <span class="badge badge-danger">
-                  <i class="fas fa-arrow-up mr-1"></i>صادر
+                  <i class="fas fa-arrow-up mr-1"></i>{{ t('Outgoing') }}
                 </span>
               {% endif %}
             </td>
@@ -266,12 +266,12 @@
               {% if cheque.is_overdue %}
                 <small class="text-danger">
                   <i class="fas fa-exclamation-circle"></i>
-                  متأخر {{ cheque.days_until_due|abs }} يوم
+                  {{ t('Overdue by') }} {{ cheque.days_until_due|abs }} {{ t('days') }}
                 </small>
               {% elif cheque.is_due_soon %}
                 <small class="text-warning">
                   <i class="fas fa-clock"></i>
-                  باقي {{ cheque.days_until_due }} يوم
+                  {{ t('Remaining') }} {{ cheque.days_until_due }} {{ t('days') }}
                 </small>
               {% endif %}
               {% endif %}
@@ -279,41 +279,41 @@
             <td>
               {% if cheque.status == 'pending' %}
                 <span class="badge badge-warning">
-                  <i class="fas fa-clock mr-1"></i>معلق
+                  <i class="fas fa-clock mr-1"></i>{{ t('Pending') }}
                 </span>
               {% elif cheque.status == 'cleared' %}
                 <span class="badge badge-success">
-                  <i class="fas fa-check mr-1"></i>تم الصرف
+                  <i class="fas fa-check mr-1"></i>{{ t('Cleared') }}
                 </span>
               {% elif cheque.status == 'bounced' %}
                 <span class="badge badge-danger">
-                  <i class="fas fa-ban mr-1"></i>مرتد
+                  <i class="fas fa-ban mr-1"></i>{{ t('Bounced') }}
                 </span>
               {% elif cheque.status == 'cancelled' %}
                 <span class="badge badge-secondary">
-                  <i class="fas fa-times mr-1"></i>ملغي
+                  <i class="fas fa-times mr-1"></i>{{ t('Cancelled') }}
                 </span>
               {% elif cheque.status == 'under_collection' %}
                 <span class="badge badge-info">
-                  <i class="fas fa-spinner mr-1"></i>تحت التحصيل
+                  <i class="fas fa-spinner mr-1"></i>{{ t('Under Collection') }}
                 </span>
               {% endif %}
             </td>
             <td class="text-center">
               <div class="btn-group btn-group-sm">
                 <a href="{{ url_for('cheques.view', id=cheque.id) }}" 
-                   class="btn btn-info" title="عرض">
+                   class="btn btn-info" title="{{ t('View') }}">
                   <i class="fas fa-eye"></i>
                 </a>
                 {% if cheque.status == 'pending' %}
                 <a href="{{ url_for('cheques.edit', id=cheque.id) }}" 
-                   class="btn btn-warning" title="تعديل">
+                   class="btn btn-warning" title="{{ t('Edit') }}">
                   <i class="fas fa-edit"></i>
                 </a>
                 {% endif %}
                 <button type="button" class="btn btn-danger" 
                         onclick="deleteItem('cheques', {{ cheque.id }}, {{ cheque.cheque_bank_number|tojson }})" 
-                        title="حذف">
+                        title="{{ t('Delete') }}">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -332,12 +332,12 @@
 (function() {
   const tableSelector = '#chequesTable';
   const printButtonSelector = '#printChequesBtn';
-  const languageUrl = "{{ url_for('static', filename='datatables/Arabic.json') }}";
+  const languageUrl = "{{ url_for('static', filename=('datatables/English.json' if current_language == 'en' else 'datatables/Arabic.json')) }}";
 
   function initChequesPrint() {
     const $table = $(tableSelector);
     const options = {
-      title: 'سجل الشيكات',
+      title: {{ t('Cheque Register')|tojson }},
       headerColor: '#007A3D'
     };
 

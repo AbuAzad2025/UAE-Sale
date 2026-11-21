@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else 'أزاد') }} - تعديل بيانات العميل {{ customer.name }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Edit Customer Data') }} {{ customer.name }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">
   <div>
-    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>تعديل الزبون: {{ customer.name }}</h1>
+    <h1 class="mb-0"><i class="fas fa-edit mr-2"></i>{{ t('Edit Customer') }}: {{ customer.name }}</h1>
   </div>
   <div>
     <a href="{{ url_for('customers.view', id=customer.id) }}" class="btn btn-info">
-      <i class="fas fa-eye mr-2"></i>عرض
+      <i class="fas fa-eye mr-2"></i>{{ t('View') }}
     </a>
     <a href="{{ url_for('customers.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>العودة للقائمة
+      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to List') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-      <i class="fas fa-home mr-2"></i>الرئيسية
+      <i class="fas fa-home mr-2"></i>{{ t('Home') }}
     </a>
   </div>
 </div>
@@ -28,23 +28,23 @@
         <div class="col-md-6">
           <div class="form-group">
             <label>
-              <i class="fas fa-user text-primary"></i> الاسم 
+              <i class="fas fa-user text-primary"></i> {{ t('Name') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="اسم العميل الكامل (إجباري)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Full customer name (required)') }}"></i>
             </label>
-            <input type="text" name="name" class="form-control" value="{{ customer.name }}" placeholder="اسم الزبون" required>
+            <input type="text" name="name" class="form-control" value="{{ customer.name }}" placeholder="{{ t('Customer name') }}" required>
           </div>
         </div>
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-tag text-primary"></i> نوع الزبون 
+              <i class="fas fa-tag text-primary"></i> {{ t('Customer Type') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عادي: سعر التجزئة | تاجر: خصم 10% | شريك: خصم 15%"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Regular: retail price | Trader: 10% discount | Partner: 15% discount') }}"></i>
             </label>
             <select name="customer_type" class="form-control select2" required>
               {% for code, meta in lookups.get('customer_types', []) %}
-              <option value="{{ code }}" {% if customer.customer_type == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if customer.customer_type == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -53,11 +53,11 @@
           <div class="form-group">
             <label>
               <i class="fas fa-toggle-on text-success"></i> {{ t('Status') }}
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="حالة تفعيل العميل"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Customer activation status') }}"></i>
             </label>
             <select name="is_active" class="form-control select2">
               {% for code, meta in lookups.get('active_flags', []) %}
-              <option value="{{ code }}" {% if (customer.is_active and code == '1') or (not customer.is_active and code == '0') %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if (customer.is_active and code == '1') or (not customer.is_active and code == '0') %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -70,7 +70,7 @@
             <label>
               <i class="fas fa-phone text-primary"></i> {{ t('Phone') }} 
               <span class="text-danger">*</span>
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="رقم الهاتف (يجب أن يكون فريداً)"></i>
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Phone number (must be unique)') }}"></i>
             </label>
             <input type="text" name="phone" class="form-control" value="{{ customer.phone or '' }}" placeholder="+971-5x-xxx-xxxx" required>
           </div>
@@ -78,8 +78,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-envelope text-info"></i> البريد
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="البريد الإلكتروني (اختياري - للإشعارات)"></i>
+              <i class="fas fa-envelope text-info"></i> {{ t('Email') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Email address (optional - for notifications)') }}"></i>
             </label>
             <input type="email" name="email" class="form-control" value="{{ customer.email or '' }}" placeholder="email@example.com">
           </div>
@@ -87,8 +87,8 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-receipt text-warning"></i> الرقم الضريبي (TRN)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="الرقم الضريبي للعميل — يُطبع على الفاتورة الضريبية إن وُجد (اختياري)"></i>
+              <i class="fas fa-receipt text-warning"></i> {{ t('Tax Number (TRN)') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Customer tax number - printed on the tax invoice if present (optional)') }}"></i>
             </label>
             <input type="text" name="tax_number" class="form-control" value="{{ customer.tax_number or '' }}" placeholder="100000000000003">
           </div>
@@ -96,12 +96,12 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-success"></i> العملة الافتراضية
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="العملة المفضلة (افتراضي: ILS)"></i>
+              <i class="fas fa-dollar-sign text-success"></i> {{ t('Default Currency') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Preferred currency (default: ILS)') }}"></i>
             </label>
             <select name="default_currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
-              <option value="{{ code }}" {% if customer.default_currency == code %}selected{% endif %}>{{ meta.ar }}</option>
+              <option value="{{ code }}" {% if customer.default_currency == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -112,14 +112,14 @@
         <div class="col-md-4">
           <div class="form-group">
             <label>
-              <i class="fas fa-calendar-check text-info"></i> شروط الدفع (أيام)
-              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عدد الأيام قبل استحقاق الفاتورة (0 = عند الاستحقاق فوراً)"></i>
+              <i class="fas fa-calendar-check text-info"></i> {{ t('Payment Terms (days)') }}
+              <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Number of days before invoice due date (0 = due immediately)') }}"></i>
             </label>
             <input type="number" name="payment_terms_days" class="form-control"
                    min="0" max="365" step="1"
                    value="{{ customer.payment_terms_days or 0 }}">
             <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> يستخدم لحساب تاريخ الاستحقاق تلقائياً من تاريخ الفاتورة
+              <i class="fas fa-info-circle"></i> {{ t('Used to automatically calculate the due date from the invoice date') }}
             </small>
           </div>
         </div>
@@ -128,22 +128,20 @@
       <div class="form-group">
         <label>
           <i class="fas fa-map-marker-alt text-warning"></i> {{ t('Address') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="عنوان العميل (اختياري - للتوصيل)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Customer address (optional - for delivery)') }}"></i>
         </label>
-        <textarea name="address" class="form-control" rows="2" placeholder="العنوان الكامل...">{{ customer.address or '' }}</textarea>
+        <textarea name="address" class="form-control" rows="2" placeholder="{{ t('Full address...') }}">{{ customer.address or '' }}</textarea>
       </div>
 
       
       <div class="row">
         <div class="col-md-12">
           <h5 class="text-primary mb-2">
-            <i class="fas fa-scale-balanced mr-1"></i> الرصيد الافتتاحي
+            <i class="fas fa-scale-balanced mr-1"></i> {{ t('Opening Balance') }}
           </h5>
           <small class="text-muted d-block mb-2">
             <i class="fas fa-info-circle"></i>
-            رصيد سابق على استخدام النظام — يُضاف إلى رصيد العميل
-            (بالعملة الأساسية: المبلغ × سعر الصرف) ويظهر في كشف الحساب
-            وفي مطابقة الذمم الفرعية.
+            {{ t('A previous balance from before using the system - added to the customer balance (in the base currency: amount x exchange rate) and shown in the statement and in sub-ledger reconciliation.') }}
           </small>
         </div>
       </div>
@@ -152,7 +150,7 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-money-bill text-success"></i> مبلغ الرصيد الافتتاحي
+              <i class="fas fa-money-bill text-success"></i> {{ t('Opening Balance Amount') }}
             </label>
             <input type="number" name="opening_balance" class="form-control"
                    step="0.001" placeholder="0.00"
@@ -163,12 +161,12 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-dollar-sign text-warning"></i> عملة الرصيد الافتتاحي
+              <i class="fas fa-dollar-sign text-warning"></i> {{ t('Opening Balance Currency') }}
             </label>
             <select name="opening_balance_currency" class="form-control select2">
               {% for code, meta in lookups.get('currencies', []) %}
               <option value="{{ code }}"
-                      {% if (request.form.get('opening_balance_currency') or customer.opening_balance_currency or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.ar }}</option>
+                      {% if (request.form.get('opening_balance_currency') or customer.opening_balance_currency or base_currency) == code %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
               {% endfor %}
             </select>
           </div>
@@ -177,13 +175,13 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-exchange-alt text-primary"></i> سعر الصرف إلى {{ base_currency }}
+              <i class="fas fa-exchange-alt text-primary"></i> {{ t('Exchange Rate to') }} {{ base_currency }}
             </label>
             <input type="number" name="opening_balance_rate" class="form-control"
                    step="0.000001" min="0.000001"
                    value="{{ request.form.get('opening_balance_rate', customer.opening_balance_rate if customer.opening_balance_rate is not none else '1') }}">
             <small class="form-text text-muted">
-              <i class="fas fa-info-circle"></i> كم وحدة من {{ base_currency }} تساوي وحدة واحدة من عملة الرصيد
+              <i class="fas fa-info-circle"></i> {{ t('How many units of') }} {{ base_currency }} {{ t('equal one unit of the balance currency') }}
             </small>
           </div>
         </div>
@@ -191,7 +189,7 @@
         <div class="col-md-3">
           <div class="form-group">
             <label>
-              <i class="fas fa-calendar-alt text-secondary"></i> تاريخ الرصيد الافتتاحي
+              <i class="fas fa-calendar-alt text-secondary"></i> {{ t('Opening Balance Date') }}
             </label>
             <input type="date" name="opening_balance_date" class="form-control"
                    value="{{ request.form.get('opening_balance_date', customer.opening_balance_date.isoformat() if customer.opening_balance_date else '') }}">
@@ -202,15 +200,15 @@
       <div class="form-group">
         <label>
           <i class="fas fa-sticky-note text-secondary"></i> {{ t('Notes') }}
-          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="ملاحظات إضافية (اختياري)"></i>
+          <i class="fas fa-info-circle text-muted" data-toggle="tooltip" title="{{ t('Additional notes (optional)') }}"></i>
         </label>
-        <textarea name="notes" class="form-control" rows="3" placeholder="أي ملاحظات عن العميل...">{{ customer.notes or '' }}</textarea>
+        <textarea name="notes" class="form-control" rows="3" placeholder="{{ t('Any notes about the customer...') }}">{{ customer.notes or '' }}</textarea>
       </div>
     </div>
 
     <div class="card-footer">
       <button type="submit" class="btn btn-warning">
-        <i class="fas fa-save mr-2"></i>حفظ التعديلات
+        <i class="fas fa-save mr-2"></i>{{ t('Save Changes') }}
       </button>
       <a href="{{ url_for('customers.view', id=customer.id) }}" class="btn btn-secondary">{{ t('Cancel') }}</a>
     </div>

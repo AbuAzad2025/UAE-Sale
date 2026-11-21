@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}500 - خطأ في الخادم{% endblock %}
+{% block title %}500 - {{ t('Server Error') }}{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -9,19 +9,19 @@
       <div class="card shadow">
         <div class="card-body text-center p-5">
           <h1 class="display-4 text-danger mb-3">500</h1>
-          <h3 class="mb-4">حدث خطأ غير متوقع</h3>
+          <h3 class="mb-4">{{ t('An Unexpected Error Occurred') }}</h3>
           <p class="text-muted mb-4">
-            يرجى المحاولة لاحقاً. إذا استمرت المشكلة اتصل بالدعم.
+            {{ t('Please try again later. If the problem persists, contact support.') }}
           </p>
           <div class="alert alert-info text-left" dir="ltr">
-            <small>تم تسجيل الخطأ تلقائياً. يرجى المحاولة مرة أخرى.</small>
+            <small>{{ t('The error has been logged automatically. Please try again.') }}</small>
           </div>
           <div class="mt-4">
             <a href="{{ url_for('main.dashboard') }}" class="btn btn-danger">
-              العودة للرئيسية
+              {{ t('Back to Home') }}
             </a>
             <a href="javascript:location.reload()" class="btn btn-secondary">
-              إعادة المحاولة
+              {{ t('Retry') }}
             </a>
           </div>
         </div>

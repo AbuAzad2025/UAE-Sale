@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}كشف راتب - {{ payslip.payslip_number }}{% endblock %}
-{% block page_title %}<i class="fas fa-money-check-alt mr-2"></i>كشف راتب: {{ payslip.payslip_number }}{% endblock %}
+{% block title %}{{ t('Payslip') }} - {{ payslip.payslip_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-money-check-alt mr-2"></i>{{ t('Payslip') }}: {{ payslip.payslip_number }}{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -16,17 +16,17 @@
       <div class="card-body">
         <div class="row mb-4">
           <div class="col-md-4">
-            <p><strong>الفترة:</strong> {{ payslip.pay_period_start.strftime('%Y-%m-%d') if payslip.pay_period_start else '' }} إلى {{ payslip.pay_period_end.strftime('%Y-%m-%d') if payslip.pay_period_end else '' }}</p>
-            <p><strong>تاريخ الدفع:</strong> {{ payslip.pay_date.strftime('%Y-%m-%d') if payslip.pay_date else '' }}</p>
+            <p><strong>{{ t('Period') }}:</strong> {{ payslip.pay_period_start.strftime('%Y-%m-%d') if payslip.pay_period_start else '' }} {{ t('to') }} {{ payslip.pay_period_end.strftime('%Y-%m-%d') if payslip.pay_period_end else '' }}</p>
+            <p><strong>{{ t('Pay Date') }}:</strong> {{ payslip.pay_date.strftime('%Y-%m-%d') if payslip.pay_date else '' }}</p>
           </div>
           <div class="col-md-4 text-center">
             <h2 class="text-success mb-0">{{ "{:,.2f}".format(payslip.net_salary|float) }} د.إ</h2>
-            <p class="text-muted">صافي الراتب</p>
+            <p class="text-muted">{{ t('Net Salary') }}</p>
           </div>
           <div class="col-md-4 text-left">
-            <p><strong>أيام العمل:</strong> {{ payslip.working_days }}</p>
-            <p><strong>أيام الفعلي:</strong> {{ payslip.actual_worked_days }}</p>
-            <p><strong>أيام الإجازة:</strong> {{ payslip.leave_days }}</p>
+            <p><strong>{{ t('Working Days') }}:</strong> {{ payslip.working_days }}</p>
+            <p><strong>{{ t('Actual Days') }}:</strong> {{ payslip.actual_worked_days }}</p>
+            <p><strong>{{ t('Leave Days') }}:</strong> {{ payslip.leave_days }}</p>
           </div>
         </div>
 
@@ -34,23 +34,23 @@
           
           <div class="col-md-6">
             <div class="card card-success card-outline">
-              <div class="card-header"><h6 class="mb-0 text-success"><i class="fas fa-plus-circle mr-2"></i>المستحقات</h6></div>
+              <div class="card-header"><h6 class="mb-0 text-success"><i class="fas fa-plus-circle mr-2"></i>{{ t('Earnings') }}</h6></div>
               <div class="card-body p-0">
                 <table class="table table-sm mb-0">
-                  <tr><td>الراتب الأساسي</td><td class="text-left">{{ "{:,.2f}".format(payslip.base_salary|float) }}</td></tr>
-                  <tr><td>بدل السكن</td><td class="text-left">{{ "{:,.2f}".format(payslip.housing_allowance|float) }}</td></tr>
-                  <tr><td>بدل النقل</td><td class="text-left">{{ "{:,.2f}".format(payslip.transport_allowance|float) }}</td></tr>
-                  <tr><td>بدل الهاتف</td><td class="text-left">{{ "{:,.2f}".format(payslip.phone_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Basic Salary') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.base_salary|float) }}</td></tr>
+                  <tr><td>{{ t('Housing Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.housing_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Transport Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.transport_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Phone Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.phone_allowance|float) }}</td></tr>
                   {% if payslip.overtime_amount and payslip.overtime_amount > 0 %}
-                  <tr><td>إضافي ({{ payslip.overtime_hours }} ساعة)</td><td class="text-left">{{ "{:,.2f}".format(payslip.overtime_amount|float) }}</td></tr>
+                  <tr><td>{{ t('Overtime') }} ({{ payslip.overtime_hours }} {{ t('hours') }})</td><td class="text-left">{{ "{:,.2f}".format(payslip.overtime_amount|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.bonus and payslip.bonus > 0 %}
-                  <tr><td>مكافأة</td><td class="text-left">{{ "{:,.2f}".format(payslip.bonus|float) }}</td></tr>
+                  <tr><td>{{ t('Bonus') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.bonus|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.other_earnings and payslip.other_earnings > 0 %}
-                  <tr><td>أخرى</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_earnings|float) }}</td></tr>
+                  <tr><td>{{ t('Other') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_earnings|float) }}</td></tr>
                   {% endif %}
-                  <tr class="table-success"><td><strong>الإجمالي</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_earnings|float) }}</strong></td></tr>
+                  <tr class="table-success"><td><strong>{{ t('Sum') }}</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_earnings|float) }}</strong></td></tr>
                 </table>
               </div>
             </div>
@@ -59,19 +59,19 @@
           
           <div class="col-md-6">
             <div class="card card-danger card-outline">
-              <div class="card-header"><h6 class="mb-0 text-danger"><i class="fas fa-minus-circle mr-2"></i>الخصومات</h6></div>
+              <div class="card-header"><h6 class="mb-0 text-danger"><i class="fas fa-minus-circle mr-2"></i>{{ t('Deductions') }}</h6></div>
               <div class="card-body p-0">
                 <table class="table table-sm mb-0">
                   {% if payslip.leave_deduction and payslip.leave_deduction > 0 %}
-                  <tr><td>خصم إجازة</td><td class="text-left">{{ "{:,.2f}".format(payslip.leave_deduction|float) }}</td></tr>
+                  <tr><td>{{ t('Leave Deduction') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.leave_deduction|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.advance_deduction and payslip.advance_deduction > 0 %}
-                  <tr><td>خصم سلفة</td><td class="text-left">{{ "{:,.2f}".format(payslip.advance_deduction|float) }}</td></tr>
+                  <tr><td>{{ t('Advance Deduction') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.advance_deduction|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.other_deductions and payslip.other_deductions > 0 %}
-                  <tr><td>أخرى</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_deductions|float) }}</td></tr>
+                  <tr><td>{{ t('Other') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_deductions|float) }}</td></tr>
                   {% endif %}
-                  <tr class="table-danger"><td><strong>الإجمالي</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_deductions|float) }}</strong></td></tr>
+                  <tr class="table-danger"><td><strong>{{ t('Sum') }}</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_deductions|float) }}</strong></td></tr>
                 </table>
               </div>
             </div>
@@ -83,19 +83,19 @@
           {% if payslip.status == 'draft' %}
           <form method="POST" action="{{ url_for('hr.approve_payslip', id=payslip.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-success" onclick="return confirm('هل تؤكد اعتماد كشف الرواتب؟')">
-              <i class="fas fa-check mr-2"></i>اعتماد الكشف
+            <button type="submit" class="btn btn-success" onclick='return confirm({{ t('Approve Payslip Confirm')|tojson }})'>
+              <i class="fas fa-check mr-2"></i>{{ t('Approve Payslip') }}
             </button>
           </form>
           {% elif payslip.status == 'approved' %}
           <form method="POST" action="{{ url_for('hr.mark_payslip_paid', id=payslip.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary" onclick="return confirm('هل تؤكد تسجيل الدفع؟')">
-              <i class="fas fa-money-bill-wave mr-2"></i>تسجيل الدفع
+            <button type="submit" class="btn btn-primary" onclick='return confirm({{ t('Record Payment Confirm')|tojson }})'>
+              <i class="fas fa-money-bill-wave mr-2"></i>{{ t('Record Payment') }}
             </button>
           </form>
           {% endif %}
-          <a href="{{ url_for('hr.payroll') }}" class="btn btn-secondary mr-2">العودة للقائمة</a>
+          <a href="{{ url_for('hr.payroll') }}" class="btn btn-secondary mr-2">{{ t('Back to List') }}</a>
         </div>
       </div>
     </div>

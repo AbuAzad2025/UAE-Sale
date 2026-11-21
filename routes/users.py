@@ -15,6 +15,7 @@ from models import User, Role, Tenant
 from services.user_service import UserService
 from utils.decorators import (
     permission_required,
+    admin_required,
     _role_level,
     _current_user_level,
     get_owned_or_404,
@@ -301,7 +302,7 @@ def edit(id):
 
 @users_bp.route("/<int:id>/toggle-active", methods=["POST"])
 @login_required
-@permission_required("manage_users")
+@admin_required
 def toggle_active(id):
     user = get_owned_or_404(User, id, code=404)
     if user.is_owner:

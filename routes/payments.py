@@ -1692,7 +1692,6 @@ def create_payment(purchase_id):  # noqa: C901
                 db.session.add(cheque)
                 db.session.flush()
                 payment.cheque_id = cheque.id
-                cheque.payment_id = payment.id  # subledger↔GL traceability
                 payment.payment_confirmed = False
 
             try:

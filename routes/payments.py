@@ -508,11 +508,11 @@ def print_payment(id):
         template = "modern"
 
     template_labels = {
-        "modern": "مودرن",
-        "classic": "كلاسيك",
-        "gulf": "خليجي",
-        "minimal": "بسيط",
-        "simple": "مبسط",
+        "modern": _t("Modern"),
+        "classic": _t("Classic"),
+        "gulf": _t("Gulf"),
+        "minimal": _t("Simple"),
+        "simple": _t("Basic"),
     }
     available_templates = [
         (k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES
@@ -1107,11 +1107,11 @@ def print_receipt(id):
         template = "modern"
 
     template_labels = {
-        "modern": "مودرن",
-        "classic": "كلاسيك",
-        "gulf": "خليجي",
-        "minimal": "بسيط",
-        "simple": "مبسط",
+        "modern": _t("Modern"),
+        "classic": _t("Classic"),
+        "gulf": _t("Gulf"),
+        "minimal": _t("Simple"),
+        "simple": _t("Basic"),
     }
     available_templates = [
         (k, v) for k, v in template_labels.items() if k in _ALLOWED_TEMPLATES

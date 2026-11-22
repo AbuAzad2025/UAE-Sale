@@ -1,22 +1,22 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}{{ t("Receipt") }} - {{ receipt.receipt_number }}{% endblock %}
+{% block print_title %}{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
   .receipt-header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 12px; margin-bottom: 8px; }
   .logo { height: 40px; margin-bottom: 8px; }
-  .company-name { font-size: 9px; font-weight: bold; margin: 5px 0; }
-  .company-info { font-size: 8px; color: #555; }
+  .company-name { font-size: 11px; font-weight: bold; margin: 5px 0; }
+  .company-info { font-size: 10px; color: #555; }
   .title { text-align: center; font-size: 16px; font-weight: bold; margin: 15px 0; background: #f0f0f0; padding: 10px; border: 1px solid #000; }
   .amount-box { background: #f9f9f9; border: 1px solid #000; padding: 10px; text-align: center; margin: 20px 0; }
-  .amount-label { font-size: 9px; margin-bottom: 5px; }
+  .amount-label { font-size: 11px; margin-bottom: 5px; }
   .amount-value { font-size: 36px; font-weight: bold; margin: 10px 0; }
   .info-table { width: 100%; margin: 15px 0; }
   .info-table td { padding: 8px; border-bottom: 1px solid #ddd; }
   .info-table strong { display: inline-block; width: 120px; }
-  .receipt-footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #000; text-align: center; font-size: 8px; color: #555; }
-  .bank-info { background: #f5f5f5; border: 1px solid #999; padding: 10px; margin: 10px 0; font-size: 9px; text-align: center; }
+  .receipt-footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #000; text-align: center; font-size: 10px; color: #555; }
+  .bank-info { background: #f5f5f5; border: 1px solid #999; padding: 10px; margin: 10px 0; font-size: 11px; text-align: center; }
   .signature { display: flex; justify-content: space-around; margin-top: 40px; }
   .sig-box { text-align: center; width: 150px; }
   .sig-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 5px; }
@@ -41,12 +41,12 @@
 
   <table class="info-table">
     <tr>
-      <td><strong>{{ t("Receipt Number") }}:</strong> {{ receipt.receipt_number }}</td>
+      <td><strong>{{ t("Receipt Number") }}:</strong> {{ (receipt.receipt_number or receipt.payment_number or '') }}</td>
       <td><strong>{{ t("Date") }}:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d') }}</td>
     </tr>
     <tr>
       <td><strong>{{ t("Received From") }}:</strong> {{ receipt.customer.name if receipt.customer else receipt.customer_name }}</td>
-      <td><strong>{{ t("Payment Method:") }}</strong> {% if receipt.payment_method == 'cash' %} {{ t("Cash") }} {% elif receipt.payment_method == 'card' %} {{ t("Card") }} {% elif receipt.payment_method == 'bank_transfer' %} {{ t("Transfer") }} {% elif receipt.payment_method == 'cheque' %} {{ t("Cheque") }} {% else %}{{ receipt.payment_method }}{% endif %}</td>
+      <td><strong>{{ t("Payment Method:") }}</strong> {% if receipt.payment_method == 'cash' %} {{ t("Cash") }} {% elif receipt.payment_method == 'card' %} {{ t("Card") }} {% elif receipt.payment_method == 'bank_transfer' %} {{ t("Transfer") }} {% elif receipt.payment_method == 'cheque' %} {{ t("Cheque") }} {% elif receipt.payment_method == 'e_wallet' %} {{ t("E-Wallet") }} {% else %}{{ t("Other") }}{% endif %}</td>
     </tr>
     {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
     <tr>
@@ -58,20 +58,20 @@
   <div class="amount-box">
     <div class="amount-label">{{ t("Amount Received") }}</div>
     <div class="amount-value">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
-      <div class="amount-words" style="margin-top:6px; font-size:9px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
+      <div class="amount-words" style="margin-top:6px; font-size: 11px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
         {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
         {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
       </div>
-    <div style="font-size: 9px; margin-top: 5px;">{{ receipt.amount_in_words or '' }}</div>
+    <div style="font-size: 11px; margin-top: 5px;">{{ receipt.amount_in_words or '' }}</div>
   </div>
 
   {% set source_info = receipt.get_source_info() %}
   {% if source_info %}
   <div style="margin: 15px 0;">
-    <strong style="font-size: 9px;">{{ t("Invoice Details") }}:</strong>
-    <table style="margin-top: 8px; font-size: 8px;">
+    <strong style="font-size: 11px;">{{ t("Invoice Details") }}:</strong>
+    <table style="margin-top: 8px; font-size: 10px;">
       <thead><tr><th>{{ t("Invoice Number") }}</th><th>{{ t("Date") }}</th><th>{{ t("Amount") }}</th></tr></thead>
-      <tbody><tr><td>{{ source_info.number }}</td><td>{{ source_info.date }}</td><td><strong>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</strong></td></tr></tbody>
+      <tbody><tr><td>{{ source_info.number }}</td><td>{{ source_info.date or '—' }}</td><td><strong>{{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}</strong></td></tr></tbody>
     </table>
   </div>
   {% endif %}
@@ -84,13 +84,25 @@
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div class="bank-info"><strong>{{ t("For Bank Transfer") }}:</strong><br>{% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% if settings.iban and settings.iban != 'None' %} • {% endif %}{% endif %}{% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}{% if settings.swift_code and settings.swift_code != 'None' %}<br>SWIFT: {{ settings.swift_code }}{% endif %}</div>
     {% endif %}
-    {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}<div style="font-size: 8px; margin: 5px 0;">{% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t("CR No:") }} {{ settings.commercial_register }}{% endif %}{% if settings.commercial_register and settings.license_number %} | {% endif %}{% if settings.license_number and settings.license_number != 'None' %}{{ t("License") }}: {{ settings.license_number }}{% endif %}</div>{% endif %}
-    {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}<div style="margin: 10px 0; font-size: 8px; font-style: italic;">{{ settings.default_receipt_note_ar }}</div>{% endif %}
+    {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}<div style="font-size: 10px; margin: 5px 0;">{% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t("CR No:") }} {{ settings.commercial_register }}{% endif %}{% if settings.commercial_register and settings.license_number %} | {% endif %}{% if settings.license_number and settings.license_number != 'None' %}{{ t("License") }}: {{ settings.license_number }}{% endif %}</div>{% endif %}
+    {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}<div style="margin: 10px 0; font-size: 10px; font-style: italic;">{{ settings.default_receipt_note_ar }}</div>{% endif %}
     <div style="margin-top: 10px;">{{ t("Thank you") }}</div>
-    {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}<div style="margin-top: 8px; font-size: 9px;">{% if settings.whatsapp_number %}<span> {{ settings.whatsapp_number }}</span>{% endif %}</div>{% endif %}
+    {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}<div style="margin-top: 8px; font-size: 11px;">{% if settings.whatsapp_number %}<span> {{ settings.whatsapp_number }}</span>{% endif %}</div>{% endif %}
   </div>
 
   <div class="signature"><div class="sig-box"><div class="sig-line">{{ t("Cashier") }}</div></div><div class="sig-box"><div class="sig-line">{{ t("Customer") }}</div></div></div>
-<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
+
+    {% if settings and settings.enable_watermark %}
+      {% if settings.watermark_image_path %}
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.03; z-index: 0; pointer-events: none;">
+          <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%;">
+        </div>
+      {% elif settings.watermark_text %}
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 65px; color: rgba(0,0,0,0.03); font-weight: 700; z-index: 0; pointer-events: none;">
+          {{ settings.watermark_text }}
+        </div>
+      {% endif %}
+    {% endif %}
+<p class="azad_invoice_footer" style="font-size: 12px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 {% endblock %}

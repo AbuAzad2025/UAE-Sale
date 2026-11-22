@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ current_language }}" dir="{{ "rtl" if is_rtl else "ltr" }}">
 <head>
   <meta charset="UTF-8">
-  <title>{{ t("Receipt") }} - {{ receipt.receipt_number }}</title>
+  <title>{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   <style>
@@ -12,7 +12,7 @@
       background: #34495e;
       padding: 10px;
       margin: 0;
-      font-size: 8px;
+      font-size: 10px;
       color: #2c3e50;
       display: flex;
       justify-content: center;
@@ -55,12 +55,12 @@
       text-align: right;
       flex: 1;
     }
-    .company-name { font-size: 9px; font-weight: 700; margin-bottom: 5px; }
-    .company-details { font-size: 9px; line-height: 1.6; opacity: 0.95; }
+    .company-name { font-size: 11px; font-weight: 700; margin-bottom: 5px; }
+    .company-details { font-size: 11px; line-height: 1.6; opacity: 0.95; }
     .receipt-info-right {
       text-align: left;
     }
-    .receipt-label { font-size: 9px; font-weight: 300; opacity: 0.9; }
+    .receipt-label { font-size: 11px; font-weight: 300; opacity: 0.9; }
     .receipt-number-large { font-size: 20px; font-weight: 700; }
     .content { padding: 10px; }
     .section {
@@ -70,7 +70,7 @@
       border-left: 4px solid {{ settings.accent_color or '#20c997' }};
     }
     .section-title {
-      font-size: 9px;
+      font-size: 11px;
       color: {{ settings.header_color or '#28a745' }};
       margin-bottom: 10px;
       font-weight: 700;
@@ -81,7 +81,7 @@
       display: flex;
       justify-content: space-between;
       padding: 5px 0;
-      font-size: 8px;
+      font-size: 10px;
       border-bottom: 1px solid #dee2e6;
     }
     .info-row:last-child { border-bottom: none; }
@@ -95,7 +95,7 @@
       color: white;
       border-radius: 10px;
     }
-    .amount-text { font-size: 9px; opacity: 0.9; margin-bottom: 5px; }
+    .amount-text { font-size: 11px; opacity: 0.9; margin-bottom: 5px; }
     .amount-big { font-size: 32px; font-weight: 700; }
     .payment-box {
       background: white;
@@ -110,7 +110,7 @@
       background: {{ settings.accent_color or '#20c997' }};
       color: white;
       border-radius: 20px;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
     }
     .cheque-card {
@@ -133,13 +133,13 @@
       border-radius: 5px;
     }
     .cheque-item-label {
-      font-size: 8px;
+      font-size: 10px;
       color: #856404;
       text-transform: uppercase;
       margin-bottom: 3px;
     }
     .cheque-item-value {
-      font-size: 8px;
+      font-size: 10px;
       font-weight: 700;
       color: #1a1a1a;
     }
@@ -157,7 +157,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 9px;
+      font-size: 11px;
     }
     .allocation-item:last-child { margin-bottom: 0; }
     .notes-box {
@@ -168,12 +168,12 @@
     }
     .notes-title {
       color: #e65100;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 700;
       margin-bottom: 8px;
     }
     .notes-text {
-      font-size: 8px;
+      font-size: 10px;
       line-height: 1.6;
       color: #333;
     }
@@ -181,7 +181,7 @@
       background: #ecf0f1;
       padding: 8px;
       text-align: center;
-      font-size: 9px;
+      font-size: 11px;
       color: #7f8c8d;
       border-top: 1px solid #dee2e6;
     }
@@ -198,7 +198,7 @@
       border-top: 2px solid #95a5a6;
       margin-top: 35px;
       padding-top: 6px;
-      font-size: 9px;
+      font-size: 11px;
       color: #7f8c8d;
     }
     @media print {
@@ -207,7 +207,7 @@
     }
   </style>
 </head>
-<body class="receipt-print minimal-receipt">
+<body class="minimal-receipt">
   <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
     <button onclick="window.print()" style="background: {{ settings.header_color or '#28a745' }}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">
       {{ t("Print") }}
@@ -230,7 +230,7 @@
         </div>
         <div class="receipt-info-right">
           <div class="receipt-label">{{ t("Receipt") }}</div>
-          <div class="receipt-number-large">{{ receipt.receipt_number }}</div>
+          <div class="receipt-number-large">{{ (receipt.receipt_number or receipt.payment_number or '') }}</div>
         </div>
       </div>
     </div>
@@ -257,7 +257,7 @@
       <div class="amount-display">
         <div class="amount-text">{{ t("Amount Received") }}</div>
         <div class="amount-big">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
-      <div class="amount-words" style="margin-top:6px; font-size:9px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
+      <div class="amount-words" style="margin-top:6px; font-size: 11px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
         {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
         {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
       </div>
@@ -266,7 +266,7 @@
 
       <div class="payment-box">
         <div style="margin-bottom: 10px;">
-          <span style="font-size: 8px; color: #7f8c8d;">{{ t("Payment Method:") }}</span>
+          <span style="font-size: 10px; color: #7f8c8d;">{{ t("Payment Method:") }}</span>
           <span class="payment-method-badge">
             {% if receipt.payment_method == 'cash' %} {{ t("Cash") }}
             {% elif receipt.payment_method == 'card' %} {{ t("Card") }}
@@ -278,7 +278,7 @@
 
         {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}
         <div class="cheque-card">
-          <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 8px;">
+          <div style="text-align: center; color: #856404; font-weight: 700; margin-bottom: 8px; font-size: 10px;">
             {{ t("Cheque Information") }}
           </div>
           <div class="cheque-grid">
@@ -302,14 +302,14 @@
       {% set source_info = receipt.get_source_info() %}
       {% if source_info %}
       <div class="allocations-list">
-        <div style="font-size: 9px; font-weight: 700; color: #1565c0; margin-bottom: 8px;">
+        <div style="font-size: 11px; font-weight: 700; color: #1565c0; margin-bottom: 8px;">
            {{ t("Invoice Details") }}
         </div>
         <div class="allocation-item">
           <div>
             <strong>{{ source_info.number }}</strong>
             <span style="color: #999; margin: 0 5px;">•</span>
-            <span style="color: #666;">{{ source_info.date }}</span>
+            <span style="color: #666;">{{ source_info.date or '—' }}</span>
           </div>
           <div style="font-weight: 700; color: #28a745;">
             {{ "{:,.2f}".format(receipt.amount) }} {{ base_currency }}
@@ -327,11 +327,11 @@
 
       <div class="signatures">
         <div class="sig-box">
-          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Cashier") }}</div>
+          <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Cashier") }}</div>
           <div class="sig-line"></div>
         </div>
         <div class="sig-box">
-          <div style="font-size: 9px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Customer") }}</div>
+          <div style="font-size: 11px; color: #7f8c8d; margin-bottom: 5px;">{{ t("Customer") }}</div>
           <div class="sig-line"></div>
         </div>
       </div>
@@ -341,8 +341,8 @@
       
       {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
       <div style="margin-bottom: 12px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 3px solid {{ settings.header_color or '#2c3e50' }};">
-        <div style="font-weight: 700; font-size: 8px; margin-bottom: 5px; color: {{ settings.header_color or '#2c3e50' }};">{{ t('Bank Details') }}</div>
-        <div style="font-size: 8px; line-height: 1.5; color: #555;">
+        <div style="font-weight: 700; font-size: 10px; margin-bottom: 5px; color: {{ settings.header_color or '#2c3e50' }};">{{ t('Bank Details') }}</div>
+        <div style="font-size: 10px; line-height: 1.5; color: #555;">
           {% if settings.bank_name and settings.bank_name != 'None' %}{{ settings.bank_name }}{% if settings.iban and settings.iban != 'None' %} • {% endif %}{% endif %}
           {% if settings.iban and settings.iban != 'None' %}IBAN: {{ settings.iban }}{% endif %}
           {% if settings.swift_code and settings.swift_code != 'None' %}<br>SWIFT: {{ settings.swift_code }}{% endif %}
@@ -352,7 +352,7 @@
       
       
       {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
-      <div style="font-size: 8px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
+      <div style="font-size: 10px; color: #7f8c8d; margin-bottom: 8px; text-align: center;">
         {% if settings.commercial_register and settings.commercial_register != 'None' %}{{ t('CR:') }} {{ settings.commercial_register }}{% endif %}
         {% if settings.commercial_register and settings.license_number %} • {% endif %}
         {% if settings.license_number and settings.license_number != 'None' %}{{ t('Lic:') }} {{ settings.license_number }}{% endif %}
@@ -362,7 +362,7 @@
       
       {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
       <div style="background: #fff3cd; border-left: 2px solid #ffc107; padding: 6px; margin-bottom: 10px; border-radius: 3px;">
-        <div style="font-size: 9px; color: #856404;"> {{ settings.default_receipt_note_ar }}</div>
+        <div style="font-size: 11px; color: #856404;"> {{ settings.default_receipt_note_ar }}</div>
       </div>
       {% endif %}
       
@@ -371,7 +371,7 @@
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
-      <div style="margin-top: 8px; font-size: 9px;">
+      <div style="margin-top: 8px; font-size: 11px;">
         {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 4px; color: #1877f2; text-decoration: none;">FB</a>{% endif %}
         {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 4px; color: #e4405f; text-decoration: none;">IG</a>{% endif %}
         {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 4px; color: #25d366; text-decoration: none;">WA</a>{% endif %}
@@ -391,7 +391,7 @@
         </div>
       {% endif %}
     {% endif %}
-<p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
+<p class="azad_invoice_footer" style="font-size: 9px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 </body>
 </html>

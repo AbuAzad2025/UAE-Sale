@@ -1751,7 +1751,17 @@ def create_payment(purchase_id):  # noqa: C901
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"حدث خطأ: حدث خطأ غير متوقع", "danger")
+            try:
+                from utils.errors import ValidationError
+
+                if isinstance(e, ValidationError):
+                    flash(str(e), "danger")
+                    return redirect(
+                        url_for("payments.create_payment", purchase_id=purchase_id)
+                    )
+            except ImportError:
+                pass
+            flash("حدث خطأ: حدث خطأ غير متوقع", "danger")
 
     return render_template(
         "payments/create_receipt.html",

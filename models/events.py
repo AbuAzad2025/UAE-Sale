@@ -743,12 +743,64 @@ def register_validation_listeners():  # noqa: C901
 
     @event.listens_for(Payment, "before_insert")
     def validate_payment_amount(mapper, connection, target):
-        """التحقق من صحة مبلغ سند الصرف"""
-        try:
-            if target.amount_base and target.amount_base <= 0:
-                logger.error("❌ Payment: Invalid amount!")
+        """التحقق من صحة مبلغ سند الصرف.
 
+        يمنع تجاوز رصيد الفاتورة: يُحسب المدفوع من سندات مؤكدة محفوظة
+        مباشرة من قاعدة البيانات (لا من عمود cached قد يكون قديماً داخل
+        نفس الطلب)، حتى مع دفعات متعددة/عملات مختلفة على نفس الفاتورة.
+        """
+        try:
+            amt = Decimal(str(target.amount_base or 0))
+            if amt <= 0:
+                from utils.errors import ValidationError
+
+                raise ValidationError("❌ مبلغ سند الصرف يجب أن يكون أكبر من صفر.")
+
+            purchase_id = getattr(target, "purchase_id", None)
+            if not purchase_id or getattr(target, "direction", None) != "outgoing":
+                return
+
+            # Only confirmed payments settle the invoice balance.
+            if getattr(target, "payment_confirmed", True) is False:
+                return
+
+            from models.payment import Payment as _Payment
+            from models.purchase import Purchase as _Purchase
+
+            prow = connection.execute(
+                _Purchase.__table__.select().where(_Purchase.__table__.c.id == purchase_id)
+            ).first()
+            if prow is None:
+                return
+            invoice = Decimal(str(prow.amount_base or 0))
+
+            paid = Decimal("0")
+            rows = connection.execute(
+                _Payment.__table__.select().where(
+                    _Payment.__table__.c.purchase_id == purchase_id
+                )
+            ).fetchall()
+            for r in rows:
+                if r.payment_confirmed is False:
+                    continue
+                paid += Decimal(str(r.amount_base or 0))
+
+            outstanding = invoice - paid
+            if amt > outstanding + Decimal("0.01"):
+                from utils.errors import ValidationError
+
+                raise ValidationError(
+                    f"❌ مبلغ الدفع ({amt:.2f}) يتجاوز الرصيد المتبقي "
+                    f"للفاتورة ({outstanding:.2f}).\n"
+                    f"💡 أدخل مبلغاً ضمن الرصيد أو جزّئ الدفع على عدة سندات."
+                )
+        except ImportError:
+            logger.exception("Payment validation dependency missing")
         except Exception as e:
+            from utils.errors import ValidationError
+
+            if isinstance(e, ValidationError):
+                raise
             logger.error(f"❌ Failed to validate payment: {e}")
 
     @event.listens_for(Product, "before_insert")

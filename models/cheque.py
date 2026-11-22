@@ -449,6 +449,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 description=f"صرف شيك {self.type_ar} رقم {self.cheque_bank_number}",
                 reference_type="cheque_clear",
                 reference_id=self.id,
+                tenant_id=getattr(self, "tenant_id", None),
             )
             if entry is not None and not self.gl_clearing_entry_id:
                 self.gl_clearing_entry_id = entry.id

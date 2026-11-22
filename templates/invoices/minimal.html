@@ -14,8 +14,8 @@
     border-bottom: 1px solid #dee2e6;
   }
   .logo { height: 50px; background: white; padding: 8px; border-radius: 8px; margin-bottom: 8px; }
-  .company-name { font-size: 9px; font-weight: 700; margin-bottom: 3px; color: #333; }
-  .company-info { font-size: 8px; color: #666; }
+  .company-name { font-size: 11px; font-weight: 700; margin-bottom: 3px; color: #333; }
+  .company-info { font-size: 11px; color: #666; }
   .invoice-title {
     background: white;
     padding: 8px;
@@ -23,7 +23,7 @@
     border-bottom: 1px solid #dee2e6;
   }
   .invoice-title h2 { color: #333; font-size: 16px; margin: 0; }
-  .invoice-number { color: #666; font-size: 8px; margin-top: 5px; font-weight: 700; }
+  .invoice-number { color: #666; font-size: 11px; margin-top: 5px; font-weight: 700; }
   .content { padding: 10px; }
   .info-grid {
     display: grid;
@@ -37,20 +37,20 @@
     border-radius: 8px;
     border-right: 4px solid #6c757d;
   }
-  .info-box h3 { color: #495057; margin-bottom: 8px; font-size: 9px; font-weight: 700; }
-  .info-box p { margin: 5px 0; font-size: 8px; color: #495057; }
-  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 8px; }
+  .info-box h3 { color: #495057; margin-bottom: 8px; font-size: 11px; font-weight: 700; }
+  .info-box p { margin: 5px 0; font-size: 11px; color: #495057; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
   thead { background: #f8f9fa; color: #495057; }
   th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e0e0e0; }
-  th { font-size: 9px; color: #495057; }
+  th { font-size: 11px; color: #495057; }
   tbody tr:hover { background: #f8f9fa; }
   .total-section { margin-top: 12px; text-align: left; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; }
-  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 9px; color: #495057; }
+  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; color: #495057; }
   .total-row.final {
     border-top: 2px solid #6c757d;
     padding-top: 8px;
     margin-top: 8px;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: #343a40;
   }
@@ -60,7 +60,7 @@
     text-align: center;
     border-top: 2px solid #dee2e6;
     color: #6c757d;
-    font-size: 9px;
+    font-size: 11px;
   }
 </style>
 {% endblock %}
@@ -139,22 +139,21 @@
         <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}</strong>
       </div>
     <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
-      {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
-      {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
+      <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>
     </div>
 
     {% if sale.payments %}
     <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed #ccc;">
-      <h4 style="color: #6c757d; font-size: 9px; margin-bottom: 8px; font-weight: 700;"> {{ t("Payments") }}</h4>
-      <table style="font-size: 9px;">
+      <h4 style="color: #6c757d; font-size: 11px; margin-bottom: 8px; font-weight: 700;"> {{ t("Payments") }}</h4>
+      <table style="font-size: 11px;">
         <thead>
           <tr>
-            <th style="padding: 5px; font-size: 8px;">{{ t("Payment Number") }}</th>
-            <th style="padding: 5px; font-size: 8px;">{{ t("Date") }}</th>
-            <th style="padding: 5px; font-size: 8px;">{{ t("Amount") }}</th>
-            <th style="padding: 5px; font-size: 8px;">{{ t("Method") }}</th>
-            <th style="padding: 5px; font-size: 8px;">{{ t("Details") }}</th>
+            <th style="padding: 5px; font-size: 11px;">{{ t("Payment Number") }}</th>
+            <th style="padding: 5px; font-size: 11px;">{{ t("Date") }}</th>
+            <th style="padding: 5px; font-size: 11px;">{{ t("Amount") }}</th>
+            <th style="padding: 5px; font-size: 11px;">{{ t("Method") }}</th>
+            <th style="padding: 5px; font-size: 11px;">{{ t("Details") }}</th>
           </tr>
         </thead>
         <tbody>
@@ -170,7 +169,7 @@
               {% elif payment.payment_method == 'cheque' %}{{ t("Cheque") }}
               {% else %}{{ t("Wallet") }}{% endif %}
             </td>
-            <td style="padding: 4px; font-size: 8px;">
+            <td style="padding: 4px; font-size: 11px;">
               {% if payment.payment_method == 'cheque' and payment.cheque_number %}
                 <div style="background: #fff3cd; padding: 3px 5px; border-radius: 3px; border-right: 2px solid #ffc107;">
                    {{ payment.cheque_number }}<br>
@@ -191,35 +190,35 @@
     {% if settings and settings.enable_qr_code %}
     <div class="qr-code text-center">
       <i class="fas fa-qrcode" style="font-size: 50px; color: #ddd;"></i>
-      <p style="font-size: 9px; color: #999;">{{ t("Scan for electronic payment") }}</p>
+      <p style="font-size: 11px; color: #999;">{{ t("Scan for electronic payment") }}</p>
     </div>
     {% endif %}
   </div>
 
   <div class="footer">
     <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Payment in cash or by bank transfer') }}</p>
-    <p class="azad_invoice_footer" style="font-size:7px;color:#999;margin-top:4px;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
+    <p class="azad_invoice_footer" style="font-size: 11px;color:#999;margin-top:4px;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
     
     {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
     <div style="margin-top: 8px; padding: 10px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 5px; border-right: 3px solid #6c757d;">
-      <p style="font-weight: 700; font-size: 9px; color: #495057; margin-bottom: 5px;"> {{ t("Bank Transfer Information") }}</p>
+      <p style="font-weight: 700; font-size: 11px; color: #495057; margin-bottom: 5px;"> {{ t("Bank Transfer Information") }}</p>
       {% if settings.bank_name and settings.bank_name != 'None' %}
-      <p style="font-size: 9px; margin: 3px 0;"><strong>{{ t("Bank") }}:</strong> {{ settings.bank_name }}</p>
+      <p style="font-size: 11px; margin: 3px 0;"><strong>{{ t("Bank") }}:</strong> {{ settings.bank_name }}</p>
       {% endif %}
       {% if settings.bank_account_number %}
-      <p style="font-size: 9px; margin: 3px 0;"><strong>{{ t("Account Number") }}:</strong> {{ settings.bank_account_number }}</p>
+      <p style="font-size: 11px; margin: 3px 0;"><strong>{{ t("Account Number") }}:</strong> {{ settings.bank_account_number }}</p>
       {% endif %}
       {% if settings.iban and settings.iban != 'None' %}
-      <p style="font-size: 9px; margin: 3px 0;"><strong>IBAN:</strong> {{ settings.iban }}</p>
+      <p style="font-size: 11px; margin: 3px 0;"><strong>IBAN:</strong> {{ settings.iban }}</p>
       {% endif %}
       {% if settings.swift_code and settings.swift_code != 'None' %}
-      <p style="font-size: 9px; margin: 3px 0;"><strong>SWIFT:</strong> {{ settings.swift_code }}</p>
+      <p style="font-size: 11px; margin: 3px 0;"><strong>SWIFT:</strong> {{ settings.swift_code }}</p>
       {% endif %}
     </div>
     {% endif %}
     
     {% if settings and ((settings.commercial_register and settings.commercial_register != 'None') or (settings.license_number and settings.license_number != 'None')) %}
-    <div style="margin-top: 8px; font-size: 8px; color: #666; text-align: center;">
+    <div style="margin-top: 8px; font-size: 11px; color: #666; text-align: center;">
       {% if settings.commercial_register and settings.commercial_register != 'None' %}
       <span>{{ t("Commercial Register") }}: {{ settings.commercial_register }}</span>
       {% endif %}
@@ -232,26 +231,26 @@
     
     {% if settings and settings.default_invoice_note_ar and settings.default_invoice_note_ar != 'None' %}
     <div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; border-right: 2px solid #ffc107;">
-      <p style="font-size: 9px; color: #856404; margin: 0;"> {{ settings.default_invoice_note_ar }}</p>
+      <p style="font-size: 11px; color: #856404; margin: 0;"> {{ settings.default_invoice_note_ar }}</p>
     </div>
     {% endif %}
     
-    <p style="margin-top: 10px; font-size: 9px;">{{ t("Thank you for dealing with us") }} </p>
+    <p style="margin-top: 10px; font-size: 11px;">{{ t("Thank you for dealing with us") }} </p>
     
     {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
     <div style="margin-top: 10px; text-align: center;">
       {% if settings.facebook_url %}
-      <a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: #1877f2; text-decoration: none; font-size: 8px;">
+      <a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: #1877f2; text-decoration: none; font-size: 11px;">
         <i class="fab fa-facebook"></i> Facebook
       </a>
       {% endif %}
       {% if settings.instagram_url %}
-      <a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: #e4405f; text-decoration: none; font-size: 8px;">
+      <a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: #e4405f; text-decoration: none; font-size: 11px;">
         <i class="fab fa-instagram"></i> Instagram
       </a>
       {% endif %}
       {% if settings.whatsapp_number %}
-      <a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: #25d366; text-decoration: none; font-size: 8px;">
+      <a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: #25d366; text-decoration: none; font-size: 11px;">
         <i class="fab fa-whatsapp"></i> WhatsApp
       </a>
       {% endif %}

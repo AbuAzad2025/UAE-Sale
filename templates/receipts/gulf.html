@@ -69,7 +69,7 @@
       margin-bottom: 5px;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
-    .company-info { font-size: 10px; opacity: 0.95; line-height: 1.7; }
+    .company-info { font-size: 11px; opacity: 0.95; line-height: 1.7; }
     .receipt-banner {
       background: linear-gradient(to right, #fff3e0 0%, #ffe0b2 100%);
       padding: 10px;
@@ -108,13 +108,13 @@
     }
     .info-card h3 {
       color: #c9a961;
-      font-size: 10px;
+      font-size: 11px;
       margin-bottom: 10px;
       border-bottom: 1px solid #c9a961;
       padding-bottom: 6px;
       font-weight: 700;
     }
-    .info-card p { margin: 6px 0; font-size: 10px; }
+    .info-card p { margin: 6px 0; font-size: 11px; }
     .amount-showcase {
       text-align: center;
       padding: 35px;
@@ -156,7 +156,7 @@
       margin: 10px 0;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
-    .amount-label-bottom { font-size: 10px; opacity: 0.9; }
+    .amount-label-bottom { font-size: 11px; opacity: 0.9; }
     .payment-section {
       background: #fff3e0;
       border: 1px solid #ff9800;
@@ -166,7 +166,7 @@
     }
     .payment-section h4 {
       color: #e65100;
-      font-size: 10px;
+      font-size: 11px;
       margin-bottom: 12px;
       text-align: center;
       font-weight: 700;
@@ -229,7 +229,7 @@
     }
     .allocations-gulf h4 {
       color: #0d47a1;
-      font-size: 10px;
+      font-size: 11px;
       margin-bottom: 12px;
       text-align: center;
       border-bottom: 1px solid #2196f3;
@@ -256,7 +256,7 @@
     }
     .notes-gulf h4 {
       color: #e65100;
-      font-size: 10px;
+      font-size: 11px;
       margin-bottom: 10px;
       text-align: center;
       font-weight: 700;
@@ -275,7 +275,7 @@
       padding: 10px;
       text-align: center;
       border-radius: 0 0 8px 8px;
-      font-size: 10px;
+      font-size: 11px;
     }
     .signatures-gulf {
       display: flex;
@@ -298,7 +298,7 @@
       border-top: 3px solid #c9a961;
       margin-top: 40px;
       padding-top: 8px;
-      font-size: 10px;
+      font-size: 11px;
       color: #c9a961;
       font-weight: 700;
     }
@@ -354,8 +354,7 @@
         <div class="amount-label-top">⭐ {{ t("Amount Received") }} ⭐</div>
         <div class="amount-huge">{{ "{:,.2f}".format(receipt.amount_base) }}</div>
       <div class="amount-words" style="margin-top:6px; font-size: 11px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
-        {% if amount_words_ar %}<div>{{ amount_words_ar }}</div>{% endif %}
-        {% if amount_words_en %}<div dir="ltr" style="text-align:right;">{{ amount_words_en }}</div>{% endif %}
+        <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
       </div>
         <div class="amount-label-bottom">{{ base_currency_name }}</div>
         {% if receipt.currency != base_currency %}
@@ -410,7 +409,7 @@
             <br>
             <span style="font-size: 11px; color: #666;">{{ source_info.date or '—' }}</span>
           </div>
-          <div style="font-weight: 700; color: #28a745; font-size: 10px;">
+          <div style="font-weight: 700; color: #28a745; font-size: 11px;">
             {{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}
           </div>
         </div>
@@ -441,7 +440,7 @@
       {% if settings and ((settings.bank_name and settings.bank_name != 'None') or (settings.iban and settings.iban != 'None') or (settings.swift_code and settings.swift_code != 'None')) %}
       <div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.15); border-radius: 8px; border: 1px solid rgba(255,255,255,0.3);">
         <div style="font-weight: 700; font-size: 11px; margin-bottom: 8px; text-align: center;"> {{ t("Bank Transfer Information") }}</div>
-        <div style="font-size: 10px; line-height: 1.8; text-align: center;">
+        <div style="font-size: 11px; line-height: 1.8; text-align: center;">
           {% if settings.bank_name and settings.bank_name != 'None' %}<div><strong>{{ t("Bank") }}:</strong> {{ settings.bank_name }}</div>{% endif %}
           {% if settings.iban and settings.iban != 'None' %}<div><strong>IBAN:</strong> {{ settings.iban }}</div>{% endif %}
           {% if settings.swift_code and settings.swift_code != 'None' %}<div><strong>SWIFT:</strong> {{ settings.swift_code }}</div>{% endif %}
@@ -461,21 +460,21 @@
       
       {% if settings and settings.default_receipt_note_ar and settings.default_receipt_note_ar != 'None' %}
       <div style="background: rgba(255,243,205,0.3); border-right: 3px solid #ffc107; padding: 10px; margin-bottom: 12px; border-radius: 5px;">
-        <div style="font-size: 10px;"> {{ settings.default_receipt_note_ar }}</div>
+        <div style="font-size: 11px;"> {{ settings.default_receipt_note_ar }}</div>
       </div>
       {% endif %}
       
       <div style="font-size: 11px; margin-bottom: 8px; font-weight: 700;">
         {{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Please adhere to the specified payment deadlines') }}
       </div>
-      <div style="font-size: 10px;"> {{ t("Thank you for your kind cooperation") }} </div>
+      <div style="font-size: 11px;"> {{ t("Thank you for your kind cooperation") }} </div>
       {% if settings and settings.website and settings.website != 'None' %}
       <div style="margin-top: 8px; font-size: 11px;"> {{ settings.website }}</div>
       {% endif %}
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
-      <div style="margin-top: 10px; font-size: 10px;">
+      <div style="margin-top: 10px; font-size: 11px;">
         {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Facebook</a>{% endif %}
         {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Instagram</a>{% endif %}
         {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> WhatsApp</a>{% endif %}
@@ -495,7 +494,7 @@
         </div>
       {% endif %}
     {% endif %}
-<p class="azad_invoice_footer" style="font-size: 9px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
+<p class="azad_invoice_footer" style="font-size: 11px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
 </body>
 </html>

@@ -228,7 +228,12 @@ class Purchase(TenantScopedMixin, db.Model):
         except Exception:
             _base = "ILS"
         if (self.currency or _base) == _base:
-            self.amount_base = self.total_amount
+            if self.tax_inclusive:
+                self.amount_base = (self.total_amount - (self.tax_amount or Decimal("0"))).quantize(
+                    Decimal("0.001"), rounding=ROUND_HALF_UP
+                )
+            else:
+                self.amount_base = self.total_amount
         else:
             self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
                 Decimal("0.001"), rounding=ROUND_HALF_UP

@@ -158,120 +158,83 @@
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
-  <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+  <nav class="main-header navbar navbar-expand navbar-dark">
+    <!-- Left: primary navigation -->
     <ul class="navbar-nav">
       <li class="nav-item">
-        <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+        <a class="nav-link" data-widget="pushmenu" href="#" role="button" title="{{ t('Toggle Menu') }}">
+          <i class="fas fa-bars"></i>
+        </a>
       </li>
       <li class="nav-item d-none d-sm-inline-block">
         {% if current_user.is_owner %}
-        <a href="{{ url_for('owner.dashboard') }}" class="nav-link"><i class="fas fa-crown mr-2"></i>{{ t('Console') }}</a>
+        <a href="{{ url_for('owner.dashboard') }}" class="nav-link"><i class="fas fa-crown mr-1"></i>{{ t('Console') }}</a>
         {% else %}
-        <a href="{{ url_for('main.dashboard') }}" class="nav-link"><i class="fas fa-home mr-2"></i>{{ t('Dashboard') }}</a>
+        <a href="{{ url_for('main.dashboard') }}" class="nav-link"><i class="fas fa-home mr-1"></i>{{ t('Dashboard') }}</a>
         {% endif %}
       </li>
     </ul>
 
-    <ul class="navbar-nav ml-auto">
-      
-      <li class="nav-item d-none d-lg-inline-block">
-        <div class="nav-link navbar-widgets">
-          <div class="d-flex align-items-center" style="gap: 15px;">
-            
-            <div class="navbar-datetime-widget">
-              <div id="current-time">
-                <i class="fas fa-clock mr-1"></i>
-                <span id="time-display">--:--</span>
-              </div>
-              <div id="current-date">
-                <i class="fas fa-calendar mr-1"></i>
-                <span id="date-display">--/--/----</span>
-              </div>
-            </div>
-            
-            
-            <div class="navbar-exchange-widget">
-              <div class="exchange-label">
-                <i class="fas fa-exchange-alt mr-1"></i>USD/{{ base_currency }}
-              </div>
-              <div id="exchange-rate" class="exchange-value">
-                <i class="fas fa-dollar-sign mr-1"></i>
-                <span id="rate-display">--</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Right: utilities, grouped and consistently spaced -->
+    <ul class="navbar-nav ml-auto align-items-center">
+      <!-- Clock + date -->
+      <li class="nav-item navbar-meta d-none d-lg-inline-block">
+        <span class="nav-link navbar-meta-item"><i class="fas fa-clock"></i><span id="time-display">--:--</span></span>
+        <span class="nav-link navbar-meta-item"><i class="fas fa-calendar"></i><span id="date-display">--/--/----</span></span>
       </li>
-      
-      <li class="nav-item d-none d-md-inline-block">
-        <span class="nav-link">
-          {% if current_user.is_owner %}
-          <img src="{{ _tenant_logo }}" alt="logo" style="height: 32px; vertical-align: middle;">
-          {% elif current_tenant and current_tenant.logo_url %}
-          <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 32px; vertical-align: middle;">
-          {% else %}
-          <img src="{{ url_for('static', filename='img/garage_logo.png') }}" alt="Garage" style="height: 32px; vertical-align: middle;">
-          {% endif %}
-        </span>
+
+      <!-- Exchange rate -->
+      <li class="nav-item navbar-meta d-none d-lg-inline-block">
+        <span class="nav-link navbar-meta-item" title="{{ t('Exchange Rate') }}"><i class="fas fa-exchange-alt"></i><span class="navbar-rate">USD/{{ base_currency }} <b id="rate-display">--</b></span></span>
       </li>
-      
-      
-      {% if not current_user.is_owner %}
-      <li class="nav-item">
-        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link" title="{{ t("AI Assistant") }}">
-          <i class="fas fa-robot mr-1" style="color: #667eea; font-size: 1.1em;"></i>
-          <span class="d-none d-md-inline">{{ t("Assistant") }}</span>
-        </a>
-      </li>
-      {% endif %}
-      
-      <li class="nav-item">
-        <a href="{{ url_for('public.user_guide') }}" class="nav-link" title="{{ t("User Guide") }}">
-          <i class="fas fa-book mr-1" style="color: #28a745;"></i>
-          <span class="d-none d-md-inline">{{ t("Guide") }}</span>
-        </a>
-      </li>
-      
-      
-      <li class="nav-item">
-        <a class="nav-link" href="#" onclick="toggleSidebarDirection(); return false;" title="{{ t("Toggle Sidebar Position") }}">
-          <i class="fas fa-exchange-alt" style="transform: rotate(90deg);"></i>
-          <span class="d-none d-md-inline">{{ t("Toggle Sidebar") }}</span>
-        </a>
-      </li>
-      
-      
+
+      <li class="navbar-separator d-none d-lg-block" aria-hidden="true"></li>
+
+      <!-- Language -->
       <li class="nav-item dropdown">
-        <a class="nav-link" data-toggle="dropdown" href="#" title="{{ t("Change Language") }}">
-          <i class="fas fa-globe mr-1"></i>
-          <span class="d-none d-md-inline">{{ session.get('language', 'ar')|upper }}</span>
+        <a class="nav-link nav-icon" data-toggle="dropdown" href="#" title="{{ t('Change Language') }}">
+          <i class="fas fa-globe"></i><span class="nav-label">{{ session.get('language', 'ar')|upper }}</span>
         </a>
         <div class="dropdown-menu dropdown-menu-sm dropdown-menu-left">
           <a href="{{ url_for('language.set_language', lang='ar') }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
-            <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
-            {{ t('Arabic') }}
+            <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>{{ t('Arabic') }}
           </a>
           <a href="{{ url_for('language.set_language', lang='en') }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
-            <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
-            {{ t('English') }}
+            <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>{{ t('English') }}
           </a>
         </div>
       </li>
-      
+
+      <!-- Sidebar position toggle -->
+      <li class="nav-item">
+        <a class="nav-link nav-icon" href="#" onclick="toggleSidebarDirection(); return false;" title="{{ t('Toggle Sidebar Position') }}">
+          <i class="fas fa-exchange-alt fa-rotate-90"></i>
+        </a>
+      </li>
+
+      {% if not current_user.is_owner %}
+      <!-- AI assistant -->
+      <li class="nav-item">
+        <a href="{{ url_for('ai.assistant_page') }}" class="nav-link nav-icon" title="{{ t('AI Assistant') }}"><i class="fas fa-robot"></i></a>
+      </li>
+      {% endif %}
+
+      <!-- Help guide -->
+      <li class="nav-item">
+        <a href="{{ url_for('public.user_guide') }}" class="nav-link nav-icon" title="{{ t('User Guide') }}"><i class="fas fa-book"></i></a>
+      </li>
+
+      <!-- User -->
       <li class="nav-item dropdown">
-        <a class="nav-link" data-toggle="dropdown" href="#">
-          <i class="far fa-user mr-1"></i>
-          <strong>{{ current_user.username }}</strong>
-          {% if current_user.is_owner %}
-          <span class="badge badge-danger">{{ t("Owner") }}</span>
-          {% endif %}
+        <a class="nav-link nav-user" data-toggle="dropdown" href="#">
+          <i class="far fa-user-circle"></i>
+          <span class="nav-username">{{ current_user.username }}</span>
+          {% if current_user.is_owner %}<span class="badge badge-danger">{{ t('Owner') }}</span>{% endif %}
         </a>
         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left">
           <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
           <div class="dropdown-divider"></div>
-          <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
-            <i class="fas fa-sign-out-alt mr-2"></i>{{ t("Logout") }}
-          </a>
+          <a href="{{ url_for('auth.logout') }}" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>{{ t('Logout') }}</a>
         </div>
       </li>
     </ul>

@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const toggleButton = document.createElement('button');
     toggleButton.className = 'theme-toggle';
-    toggleButton.innerHTML = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+    toggleButton.innerHTML = document.body.classList.contains('dark-mode')
+        ? '<i class="fas fa-sun"></i>'
+        : '<i class="fas fa-moon"></i>';
     toggleButton.title = t('Toggle dark mode');
     // Place the theme toggle in the top navbar next to the sidebar/language
     // controls instead of floating over the footer.
@@ -27,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleButton.addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');
         const isDark = document.body.classList.contains('dark-mode');
-        toggleButton.innerHTML = isDark ? 'light' : 'dark';
+        toggleButton.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
     });
     
@@ -35,10 +37,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (localStorage.getItem('theme') === 'auto') {
             if (e.matches) {
                 document.body.classList.add('dark-mode');
-                toggleButton.innerHTML = 'light';
+                toggleButton.innerHTML = '<i class="fas fa-sun"></i>';
             } else {
                 document.body.classList.remove('dark-mode');
-                toggleButton.innerHTML = 'dark';
+                toggleButton.innerHTML = '<i class="fas fa-moon"></i>';
             }
         }
     });

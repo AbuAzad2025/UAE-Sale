@@ -33,6 +33,17 @@ def test_theme_toggle_in_navbar():
     assert "navbarWidgets.appendChild(toggleButton)" not in js
 
 
+def test_navbar_clean_and_no_duplicate_logo():
+    src = open(os.path.join(ROOT, "templates", "base.html"), encoding="utf-8").read()
+    nav = src[src.index('<nav class="main-header'):src.index('</nav>')]
+    assert '<img' not in nav  # no extra logo in navbar (sidebar/footer only)
+    assert nav.count('data-widget="pushmenu"') == 1
+    assert "toggleSidebarDirection()" in nav  # one position toggle
+    assert "nav-icon" in nav and "navbar-separator" in nav
+    js = open(os.path.join(ROOT, "static", "js", "dark-mode.js"), encoding="utf-8").read()
+    assert "fa-moon" in js and "fa-sun" in js  # icon toggle, not text
+
+
 def test_no_floating_help_button_and_safe_modal():
     js = open(os.path.join(ROOT, "static", "js", "keyboard-shortcuts.js"), encoding="utf-8").read()
     assert "shortcuts-help-btn" not in js

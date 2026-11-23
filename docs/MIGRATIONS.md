@@ -1,22 +1,27 @@
 # Migration Contract — عقد التهجيرات (FROZEN / ثابت)
 
-> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من **71 مراجعة** مرتبة
-> برأس واحد **`b49_alter_column_widths`**. ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
+> **ملخص عربي:** مجلد `migrations/` تاريخ ثابت (append-only) من **72 مراجعة** مرتبة
+> برأس واحد **`c07_unify_average_cost_precision`**. ممنوع إعادة كتابته أو دمجه أو حذف ملفاته.
 > أي تغيير في الموديل = مراجعة جديدة في آخر السلسلة فقط. هذا الملف هو المرجع
 > الوحيد المعتمد، ولا يجوز لأي مهمة مستقبلية مخالفته.
 
-> ⚠️ **تحديث 2026-11-18:** السلسلة نمت من 21 إلى 71 مراجعة. الرأس الحالي
-> `b49_alter_column_widths` (`down_revision = b48_maint_child_tenant`).
+> ⚠️ **تحديث 2026-11-23:** السلسلة نمت إلى 72 مراجعة. الرأس الحالي
+> `c07_unify_average_cost_precision` (`down_revision = c06_leave_types_per_tenant`).
+> المراجعة السابقة `b49_alter_column_widths` (`down_revision = b48_maint_child_tenant`).
 > من المراجعات الجديدة الهامة: `b41_audit_log_soft_delete` (حذف ناعم لسجلات التدقيق)،
 > `b42_role_tenant_unique`, `b44_product_return_tenant_id` (عزل المرتجعات),
 > `b47_roles_drop_name_unique`, `b48_maint_child_tenant` (أضاف `tenant_id` لثمانية
 > جداول صيانة فرعية), `b49` (الرأس). بوابة الانحراف `tests/unit/test_schema_parity.py`
 > تعمل في `alembic-smoke` وتمنع أي انحراف model/migration.
 
-## 1. Status (verified 2026-11-18)
+## 1. Status (verified 2026-11-23)
 
-- **Revisions:** 71 files in `migrations/versions/`, UTF-8, no null bytes.
-- **History:** single linear chain, exactly **ONE head**: `b49_alter_column_widths`.
+- **Revisions:** 72 files in `migrations/versions/`, UTF-8, no null bytes.
+- **History:** single linear chain, exactly **ONE head**: `c07_unify_average_cost_precision`
+  (`down_revision = c06_leave_types_per_tenant`). This revision widens
+  `products.average_cost` from `Numeric(15,3)` to `Numeric(18,6)` so new costing
+  updates keep full precision and cannot reintroduce the historical 1.44 ILS
+  inventory valuation drift (cleared by documented GL entry JE-2026-0050).
 - **Database:** PostgreSQL 15+ only. No SQLite fallback anywhere in the chain.
 - **Engine source:** `migrations/env.py` (stock Flask-Migrate) always uses the
   Flask app engine, therefore it always respects the `DATABASE_URL`
@@ -56,6 +61,8 @@
 | 20 | `20_shipment_module` | Field sales shipments — الإرسالية الميدانية (from warehouse to site, then sale→payment→invoice) |
 | 21 | `21_inbound_shipment` | Inbound shipments — استقبال شحنات البضائع الواردة (in_transit→arrived→inspected→put_away→closed, stock movement on put_away) |
 | 22–49 | `b0` … `b49_alter_column_widths` | سلسلة الـ `b*` اللاحقة (P0 isolation, due dates, inventory costing, tax/tenant, partners, maintenance b28–b40, audit soft-delete b41, role tenant unique b42, product-return tenant b44, must-change-password b45, drop error-log FK b46, drop roles.name unique b47, maintenance child tenant b48, column widths b49). الرجوع إلى أسماء الملفات الفعلية في `migrations/versions/`. |
+| 50–71 | `c00` … `c06_leave_types_per_tenant` | سلسلة الـ `c*` (صلاحيات المدير، أنواع الإجازات، إلخ). |
+| 72 | `c07_unify_average_cost_precision` | توسيع `products.average_cost` إلى `Numeric(18,6)` لتوحيد الدقة ومنع تراكم خطأ التقريب. |
 | 50 | `b50_invoice_settings_tenant` | إعدادات ترويسات الفواتير وسياسات المستأجر. |
 | 51 | `c01_drop_package_system` *(HEAD)* | إزالة نظام الباقات متعدد المستويات: حذف جداول `packages`/`package_purchases`/`subscription_plans` وعمود `tenants.subscription_plan`؛ المنصة الآن بباقة موحّدة واحدة. |
 

@@ -139,3 +139,6 @@ credentials.txt
 # Generated coverage-upload test artifacts
 static/cov_up/
 
+# Local runtime audit trail (generated, never published)
+instance/audit/*.jsonl
+

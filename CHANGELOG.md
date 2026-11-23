@@ -21,10 +21,37 @@ All notable changes to the Azad ERP system are documented here.
   (fail-closed); infra endpoints exempt; `enable_api` defaults to False.
 
 ### Migrations
-- Head is `b49_alter_column_widths` (71 revisions). `b48_maint_child_tenant`
+- Head is `c07_unify_average_cost_precision` (72 revisions). `c07` widens
+  `products.average_cost` to `Numeric(18,6)` (canonical precision);
+  `b49_alter_column_widths` is the previous head. Earlier: `b48_maint_child_tenant`
   added `tenant_id` to the 8 maintenance child tables; `b47` dropped the global
   unique on `roles.name`; `b44` scoped product returns; `b41` added audit-log
   soft-delete (`is_archived`).
+
+### Print documents & tenant branding (2026-11-22/23)
+- All 10 receipt/invoice templates now extend `base_print.html`: one unified
+  toolbar (template switcher, print preview, print) everywhere.
+- Tenant brand header (name above logo + contact centre + verification QR) and
+  footer WhatsApp QR, both RTL/LTR-aware using logical CSS properties. Real
+  scannable QR codes (document payload + `wa.me`) replace FontAwesome icons;
+  tenant logo shipped in `static/img/tenants/`.
+- Single-language amount words; print background colours forced; repeating
+  header/footer on multi-page documents; readable fonts (14px/16px).
+
+### Cheques (2026-11-23)
+- Cancellation GL posting now passes `tenant_id` (previously raised and rolled
+  back). Managers can cancel via `manage_payments` with full audit trail
+  (cheque number + reason + user).
+- Cheques no longer mutate `supplier.total_purchases_aed` (derived from confirmed
+  purchases) — fixed a 11,500 AP drift. `gl_entry_number` exposes the posted JE.
+
+### Financial precision (2026-11-23)
+- `utils/money.py`: one canonical precision module (2dp money, 3dp qty, 6dp unit
+  cost/rate, HALF_UP) used by costing, inventory report and GL control balances.
+- Historical 1.44 ILS inventory rounding cleared by documented JE-2026-0050
+  (Dr 1140 / Cr 5150, idempotent). Inventory GL vs valuation now 0.00.
+- AR reconciliation lists partner current shares (3350) explicitly as a
+  reconciling item; AR and AP both balanced.
 
 ### Financial integrity (permanent CI tests)
 - New seed tests drive real services and assert balanced GL in base currency:

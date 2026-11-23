@@ -30,21 +30,33 @@
   <div class="col-lg-4">
     <div class="card">
       <div class="card-header"><h5 class="mb-0">{{ t('Order Information') }}</h5></div>
+      {% set _m = {
+        'received': t('Reception'), 'diagnosis': t('Diagnosis'),
+        'waiting_approval': t('Awaiting Approval'), 'in_progress': t('In Progress'),
+        'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'),
+        'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed'),
+        'urgent': t('Urgent'), 'normal': t('Normal'), 'low': t('Low'),
+        'cash': t('Cash'), 'card': t('Card'), 'cheque': t('Cheque'),
+        'transfer': t('Bank Transfer'), 'account': t('On Account'),
+        'under_warranty': t('Under Warranty'), 'out_of_warranty': t('Out of Warranty'),
+        'unknown': t('Unknown'), 'not_completed': t('Not Completed'),
+        'not completed': t('Not Completed')
+      } %}
       <div class="card-body">
         <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
         <p><strong>{{ t('Customer') }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
         <p><strong>{{ t('Date:') }}</strong> {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</p>
         <p><strong>{{ t('Status:') }}</strong>
           <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">
-            {{ order.status }}
+            {{ _m.get(order.status, order.status) }}
           </span>
         </p>
-        <p><strong>{{ t('Priority') }}:</strong> {{ order.priority }}</p>
-        <p><strong>{{ t('Payment Method:') }}</strong> {{ order.payment_mode }}</p>
+        <p><strong>{{ t('Priority') }}:</strong> {{ _m.get(order.priority, order.priority) }}</p>
+        <p><strong>{{ t('Payment Method:') }}</strong> {{ _m.get(order.payment_mode, order.payment_mode) }}</p>
         <p><strong>{{ t('Currency') }}:</strong> {{ order.currency or 'AED' }}
           {% if order.exchange_rate %} ({{ t('Exchange Rate') }}: {{ "{:,.6f}".format(order.exchange_rate) }}){% endif %}</p>
         <p><strong>{{ t('Total in Base Currency') }}:</strong> {{ "{:,.3f}".format(order.total_amount_base or 0) }}</p>
-        <p><strong>{{ t('Warranty') }}:</strong> {{ order.warranty_status or '-' }}</p>
+        <p><strong>{{ t('Warranty') }}:</strong> {{ _m.get(order.warranty_status, order.warranty_status) if order.warranty_status else '-' }}</p>
         <hr>
         <p><strong>{{ t('Subtotal') }}:</strong> {{ "{:,.3f}".format(order.subtotal or 0) }}</p>
         <p><strong>{{ t('Discount') }}:</strong> {{ "{:,.3f}".format(order.discount_total_value or 0) }}
@@ -311,7 +323,7 @@
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">{{ t('Parts Items') }}</h5>
         {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="fas fa-plus mr-1"></i>{{ t('Add Part') }}</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#addItemModal" data-bs-toggle="modal" data-bs-target="#addItemModal" onclick="window.jQuery('#addItemModal').modal('show');return false;"><i class="fas fa-plus mr-1"></i>{{ t('Add Part') }}</button>
         {% endif %}
       </div>
       <div class="card-body p-0">
@@ -321,14 +333,14 @@
           {% for it in order.items %}
           <tr>
             <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else '-' }}</td>
-            <td>{{ it.quantity }} {% if it.returned_quantity %}<span class="badge bg-secondary">{{ t('Returned') }} {{ it.returned_quantity }}</span>{% endif %}</td>
+            <td>{{ it.quantity }} {% if it.returned_quantity %}<span class="badge bg-secondary">{{ t('Returned') }}: {{ it.returned_quantity }}</span>{% endif %}</td>
             <td>{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.cost_price or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.tax_amount or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.line_total or 0) }}</td>
             <td>
               {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
-              <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#returnModal{{ it.id }}">{{ t('Returned') }}</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#returnModal{{ it.id }}" data-bs-toggle="modal" data-bs-target="#returnModal{{ it.id }}" onclick="window.jQuery(\'#returnModal{{ it.id }}\').modal(\'show\');return false;" title="{{ t('Return part to stock') }}"><i class="fas fa-undo"></i> {{ t('Return') }}</button>
               {% endif %}
             </td>
           </tr>
@@ -346,7 +358,7 @@
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">{{ t('Service Items') }}</h5>
         {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
-        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal"><i class="fas fa-plus mr-1"></i>{{ t('Add Service') }}</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#addServiceModal" data-bs-toggle="modal" data-bs-target="#addServiceModal" onclick="window.jQuery('#addServiceModal').modal('show');return false;"><i class="fas fa-plus mr-1"></i>{{ t('Add Service') }}</button>
         {% endif %}
       </div>
       <div class="card-body p-0">
@@ -355,7 +367,7 @@
           <tbody>
           {% for sv in order.services %}
           <tr>
-            <td>{{ sv.service_name }}</td>
+            <td>{{ (sv.service_name_ar if current_language == 'ar' and sv.service_name_ar else sv.service_name) or '-' }}</td>
             <td>{{ "{:,.3f}".format(sv.unit_price or 0) }}</td>
             <td>{{ "{:,.3f}".format(sv.cost_price or 0) }}</td>
             <td>{{ sv.duration_minutes }}</td>

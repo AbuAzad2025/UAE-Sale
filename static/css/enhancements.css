@@ -1016,3 +1016,52 @@ body.sidebar-collapse .main-footer-azad {
 .main-footer-azad { height: auto !important; }
 .footer-inline { align-items: flex-start !important; }
 .footer-platform-contact span { font-size: 10px; }
+
+
+/* ===== Unified footer — compact, two columns, calm colors ===== */
+.main-footer.main-footer-azad {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+  border-top: 1px solid rgba(148,163,184,.15) !important;
+  padding: 14px 20px !important;
+}
+.main-footer.main-footer-azad * { text-shadow: none !important; }
+.main-footer .footer-container { max-width: 1200px; margin: 0 auto; }
+.main-footer .footer-inline {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: nowrap; gap: 24px;
+}
+.main-footer .footer-col { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.main-footer .footer-logo {
+  height: 34px; width: auto; max-width: 44px; object-fit: contain;
+  background: #fff; padding: 3px; border-radius: 6px; flex-shrink: 0;
+}
+.main-footer .footer-col-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.main-footer .footer-brand-name {
+  font-size: 12px; font-weight: 700; color: #e2e8f0 !important; white-space: nowrap;
+}
+.main-footer .footer-contact {
+  font-size: 11px; color: #94a3b8 !important; white-space: nowrap;
+}
+.main-footer .footer-contact i { color: #64748b !important; margin-inline-end: 3px; font-size: 10px; }
+.main-footer .footer-divider { width: 1px; height: 32px; background: rgba(148,163,184,.25); flex-shrink: 0; }
+.main-footer .footer-meta {
+  display: flex; align-items: center; gap: 10px; font-size: 10px;
+  color: #64748b !important; white-space: nowrap; margin-inline-start: auto;
+}
+.main-footer .footer-meta a { color: #94a3b8 !important; text-decoration: none; }
+.main-footer .footer-version { border: 1px solid rgba(148,163,184,.25); border-radius: 4px; padding: 1px 6px; }
+@media (max-width: 992px) {
+  .main-footer .footer-inline { flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .main-footer .footer-divider { display: none; }
+  .main-footer .footer-meta { margin-inline-start: 0; }
+}
+
+
+/* Pin the footer to the bottom of the content area (no empty space below) */
+.content-wrapper { display: flex; flex-direction: column; }
+.content-wrapper > .main-footer { margin-top: auto !important; }
+
+
+/* Remove content-wrapper bottom padding so footer touches the bottom */
+.content-wrapper { padding-bottom: 0 !important; }

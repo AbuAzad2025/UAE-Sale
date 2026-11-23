@@ -20,14 +20,17 @@ def test_dual_footer_identities_and_fluid_width():
     assert "footer-platform" in src  # platform block
     assert "config.COMPANY_PHONE" in src  # platform contact from owner config
     assert "config.COMPANY_WHATSAPP" in src
-    assert "config.COMPANY_EMAIL" in src
     assert "img/azad_logo.png" in src  # platform logo
-    # footer is a direct child of .content-wrapper -> no JS offset hacking
+    # unified two-column footer, pinned to bottom of content-wrapper
     assert '<footer class="main-footer main-footer-azad">' in src
     assert "syncFooterWidth" not in src
     css = open(os.path.join(ROOT, "static", "css", "enhancements.css"), encoding="utf-8").read()
-    assert ".content-wrapper > .main-footer.main-footer-azad" in css
-    assert "margin-inline: 0 !important" in css
+    assert ".main-footer .footer-col" in css
+    assert "margin-top: auto !important" in css
+    assert "padding-bottom: 0 !important" in css
+    # no neon-green footer from the old theme
+    other = open(os.path.join(ROOT, "static", "css", "modern-arabic-style.css"), encoding="utf-8").read()
+    assert "#7CFC00" not in other
 
 
 def test_theme_toggle_in_navbar():

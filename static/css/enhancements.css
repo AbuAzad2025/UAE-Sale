@@ -179,9 +179,18 @@
 /* ===== Footer — Clean Modern Enterprise Layout ===== */
 /* AdminLTE gives .main-footer a right margin in RTL; the dynamic left offset
    already accounts for the sidebar, so cancel the opposite side to avoid a
-   double squeeze that shrinks the footer width. */
-.main-footer-azad { margin-right: 0 !important; }
+   double squeeze that shrinks the footer width. */position: relative;
+  margin: 0;
 
+
+/* Footer is a child of .content (15px padding). Stretch it back to the full
+   content-wrapper width so it never hides under the sidebar in RTL/LTR. */
+.main-footer-azad {
+  margin-inline: -15px !important;
+  width: calc(100% + 30px) !important;
+  max-width: none !important;
+  padding-inline: 20px !important;
+}
 .main-footer-azad {
   font-family: 'Tajawal', 'Cairo', sans-serif;
   background: #0f172a;
@@ -190,7 +199,7 @@
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-inline-start: var(--footer-side-offset, 0px);
+  margin: 0;
   transition: margin-right 0.3s ease;
 }
 
@@ -482,7 +491,7 @@ body.sidebar-collapse .main-footer-azad {
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-inline-start: var(--footer-side-offset, 0px);
+  margin: 0;
   transition: margin-right 0.3s ease;
 }
 
@@ -639,7 +648,7 @@ body.sidebar-collapse .main-footer-azad {
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-inline-start: var(--footer-side-offset, 0px);
+  margin: 0;
   transition: margin-right 0.3s ease;
 }
 
@@ -923,3 +932,16 @@ body.sidebar-collapse .main-footer-azad {
     }
 }
 
+
+
+/* Final authority: footer is a direct child of .content-wrapper; the wrapper
+   already carries the sidebar offset, so cancel any AdminLTE .main-footer
+   margin in both directions. Loaded after all other rules in this file. */
+.content-wrapper > .main-footer.main-footer-azad {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-inline: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  padding-inline: 20px !important;
+}

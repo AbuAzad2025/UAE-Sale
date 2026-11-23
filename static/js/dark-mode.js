@@ -10,7 +10,19 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleButton.className = 'theme-toggle';
     toggleButton.innerHTML = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
     toggleButton.title = t('Toggle dark mode');
-    document.body.appendChild(toggleButton);
+    // Place the theme toggle in the top navbar next to the sidebar/language
+    // controls instead of floating over the footer.
+    const navbarWidgets = document.querySelector('.navbar-widgets') ||
+                          document.querySelector('.main-header .navbar-nav.ml-auto') ||
+                          document.querySelector('.main-header .navbar-nav');
+    if (navbarWidgets) {
+        const li = document.createElement('li');
+        li.className = 'nav-item d-flex align-items-center px-2';
+        li.appendChild(toggleButton);
+        navbarWidgets.insertBefore(li, navbarWidgets.firstChild);
+    } else {
+        document.body.appendChild(toggleButton);
+    }
     
     toggleButton.addEventListener('click', function() {
         document.body.classList.toggle('dark-mode');

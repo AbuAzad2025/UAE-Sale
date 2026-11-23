@@ -18,11 +18,19 @@ def test_dual_footer_identities_and_fluid_width():
     src = open(os.path.join(ROOT, "templates", "base.html"), encoding="utf-8").read()
     assert "footer-tenant" in src  # tenant block
     assert "img/azad_logo.png" in src  # platform block
-    assert "--footer-side-offset" in src
-    assert "MutationObserver" in src
+    # footer is a direct child of .content-wrapper -> no JS offset hacking
+    assert '<footer class="main-footer main-footer-azad">' in src
+    assert "syncFooterWidth" not in src
     css = open(os.path.join(ROOT, "static", "css", "enhancements.css"), encoding="utf-8").read()
-    assert ".main-footer-azad { margin-right: 0 !important; }" in css
-    assert "margin-inline-start: var(--footer-side-offset" in css
+    assert ".content-wrapper > .main-footer.main-footer-azad" in css
+    assert "margin-inline: 0 !important" in css
+
+
+def test_theme_toggle_in_navbar():
+    js = open(os.path.join(ROOT, "static", "js", "dark-mode.js"), encoding="utf-8").read()
+    assert "navbarWidgets.insertBefore" in js
+    assert "navbar-widgets" in js
+    assert "navbarWidgets.appendChild(toggleButton)" not in js
 
 
 def test_tenant_logo_in_shell_but_platform_logo_in_footer():

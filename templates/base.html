@@ -1161,7 +1161,6 @@
         {% block content %}{% endblock %}
       </div>
     </section>
-  </div>
 
   {# Platform-wide footer — belongs to Azad Systems, NOT to the tenant.
      No tenant data (_t) here: the tenant's own logo/name/contact belong in
@@ -1223,6 +1222,9 @@
       </div>
     </div>
   </footer>
+  </div>
+
+
 </div>
 
 <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
@@ -1391,29 +1393,6 @@ $(function() {
     }
   }
   
-  // Keep the platform footer flush with the content area when the sidebar is
-  // toggled. AdminLTE changes the body classes without firing a resize, so we
-  // observe class changes and recompute the actual sidebar width.
-  (function syncFooterWidth() {
-    var footer = document.querySelector('.main-footer-azad');
-    if (!footer) return;
-    function apply() {
-      var sb = document.querySelector('.main-sidebar');
-      var collapsed = document.body.classList.contains('sidebar-collapse') ||
-                      (sb && (sb.classList.contains('sidebar-collapse') ||
-                              sb.getBoundingClientRect().width < 60));
-      var w = (!collapsed && sb) ? Math.round(sb.getBoundingClientRect().width) : 0;
-      // margin-inline-start follows the writing direction: RTL pushes from the
-      // right, LTR from the left, so the footer never hides under the sidebar.
-      footer.style.setProperty('--footer-side-offset', w + 'px');
-    }
-    apply();
-    if (window.MutationObserver) {
-      new MutationObserver(apply).observe(document.body, {attributes: true, attributeFilter: ['class']});
-    }
-    window.addEventListener('resize', apply);
-  })();
-
   updateDateTime();
   updateExchangeRate();
   

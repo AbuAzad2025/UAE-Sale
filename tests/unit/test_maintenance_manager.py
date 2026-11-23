@@ -30,3 +30,21 @@ def test_both_maintenance_roles_and_manager_have_full_purpose():
     manager = src[i:src.index('"seller": (', i)]
     for code in required:
         assert f'"{code}"' in manager, code
+
+
+def test_maintenance_sidebar_has_only_three_core_links():
+    base = open('templates/base.html', encoding='utf-8').read()
+    i = base.index("request.endpoint.startswith('maintenance.')")
+    block = base[i:base.index('{% endif %}', base.index('</ul>', i))]
+    # exactly the three core links remain in the sidebar
+    assert "maintenance.list_orders" in block
+    assert "maintenance.create_order" in block
+    assert "maintenance.settings" in block
+    for removed in ('maintenance.purchases_list', 'maintenance.maintenance_cost_report',
+                    'maintenance.devices_list', 'maintenance.services_list'):
+        assert removed not in block, removed
+    # the removed modules are still reachable as quick actions on the orders page
+    listing = open('templates/maintenance/list.html', encoding='utf-8').read()
+    for href in ('maintenance.purchases_list', 'maintenance.maintenance_cost_report',
+                 'maintenance.devices_list', 'maintenance.services_list'):
+        assert href in listing, href

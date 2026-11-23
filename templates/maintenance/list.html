@@ -2,6 +2,27 @@
 {% block title %}{{ t('Maintenance Orders') }}{% endblock %}
 {% block page_title %}<i class="fas fa-tools mr-2"></i>{{ t('Maintenance Orders') }}{% endblock %}
 {% block content %}
+{% set _m = {
+  'received': t('Reception'), 'diagnosis': t('Diagnosis'),
+  'waiting_approval': t('Awaiting Approval'), 'in_progress': t('In Progress'),
+  'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'),
+  'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed'),
+  'under_warranty': t('Under Warranty'), 'expired': t('Expired'),
+  'void': t('Void'), 'unknown': t('Unknown')
+} %}
+{# Quick access to the maintenance sub-modules removed from the sidebar. #}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-2 py-2">
+    {% if current_user.has_permission('maintenance_purchase') %}
+    <a href="{{ url_for('maintenance.purchases_list') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-truck mr-1"></i>{{ t('Purchase Maintenance Parts') }}</a>
+    {% endif %}
+    <a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-chart-pie mr-1"></i>{{ t('Cost Report') }}</a>
+    <a href="{{ url_for('maintenance.devices_list') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-mobile-alt mr-1"></i>{{ t('Device Registry') }}</a>
+    {% if current_user.has_permission('maintenance_settings') %}
+    <a href="{{ url_for('maintenance.services_list') }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-list-ul mr-1"></i>{{ t('Fixed Services') }}</a>
+    {% endif %}
+  </div>
+</div>
 <div class="alert alert-info" role="alert">{{ t('Intake, status changes, invoicing and collection are enabled. Returns are allowed only before invoicing.') }}</div>
 {% if overdue %}
 <div class="alert alert-danger" role="alert">
@@ -9,7 +30,7 @@
   {{ overdue|length }} {{ t('orders exceeded the follow-up period (more than 7 days without closure).') }}
   <ul class="mb-0 mt-2">
     {% for order in overdue[:10] %}
-    <li><a href="{{ url_for('maintenance.view_order', id=order.id) }}">{{ order.order_no }}</a> — {{ order.customer.name if order.customer else '-' }} ({{ order.status }})</li>
+    <li><a href="{{ url_for('maintenance.view_order', id=order.id) }}">{{ order.order_no }}</a> — {{ order.customer.name if order.customer else '-' }} ({{ _m.get(order.status, order.status) }})</li>
     {% endfor %}
   </ul>
 </div>
@@ -68,11 +89,11 @@
             <td>{{ order.device_brand or '-' }} {{ order.device_model or '-' }}</td>
             <td>{{ order.received_at.strftime('%Y-%m-%d') if order.received_at else '-' }}</td>
             <td>
-              <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">{{ order.status }}</span>
+              <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">{{ _m.get(order.status, order.status) }}</span>
             </td>
             <td>
               <span class="badge" style="background-color: {{ order.color_tag or '#f59e0b' }}; color: #fff;">
-                {{ order.warranty_status or '-' }}
+                {{ _m.get(order.warranty_status, order.warranty_status) if order.warranty_status else '-' }}
               </span>
             </td>
             <td>{{ "{:,.3f}".format(order.total_amount or 0) }}</td>

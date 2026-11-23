@@ -808,17 +808,14 @@
               </p>
             </a>
             <ul class="nav nav-treeview">
+              {# Only the three core links live in the sidebar. Purchases, reports,
+                 device registry and fixed services are reachable as quick actions
+                 from the Maintenance Orders page, keeping the menu calm. #}
               <li class="nav-item"><a href="{{ url_for('maintenance.list_orders') }}" class="nav-link"><i class="fas fa-clipboard-list nav-icon"></i><p>{{ t("Maintenance Orders") }}</p></a></li>
               {% if current_user.has_permission('maintenance_receive') %}
               <li class="nav-item"><a href="{{ url_for('maintenance.create_order') }}" class="nav-link"><i class="fas fa-plus-circle nav-icon"></i><p>{{ t("Receive Device") }}</p></a></li>
               {% endif %}
-              {% if current_user.has_permission('maintenance_purchase') %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.purchases_list') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>{{ t("Purchase Maintenance Parts") }}</p></a></li>
-              {% endif %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.maintenance_cost_report') }}" class="nav-link"><i class="fas fa-chart-pie nav-icon"></i><p>{{ t("Cost Report") }}</p></a></li>
-              <li class="nav-item"><a href="{{ url_for('maintenance.devices_list') }}" class="nav-link"><i class="fas fa-mobile-alt nav-icon"></i><p>{{ t("Device Registry") }}</p></a></li>
               {% if current_user.has_permission('maintenance_settings') %}
-              <li class="nav-item"><a href="{{ url_for('maintenance.services_list') }}" class="nav-link"><i class="fas fa-list-ul nav-icon"></i><p>{{ t("Fixed Services") }}</p></a></li>
               <li class="nav-item"><a href="{{ url_for('maintenance.settings') }}" class="nav-link"><i class="fas fa-cogs nav-icon"></i><p>{{ t("Maintenance Settings") }}</p></a></li>
               {% endif %}
             </ul>

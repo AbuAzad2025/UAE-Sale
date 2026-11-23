@@ -71,7 +71,7 @@
   </div>
 
   <div class="invoice-footer">
-    <p><strong>{{ t('Status:') }}</strong> {{ order.status }}</p>
+    <p><strong>{{ t('Status:') }}</strong> {{ {'received': t('Reception'), 'diagnosis': t('Diagnosis'), 'in_progress': t('In Progress'), 'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'), 'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed')}.get(order.status, order.status) }}</p>
     <p><strong>{{ t('Current balance per the unaudited order record:') }}</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
     <p class="text-muted small">{{ t('Thank you for doing business with us; we hope you are satisfied with the service.') }}</p>
   </div>

@@ -177,6 +177,11 @@
 }
 
 /* ===== Footer — Clean Modern Enterprise Layout ===== */
+/* AdminLTE gives .main-footer a right margin in RTL; the dynamic left offset
+   already accounts for the sidebar, so cancel the opposite side to avoid a
+   double squeeze that shrinks the footer width. */
+.main-footer-azad { margin-right: 0 !important; }
+
 .main-footer-azad {
   font-family: 'Tajawal', 'Cairo', sans-serif;
   background: #0f172a;
@@ -185,12 +190,12 @@
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-right: 250px;
+  margin-inline-start: var(--footer-side-offset, 0px);
   transition: margin-right 0.3s ease;
 }
 
 body.sidebar-collapse .main-footer-azad {
-  margin-right: 0;
+  margin-inline-start: var(--footer-side-offset, 0px);
 }
 
 .footer-container {
@@ -477,12 +482,12 @@ body.sidebar-collapse .main-footer-azad {
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-right: 250px;
+  margin-inline-start: var(--footer-side-offset, 0px);
   transition: margin-right 0.3s ease;
 }
 
 body.sidebar-collapse .main-footer-azad {
-  margin-right: 0;
+  margin-inline-start: var(--footer-side-offset, 0px);
 }
 
 .footer-container {
@@ -526,6 +531,22 @@ body.sidebar-collapse .main-footer-azad {
   letter-spacing: 0.3px;
   white-space: nowrap;
 }
+
+/* Tenant identity block inside the platform footer */
+.footer-tenant {
+  border-inline-end: 1px solid rgba(148, 163, 184, 0.3);
+  padding-inline-end: 16px;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.footer-tenant .footer-brand-name { color: #86efac; }
+.footer-tenant-contact {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+.footer-tenant-contact i { color: #86efac; margin-inline-end: 3px; }
+.footer-inline-divider { display: none; }
 
 /* Contact: inline icons */
 .footer-inline-contact {
@@ -618,12 +639,12 @@ body.sidebar-collapse .main-footer-azad {
   text-align: right;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
-  margin-right: 250px;
+  margin-inline-start: var(--footer-side-offset, 0px);
   transition: margin-right 0.3s ease;
 }
 
 body.sidebar-collapse .main-footer-azad {
-  margin-right: 0;
+  margin-inline-start: var(--footer-side-offset, 0px);
 }
 
 .footer-container {

@@ -153,6 +153,8 @@
   </style>
 </head>
 
+
+{% set _tenant_logo = url_for('static', filename='img/tenants/samarkand_logo.png') if current_tenant and current_tenant.id == 2 else url_for('static', filename='img/azad_logo.png') %}
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
@@ -204,7 +206,7 @@
       <li class="nav-item d-none d-md-inline-block">
         <span class="nav-link">
           {% if current_user.is_owner %}
-          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 32px; vertical-align: middle;">
+          <img src="{{ _tenant_logo }}" alt="logo" style="height: 32px; vertical-align: middle;">
           {% elif current_tenant and current_tenant.logo_url %}
           <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 32px; vertical-align: middle;">
           {% else %}
@@ -278,11 +280,11 @@
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="{{ url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
       {% if current_user.is_owner %}
-      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">
+      <img src="{{ _tenant_logo }}" alt="logo" style="height: 60px;">
       {% elif current_tenant and current_tenant.logo_url %}
       <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 60px;">
       {% else %}
-      <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="height: 60px;">
+      <img src="{{ _tenant_logo }}" alt="logo" style="height: 60px;">
       {% endif %}
     </a>
 
@@ -299,7 +301,7 @@
           <i class="fas fa-user-circle fa-2x text-white"></i>
         </div>
         <div class="info">
-          <a href="#" class="d-block text-white">{{ current_user.username }}</a>
+          <a href="#" class="d-block text-white">{{ t('Account') }}</a>
           <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else t('User') }}</small>
         </div>
       </div>
@@ -1167,6 +1169,24 @@
   <footer class="main-footer main-footer-azad">
     <div class="footer-container">
       <div class="footer-inline">
+        {# Tenant identity — this is the owning company's own data and logo #}
+        {% if current_tenant %}
+        <div class="footer-inline-brand footer-tenant" title="{{ t('Your Company') }}">
+          <img src="{{ _tenant_logo }}" alt="logo" class="footer-logo">
+          <span class="footer-brand-name">
+            {{ current_tenant.name_ar if current_language == 'ar' and current_tenant.name_ar else (current_tenant.name_en or current_tenant.name or '') }}
+          </span>
+          {% if current_tenant.phone_1 %}
+          <span class="footer-tenant-contact" dir="ltr"><i class="fas fa-phone"></i> {{ current_tenant.phone_1 }}</span>
+          {% endif %}
+          {% if current_tenant.address_ar or current_tenant.city %}
+          <span class="footer-tenant-contact">{{ current_tenant.address_ar or '' }} {{ current_tenant.city or '' }}</span>
+          {% endif %}
+        </div>
+        <span class="footer-inline-divider" aria-hidden="true"></span>
+        {% endif %}
+
+        {# Platform identity — always Azad Systems, never the tenant #}
         <div class="footer-inline-brand">
           <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
           <span class="footer-brand-name">{{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
@@ -1371,6 +1391,29 @@ $(function() {
     }
   }
   
+  // Keep the platform footer flush with the content area when the sidebar is
+  // toggled. AdminLTE changes the body classes without firing a resize, so we
+  // observe class changes and recompute the actual sidebar width.
+  (function syncFooterWidth() {
+    var footer = document.querySelector('.main-footer-azad');
+    if (!footer) return;
+    function apply() {
+      var sb = document.querySelector('.main-sidebar');
+      var collapsed = document.body.classList.contains('sidebar-collapse') ||
+                      (sb && (sb.classList.contains('sidebar-collapse') ||
+                              sb.getBoundingClientRect().width < 60));
+      var w = (!collapsed && sb) ? Math.round(sb.getBoundingClientRect().width) : 0;
+      // margin-inline-start follows the writing direction: RTL pushes from the
+      // right, LTR from the left, so the footer never hides under the sidebar.
+      footer.style.setProperty('--footer-side-offset', w + 'px');
+    }
+    apply();
+    if (window.MutationObserver) {
+      new MutationObserver(apply).observe(document.body, {attributes: true, attributeFilter: ['class']});
+    }
+    window.addEventListener('resize', apply);
+  })();
+
   updateDateTime();
   updateExchangeRate();
   

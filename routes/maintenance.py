@@ -653,6 +653,40 @@ def print_intake(id):
     )
 
 
+def _maintenance_receipt_as_sales_receipt(order, receipt):
+    """Project a maintenance receipt into the sales-receipt print data shape."""
+    from types import SimpleNamespace as NS
+    from models import User
+    from utils.i18n import t as _t
+
+    cashier = db.session.get(User, receipt.cashier_id) if receipt.cashier_id else None
+    method_map = {'cash': 'cash', 'card': 'card', 'transfer': 'bank_transfer',
+                  'bank_transfer': 'bank_transfer', 'cheque': 'cheque'}
+    customer = order.customer
+    return dict(
+        receipt=NS(
+            receipt_number=receipt.receipt_no,
+            receipt_date=receipt.posted_at or receipt.created_at,
+            user=NS(full_name=(cashier.full_name or cashier.username) if cashier else '-'),
+            amount_base=receipt.amount or 0,
+            amount=receipt.amount or 0,
+            currency=order.currency or 'AED',
+            payment_method=method_map.get(receipt.payment_method, 'cash'),
+            notes=None,
+            get_source_info=lambda: NS(
+                number=order.order_no,
+                date=order.received_at.strftime('%Y-%m-%d') if order.received_at else '',
+            ),
+        ),
+        party=NS(
+            label=_t("Customer Details"),
+            name=customer.name if customer else '-',
+            phone=customer.phone if customer else '-',
+            email=getattr(customer, 'email', None) if customer else None,
+        ),
+    )
+
+
 @maintenance_bp.route("/<int:id>/print-receipt")
 @login_required
 @permission_required("maintenance_view")
@@ -668,13 +702,17 @@ def print_receipt(id):
         receipt = order.receipts[0]
     if receipt is None:
         abort(404, description="حدد سند القبض المطلوب طباعته")
+    from config import Config
+    from utils.i18n import t as _t
+    ctx = _print_context(order, "maintenance_receipt", receipt.id)
+    ctx['settings'].active_template = 'modern'
     return render_template(
-        "maintenance/print_receipt.html",
-        order=order,
-        receipt=receipt,
-        tenant=db.session.get(Tenant, _tenant_id()),
+        "receipts/modern.html",
+        **_maintenance_receipt_as_sales_receipt(order, receipt),
+        base_currency=order.currency or 'AED',
+        current_year=__import__('datetime').datetime.now().year,
         back_url=url_for("maintenance.view_order", id=order.id),
-        **_print_context(order, "maintenance_receipt", receipt.id),
+        **ctx,
     )
 
 
@@ -740,9 +778,11 @@ def print_invoice(id):
     ctx = _print_context(order, "maintenance_invoice", order.invoice.id)
     ctx['settings'].active_template = 'modern'
     from utils.i18n import t as _t
+    sale = _maintenance_invoice_as_sale(order)
     return render_template(
         "invoices/modern.html",
-        sale=_maintenance_invoice_as_sale(order),
+        sale=sale,
+        tax_label_override=f'{_t("VAT")} ({sale.tax_rate}%)',
         document_label=_t("Maintenance Invoice"),
         base_currency=order.currency or 'AED',
         current_year=__import__('datetime').datetime.now().year,

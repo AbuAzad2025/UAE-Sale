@@ -26,4 +26,6 @@ TRANSLATIONS = {
     "Order Status": {"ar": "حالة الأمر", "en": "Order Status"},
     "Collection Details": {"ar": "بيانات التحصيل", "en": "Collection Details"},
     "Customer & Intake": {"ar": "العميل والاستلام", "en": "Customer & Intake"},
+    "VAT": {"ar": "ضريبة القيمة المضافة", "en": "VAT"},
+    "Maintenance Receipt Voucher": {"ar": "سند قبض صيانة", "en": "Maintenance Receipt Voucher"},
 }

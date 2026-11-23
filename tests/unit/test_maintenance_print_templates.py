@@ -11,8 +11,14 @@ def _read(rel):
         return f.read()
 
 
+def test_maintenance_receipt_reuses_sales_receipt_template():
+    src = _read('routes/maintenance.py')
+    assert 'receipts/modern.html' in src
+    assert '_maintenance_receipt_as_sales_receipt' in src
+
+
 def test_maintenance_print_templates_extend_unified_print_shell():
-    for name in ('print_receipt.html', 'print_intake.html'):
+    for name in ('print_intake.html',):
         src = _read(f'templates/maintenance/{name}')
         assert src.startswith('{% extends \'base_print.html\' %}'), name
         # tenant brand header + WhatsApp QR come from the shared shell
@@ -30,6 +36,7 @@ def test_maintenance_invoice_reuses_sales_invoice_template():
     # the sales template supports a document label without hard-coding Sales
     modern = _read('templates/invoices/modern.html')
     assert 'document_label or t("Sales Invoice")' in modern
+    assert 'tax_label_override' in modern or 'tax_label_override' in _read('templates/invoices/_tax_label.html')
 
 
 def test_maintenance_print_routes_pass_tenant_branding_context():

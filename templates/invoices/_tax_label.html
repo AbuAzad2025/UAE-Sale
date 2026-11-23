@@ -1,4 +1,6 @@
-{%- if sale.tax_treatment == 'zero' -%}
+{%- if tax_label_override -%}
+{{ tax_label_override }}
+{%- elif sale.tax_treatment == 'zero' -%}
 {{ t("Zero-rated (0%)") }}
 {%- elif sale.tax_treatment == 'exempt' -%}
 {{ t("Tax Exempt") }}

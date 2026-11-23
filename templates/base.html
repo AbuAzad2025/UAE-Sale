@@ -1148,34 +1148,28 @@
         <span class="footer-inline-divider" aria-hidden="true"></span>
         {% endif %}
 
-        {# Platform identity — always Azad Systems, never the tenant #}
-        <div class="footer-inline-brand">
+        {# Platform identity — always Azad Systems, driven by platform config.
+           Separated from the tenant block above by a divider. #}
+        <div class="footer-inline-brand footer-platform">
           <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
-          <span class="footer-brand-name">{{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
+          <div class="footer-platform-info">
+            <span class="footer-brand-name">{{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
+            <div class="footer-platform-contact">
+              {% if config.COMPANY_PHONE %}<a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="{{ t('Phone') }}: {{ config.COMPANY_PHONE }}"><i class="fas fa-phone"></i><span>{{ config.COMPANY_PHONE }}</span></a>{% endif %}
+              {% if config.COMPANY_WHATSAPP %}<a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="footer-inline-link" title="{{ t('WhatsApp') }}: {{ config.COMPANY_WHATSAPP }}"><i class="fab fa-whatsapp"></i><span>{{ config.COMPANY_WHATSAPP }}</span></a>{% endif %}
+              {% if config.COMPANY_EMAIL %}<a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="{{ config.COMPANY_EMAIL }}"><i class="fas fa-envelope"></i><span>{{ config.COMPANY_EMAIL }}</span></a>{% endif %}
+              {% if config.COMPANY_WEBSITE %}<a href="{{ config.COMPANY_WEBSITE }}" target="_blank" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE }}"><i class="fas fa-globe"></i><span>{{ config.COMPANY_WEBSITE }}</span></a>{% endif %}
+            </div>
+          </div>
         </div>
 
-        <div class="footer-inline-contact">
-          <a href="tel:{{ config.COMPANY_PHONE }}" class="footer-inline-link" title="{{ config.COMPANY_PHONE }}">
-            <i class="fas fa-phone"></i>
-          </a>
-          {% if config.COMPANY_EMAIL %}
-          <a href="mailto:{{ config.COMPANY_EMAIL }}" class="footer-inline-link" title="{{ config.COMPANY_EMAIL }}">
-            <i class="fas fa-envelope"></i>
-          </a>
-          {% endif %}
-          <a href="{{ config.COMPANY_WEBSITE or '#' }}" class="footer-inline-link" title="{{ config.COMPANY_WEBSITE or 'azadsystems.com' }}" target="_blank">
-            <i class="fas fa-globe"></i>
-          </a>
-          <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="{{ t("User Guide") }}">
-            <i class="fas fa-book"></i>
-          </a>
-          <a href="{{ url_for('public.sla') }}" class="footer-inline-link" title="{{ t("SLA — Operational Commitments") }}"><i class="fas fa-life-ring"></i></a>
-          <a href="{{ url_for('public.contract') }}" class="footer-inline-link" title="{{ t("Subscription Contract (Template)") }}"><i class="fas fa-file-contract"></i></a>
-          <a href="{{ url_for('public.terms') }}" class="footer-inline-link" title="{{ t("Terms of Service") }}"><i class="fas fa-gavel"></i></a>
-          <a href="{{ url_for('public.privacy') }}" class="footer-inline-link" title="{{ t("Privacy Policy") }}"><i class="fas fa-user-shield"></i></a>
-          <a href="#" class="footer-inline-link" title="{{ company_address }}">
-            <i class="fas fa-map-marker-alt"></i>
-          </a>
+        <div class="footer-inline-links">
+          <a href="{{ url_for('public.user_guide') }}" class="footer-inline-link" title="{{ t('User Guide') }}"><i class="fas fa-book"></i></a>
+          <a href="{{ url_for('public.sla') }}" class="footer-inline-link" title="{{ t('SLA — Operational Commitments') }}"><i class="fas fa-life-ring"></i></a>
+          <a href="{{ url_for('public.contract') }}" class="footer-inline-link" title="{{ t('Subscription Contract (Template)') }}"><i class="fas fa-file-contract"></i></a>
+          <a href="{{ url_for('public.terms') }}" class="footer-inline-link" title="{{ t('Terms of Service') }}"><i class="fas fa-gavel"></i></a>
+          <a href="{{ url_for('public.privacy') }}" class="footer-inline-link" title="{{ t('Privacy Policy') }}"><i class="fas fa-user-shield"></i></a>
+          <a href="#" class="footer-inline-link" title="{{ company_address }}"><i class="fas fa-map-marker-alt"></i></a>
         </div>
 
         <div class="footer-inline-meta">

@@ -17,7 +17,11 @@ def test_unified_tenant_palette():
 def test_dual_footer_identities_and_fluid_width():
     src = open(os.path.join(ROOT, "templates", "base.html"), encoding="utf-8").read()
     assert "footer-tenant" in src  # tenant block
-    assert "img/azad_logo.png" in src  # platform block
+    assert "footer-platform" in src  # platform block
+    assert "config.COMPANY_PHONE" in src  # platform contact from owner config
+    assert "config.COMPANY_WHATSAPP" in src
+    assert "config.COMPANY_EMAIL" in src
+    assert "img/azad_logo.png" in src  # platform logo
     # footer is a direct child of .content-wrapper -> no JS offset hacking
     assert '<footer class="main-footer main-footer-azad">' in src
     assert "syncFooterWidth" not in src

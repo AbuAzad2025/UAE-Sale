@@ -992,3 +992,27 @@ body.sidebar-collapse .main-footer-azad {
 @media (max-width: 992px) {
   .main-header .navbar-meta { display: none !important; }
 }
+
+
+/* ===== Footer: tenant vs platform identity, cleanly separated ===== */
+.footer-tenant, .footer-platform { align-items: flex-start; flex-direction: column; gap: 4px; }
+.footer-tenant .footer-brand-name, .footer-platform .footer-brand-name { font-size: 14px; }
+.footer-tenant-contact, .footer-platform-contact a { font-size: 11px; color: #cbd5e1 !important; text-decoration: none; white-space: nowrap; }
+.footer-tenant-contact i, .footer-platform-contact i { color: #86efac !important; margin-inline-end: 4px; font-size: 11px; }
+.footer-platform-contact { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.footer-platform-contact a { display: inline-flex; align-items: center; gap: 6px; }
+.footer-platform-info { display: flex; flex-direction: column; gap: 4px; }
+.footer-inline-divider { width: 1px; align-self: stretch; background: rgba(148,163,184,.35); display: block; margin: 0 4px; }
+.footer-inline-links { display: flex; align-items: center; gap: 2px; }
+.footer-inline-links .footer-inline-link { width: 30px; height: 30px; font-size: 13px; }
+.footer-platform .footer-logo { height: 34px; }
+@media (max-width: 768px) {
+  .footer-platform-contact span { display: none; }
+  .footer-inline-divider { display: none; }
+}
+
+
+/* Prevent overlap in the dual-identity footer */
+.main-footer-azad { height: auto !important; }
+.footer-inline { align-items: flex-start !important; }
+.footer-platform-contact span { font-size: 10px; }

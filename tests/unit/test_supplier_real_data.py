@@ -20,7 +20,7 @@ def test_supplier_real_identity_in_ui():
         pg.wait_for_load_state('load')
         vals = {
             'name': "شركة النزال للكوابل للحلول الذكية",
-            'name_en': "Hi Cable Company for Smart Solutions",
+            'name_en': "Al Nizal Hi Cable Company for Smart Solutions",
             'phone': "0592053262",
             'tax_number': "562335687",
             'address': "رام الله - فلسطين",

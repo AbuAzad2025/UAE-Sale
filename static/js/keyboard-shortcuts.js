@@ -139,25 +139,9 @@ class KeyboardShortcuts {
     }
 
     showHelpButton() {
-        if (document.getElementById('shortcuts-help-btn')) return;
-
-        const btn = document.createElement('button');
-        btn.id = 'shortcuts-help-btn';
-        btn.className = 'btn btn-sm btn-info';
-        btn.innerHTML = '<i class="fas fa-keyboard"></i>';
-        btn.title = t('Keyboard Shortcuts (?)');
-        btn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 9999;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        `;
-        btn.onclick = () => this.showHelp();
-        document.body.appendChild(btn);
+        // No floating button: the help is reachable from the navbar
+        // (#shortcuts-nav-btn) next to the theme toggle. Keep a no-op here
+        // so older callers don't break.
     }
 
     showHelp() {
@@ -217,6 +201,8 @@ class KeyboardShortcuts {
             </style>
         `;
 
+        // Guard: Bootstrap modal may be unavailable on some pages/loads.
+        if (typeof $ === 'undefined' || !$.fn || !$.fn.modal) return;
         // Remove old modal
         $('#shortcuts-modal').remove();
 
@@ -236,13 +222,34 @@ class KeyboardShortcuts {
 // Initialize
 window.shortcuts = new KeyboardShortcuts();
 
-// Show notification on first load
-$(document).ready(function() {
-    if (!localStorage.getItem('shortcuts-shown')) {
-        setTimeout(() => {
-            notify.info(t('Press ? to show keyboard shortcuts'), t('Quick Tip'));
-            localStorage.setItem('shortcuts-shown', 'true');
-        }, 2000);
-    }
+// Navbar entry point for the shortcuts help (replaces the old floating button)
+document.addEventListener('DOMContentLoaded', function() {
+    const host = document.querySelector('.navbar-widgets') ||
+                 document.querySelector('.main-header .navbar-nav.ml-auto') ||
+                 document.querySelector('.main-header .navbar-nav');
+    if (!host || document.getElementById('shortcuts-nav-btn')) return;
+    const li = document.createElement('li');
+    li.className = 'nav-item d-flex align-items-center px-2';
+    const btn = document.createElement('button');
+    btn.id = 'shortcuts-nav-btn';
+    btn.className = 'btn btn-sm btn-link text-white';
+    btn.innerHTML = '<i class="fas fa-keyboard"></i>';
+    btn.title = t('Keyboard Shortcuts (?)');
+    btn.onclick = function() { window.shortcuts && window.shortcuts.showHelp(); };
+    li.appendChild(btn);
+    host.insertBefore(li, host.firstChild);
+});
+
+// First-load tip is optional; never let a missing notifier break the page.
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        if (typeof notify !== 'undefined' && notify && notify.info &&
+            !localStorage.getItem('shortcuts-shown')) {
+            setTimeout(function() {
+                notify.info(t('Press ? to show keyboard shortcuts'), t('Quick Tip'));
+                localStorage.setItem('shortcuts-shown', 'true');
+            }, 2000);
+        }
+    } catch (e) { /* non-critical */ }
 });
 

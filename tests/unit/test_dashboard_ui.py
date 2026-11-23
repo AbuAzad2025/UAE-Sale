@@ -33,6 +33,14 @@ def test_theme_toggle_in_navbar():
     assert "navbarWidgets.appendChild(toggleButton)" not in js
 
 
+def test_no_floating_help_button_and_safe_modal():
+    js = open(os.path.join(ROOT, "static", "js", "keyboard-shortcuts.js"), encoding="utf-8").read()
+    assert "shortcuts-help-btn" not in js
+    assert "shortcuts-nav-btn" in js
+    assert "typeof $ === 'undefined'" in js  # modal guarded
+    assert "typeof notify !== 'undefined'" in js  # first-load tip guarded
+
+
 def test_tenant_logo_in_shell_but_platform_logo_in_footer():
     src = open(os.path.join(ROOT, "templates", "base.html"), encoding="utf-8").read()
     assert "_tenant_logo" in src

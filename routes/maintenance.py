@@ -649,6 +649,7 @@ def print_intake(id):
         order=order,
         tenant=tenant,
         back_url=url_for("maintenance.view_order", id=order.id),
+        current_year=__import__('datetime').datetime.now().year,
         **_print_context(order, "maintenance_intake", order.id),
     )
 

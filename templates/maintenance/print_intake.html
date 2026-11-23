@@ -6,31 +6,39 @@
 
 {% block extra_print_css %}
 <style>
-  .invoice-header { text-align: center; }
-  .company-name { font-size: 12px; font-weight: 700; }
-  .company-info { font-size: 11px; opacity: .95; line-height: 1.5; }
-  .invoice-title { background: #f8f9fa; padding: 10px 15px; text-align: center;
-    border-bottom: 2px solid {{ settings.accent_color if settings else '#764ba2' }}; }
-  .invoice-title h2 { color: {{ settings.header_color if settings else '#667eea' }}; font-size: 15px; margin: 0; }
-  .invoice-number { color: {{ settings.accent_color if settings else '#764ba2' }}; font-size: 11px; margin-top: 4px; }
-  .content { padding: 12px 20px; }
-  .warning { border: 2px solid #a66b00; background: #fff8e6; padding: 10px 12px;
-    margin-bottom: 12px; border-radius: 6px; font-size: 11px; line-height: 1.6; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .info-box { background: #f8f9fa; padding: 8px 10px; border-radius: 6px;
-    border-inline-start: 3px solid {{ settings.accent_color if settings else '#764ba2' }}; }
-  .info-box h3 { color: {{ settings.header_color if settings else '#667eea' }}; margin: 0 0 5px; font-size: 11px; }
-  .info-box p { margin: 3px 0; color: #555; font-size: 11px; }
-  .info-box p strong { color: #222; }
+  .receipt-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: #fff; padding: 15px 20px; text-align: center;
+  }
+  .company-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .company-info { font-size: 12px; opacity: .95; line-height: 1.6; }
+  .receipt-title {
+    background: linear-gradient(to bottom, #d4edda 0%, #c3e6cb 100%);
+    padding: 12px 15px; text-align: center; border-bottom: 2px solid #28a745;
+  }
+  .receipt-title h2 { color: #155724; font-size: 17px; margin: 0; }
+  .receipt-number { color: #1a7f37; font-size: 13px; margin-top: 6px; font-weight: 700; }
+  .content { padding: 16px 22px; }
+  .warning { border: 2px solid #a66b00; background: #fff8e6; padding: 12px 14px;
+    margin-bottom: 14px; border-radius: 6px; font-size: 13px; line-height: 1.7; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .info-box { background: #f8f9fa; padding: 12px 14px; border-radius: 8px;
+    border-inline-start: 4px solid #28a745; }
+  .info-box h3 { color: #155724; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+  .info-box p { margin: 6px 0; color: #333; font-size: 13px; line-height: 1.5; }
+  .info-box p strong { color: #155724; }
   .problem { white-space: pre-wrap; }
-  .signatures { display: flex; justify-content: space-between; gap: 32px; margin-top: 38px; }
-  .signature { flex: 1; border-top: 1px solid #555; padding-top: 8px; text-align: center; font-size: 11px; color: #555; }
+  .signatures { display: flex; justify-content: space-between; gap: 40px; margin-top: 55px; }
+  .signature { flex: 1; border-top: 2px dashed #28a745; padding-top: 10px;
+    text-align: center; font-size: 13px; color: #555; }
+  .device-tag { display:inline-block; background:#28a745; color:#fff; padding:3px 10px;
+    border-radius:12px; font-size:12px; font-weight:700; margin-top:6px; }
 </style>
 {% endblock %}
 
 {% block document_content %}
 <div class="receipt">
-  <div class="invoice-header">
+  <div class="receipt-header">
     <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
@@ -39,9 +47,9 @@
     </div>
   </div>
 
-  <div class="invoice-title">
+  <div class="receipt-title">
     <h2>{{ t("Device Intake Voucher for Maintenance") }}</h2>
-    <div class="invoice-number">
+    <div class="receipt-number">
       {{ t("Order Number") }}: {{ order.order_no }}
       &nbsp;|&nbsp; {{ t("Intake Date") }}: {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}
     </div>
@@ -60,6 +68,7 @@
         <p><strong>{{ t("Phone") }}:</strong> {{ order.customer.phone or '-' }}</p>
         <p><strong>{{ t("Received By") }}:</strong> {{ (order.received_by_user.full_name or order.received_by_user.username) if order.received_by_user and order.received_by_user.tenant_id == order.tenant_id else '-' }}</p>
         <p><strong>{{ t("Priority") }}:</strong> {{ _prio.get(order.priority, order.priority) }}</p>
+        <span class="device-tag">{{ t("Warranty") }}: {{ {'under_warranty': t('Under Warranty'), 'out_of_warranty': t('Out of Warranty'), 'expired': t('Expired'), 'void': t('Void'), 'unknown': t('Unknown')}.get(order.warranty_status, order.warranty_status) if order.warranty_status else '-' }}</span>
       </div>
       <div class="info-box">
         <h3>{{ t("Device Details") }}</h3>
@@ -76,8 +85,11 @@
     </div>
   </div>
 
-  <div class="invoice-footer" style="text-align:center; font-size:11px; color:#666; padding:10px;">
+  <div class="receipt-footer" style="text-align:center; font-size:13px; color:#fff; padding:12px; background:#28a745;">
     {{ t("Device intake voucher — no financial value. Revenue and collection are recorded in their own documents.") }}
   </div>
+  <p class="azad_invoice_footer" style="font-size:12px;color:#999;margin-top:8px;text-align:center;">
+    {{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}
+  </p>
 </div>
 {% endblock %}

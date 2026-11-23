@@ -12,7 +12,7 @@ def _read(rel):
 
 
 def test_maintenance_print_templates_extend_unified_print_shell():
-    for name in ('print_invoice.html', 'print_receipt.html', 'print_intake.html'):
+    for name in ('print_receipt.html', 'print_intake.html'):
         src = _read(f'templates/maintenance/{name}')
         assert src.startswith('{% extends \'base_print.html\' %}'), name
         # tenant brand header + WhatsApp QR come from the shared shell
@@ -20,6 +20,16 @@ def test_maintenance_print_templates_extend_unified_print_shell():
         # no leftover inline app-shell print styles
         assert '{% extends \'base.html\' %}' not in src, name
         assert 'window.print();' not in src, name  # toolbar handles printing
+
+
+def test_maintenance_invoice_reuses_sales_invoice_template():
+    src = _read('routes/maintenance.py')
+    assert 'invoices/modern.html' in src
+    assert '_maintenance_invoice_as_sale' in src
+    assert 'document_label' in src
+    # the sales template supports a document label without hard-coding Sales
+    modern = _read('templates/invoices/modern.html')
+    assert 'document_label or t("Sales Invoice")' in modern
 
 
 def test_maintenance_print_routes_pass_tenant_branding_context():

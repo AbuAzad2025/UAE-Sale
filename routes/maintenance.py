@@ -678,6 +678,57 @@ def print_receipt(id):
     )
 
 
+def _maintenance_invoice_as_sale(order):
+    """Project a maintenance invoice into the sales-invoice print data shape.
+
+    This lets the maintenance invoice reuse invoices/modern.html verbatim, so
+    its typography, header, QR placement and page fill are identical to sales.
+    """
+    from types import SimpleNamespace as NS
+
+    inv = order.invoice
+    lines = []
+    for it in order.items:
+        lines.append(NS(
+            product=NS(name=it.product.name if it.product and it.product.tenant_id == order.tenant_id else '-'),
+            quantity=it.quantity or 0,
+            unit_price=it.unit_price or 0,
+            line_total=it.line_total or 0,
+            tax_treatment='standard',
+        ))
+    for sv in order.services:
+        name = (sv.service_name_ar if getattr(sv, 'service_name_ar', None) else sv.service_name)
+        lines.append(NS(
+            product=NS(name=name or '-'),
+            quantity=sv.quantity or 1,
+            unit_price=sv.unit_price or 0,
+            line_total=sv.line_total or 0,
+            tax_treatment='standard',
+        ))
+    taxable = (inv.subtotal or 0) - (inv.discount_total or 0)
+    rate = round(float(inv.tax_amount or 0) / float(taxable) * 100, 2) if taxable else 0
+    return NS(
+        sale_number=inv.invoice_no,
+        customer=NS(
+            name=order.customer.name if order.customer else '-',
+            phone=order.customer.phone if order.customer else '-',
+            address=order.customer.address if order.customer else '-',
+            tax_number=getattr(order.customer, 'tax_number', None) if order.customer else None,
+        ),
+        sale_date=inv.posted_at,
+        lines=lines,
+        currency=order.currency or 'AED',
+        subtotal=inv.subtotal or 0,
+        discount_total=inv.discount_total or 0,
+        tax_amount=inv.tax_amount or 0,
+        total_amount=inv.total_amount or 0,
+        tax_treatment='standard',
+        tax_inclusive=bool(getattr(order, 'tax_inclusive', False)),
+        tax_rate=rate,
+        payments=[],
+    )
+
+
 @maintenance_bp.route("/<int:id>/print-invoice")
 @login_required
 @permission_required("maintenance_view")
@@ -685,12 +736,21 @@ def print_invoice(id):
     order = _order_or_404(id)
     if not order.invoice:
         abort(404)
+    from config import Config
+    ctx = _print_context(order, "maintenance_invoice", order.invoice.id)
+    ctx['settings'].active_template = 'modern'
+    from utils.i18n import t as _t
     return render_template(
-        "maintenance/print_invoice.html",
-        order=order,
-        tenant=db.session.get(Tenant, _tenant_id()),
+        "invoices/modern.html",
+        sale=_maintenance_invoice_as_sale(order),
+        document_label=_t("Maintenance Invoice"),
+        base_currency=order.currency or 'AED',
+        current_year=__import__('datetime').datetime.now().year,
+        available_templates=[("modern", _t("Modern"))],
+        current_template="modern",
         back_url=url_for("maintenance.view_order", id=order.id),
-        **_print_context(order, "maintenance_invoice", order.invoice.id),
+        **{k: v for k, v in ctx.items()
+           if k not in ('available_templates', 'current_template')},
     )
 
 

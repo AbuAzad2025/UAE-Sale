@@ -265,7 +265,7 @@
         </div>
         <div class="info">
           <a href="#" class="d-block text-white">{{ t('Account') }}</a>
-          <small class="text-white-50">{{ current_user.role.name_ar if current_user.role else t('User') }}</small>
+          <small class="text-white-50">{{ (current_user.role.name if current_language == 'en' and current_user.role.name else (current_user.role.name_ar or current_user.role.name)) if current_user.role else t('User') }}</small>
         </div>
       </div>
 

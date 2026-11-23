@@ -3,7 +3,7 @@
 {% set _m_payment = {'cash': t('Cash'), 'card': t('Card'), 'cheque': t('Cheque'), 'transfer': t('Bank Transfer'), 'account': t('On Account')} %}
 {% set _m_warranty = {'under_warranty': t('Under Warranty'), 'out_of_warranty': t('Out of Warranty'), 'expired': t('Expired'), 'void': t('Void'), 'unknown': t('Unknown')} %}
 
-{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or '' }} - {{ t("Maintenance Invoice") }} #{{ order.invoice.invoice_no if order.invoice else order.order_no }}{% endblock %}
+{% block print_title %}{{ (settings.company_name_en if current_language == 'en' and settings.company_name_en else (settings.company_name_ar or settings.company_name_en or '')) }} - {{ t("Maintenance Invoice") }} #{{ order.invoice.invoice_no if order.invoice else order.order_no }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -38,7 +38,7 @@
 {% block document_content %}
 <div class="invoice">
   <div class="invoice-header">
-    <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
+    <div class="company-name">{{ (settings.company_name_en if current_language == 'en' and settings.company_name_en else (settings.company_name_ar or settings.company_name_en or '')) }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
       <div>{{ settings.phone_1 or '' }}</div>

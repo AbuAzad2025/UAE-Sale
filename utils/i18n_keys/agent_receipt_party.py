@@ -28,4 +28,11 @@ TRANSLATIONS = {
     "Customer & Intake": {"ar": "العميل والاستلام", "en": "Customer & Intake"},
     "VAT": {"ar": "ضريبة القيمة المضافة", "en": "VAT"},
     "Maintenance Receipt Voucher": {"ar": "سند قبض صيانة", "en": "Maintenance Receipt Voucher"},
+    "Taxable": {"ar": "خاضع للضريبة", "en": "Taxable"},
+    "Payment Details": {"ar": "بيانات الدفع", "en": "Payment Details"},
+    "Supplier / Entity Name": {"ar": "اسم المستفيد / الجهة", "en": "Supplier / Entity Name"},
+    "User": {"ar": "المستخدم", "en": "User"},
+    "Arabic Description": {"ar": "الوصف بالعربية", "en": "Arabic Description"},
+    "Arabic description (optional)": {"ar": "وصف عربي (اختياري)", "en": "Arabic description (optional)"},
+    "Arabic description...": {"ar": "وصف عربي...", "en": "Arabic description..."},
 }

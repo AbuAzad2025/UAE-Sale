@@ -448,5 +448,12 @@
   "❌ يرجى اختيار جدول واحد على الأقل!": "❌ Please select at least one table!",
   "❌ يرجى ملء جميع الحقول": "❌ Please fill in all fields",
   "🔄 جاري التحويل إلى PostgreSQL...": "🔄 Converting to PostgreSQL...",
-  "🔍 أنت الآن في سياق دعم: {tenant.name_ar or tenant.name} (كل إجراء مشمول بالتدقيق).": "🔍 You are now in a support context: {tenant.name_ar or tenant.name} (all actions are audited)."
+  "🔍 أنت الآن في سياق دعم: {tenant.name_ar or tenant.name} (كل إجراء مشمول بالتدقيق).": "🔍 You are now in a support context: {tenant.name_ar or tenant.name} (all actions are audited).",
+  "✅ تم أرشفة المصروف": "✅ Expense archived",
+  "❌ تعذرت أرشفة المصروف": "❌ Could not archive the expense",
+  "✅ تمت استعادة المصروف": "✅ Expense restored",
+  "❌ تعذرت استعادة المصروف": "❌ Could not restore the expense",
+  "اسم الفئة مطلوب": "Category name is required",
+  "حساب الأستاذ غير صالح أو حساب رئيسي": "GL account is invalid or is a header account",
+  "حساب الأستاذ مطلوب لفئة المصروف": "A GL account is required for the expense category"
 }

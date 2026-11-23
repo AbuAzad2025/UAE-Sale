@@ -214,11 +214,14 @@ def create():  # noqa: C901
                 "❌ مبلغ المصروف غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.",
                 "danger",
             )
-        except Exception as e:
+        except ValueError as e:
+            db.session.rollback()
+            flash(f"❌ {e}", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
             flash(
-                f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "❌ حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
                 "danger",
             )
 
@@ -656,10 +659,22 @@ def create_category():
         if ExpenseCategory.query.filter_by(name=name).first():
             raise ValueError(f'فئة المصروف "{name}" موجودة مسبقاً')
 
+        # An expense category must point to a real, non-header GL account.
+        # Without this check the category is created but every expense using
+        # it later fails at posting with "GL account not found".
+        gl_code = (data.get("gl_account_code") or "").strip()
+        from models.gl import GLAccount
+
+        # Empty code is allowed: build_expense_gl_lines falls back to 6990.
+        if gl_code:
+            account = GLAccount.query.filter_by(code=gl_code).first()
+            if account is None or account.is_header:
+                raise ValueError(f"حساب الأستاذ {gl_code} غير صالح أو حساب رئيسي")
+
         category = ExpenseCategory(
             name=name,
             name_ar=data.get("name_ar"),
-            gl_account_code=data.get("gl_account_code"),
+            gl_account_code=gl_code or None,
         )
 
         db.session.add(category)
@@ -684,14 +699,18 @@ def create_category():
     except Exception as e:
         db.session.rollback()
 
+        reason = str(e) if isinstance(e, ValueError) else "حدث خطأ غير متوقع"
         if request.is_json:
-            return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 400
+            return jsonify({"success": False, "error": reason}), 400
 
-        current_app.logger.exception("handler failed")
-        flash(
-            f"❌ حدث خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
-            "danger",
-        )
+        if isinstance(e, ValueError):
+            flash(f"❌ {reason}", "danger")
+        else:
+            current_app.logger.exception("handler failed")
+            flash(
+                "❌ حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "danger",
+            )
         return redirect(url_for("expenses.categories"))
 
 
@@ -709,8 +728,17 @@ def archived():
 
     archived_items = []
 
+    from utils.i18n import get_current_language
+
     for archived in archived_expenses_query.all():
         data = archived.data
+        # Older snapshots store the key as "category", newer ones as
+        # "category_name". Resolve either, and prefer the Arabic label.
+        cat_name = data.get("category_name") or data.get("category")
+        if cat_name and get_current_language() == "ar":
+            cat = ExpenseCategory.query.filter_by(name=cat_name).first()
+            if cat and cat.name_ar:
+                cat_name = cat.name_ar
         archived_items.append(
             {
                 "id": archived.record_id,
@@ -720,7 +748,7 @@ def archived():
                 )
                 if isinstance(data.get("expense_date"), str)
                 else data.get("expense_date"),  # noqa: E501
-                "category_name": data.get("category_name"),
+                "category_name": cat_name,
                 "description": data.get("description"),
                 "amount": float(data.get("amount", 0)),
                 "currency": data.get("currency"),
@@ -747,8 +775,11 @@ def archive(id):
         archive_service = ArchiveService()
         archive_service.archive_record("expenses", expense, reason="تم أرشفة المصروف")
         create_audit_log("archive", "expenses", expense.id)
+        flash("✅ تم أرشفة المصروف", "success")
     except Exception:
         db.session.rollback()
+        current_app.logger.exception("expense archive failed")
+        flash("❌ تعذرت أرشفة المصروف", "danger")
 
     return redirect(url_for("expenses.index"))
 
@@ -768,7 +799,10 @@ def restore(id):
         db.session.delete(archived)
         db.session.commit()
         create_audit_log("restore", "expenses", id)
+        flash("✅ تمت استعادة المصروف", "success")
     except Exception:
         db.session.rollback()
+        current_app.logger.exception("expense restore failed")
+        flash("❌ تعذرت استعادة المصروف", "danger")
 
     return redirect(url_for("expenses.archived"))

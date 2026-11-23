@@ -2,7 +2,7 @@
 
 {% set _prio = {'urgent': t('Urgent'), 'normal': t('Normal'), 'low': t('Low')} %}
 
-{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or '' }} - {{ t("Device Intake") }} #{{ order.order_no }}{% endblock %}
+{% block print_title %}{{ (settings.company_name_en if current_language == 'en' and settings.company_name_en else (settings.company_name_ar or settings.company_name_en or '')) }} - {{ t("Device Intake") }} #{{ order.order_no }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -39,7 +39,7 @@
 {% block document_content %}
 <div class="receipt">
   <div class="receipt-header">
-    <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
+    <div class="company-name">{{ (settings.company_name_en if current_language == 'en' and settings.company_name_en else (settings.company_name_ar or settings.company_name_en or '')) }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
       <div>{{ settings.phone_1 or '' }}</div>

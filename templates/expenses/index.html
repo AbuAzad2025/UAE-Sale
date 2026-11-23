@@ -47,7 +47,7 @@
                     {% for expense in expenses %}
                     <tr>
                         <td>{{ expense.expense_number }}</td>
-                        <td><span class="badge badge-primary">{{ expense.category.name }}</span></td>
+                        <td><span class="badge badge-primary">{{ (expense.category.name_ar if current_language == 'ar' and expense.category.name_ar else expense.category.name) if expense.category else t('Not Specified') }}</span></td>
                         <td>{{ expense.description or '-' }}</td>
                         <td>{{ '{:,.2f}'.format(expense.amount) }}</td>
                         <td>{{ expense.currency }}</td>

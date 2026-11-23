@@ -45,4 +45,4 @@ def test_no_platform_identity_hardcoded():
 
 def test_print_body_readable_font():
     src = open(os.path.join(ROOT, "templates", "base_print.html"), encoding="utf-8").read()
-    assert "font-size: 11px" in src
+    assert "font-size: 14px" in src

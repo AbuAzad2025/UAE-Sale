@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}{{ t("Azad Smart Systems - Sales Invoice") }} #{{ sale.sale_number }}{% endblock %}
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or "" }} - {{ t("Invoice") }} #{{ sale.sale_number }}{% endblock %}
 
 {% block extra_print_css %}
 <style>
@@ -74,7 +74,7 @@
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
-      <div> {{ settings.phone_1 or '' }} |  {{ settings.email or '' }}</div>
+      <div> {{ settings.phone_1 or '' }}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div>{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
@@ -138,7 +138,7 @@
         <span>{{ t("Grand Total") }}:</span>
         <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}</strong>
       </div>
-    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+    <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>
     </div>
@@ -184,13 +184,6 @@
           {% endfor %}
         </tbody>
       </table>
-    </div>
-    {% endif %}
-
-    {% if settings and settings.enable_qr_code %}
-    <div class="qr-code text-center">
-      <i class="fas fa-qrcode" style="font-size: 50px; color: #ddd;"></i>
-      <p style="font-size: 11px; color: #999;">{{ t("Scan for electronic payment") }}</p>
     </div>
     {% endif %}
   </div>
@@ -249,11 +242,7 @@
         <i class="fab fa-instagram"></i> Instagram
       </a>
       {% endif %}
-      {% if settings.whatsapp_number %}
-      <a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: #25d366; text-decoration: none; font-size: 11px;">
-        <i class="fab fa-whatsapp"></i> WhatsApp
-      </a>
-      {% endif %}
+      
     </div>
     {% endif %}
   </div>

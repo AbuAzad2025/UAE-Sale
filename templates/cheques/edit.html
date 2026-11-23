@@ -139,7 +139,7 @@
             <div class="form-group">
               <label><i class="fas fa-user"></i> {{ t('Customer (optional)') }}:</label>
               <select name="customer_id" class="form-control customer-select">
-                <option value="">{{ t('None') }}</option>
+                <option value="">{{ t('All') }}</option>
                 {% for customer in customers %}
                 <option value="{{ customer.id }}" {% if cheque.customer_id == customer.id %}selected{% endif %}>
                   {{ customer.name }}
@@ -175,7 +175,7 @@
             <div class="form-group">
               <label><i class="fas fa-truck"></i> {{ t('Supplier (optional)') }}:</label>
               <select name="supplier_id" class="form-control supplier-select">
-                <option value="">{{ t('None') }}</option>
+                <option value="">{{ t('All') }}</option>
                 {% for supplier in suppliers %}
                 <option value="{{ supplier.id }}" {% if cheque.supplier_id == supplier.id %}selected{% endif %}>
                   {{ supplier.name }}

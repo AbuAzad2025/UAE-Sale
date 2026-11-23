@@ -527,7 +527,7 @@ def bounce_cheque(id):
 
 @cheques_bp.route("/<int:id>/cancel", methods=["POST"])
 @login_required
-@admin_required
+@permission_required("manage_payments")
 def cancel(id):
     """إلغاء الشيك"""
     cheque = get_owned_or_404(Cheque, id)
@@ -545,7 +545,12 @@ def cancel(id):
         cheque.cancel_cheque(reason)
         db.session.commit()
 
-        create_audit_log("cancel", "cheques", id)
+        create_audit_log(
+            "cancel",
+            "cheques",
+            id,
+            f"إلغاء شيك رقم {cheque.cheque_bank_number} — السبب: {reason or 'غير محدد'}",
+        )
 
         flash(f"✅ تم إلغاء الشيك {cheque.cheque_bank_number}", "success")
 

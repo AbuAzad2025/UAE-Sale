@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}{{ t("Azad Smart Systems - Sales Invoice") }} #{{ sale.sale_number }}{% endblock %}
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or "" }} - {{ t("Invoice") }} #{{ sale.sale_number }}{% endblock %}
 
 {% block extra_print_css %}
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
@@ -35,9 +35,6 @@
 
 {% block document_content %}
 <div class="invoice">
-  <div class="no-print" style="text-align: center; margin-bottom: 8px;">
-    <button onclick="window.print()" style="background: #333; color: white; border: none; padding: 10px 25px; border-radius: 5px; font-size: 11px; cursor: pointer;">{{ t("Print") }}</button>
-  </div>
 
   <div class="invoice-header">
     {% if settings and settings.show_logo and settings.logo_url %}
@@ -47,7 +44,7 @@
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
       <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-      <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
+      <div>  {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div>{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
@@ -123,7 +120,7 @@
       <span>{{ t("Grand Total") }}:</span>
       <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
     </div>
-    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+    <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>
   </div>
@@ -207,7 +204,7 @@
     <div style="margin-top: 8px; font-size: 11px;">
       {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 3px; color: #1877f2;">Facebook</a>{% endif %}
       {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 3px; color: #e4405f;">Instagram</a>{% endif %}
-      {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 3px; color: #25d366;">WhatsApp</a>{% endif %}
+      
     </div>
     {% endif %}
   </div>

@@ -149,6 +149,17 @@
                     </small>
                   </div>
                 </div>
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label><i class="fab fa-whatsapp text-success"></i> {{ t('WhatsApp Number') }}</label>
+                    <input type="text" class="form-control" name="whatsapp_number"
+                           value="{{ settings.whatsapp_number or '' }}"
+                           placeholder="970562150193">
+                    <small class="form-text text-muted">
+                       {{ t('Shown as a quick action next to the QR on invoices and receipts') }}
+                    </small>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -1197,7 +1197,7 @@
         </div>
 
         <div class="footer-inline-meta">
-          <span class="footer-copyright">&copy; {{ current_year }} {{ config.COMPANY_NAME or 'Azad Smart Systems' }}</span>
+          <span class="footer-copyright">&copy; {{ current_year }} {{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
           <span class="footer-version">v{{ config.APP_VERSION }}</span>
         </div>
       </div>

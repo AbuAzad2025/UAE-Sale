@@ -33,9 +33,6 @@
 
 {% block document_content %}
 <div class="invoice">
-  <div class="no-print" style="text-align: center; margin-bottom: 10px;">
-    <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 8px 20px; cursor: pointer; border-radius: 3px;">{{ t("Print") }}</button>
-  </div>
 
   <div class="invoice-header">
     {% if settings and settings.show_logo and settings.logo_url %}
@@ -45,7 +42,7 @@
     <div class="company-info">
       {{ settings.address_ar or '' }}<br>
        {{ settings.phone_1 or '' }}
-      {% if settings and settings.email %} •  {{ settings.email }}{% endif %}
+      
     </div>
   </div>
 
@@ -101,7 +98,7 @@
       <span>{{ t("Total Amount") }}:</span>
       <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
     </div>
-    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+    <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>
   </div>

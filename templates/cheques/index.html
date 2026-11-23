@@ -221,9 +221,11 @@
           <tr class="{% if cheque.is_overdue %}table-danger{% elif cheque.is_due_soon %}table-warning{% endif %}">
             <td>
               <a href="{{ url_for('cheques.view', id=cheque.id) }}" class="font-weight-bold">
-                {{ cheque.cheque_bank_number }}
+                {{ cheque.cheque_number }}
               </a>
-              <br><small class="text-muted">{{ cheque.cheque_number }}</small>
+              {% if cheque.cheque_bank_number and cheque.cheque_bank_number != cheque.cheque_number %}
+              <br><small class="text-muted">{{ cheque.cheque_bank_number }}</small>
+              {% endif %}
             </td>
             <td>
               {% if cheque.cheque_type == 'incoming' %}
@@ -237,20 +239,20 @@
               {% endif %}
             </td>
             <td>
-              <strong>{{ cheque.bank_name }}</strong>
+              <strong>{{ cheque.bank_name or '-' }}</strong>
               {% if cheque.bank_branch %}
-              <br><small class="text-muted">{{ cheque.bank_branch }}</small>
+              <br><small class="text-muted">{{ cheque.bank_branch or '-' }}</small>
               {% endif %}
             </td>
             <td>
               {% if cheque.cheque_type == 'incoming' %}
-                {{ cheque.drawer_name or '-' }}
-                {% if cheque.customer %}
+                {{ cheque.drawer_name or (cheque.customer.name if cheque.customer else '-') }}
+                {% if cheque.customer and cheque.drawer_name and cheque.drawer_name != cheque.customer.name %}
                 <br><small class="text-muted"><i class="fas fa-user"></i> {{ cheque.customer.name }}</small>
                 {% endif %}
               {% else %}
-                {{ cheque.payee_name or '-' }}
-                {% if cheque.supplier %}
+                {{ cheque.payee_name or (cheque.supplier.name if cheque.supplier else '-') }}
+                {% if cheque.supplier and cheque.payee_name and cheque.payee_name != cheque.supplier.name %}
                 <br><small class="text-muted"><i class="fas fa-truck"></i> {{ cheque.supplier.name }}</small>
                 {% endif %}
               {% endif %}

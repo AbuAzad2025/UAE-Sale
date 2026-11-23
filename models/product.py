@@ -102,7 +102,7 @@ class Product(TenantScopedMixin, db.Model):
 
     tax_treatment = db.Column(db.String(10), default="standard")
 
-    average_cost = db.Column(db.Numeric(15, 3), default=0, nullable=False)
+    average_cost = db.Column(db.Numeric(18, 6), default=0, nullable=False)
 
     current_stock = db.Column(db.Numeric(15, 3), default=0, nullable=False)
     min_stock_alert = db.Column(db.Numeric(15, 3), default=0)

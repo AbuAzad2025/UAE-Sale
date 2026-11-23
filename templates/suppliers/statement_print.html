@@ -45,7 +45,7 @@
     <div class="st-co-info">
       {{ settings.address_ar or '' }}
       {% if settings.phone_1 %} | {{ settings.phone_1 }}{% endif %}
-      {% if settings.email %} | {{ settings.email }}{% endif %}
+      
       {% if settings.tax_number and settings.tax_number != 'None' %} | {{ t('Tax Number') }}: {{ settings.tax_number }}{% endif %}
     </div>
   </div>

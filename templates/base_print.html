@@ -4,15 +4,147 @@
   <meta charset="UTF-8">
   <title>{% block print_title %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
+  {# Tenant brand header inputs (logo + RTL-aware monogram) #}
+  {% set _hname = (settings.company_name_en if current_language == 'en' and settings.company_name_en else (settings.company_name_ar or settings.company_name_en or '')) %}
+  {% set _hwords = _hname.replace('شركة', '').replace('Company', '').split() %}
+  {% set _mono = ((_hwords[0][:2] if _hwords else 'A')|upper) %}
+  {% set _brand_display = (_hwords|join(' ') if _hwords else _hname) %}
+  {% if settings and settings.show_logo and settings.logo_url %}
+    {% set _logo_src = settings.logo_url if settings.logo_url.startswith(('https://','http://','/')) else url_for('static', filename=settings.logo_url) %}
+  {% else %}
+    {% set _logo_src = none %}
+  {% endif %}
+  {# Self-contained verification QR — tenant identity only, no platform data #}
+  {% set _qr_url = qr_data_url(document_payload(document_type, document_id, settings)) if (settings and settings.enable_qr_code) else none %}
+  {# Tenant WhatsApp quick-action (editable from letterhead settings) #}
+  {% set _wa_digits = (settings.whatsapp_number|replace(' ','')|replace('-','')|replace('+','')) if (settings and settings.whatsapp_number and settings.whatsapp_number != 'None') else '' %}
+  {% set _wa_url = ('https://wa.me/' ~ _wa_digits) if _wa_digits else '' %}
+  {# Scannable WhatsApp QR printed on the document so a customer holding the
+     paper can scan it with WhatsApp and start a chat with the TENANT. #}
+  {% set _wa_qr_url = qr_data_url(_wa_url) if _wa_url else none %}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
+    /* ---- Tenant brand header: 3-part layout, direction aware ----
+       inline-start = company name stacked ABOVE the logo,
+       center = company contact details, inline-end = verification QR.
+       Logical properties mirror automatically for RTL/LTR. */
+    .document .receipt-header,
+    .document .invoice-header,
+    .document .purchase-header,
+    .document .header {
+      position: relative;
+      padding-inline: 125px;
+    }
+    .tenant-brand {
+      position: absolute;
+      inset-inline-start: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 120px;
+      padding: 5px 6px 6px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.16);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      text-align: center;
+      z-index: 2;
+    }
+    .tenant-brand-name {
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #075c2e;
+      letter-spacing: 0;
+    }
+    .tenant-brand-logo {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    }
+    /* One name only: the template's own company-name is replaced by the
+       shared brand block. Same for its per-template logo image. */
+    .document .receipt-header .company-name,
+    .document .invoice-header .company-name,
+    .document .purchase-header .company-name,
+    .document .header .company-name,
+    .document .receipt-header .logo,
+    .document .invoice-header .logo,
+    .document .purchase-header .logo,
+    .document .header .logo { display: none !important; }
+    .document .receipt-header::after,
+    .document .invoice-header::after,
+    .document .purchase-header::after,
+    .document .header::after {
+      {% if _qr_url %}
+      content: '';
+      background-image: url('{{ _qr_url }}');
+      {% else %}
+      content: '';
+      {% endif %}
+      position: absolute;
+      inset-inline-end: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 58px;
+      height: 58px;
+      background-color: #ffffff;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      z-index: 2;
+    }
+
+    /* Printed WhatsApp QR lives in the FOOTER — a customer holding the paper
+       scans it with WhatsApp to chat with the tenant. */
+    .document .receipt-footer,
+    .document .invoice-footer,
+    .document .footer { position: relative; }
+    .tenant-wa-qr {
+      position: absolute;
+      inset-inline-end: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 54px;
+      height: 54px;
+      background: #ffffff;
+      padding: 3px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      border: 1px solid rgba(0,0,0,0.12);
+      z-index: 3;
+    }
+    .tenant-wa-qr img { width: 100%; height: 100%; display: block; }
+    .tenant-wa-qr .wa-tag {
+      position: absolute;
+      inset-inline-start: 50%;
+      bottom: -7px;
+      transform: translateX(-50%);
+      background: #25D366;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
     body {
       font-family: 'Tajawal', 'Arial', sans-serif;
       background: #f5f5f5;
       padding: 0;
       margin: 0;
-      font-size: 11px;
+      font-size: 14px;
       min-height: 100vh;
     }
     
@@ -62,19 +194,64 @@
     }
     
     @media print {
+      /* Browsers drop background graphics by default; the tenant brand must print */
+      html, body, .page-wrapper, .document, .document * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
       body { margin: 0; padding: 0; background: white; }
       .no-print { display: none !important; }
-      .document { 
-        box-shadow: none; 
-        border: none; 
+      .document {
+        box-shadow: none;
+        border: none;
         border-radius: 0;
         margin: 0 !important;
         width: 100% !important;
         max-width: none !important;
         height: auto !important;
-        min-height: 100vh;
+        min-height: 0 !important;
       }
       .page-wrapper { background: white; }
+
+      /* Repeat the tenant header and footer on EVERY printed page.
+       * Chrome/Edge print fixed-position elements on each page. Heights are
+       * measured in JS before printing so content never overlaps them. */
+      .document .receipt-header,
+      .document .invoice-header,
+      .document .purchase-header,
+      .document .header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 50 !important;
+      }
+      .document .receipt-footer,
+      .document .invoice-footer,
+      .document .footer {
+        position: fixed !important;
+        bottom: var(--repeat-azad-h, 0px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 50 !important;
+      }
+      .document .azad_invoice_footer {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 51 !important;
+      }
+      .document {
+        padding-top: var(--repeat-head-h, 0px) !important;
+        padding-bottom: var(--repeat-foot-h, 0px) !important;
+      }
+      /* Keep table rows and section blocks intact across page breaks */
+      .document tr, .document .info-box, .document .info-card,
+      .document .amount-box, .document .notes-section,
+      .document .allocations-section { break-inside: avoid; page-break-inside: avoid; }
+      .document thead { display: table-header-group; }
     }
     
     @media print {
@@ -109,41 +286,50 @@
     }
 
     .template-btn {
-      background: white;
-      border: 1px solid #ddd;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 8px;
+      background: #ffffff;
+      border: 2px solid #c7c7c7;
+      padding: 10px 18px;
+      min-width: 86px;
+      min-height: 40px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a1a1a;
       cursor: pointer;
       transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: center;
+      gap: 6px;
     }
-    
+
     .template-btn:hover {
-      background: #f8f9fa;
+      background: #eef7f1;
       border-color: #007A3D;
+      color: #007A3D;
     }
-    
+
     .template-btn.active {
       background: #007A3D;
-      color: white;
+      color: #ffffff;
       border-color: #007A3D;
+      box-shadow: 0 3px 8px rgba(0,122,61,0.3);
     }
-    
+
     .print-btn-fixed {
-      background: linear-gradient(135deg, #007A3D 0%, #1B4D89 100%);
-      color: white;
+      background: linear-gradient(135deg, #007A3D 0%, #00592b 100%);
+      color: #ffffff;
       border: none;
-      padding: 10px 24px;
-      border-radius: 6px;
-      font-size: 9px;
+      padding: 10px 22px;
+      min-height: 40px;
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 700;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
     }
     
@@ -160,14 +346,58 @@
     }
     
     .template-label {
-      font-size: 8px;
-      color: #666;
-      font-weight: 600;
+      font-size: 13px;
+      color: #333;
+      font-weight: 700;
+    }
+
+    /* Back link must match the toolbar buttons, not inherit global blue links */
+    a.print-btn-fixed,
+    a.print-btn-fixed:hover,
+    a.print-btn-fixed:focus,
+    a.print-btn-fixed:visited {
+      color: #ffffff !important;
+      text-decoration: none !important;
+    }
+
+    /* ---- Real print preview ---- */
+    body.preview-mode {
+      background: #e9edf2;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body.preview-mode .print-header-bar { display: none !important; }
+    body.preview-mode main { padding: 16px !important; }
+    body.preview-mode .document {
+      margin: 0 auto !important;
+      box-shadow: 0 3px 14px rgba(0,0,0,.18) !important;
+      border-radius: 0 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .preview-modal {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #e9edf2; display: flex; flex-direction: column;
+    }
+    .preview-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 10px 18px; background: #007A3D; color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    .preview-bar .preview-title { font-size: 15px; font-weight: 700; }
+    .preview-bar button {
+      background: #fff; color: #007A3D; border: none; border-radius: 6px;
+      padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .preview-bar button:hover { background: #eaf6ee; }
+    .preview-frame { flex: 1; width: 100%; border: none; background: #e9edf2; }
+    @media print {
+      .preview-modal { display: none !important; }
     }
   </style>
   {% block extra_print_css %}{% endblock %}
 </head>
-<body class="print-body">
+<body class="print-body{% if request.args.get('preview') %} preview-mode{% endif %}">
   <div class="page-wrapper">
     
     {# Auto back link: /<doc>/<id>/print -> /<doc>/<id>. Routes may still pass
@@ -195,8 +425,22 @@
         <button type="button" class="print-btn-fixed" onclick="window.print()">
           <i class="fas fa-print"></i> {{ t('Print') }}
         </button>
+        <button type="button" class="print-btn-fixed" onclick="openPrintPreview()" style="background:#1B4D89;">
+          <i class="fas fa-eye"></i> {{ t('Print Preview') }}
+        </button>
       </div>
     </header>
+
+    <div id="print-preview-modal" class="preview-modal no-print" style="display:none;">
+      <div class="preview-bar no-print">
+        <span class="preview-title">{{ t('Print Preview') }}</span>
+        <div style="display:flex; gap:10px;">
+          <button type="button" onclick="printFromPreview()"><i class="fas fa-print"></i> {{ t('Print') }}</button>
+          <button type="button" onclick="closePrintPreview()"><i class="fas fa-times"></i> {{ t('Close') }}</button>
+        </div>
+      </div>
+      <iframe id="print-preview-frame" class="preview-frame" title="{{ t('Print Preview') }}"></iframe>
+    </div>
 
     <main style="flex: 1; display: flex; justify-content: center; padding: 20px 15px;">
       <div class="document" id="document-content">
@@ -210,6 +454,51 @@
     const DOCUMENT_TYPE = "{{ document_type }}"; // 'invoice', 'receipt', 'purchase', 'expense', 'voucher'
     const DOCUMENT_ID = "{{ document_id }}";
     const CURRENT_TEMPLATE = "{{ current_template }}";
+    const TENANT_WHATSAPP_QR = "{{ _wa_qr_url or '' }}";
+    const TENANT_BRAND_NAME = {{ (_brand_display or '')|tojson }};
+    const TENANT_BRAND_LOGO = {{ (_logo_src or '')|tojson }};
+
+    /* Company name stacked above the logo, in the header's inline-start slot */
+    function injectTenantBrand() {
+      const heads = document.querySelectorAll('.document .receipt-header, .document .invoice-header, .document .purchase-header, .document .header');
+      heads.forEach(function (h) {
+        if (h.querySelector('.tenant-brand')) return;
+        var box = document.createElement('div');
+        box.className = 'tenant-brand';
+        var name = document.createElement('div');
+        name.className = 'tenant-brand-name';
+        name.textContent = TENANT_BRAND_NAME;
+        box.appendChild(name);
+        if (TENANT_BRAND_LOGO) {
+          var img = document.createElement('img');
+          img.className = 'tenant-brand-logo';
+          img.src = TENANT_BRAND_LOGO;
+          img.alt = 'Logo';
+          box.appendChild(img);
+        }
+        h.insertBefore(box, h.firstChild);
+      });
+    }
+
+    /* WhatsApp QR in the FOOTER — scannable by a customer holding the paper */
+    function injectWhatsAppQR() {
+      if (!TENANT_WHATSAPP_QR) return;
+      const foots = document.querySelectorAll('.document .receipt-footer, .document .invoice-footer, .document .footer');
+      foots.forEach(function (f) {
+        if (f.querySelector('.tenant-wa-qr')) return;
+        var box = document.createElement('div');
+        box.className = 'tenant-wa-qr';
+        var img = document.createElement('img');
+        img.src = TENANT_WHATSAPP_QR;
+        img.alt = 'WhatsApp QR';
+        box.appendChild(img);
+        var tag = document.createElement('span');
+        tag.className = 'wa-tag';
+        tag.textContent = 'WhatsApp';
+        box.appendChild(tag);
+        f.appendChild(box);
+      });
+    }
     
     function switchTemplate(templateKey) {
       document.querySelectorAll('.template-btn').forEach(btn => {
@@ -220,12 +509,55 @@
       url.searchParams.set('template', templateKey);
       window.location.href = url.toString();
     }
+
+    function openPrintPreview() {
+      const modal = document.getElementById('print-preview-modal');
+      const frame = document.getElementById('print-preview-frame');
+      if (!modal || !frame) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('preview', '1');
+      frame.src = url.toString();
+      modal.style.display = 'flex';
+    }
+
+    function closePrintPreview() {
+      const modal = document.getElementById('print-preview-modal');
+      const frame = document.getElementById('print-preview-frame');
+      if (modal) modal.style.display = 'none';
+      if (frame) frame.src = 'about:blank';
+    }
+
+    function printFromPreview() {
+      const frame = document.getElementById('print-preview-frame');
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      }
+    }
+
+    /* Measure the repeating header/footer so fixed print copies never overlap
+     * the document body (heights vary by template and tenant settings). */
+    function prepareRepeatingHeaderFooter() {
+      const doc = document.querySelector('.document');
+      if (!doc) return;
+      const head = doc.querySelector('.receipt-header, .invoice-header, .purchase-header, .header');
+      const foot = doc.querySelector('.receipt-footer, .invoice-footer, .footer');
+      const azad = doc.querySelector('.azad_invoice_footer');
+      const azadH = azad ? Math.ceil(azad.getBoundingClientRect().height) : 0;
+      doc.style.setProperty('--repeat-head-h', head ? Math.ceil(head.getBoundingClientRect().height) + 'px' : '0px');
+      doc.style.setProperty('--repeat-azad-h', azadH + 'px');
+      doc.style.setProperty('--repeat-foot-h', (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0) + azadH + 'px');
+    }
+    window.addEventListener('beforeprint', prepareRepeatingHeaderFooter);
+    document.addEventListener('DOMContentLoaded', prepareRepeatingHeaderFooter);
     
     document.addEventListener('DOMContentLoaded', function() {
       const activeBtn = document.querySelector('.template-btn.active');
       if (activeBtn) {
         activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
       }
+      injectTenantBrand();
+      injectWhatsAppQR();
     });
     
     document.addEventListener('keydown', function(e) {

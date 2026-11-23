@@ -1,44 +1,30 @@
-<!DOCTYPE html>
-<html lang="{{ current_language }}" dir="{{ "rtl" if is_rtl else "ltr" }}">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Amiri', 'Times New Roman', serif;
-      background: #7f8c8d;
-      padding: 10px;
-      margin: 0;
-      font-size: 11px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-    }
-    @page {
-      size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
+{% extends 'base_print.html' %}
+
+{% block print_title %}{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}{% endblock %}
+
+{% block extra_print_css %}
+<style>
+body { font-family: 'Amiri', 'Times New Roman', serif; font-size: 14px; }} {{ settings.orientation or 'portrait' }};
       margin: 5mm;
     }
     .receipt {
       {% if settings.paper_size == 'A5' %}
         width: 212mm;
-        height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
+        min-height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
       {% elif settings.paper_size == 'Letter' %}
         width: 212mm;
-        height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
+        min-height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
       {% else %}
         width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
-        height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
+        min-height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
       {% endif %}
+      height: auto;
       margin: 0 auto;
       background: white;
       border: 3px double #333;
       padding: 10px;
-      box-shadow: 0 0 25px rgba(0,0,0,0.4);
-      overflow: auto;
+      
+      
     }
     .header {
       text-align: center;
@@ -139,19 +125,19 @@
       border-bottom: 1px dashed #daa520;
     }
     .cheque-row:last-child { border-bottom: none; }
-    .cheque-row label { color: #856404; font-weight: 700; }
+    .cheque-row label { color: #155724; font-weight: 700; }
     .cheque-row value { color: #1a1a1a; font-weight: 700; }
     .allocations {
       margin: 20px 0;
-      border: 1px solid #007bff;
+      border: 1px solid #28a745;
       padding: 8px;
-      background: #e7f3ff;
+      background: #e8f5e9;
     }
     .allocations h4 {
-      font-size: 11px;
-      color: #004085;
+      font-size: 14px;
+      color: #155724;
       margin-bottom: 10px;
-      border-bottom: 1px solid #007bff;
+      border-bottom: 1px solid #28a745;
       padding-bottom: 8px;
     }
     .allocation-row {
@@ -159,18 +145,18 @@
       justify-content: space-between;
       padding: 6px 0;
       font-size: 11px;
-      border-bottom: 1px dashed #b8daff;
+      border-bottom: 1px dashed #c8e6c9;
     }
     .allocation-row:last-child { border-bottom: none; }
     .notes {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
       padding: 6px;
       margin: 20px 0;
     }
     .notes h4 {
       font-size: 11px;
-      color: #856404;
+      color: #155724;
       margin-bottom: 8px;
       font-weight: 700;
     }
@@ -196,20 +182,24 @@
       font-size: 11px;
       font-weight: 700;
     }
-    @media print {
-      body { padding: 0; background: white; }
       .no-print { display: none !important; }
     }
-  </style>
-</head>
-<body class="classic-receipt">
-  <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-    <button onclick="window.print()" style="background: #333; color: white; border: none; padding: 10px 25px; border-radius: 5px; font-size: 11px; cursor: pointer;">
-      {{ t("Print") }}
-    </button>
-  </div>
+  
 
-  <div class="receipt">
+    /* classic: let the outer document control pagination */
+    @media print {
+      .document .receipt {
+        border: none !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        box-shadow: none !important;
+      }
+    }
+</style>
+{% endblock %}
+
+{% block document_content %}
+<div class="receipt">
     <div class="header">
       {% if settings and settings.show_logo and settings.logo_url %}
       <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
@@ -218,7 +208,7 @@
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
         <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-        <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
+        <div>{% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>
@@ -230,10 +220,10 @@
 
     <div class="info-section">
       <div class="info-box">
-        <h3>{{ t("Customer Details") }}</h3>
-        <p><strong>{{ t("Name") }}:</strong> {{ receipt.customer.name }}</p>
-        {% if receipt.customer.phone %}<p><strong>{{ t("Phone") }}:</strong> {{ receipt.customer.phone }}</p>{% endif %}
-        {% if receipt.customer.email %}<p><strong>{{ t("Email") }}:</strong> {{ receipt.customer.email }}</p>{% endif %}
+        <h3>{{ party.label }}</h3>
+        <p><strong>{{ t("Name") }}:</strong> {{ party.name }}</p>
+        {% if party.phone %}<p><strong>{{ t("Phone") }}:</strong> {{ party.phone }}</p>{% endif %}
+        {% if party.email %}<p><strong>{{ t("Email") }}:</strong> {{ party.email }}</p>{% endif %}
       </div>
       <div class="info-box">
         <h3>{{ t("Receipt Details") }}</h3>
@@ -334,14 +324,14 @@
       
       <p>{{ settings.payment_terms_ar if settings and settings.payment_terms_ar else t('Please adhere to the payment deadlines') }}</p>
       <p style="margin-top: 8px;">{{ t("Thank you for dealing with us") }}</p>
-      {% if settings and settings.website and settings.website != 'None' %}<p style="margin-top: 5px;"> {{ settings.website }}</p>{% endif %}
+    {% if settings and settings.website and settings.website != 'None' %}<p style="margin-top: 5px;"> {{ settings.website }}</p>{% endif %}
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
       <div style="margin-top: 8px; font-size: 11px;">
         {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 3px; color: #1877f2;">FB</a>{% endif %}
         {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 3px; color: #e4405f;">IG</a>{% endif %}
-        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 3px; color: #25d366;">WA</a>{% endif %}
+        
       </div>
       {% endif %}
     </div>
@@ -365,6 +355,4 @@
     {% endif %}
 <p class="azad_invoice_footer" style="font-size: 11px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
-</body>
-</html>
-
+{% endblock %}

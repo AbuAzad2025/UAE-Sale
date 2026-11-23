@@ -1,6 +1,6 @@
 {% extends 'base_print.html' %}
 
-{% block print_title %}{{ t("Azad Smart Systems - Sales Invoice") }} #{{ sale.sale_number }}{% endblock %}
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or "" }} - {{ t("Invoice") }} #{{ sale.sale_number }}{% endblock %}
 
 {% block extra_print_css %}
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;700&display=swap" rel="stylesheet">
@@ -27,48 +27,48 @@
   }
   .invoice-title { font-size: 11px; font-weight: 700; color: {{ settings.header_color or '#c9a961' }}; margin-bottom: 3px; }
   .invoice-number { font-size: 11px; color: #666; }
-  .content { padding: 10px; }
+  .content { padding: 7px; }
   .info-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .info-box { background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%); border: 1px solid {{ settings.accent_color or '#8b7355' }}; border-radius: 5px; padding: 6px; }
   .info-box h3 { color: {{ settings.header_color or '#c9a961' }}; font-size: 11px; margin-bottom: 4px; border-bottom: 1px solid {{ settings.accent_color or '#8b7355' }}; padding-bottom: 3px; }
   .info-box p { margin: 2px 0; font-size: 11px; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0; border: 1px solid {{ settings.accent_color or '#8b7355' }}; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; margin: 5px 0; border: 1px solid {{ settings.accent_color or '#8b7355' }}; font-size: 11px; }
   thead { background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; }
-  th { padding: 5px 4px; text-align: center; font-size: 11px; font-weight: 700; }
-  td { padding: 4px; text-align: center; border-bottom: 1px solid #dee2e6; }
+  th { padding: 3px 4px; text-align: center; font-size: 11px; font-weight: 700; }
+  td { padding: 2px 4px; text-align: center; border-bottom: 1px solid #dee2e6; }
   tbody tr:nth-child(even) { background: #f8f9fa; }
   .totals {
-    margin-top: 10px;
+    margin-top: 6px;
     background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
     border: 1px solid {{ settings.accent_color or '#8b7355' }};
     border-radius: 8px;
-    padding: 8px;
+    padding: 5px;
     width: 400px;
     margin-right: 0;
     margin-left: auto;
   }
-  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; border-bottom: 1px dashed #dee2e6; }
+  .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; border-bottom: 1px dashed #dee2e6; }
   .total-row.final {
     background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%);
     color: white;
-    padding: 10px;
-    margin-top: 10px;
+    padding: 6px;
+    margin-top: 6px;
     font-size: 11px;
     font-weight: 700;
     border-radius: 5px;
     border: none;
   }
-  .payments-table { margin-top: 10px; border: 1px solid {{ settings.accent_color or '#8b7355' }}; border-radius: 8px; overflow: hidden; }
-  .payments-header { background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; padding: 10px; text-align: center; font-size: 11px; font-weight: 700; }
-  .payment-row { padding: 10px; border-bottom: 1px solid #dee2e6; background: white; }
+  .payments-table { margin-top: 6px; border: 1px solid {{ settings.accent_color or '#8b7355' }}; border-radius: 8px; overflow: hidden; }
+  .payments-header { background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; padding: 6px; text-align: center; font-size: 11px; font-weight: 700; }
+  .payment-row { padding: 6px; border-bottom: 1px solid #dee2e6; background: white; }
   .payment-row:nth-child(even) { background: #f8f9fa; }
   .cheque-details { background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 8px; margin-top: 8px; font-size: 11px; }
   .footer {
     background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%);
     color: white;
-    padding: 8px;
+    padding: 6px;
     text-align: center;
-    margin-top: 10px;
+    margin-top: 6px;
     border-radius: 0 0 8px 8px;
     font-size: 11px;
   }
@@ -80,9 +80,6 @@
 
 {% block document_content %}
 <div class="invoice">
-  <div class="no-print" style="text-align: center; margin-bottom: 8px;">
-    <button onclick="window.print()" style="background: linear-gradient(135deg, {{ settings.header_color or '#c9a961' }} 0%, {{ settings.accent_color or '#8b7355' }} 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 11px; cursor: pointer;"> {{ t("Print Invoice") }}</button>
-  </div>
 
   <div class="invoice-header">
     {% if settings and settings.show_logo and settings.logo_url %}
@@ -92,7 +89,7 @@
     <div class="company-info">
       <div>{{ settings.address_ar or '' }}</div>
       <div> {{ settings.phone_1 or '' }} {% if settings and settings.phone_2 and settings.phone_2 != 'None' %}| {{ settings.phone_2 }}{% endif %}</div>
-      <div> {{ settings.email or '' }} {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
+      <div>  {% if settings and settings.website and settings.website != 'None' %}|  {{ settings.website }}{% endif %}</div>
       {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 5px;">{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
@@ -171,7 +168,7 @@
         <span>{{ t("⭐ Grand Total ⭐") }}</span>
         <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
       </div>
-    <div class="amount-words" style="margin-top:6px; font-size:8.5px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
+    <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>
     </div>
@@ -282,7 +279,7 @@
     <div style="margin-top: 10px; font-size: 11px;">
       {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Facebook</a>{% endif %}
       {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> Instagram</a>{% endif %}
-      {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 5px; color: rgba(255,255,255,0.9); text-decoration: none;"> WhatsApp</a>{% endif %}
+      
     </div>
     {% endif %}
   </div>

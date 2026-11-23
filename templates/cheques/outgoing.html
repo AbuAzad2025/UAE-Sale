@@ -72,7 +72,7 @@
       <div class="form-group ml-2">
         <label class="ml-2">{{ t('Status') }}:</label>
         <select name="status" class="form-control select2">
-          <option value="">{{ t('None') }}</option>
+          <option value="">{{ t('All') }}</option>
           {% for code, meta in lookups.get('cheque_statuses', []) %}
           <option value="{{ code }}" {% if request.args.get('status') == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
           {% endfor %}
@@ -111,7 +111,7 @@
               <strong>{{ cheque.cheque_bank_number }}</strong>
             </a>
           </td>
-          <td>{{ cheque.payee_name }}</td>
+          <td>{{ cheque.payee_name or (cheque.supplier.name if cheque.supplier else '-') }}</td>
           <td class="text-danger"><strong>{{ "{:,.2f}".format(cheque.amount_base) }} {{ base_currency }}</strong></td>
           <td>
             {% if cheque.status == 'cleared' and cheque.clearance_exchange_rate and cheque.currency != base_currency %}
@@ -140,7 +140,7 @@
             {% endif %}
           </td>
           <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
-          <td>{{ cheque.bank_name }}</td>
+          <td>{{ cheque.bank_name or '-' }}</td>
           <td>
             {% if cheque.status == 'pending' %}
               <span class="badge badge-info">{{ t('Pending') }}</span>

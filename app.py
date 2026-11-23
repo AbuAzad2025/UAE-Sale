@@ -192,6 +192,28 @@ _STATUS_EN = {
     "final": "Final", "draft": "Draft", "posted": "Posted",
 }
 
+# Status codes -> Arabic UI labels (raw codes must never appear in AR either)
+_STATUS_AR = {
+    "draft": "مسودة", "sent": "مرسل", "accepted": "مقبول", "rejected": "مرفوض",
+    "expired": "منتهي", "converted": "محوّل", "pending": "معلق",
+    "approved": "معتمد", "in_progress": "قيد التنفيذ", "open": "مفتوح",
+    "closed": "مغلق", "resolved": "محلول", "done": "منجز", "ok": "سليم",
+    "cleared": "محصّل", "deposited": "مودع", "bounced": "مرتجع",
+    "cancelled": "ملغي", "paid": "مدفوع", "unpaid": "غير مدفوع",
+    "partial": "جزئي", "void": "ملغى", "active": "نشط", "inactive": "غير نشط",
+    "completed": "مكتمل", "confirmed": "مؤكد", "posted": "مرحّل",
+    "under_collection": "تحت التحصيل", "archived": "مؤرشف",
+}
+
+# Payment method codes -> UI labels (raw codes must never appear in either language)
+_PAYMENT_METHOD_LABELS = {
+    "cash": {"ar": "نقدي", "en": "Cash"},
+    "card": {"ar": "بطاقة", "en": "Card"},
+    "bank_transfer": {"ar": "تحويل بنكي", "en": "Bank Transfer"},
+    "cheque": {"ar": "شيك", "en": "Cheque"},
+    "e_wallet": {"ar": "محفظة إلكترونية", "en": "E-Wallet"},
+}
+
 # Support ticket category labels (Arabic in routes/support.py) -> English
 _CATEGORY_EN = {
     "technical": "Technical", "billing": "Billing", "general": "General",
@@ -209,8 +231,10 @@ def _status_label(value, kind="status"):
     if value is None:
         return ""
     s = str(value)
+    if s in _PAYMENT_METHOD_LABELS:
+        return _PAYMENT_METHOD_LABELS[s][get_current_language() if get_current_language() in ("ar", "en") else "ar"]
     if get_current_language() != "en":
-        return s
+        return _STATUS_AR.get(s, s)
     if kind == "category":
         return _CATEGORY_EN.get(s, _STATUS_EN.get(s, _t(s, default=s)))
     if s in _STATUS_EN:
@@ -574,7 +598,11 @@ def create_app(config_class=Config):  # noqa: C901
         except Exception:
             owner_tenants = []
             impersonate_tenant = None
+        from utils.document_qr import document_payload, qr_data_url
+
         return {
+            "qr_data_url": qr_data_url,
+            "document_payload": document_payload,
             "format_currency": format_currency,
             "timeago": timeago,
             "t": t,

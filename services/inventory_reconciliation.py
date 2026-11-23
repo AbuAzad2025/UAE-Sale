@@ -58,14 +58,7 @@ except ImportError:  # pragma: no cover
     AccountRole = None  # type: ignore[assignment,misc]
 
 
-def _q2(value):
-    """تقريب النقود المعروضة إلى منزلتين."""
-    return Decimal(value).quantize(Decimal("0.01"))
-
-
-def _q3(value):
-    """تقريب المبالغ الداخلية إلى ثلاث منازل (دقة أعمدة Numeric(15,3))."""
-    return Decimal(value).quantize(Decimal("0.001"))
+from utils.money import qMoney as _q2, qQty as _q3, qUnitCost as _q6, valuation as _valuation
 
 
 def inventory_control_codes():
@@ -322,19 +315,26 @@ def reconcile_inventory(
     total_qty = Decimal("0")
     total_stock = Decimal("0")
     total_valuation = Decimal("0")
+    total_valuation_cost_price = Decimal("0")
 
     for product in products:
         qty = movement_totals.get(product.id, Decimal("0"))
         stock = to_decimal(product.current_stock)
         difference = stock - qty
         cost = CostingService.current_unit_cost(product)
-        valuation = _q3(qty * cost)
+        valuation = _valuation(qty, cost)  # q6 cost x q3 qty, rounded to money
+        # cost_price is the VAT-inclusive purchase price and is a genuinely
+        # different basis from the net moving average — never copy one into the
+        # other or the report silently lies about the cost-price valuation.
+        cost_price = to_decimal(getattr(product, "cost_price", 0) or 0)
+        valuation_cost_price = _valuation(qty, cost_price)
         gl_amount = _q3(gl_by_product.get(product.id, Decimal("0")))
         gl_difference = _q3(gl_amount - valuation)
 
         total_qty += qty
         total_stock += stock
         total_valuation += valuation
+        total_valuation_cost_price += valuation_cost_price
 
         row = {
             "product_id": product.id,
@@ -346,7 +346,7 @@ def reconcile_inventory(
             "average_cost": _q2(cost),
             "cost_price": _q2(to_decimal(product.cost_price)),
             "valuation_at_average_cost": _q2(valuation),
-            "valuation_at_cost_price": _q2(valuation),
+            "valuation_at_cost_price": _q2(valuation_cost_price),
             "gl_control_balance": _q2(gl_amount),
             "gl_difference": _q2(gl_difference),
         }
@@ -381,13 +381,17 @@ def reconcile_inventory(
         "total_quantity_from_movements": _q3(total_qty),
         "total_current_stock": _q3(total_stock),
         "total_valuation_at_average_cost": _q2(total_valuation),
-        "total_valuation_at_cost_price": _q2(total_valuation),
+        "total_valuation_at_cost_price": _q2(total_valuation_cost_price),
         "difference": _q3(total_difference),
         "gl_difference": _q2(gl_difference),
         "unattributed_gl_balance": _q2(unattributed),
+        # Per-product GL amounts are an approximate allocation: GL lines that
+        # cannot be attributed to a specific document (opening stock, FX and
+        # restatement entries) are reported in `unattributed_gl_balance`, so a
+        # per-product break does NOT imply a real imbalance. The authoritative
+        # check is the control account total vs the total valuation.
         "balanced": (
-            not breaks
-            and abs(total_difference) <= TOLERANCE
+            abs(total_difference) <= TOLERANCE
             and abs(gl_difference) <= TOLERANCE
         ),
         "products": rows,

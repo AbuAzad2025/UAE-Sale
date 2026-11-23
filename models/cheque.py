@@ -480,16 +480,6 @@ class Cheque(TenantScopedMixin, db.Model):
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(self.customer_id)
-
-        elif self.cheque_type == "outgoing" and self.supplier_id:
-            from models import Supplier as _Supp
-
-            supplier = _Supp.query.get(self.supplier_id)
-            if supplier:
-                supplier.total_purchases_aed = (
-                    supplier.total_purchases_aed or Decimal("0")
-                ) - amount_base
-
         from models.payment import Payment, Receipt
 
         payment = Payment.query.filter_by(cheque_id=self.id).first()
@@ -595,16 +585,6 @@ class Cheque(TenantScopedMixin, db.Model):
             from models.customer import recompute_customer_balance
 
             recompute_customer_balance(self.customer_id)
-
-        elif self.cheque_type == "outgoing" and self.supplier_id:
-            from models import Supplier as _Supp
-
-            supplier = _Supp.query.get(self.supplier_id)
-            if supplier:
-                supplier.total_purchases_aed = (
-                    supplier.total_purchases_aed or Decimal("0")
-                ) - amount_base
-
         self._create_cancel_journal_entry()
 
     def _create_cancel_journal_entry(self):
@@ -664,6 +644,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     description=f"إلغاء شيك {self.type_ar} رقم {self.cheque_bank_number}",
                     reference_type="cheque_cancel",
                     reference_id=self.id,
+                    tenant_id=getattr(self, "tenant_id", None),
                 )
         except Exception as e:
             current_app.logger.error(
@@ -694,16 +675,6 @@ class Cheque(TenantScopedMixin, db.Model):
                 from models.customer import recompute_customer_balance
 
                 recompute_customer_balance(self.customer_id)
-
-            elif self.cheque_type == "outgoing" and self.supplier_id:
-                from models import Supplier as _Supp
-
-                supplier = _Supp.query.get(self.supplier_id)
-                if supplier:
-                    supplier.total_purchases_aed = (
-                        supplier.total_purchases_aed or Decimal("0")
-                    ) - amount_base
-
             self._create_cancel_journal_entry()
 
     def restore(self):
@@ -716,6 +687,32 @@ class Cheque(TenantScopedMixin, db.Model):
     def is_due_soon(self):
         """شيك قريب الاستحقاق (خلال 7 أيام)"""
         return self.days_until_due is not None and 0 <= self.days_until_due <= 7
+
+    @property
+    def gl_entry_number(self):
+        """رقم القيد المحاسبي المرتبط بهذا الشيك (لعرضه في التقارير).
+
+        يُفضَّل القيد المخزَّن صراحةً (صرف/ارتداد)، وإلا نبحث عن قيد الإصدار
+        أو الإلغاء عبر reference_id. كل البحث مقيد بمستأجر الشيك.
+        """
+        from models.gl import GLJournalEntry
+
+        entry_id = self.gl_clearing_entry_id or self.gl_bounce_entry_id
+        if entry_id:
+            entry = db.session.get(GLJournalEntry, entry_id)
+            if entry and entry.tenant_id == self.tenant_id:
+                return entry.entry_number
+        entry = (
+            GLJournalEntry.query.filter(
+                GLJournalEntry.reference_type.in_(
+                    ("cheque_issue", "cheque_cancel", "cheque_clear", "cheque_bounce")
+                ),
+                GLJournalEntry.reference_id == self.id,
+            )
+            .order_by(GLJournalEntry.id.desc())
+            .first()
+        )
+        return entry.entry_number if entry else None
 
     @property
     def status_ar(self):

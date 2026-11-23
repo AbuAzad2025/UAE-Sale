@@ -73,7 +73,7 @@
             <span class="badge badge-danger">{{ t('Outgoing') }}</span>
             {% endif %}
           </td>
-          <td>{{ cheque.bank_name }}</td>
+          <td>{{ cheque.bank_name or '-' }}</td>
           <td>{{ "{:,.2f}".format(cheque.amount) }} {{ cheque.currency }}</td>
           <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
           <td>
@@ -188,7 +188,7 @@
         {% for cheque in bounced %}
         <tr>
           <td><strong>{{ cheque.cheque_bank_number }}</strong></td>
-          <td>{{ cheque.bank_name }}</td>
+          <td>{{ cheque.bank_name or '-' }}</td>
           <td>
             {% if cheque.cheque_type == 'incoming' %}
               {{ cheque.drawer_name or '-' }}

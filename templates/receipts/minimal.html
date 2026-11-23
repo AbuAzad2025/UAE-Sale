@@ -1,44 +1,29 @@
-<!DOCTYPE html>
-<html lang="{{ current_language }}" dir="{{ "rtl" if is_rtl else "ltr" }}">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Cairo', 'Arial', sans-serif;
-      background: #34495e;
-      padding: 10px;
-      margin: 0;
-      font-size: 11px;
-      color: #2c3e50;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
-    }
-    @page {
-      size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
+{% extends 'base_print.html' %}
+
+{% block print_title %}{{ t("Receipt") }} - {{ (receipt.receipt_number or receipt.payment_number or '') }}{% endblock %}
+
+{% block extra_print_css %}
+<style>
+body { font-family: 'Tajawal', 'Arial', sans-serif; font-size: 14px; }} {{ settings.orientation or 'portrait' }};
       margin: 5mm;
     }
     .receipt {
       {% if settings.paper_size == 'A5' %}
         width: 212mm;
-        height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
+        min-height: {{ '210mm' if settings.orientation == 'portrait' else '148mm' }};
       {% elif settings.paper_size == 'Letter' %}
         width: 212mm;
-        height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
+        min-height: {{ '279mm' if settings.orientation == 'portrait' else '216mm' }};
       {% else %}
         width: {{ '210mm' if settings.orientation == 'portrait' else '297mm' }};
-        height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
+        min-height: {{ '297mm' if settings.orientation == 'portrait' else '210mm' }};
       {% endif %}
+      height: auto;
       margin: 0 auto;
       background: white;
       padding: 0;
-      box-shadow: 0 0 30px rgba(0,0,0,0.5);
-      overflow: auto;
+      
+      
     }
     .header {
       background: {{ settings.header_color or '#28a745' }};
@@ -55,12 +40,12 @@
       text-align: right;
       flex: 1;
     }
-    .company-name { font-size: 11px; font-weight: 700; margin-bottom: 5px; }
-    .company-details { font-size: 11px; line-height: 1.6; opacity: 0.95; }
+    .company-name { font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+    .company-details { font-size: 14px; line-height: 1.6; opacity: 0.95; }
     .receipt-info-right {
       text-align: left;
     }
-    .receipt-label { font-size: 11px; font-weight: 300; opacity: 0.9; }
+    .receipt-label { font-size: 14px; font-weight: 300; opacity: 0.9; }
     .receipt-number-large { font-size: 20px; font-weight: 700; }
     .content { padding: 10px; }
     .section {
@@ -70,7 +55,7 @@
       border-left: 4px solid {{ settings.accent_color or '#20c997' }};
     }
     .section-title {
-      font-size: 11px;
+      font-size: 14px;
       color: {{ settings.header_color or '#28a745' }};
       margin-bottom: 10px;
       font-weight: 700;
@@ -81,7 +66,7 @@
       display: flex;
       justify-content: space-between;
       padding: 5px 0;
-      font-size: 11px;
+      font-size: 14px;
       border-bottom: 1px solid #dee2e6;
     }
     .info-row:last-child { border-bottom: none; }
@@ -95,7 +80,7 @@
       color: white;
       border-radius: 10px;
     }
-    .amount-text { font-size: 11px; opacity: 0.9; margin-bottom: 5px; }
+    .amount-text { font-size: 14px; opacity: 0.9; margin-bottom: 5px; }
     .amount-big { font-size: 32px; font-weight: 700; }
     .payment-box {
       background: white;
@@ -110,7 +95,7 @@
       background: {{ settings.accent_color or '#20c997' }};
       color: white;
       border-radius: 20px;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
     }
     .cheque-card {
@@ -133,13 +118,13 @@
       border-radius: 5px;
     }
     .cheque-item-label {
-      font-size: 11px;
+      font-size: 14px;
       color: #856404;
       text-transform: uppercase;
       margin-bottom: 3px;
     }
     .cheque-item-value {
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       color: #1a1a1a;
     }
@@ -157,7 +142,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 11px;
+      font-size: 14px;
     }
     .allocation-item:last-child { margin-bottom: 0; }
     .notes-box {
@@ -168,12 +153,12 @@
     }
     .notes-title {
       color: #e65100;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       margin-bottom: 8px;
     }
     .notes-text {
-      font-size: 11px;
+      font-size: 14px;
       line-height: 1.6;
       color: #333;
     }
@@ -181,7 +166,7 @@
       background: #ecf0f1;
       padding: 8px;
       text-align: center;
-      font-size: 11px;
+      font-size: 14px;
       color: #7f8c8d;
       border-top: 1px solid #dee2e6;
     }
@@ -198,23 +183,21 @@
       border-top: 2px solid #95a5a6;
       margin-top: 35px;
       padding-top: 6px;
-      font-size: 11px;
+      font-size: 14px;
       color: #7f8c8d;
     }
-    @media print {
-      body { padding: 0; background: white; }
       .no-print { display: none !important; }
     }
-  </style>
-</head>
-<body class="minimal-receipt">
-  <div class="no-print" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-    <button onclick="window.print()" style="background: {{ settings.header_color or '#28a745' }}; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">
-      {{ t("Print") }}
-    </button>
-  </div>
+  
 
-  <div class="receipt">
+    @media print {
+      .document .receipt { border: none !important; padding: 0 !important; min-height: 0 !important; box-shadow: none !important; }
+    }
+</style>
+{% endblock %}
+
+{% block document_content %}
+<div class="receipt">
     <div class="header">
       <div class="header-content">
         <div class="company-info-left">
@@ -224,8 +207,8 @@
           <div class="company-name">{{ settings.company_name_ar or '' }}</div>
           <div class="company-details">
             {{ settings.address_ar or '' }}<br>
-             {{ settings.phone_1 or '' }} |  {{ settings.email or '' }}<br>
-            {% if settings and settings.website and settings.website != 'None' %} {{ settings.website }}{% endif %}
+             {{ settings.phone_1 or '' }} |  <br>
+          {% if settings and settings.website and settings.website != 'None' %} {{ settings.website }}{% endif %}
           </div>
         </div>
         <div class="receipt-info-right">
@@ -237,15 +220,15 @@
 
     <div class="content">
       <div class="section">
-        <div class="section-title">{{ t("Customer Information") }}</div>
+        <div class="section-title">{{ party.label }}</div>
         <div class="info-row">
           <label>{{ t("Name") }}:</label>
-          <value>{{ receipt.customer.name }}</value>
+          <value>{{ party.name }}</value>
         </div>
-        {% if receipt.customer.phone %}
+        {% if party.phone %}
         <div class="info-row">
           <label>{{ t("Phone") }}:</label>
-          <value>{{ receipt.customer.phone }}</value>
+          <value>{{ party.phone }}</value>
         </div>
         {% endif %}
         <div class="info-row">
@@ -257,7 +240,7 @@
       <div class="amount-display">
         <div class="amount-text">{{ t("Amount Received") }}</div>
         <div class="amount-big">{{ "{:,.2f}".format(receipt.amount_base) }} {{ base_currency }}</div>
-      <div class="amount-words" style="margin-top:6px; font-size: 11px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
+      <div class="amount-words" style="margin-top:6px; font-size: 12px; color:#ffffff; border-top:1px dashed rgba(255,255,255,0.5); padding-top:8px;">
         <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
       </div>
         <div class="amount-text">{{ base_currency_name }}</div>
@@ -307,7 +290,7 @@
         <div class="allocation-item">
           <div>
             <strong>{{ source_info.number }}</strong>
-            <span style="color: #999; margin: 0 5px;">•</span>
+            <span style="color: #999; margin: 0 5px;"></span>
             <span style="color: #666;">{{ source_info.date or '—' }}</span>
           </div>
           <div style="font-weight: 700; color: #28a745;">
@@ -366,14 +349,14 @@
       {% endif %}
       
       <div>{{ settings.footer_text_ar if settings and settings.footer_text_ar else t('Thank you for your trust') }}</div>
-      {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px;"> {{ settings.website }}</div>{% endif %}
+    {% if settings and settings.website and settings.website != 'None' %}<div style="margin-top: 5px;"> {{ settings.website }}</div>{% endif %}
       
       
       {% if settings and (settings.facebook_url or settings.instagram_url or settings.whatsapp_number) %}
       <div style="margin-top: 8px; font-size: 11px;">
         {% if settings.facebook_url %}<a href="{{ settings.facebook_url }}" style="margin: 0 4px; color: #1877f2; text-decoration: none;">FB</a>{% endif %}
         {% if settings.instagram_url %}<a href="{{ settings.instagram_url }}" style="margin: 0 4px; color: #e4405f; text-decoration: none;">IG</a>{% endif %}
-        {% if settings.whatsapp_number %}<a href="https://wa.me/{{ settings.whatsapp_number }}" style="margin: 0 4px; color: #25d366; text-decoration: none;">WA</a>{% endif %}
+        
       </div>
       {% endif %}
     </div>
@@ -392,6 +375,4 @@
     {% endif %}
 <p class="azad_invoice_footer" style="font-size: 11px;color:#999;margin-top:6px;text-align:center;">{{ t("Generated by AzadERP ©") }} {{ current_year if current_year is defined else 2026 }}</p>
 </div>
-</body>
-</html>
-
+{% endblock %}

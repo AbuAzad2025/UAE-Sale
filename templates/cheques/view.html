@@ -38,13 +38,15 @@
             <h5><i class="fas fa-info-circle text-primary"></i> {{ t('Basic Information') }}</h5>
             <table class="table table-sm">
               <tr>
-                <th>{{ t('Cheque Number (system)') }}:</th>
+                <th>{{ t('Cheque Number') }}:</th>
                 <td><code>{{ cheque.cheque_number }}</code></td>
               </tr>
+              {% if cheque.cheque_bank_number and cheque.cheque_bank_number != cheque.cheque_number %}
               <tr>
                 <th>{{ t('Cheque Number (bank)') }}:</th>
                 <td><strong>{{ cheque.cheque_bank_number }}</strong></td>
               </tr>
+              {% endif %}
               <tr>
                 <th>{{ t('Type') }}:</th>
                 <td>
@@ -61,12 +63,12 @@
               </tr>
               <tr>
                 <th>{{ t('Bank') }}:</th>
-                <td>{{ cheque.bank_name }}</td>
+                <td>{{ cheque.bank_name or '-' }}</td>
               </tr>
               {% if cheque.bank_branch %}
               <tr>
                 <th>{{ t('Branch') }}:</th>
-                <td>{{ cheque.bank_branch }}</td>
+                <td>{{ cheque.bank_branch or '-' }}</td>
               </tr>
               {% endif %}
             </table>

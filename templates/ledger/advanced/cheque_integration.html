@@ -38,7 +38,7 @@
             <td>{{ cheque.cheque_number }}</td>
             <td>{{ cheque.amount_base }} {{ base_currency }}</td>
             <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
-            <td><span class="badge badge-{{ 'success' if cheque.status == 'cleared' else 'warning' }}">{{ cheque.status }}</span></td>
+            <td><span class="badge badge-{{ 'success' if cheque.status == 'cleared' else 'warning' }}">{{ cheque.status|status_label }}</span></td>
             <td>{{ cheque.gl_entry_number or '-' }}</td>
           </tr>
           {% else %}

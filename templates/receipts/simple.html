@@ -25,16 +25,13 @@
 
 {% block document_content %}
 <div class="receipt">
-  <div class="no-print" style="text-align: center; margin-bottom: 10px;">
-    <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 8px 20px; cursor: pointer; border-radius: 3px;">{{ t("Print") }}</button>
-  </div>
 
   <div class="receipt-header">
     {% if settings and settings.show_logo and settings.logo_url %}
     <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
     {% endif %}
     <div class="company-name">{{ settings.company_name_ar or '' }}</div>
-    <div class="company-info">{{ settings.address_ar or '' }}<br> {{ settings.phone_1 or '' }}{% if settings.email %} •  {{ settings.email }}{% endif %}</div>
+    <div class="company-info">{{ settings.address_ar or '' }}<br> {{ settings.phone_1 or '' }}</div>
   </div>
 
   <div class="title">{{ t("Receipt") }}</div>
@@ -45,7 +42,7 @@
       <td><strong>{{ t("Date") }}:</strong> {{ receipt.receipt_date.strftime('%Y-%m-%d') }}</td>
     </tr>
     <tr>
-      <td><strong>{{ t("Received From") }}:</strong> {{ receipt.customer.name if receipt.customer else receipt.customer_name }}</td>
+      <td><strong>{{ party.label }}:</strong> {{ party.name }}</td>
       <td><strong>{{ t("Payment Method:") }}</strong> {% if receipt.payment_method == 'cash' %} {{ t("Cash") }} {% elif receipt.payment_method == 'card' %} {{ t("Card") }} {% elif receipt.payment_method == 'bank_transfer' %} {{ t("Transfer") }} {% elif receipt.payment_method == 'cheque' %} {{ t("Cheque") }} {% elif receipt.payment_method == 'e_wallet' %} {{ t("E-Wallet") }} {% else %}{{ t("Other") }}{% endif %}</td>
     </tr>
     {% if receipt.payment_method == 'cheque' and receipt.cheque_number %}

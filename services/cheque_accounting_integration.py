@@ -488,11 +488,9 @@ class ChequeAccountingIntegration:
             elif cheque.cheque_type == "outgoing" and cheque.supplier_id:
                 from models import Supplier as _Supp
 
-                supplier = _Supp.query.get(cheque.supplier_id)
-                if supplier:
-                    supplier.total_purchases_aed = (
-                        supplier.total_purchases_aed or Decimal("0")
-                    ) - amount_base
+                # total_purchases_aed is derived from confirmed purchases
+                # (see derive_supplier_totals) — never mutate it from a cheque.
+                # Supplier stats are recomputed by the purchase/payment hooks.
 
             db.session.flush()
 

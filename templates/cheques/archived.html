@@ -43,7 +43,7 @@
                   {% endif %}
                 </td>
                 <td>{{ cheque.amount }} {{ cheque.currency }}</td>
-                <td>{{ cheque.bank_name }}</td>
+                <td>{{ cheque.bank_name or '-' }}</td>
                 <td>{{ cheque.due_date.strftime('%Y-%m-%d') }}</td>
                 <td>
                   <span class="badge badge-secondary">{{ cheque.status|status_label }}</span>

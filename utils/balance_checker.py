@@ -68,7 +68,12 @@ def get_control_account_balance(account_codes):
         net = to_decimal(raw_net)
         total += net if acc.type in ("asset", "expense") else -net
 
-    return total
+    # Single canonical rounding for every control-account balance in the
+    # system (HALF_UP at 2dp). Without this, unrounded DB sums printed through
+    # Python's default HALF_EVEN could disagree by 0.01 with report valuations.
+    from utils.money import qMoney
+
+    return qMoney(total)
 
 
 def check_customer_balance(customer_id=None):

@@ -24,6 +24,8 @@ def with_tenant_header(settings, tenant):
         "orientation",
         "default_language",
         "show_barcode",
+        "enable_qr_code",
+        "whatsapp_number",
         "show_page_numbers",
         "show_due_date",
         "qr_position",
@@ -55,9 +57,18 @@ def with_tenant_header(settings, tenant):
         filter(None, (tenant.address_ar, tenant.city, tenant.country))
     )
     data["phone_1"] = tenant.phone_1 or tenant.mobile
-    data["logo_url"] = tenant.logo_url
-    data["logo_path"] = tenant.logo_url
-    data["show_logo"] = bool(tenant.logo_url)
+    # The owner invoice-settings form stores an uploaded logo in
+    # InvoiceSettings.logo_path (tenant-scoped), while the tenant form stores a
+    # URL in Tenant.logo_url. Honour both so an uploaded logo actually prints.
+    # Both sources belong to THIS document's tenant — no cross-tenant data.
+    _logo = (
+        tenant.logo_url
+        or getattr(settings, "logo_url", None)
+        or getattr(settings, "logo_path", None)
+    )
+    data["logo_url"] = _logo
+    data["logo_path"] = _logo
+    data["show_logo"] = bool(_logo)
     data["header_color"] = tenant.brand_color_primary or "#667eea"
     data["accent_color"] = tenant.brand_color_secondary or "#764ba2"
     data["tenant_id"] = tenant.id

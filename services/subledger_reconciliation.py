@@ -386,6 +386,14 @@ class SubLedgerReconciliation:
                 -1,
                 "الأستاذ يحتفظ بمستندات العميل المعطّل، والمطابقة على النشطين.",
             ),
+            _reconciling_item(
+                "partner_current_shares",
+                "حصص الشركاء على الحساب الجاري (3350) — ضمن حسابات ضبط AR",
+                abs(_ar_debit_normal_balance(["3350"])),
+                1,
+                "توزيع أرباح الشركاء يُقيَّد دائناً على 3350 وهو داخل نطاق "
+                "ضبط الذمم، بينما ذمم العملاء لا تتضمن حصة الشريك.",
+            ),
         ]
         reconciling_total = _reconciling_total(reconciling_items)
 

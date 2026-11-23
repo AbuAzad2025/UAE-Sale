@@ -77,7 +77,6 @@
           <button type="button" class="template-btn {% if tpl_key == current_template %}active{% endif %}" data-template="{{ tpl_key }}" onclick="switchTemplate('{{ tpl_key }}')">{{ tpl_name }}</button>
         {% endfor %}
       </div>
-      <button type="button" class="print-btn-fixed" onclick="window.print()"><i class="fas fa-print"></i> {{ t('Print') }}</button>
     </div>
   </div>
 
@@ -89,7 +88,7 @@
       <div class="company-name">{{ settings.company_name_ar or '' }}</div>
       <div class="company-info">
         <div>{{ settings.address_ar or '' }}</div>
-        <div> {{ settings.phone_1 or '' }}{% if settings.email %} |  {{ settings.email }}{% endif %}{% if settings.website %} |  {{ settings.website }}{% endif %}</div>
+        <div> {{ settings.phone_1 or '' }}{% if settings.website %} |  {{ settings.website }}{% endif %}</div>
         {% if settings and settings.tax_number and settings.tax_number != 'None' %}<div style="margin-top: 3px;">{{ t('Tax Number:') }} {{ settings.tax_number }}</div>{% endif %}
       </div>
     </div>

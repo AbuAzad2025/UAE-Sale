@@ -132,6 +132,21 @@ class Payment(TenantScopedMixin, db.Model):
                     else None,
                     "amount": float(sale.total_amount) if sale.total_amount else None,
                 }
+        elif self.purchase_id:
+            # Supplier payments are linked to a purchase invoice: show the
+            # invoice number and date instead of a bare supplier name + None.
+            from models import Purchase
+
+            purchase = db.session.get(Purchase, self.purchase_id)
+            if purchase:
+                return {
+                    "type": "فاتورة شراء",
+                    "number": purchase.purchase_number,
+                    "date": purchase.purchase_date.strftime("%Y-%m-%d")
+                    if purchase.purchase_date
+                    else None,
+                    "amount": float(self.amount) if self.amount else None,
+                }
         elif self.supplier_id:
             from models import Supplier
 

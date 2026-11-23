@@ -477,6 +477,24 @@ def view_payment(id):
     )
 
 
+
+def _receipt_party(doc, is_payment):
+    """Return the counterparty shown on a receipt/payment print."""
+    if is_payment:
+        supplier = getattr(doc, "supplier", None)
+        name = (supplier.name if supplier else None) or getattr(doc, "supplier_name", None) or "-"
+        phone = supplier.phone if supplier else ""
+        email = supplier.email if supplier else ""
+        label = _t("Supplier Details")
+    else:
+        cust = getattr(doc, "customer", None)
+        name = (cust.name if cust else None) or getattr(doc, "customer_name", None) or "-"
+        phone = cust.phone if cust else ""
+        email = cust.email if cust else ""
+        label = _t("Customer Details")
+    return {"label": label, "name": name, "phone": phone, "email": email}
+
+
 @payments_bp.route("/payments/<int:id>/print")
 @login_required
 @permission_required("manage_payments")
@@ -536,6 +554,7 @@ def print_payment(id):
         f"receipts/{template}.html",
         receipt=payment,
         is_payment=True,
+        party=_receipt_party(payment, True),
         settings=settings,
         company=company,
         printed_at=datetime.now(),
@@ -1143,6 +1162,7 @@ def print_receipt(id):
         return render_template(
             f"receipts/{template}.html",
             receipt=receipt,
+            party=_receipt_party(receipt, False),
             settings=settings,
             company=company,
             printed_at=datetime.now(),
@@ -1157,6 +1177,7 @@ def print_receipt(id):
         return render_template(
             "receipts/modern.html",
             receipt=receipt,
+            party=_receipt_party(receipt, False),
             settings=settings,
             company=company,
             printed_at=datetime.now(),

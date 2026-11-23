@@ -33,6 +33,8 @@ Inventory Costing — متوسط التكلفة المتحرك للمخزون (M
 
 from decimal import Decimal, ROUND_HALF_UP
 
+from utils.money import qUnitCost as _q6, qQty as _q3qty
+
 MONEY_QUANTUM = Decimal("0.001")
 
 
@@ -49,8 +51,8 @@ def _dec(value, default=Decimal("0")):
 
 
 def _q3(value):
-    """تقريب مبلغ إلى ثلاث منازل (دقة أعمدة Numeric(15,3))."""
-    return _dec(value).quantize(MONEY_QUANTUM, rounding=ROUND_HALF_UP)
+    """تقريب كمية إلى ثلاث منازل (دقة الكميات الموحّدة)."""
+    return _q3qty(value)
 
 
 class CostingService:
@@ -85,17 +87,17 @@ class CostingService:
         in_unit_cost = _dec(in_unit_cost)
 
         if in_qty <= 0:
-            return _q3(old_avg)
+            return _q6(old_avg)
 
         if old_qty < 0:
             old_qty = Decimal("0")
 
         total_qty = old_qty + in_qty
         if total_qty <= 0:
-            return _q3(old_avg)
+            return _q6(old_avg)
 
         total_value = (old_qty * old_avg) + (in_qty * in_unit_cost)
-        return _q3(total_value / total_qty)
+        return _q6(total_value / total_qty)
 
     @staticmethod
     def apply_inbound(product, qty, unit_cost_base) -> Decimal:

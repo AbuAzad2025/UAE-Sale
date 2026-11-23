@@ -32,6 +32,22 @@ def test_both_maintenance_roles_and_manager_have_full_purpose():
         assert f'"{code}"' in manager, code
 
 
+def test_safety_gate_allows_every_maintenance_write_endpoint():
+    """The 503 safety gate must not silently reject real write endpoints."""
+    import routes.maintenance as maintenance_routes
+    from app import create_app
+    app = create_app()
+    allowed = maintenance_routes.ALLOWED_WRITE_ENDPOINTS
+    with app.app_context():
+        registered = {r.endpoint for r in app.url_map.iter_rules()
+                      if r.endpoint.startswith('maintenance.')}
+        write = {r.endpoint for r in app.url_map.iter_rules()
+                 if r.endpoint.startswith('maintenance.')
+                 and ({'POST', 'PUT', 'PATCH', 'DELETE'} & r.methods)}
+        assert allowed - registered == set(), allowed - registered
+        assert write - allowed == set(), write - allowed
+
+
 def test_maintenance_sidebar_has_only_three_core_links():
     base = open('templates/base.html', encoding='utf-8').read()
     i = base.index("request.endpoint.startswith('maintenance.')")

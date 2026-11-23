@@ -605,6 +605,37 @@ def devices_list():
     )
 
 
+def _print_context(order, doc_type, doc_id):
+    """Build the shared, tenant-branded context used by base_print.html.
+
+    This mirrors the sales print route so maintenance documents get the same
+    tenant brand header, verification QR, WhatsApp QR footer and Azad footer.
+    """
+    from config import Config
+    from models import InvoiceSettings
+    from utils.invoice_header import document_tenant, with_tenant_header
+    from utils.amount_in_words import amount_in_words
+    from utils.i18n import t as _t
+
+    base_settings = InvoiceSettings.get_active()
+    try:
+        settings = with_tenant_header(base_settings, document_tenant(order))
+    except ValueError:
+        abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
+    amount = getattr(order, "total_amount", 0) or 0
+    currency = getattr(order, "currency", None) or "AED"
+    return dict(
+        settings=settings,
+        config=Config,
+        document_type=doc_type,
+        document_id=doc_id,
+        available_templates=[("maintenance", _t("Maintenance"))],
+        current_template="maintenance",
+        amount_words_ar=amount_in_words(amount, currency, "ar"),
+        amount_words_en=amount_in_words(amount, currency, "en"),
+    )
+
+
 @maintenance_bp.route("/<int:id>/print-intake")
 @login_required
 @permission_required("maintenance_view")
@@ -613,7 +644,13 @@ def print_intake(id):
     tenant = db.session.get(Tenant, _tenant_id())
     if tenant is None:
         abort(404)
-    return render_template("maintenance/print_intake.html", order=order, tenant=tenant)
+    return render_template(
+        "maintenance/print_intake.html",
+        order=order,
+        tenant=tenant,
+        back_url=url_for("maintenance.view_order", id=order.id),
+        **_print_context(order, "maintenance_intake", order.id),
+    )
 
 
 @maintenance_bp.route("/<int:id>/print-receipt")
@@ -636,6 +673,8 @@ def print_receipt(id):
         order=order,
         receipt=receipt,
         tenant=db.session.get(Tenant, _tenant_id()),
+        back_url=url_for("maintenance.view_order", id=order.id),
+        **_print_context(order, "maintenance_receipt", receipt.id),
     )
 
 
@@ -650,6 +689,8 @@ def print_invoice(id):
         "maintenance/print_invoice.html",
         order=order,
         tenant=db.session.get(Tenant, _tenant_id()),
+        back_url=url_for("maintenance.view_order", id=order.id),
+        **_print_context(order, "maintenance_invoice", order.invoice.id),
     )
 
 

@@ -1,83 +1,96 @@
-{% extends 'base.html' %}
-{% block title %}{{ t('Receipt') }} - {{ order.order_no }}{% endblock %}
-{% block page_title %}<i class="fas fa-money-bill-wave mr-2"></i>{{ t('Receipt') }} - {{ order.order_no }}{% endblock %}
-{% block content %}
+{% extends 'base_print.html' %}
+
+{% set _m_payment = {'cash': t('Cash'), 'card': t('Card'), 'cheque': t('Cheque'), 'transfer': t('Bank Transfer'), 'account': t('On Account')} %}
+{% set _m_status = {'received': t('Reception'), 'diagnosis': t('Diagnosis'), 'in_progress': t('In Progress'), 'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'), 'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed')} %}
+
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or '' }} - {{ t("Receipt") }} #{{ receipt.receipt_no if receipt else '' }}{% endblock %}
+
+{% block extra_print_css %}
 <style>
-  .invoice-wrapper { max-width: 800px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-  .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-  .invoice-logo h2 { margin: 0; color: #2c3e50; }
-  .invoice-logo p { margin: 5px 0 0; color: #7f8c8d; }
-  .invoice-meta p { margin: 3px 0; }
-  .invoice-body { margin-bottom: 30px; }
-  .invoice-body h4 { border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-top: 20px; }
-  .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-  .invoice-table th { background-color: #f2f2f2; }
-  .invoice-table tfoot td, .invoice-table tfoot th { border-top: 2px solid #333; font-weight: bold; }
-  .invoice-footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; font-size: 0.9em; color: #7f8c8d; }
-  .text-right { text-align: right; }
-  @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
+  .invoice-header { text-align: center; }
+  .company-name { font-size: 12px; font-weight: 700; }
+  .company-info { font-size: 11px; opacity: .95; line-height: 1.5; }
+  .invoice-title { background: #f8f9fa; padding: 10px 15px; text-align: center;
+    border-bottom: 2px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .invoice-title h2 { color: {{ settings.header_color if settings else '#667eea' }}; font-size: 15px; margin: 0; }
+  .invoice-number { color: {{ settings.accent_color if settings else '#764ba2' }}; font-size: 11px; margin-top: 4px; }
+  .content { padding: 12px 20px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .info-box { background: #f8f9fa; padding: 8px 10px; border-radius: 6px;
+    border-inline-start: 3px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .info-box h3 { color: {{ settings.header_color if settings else '#667eea' }}; margin: 0 0 5px; font-size: 11px; }
+  .info-box p { margin: 2px 0; color: #555; font-size: 11px; }
+  .m-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
+  .m-table thead { background: {{ settings.header_color if settings else '#667eea' }}; color: #fff; }
+  .m-table th, .m-table td { padding: 7px 9px; border-bottom: 1px solid #e0e0e0; text-align: right; }
+  .m-table tfoot td { font-weight: 700; border-top: 2px solid {{ settings.header_color if settings else '#667eea' }}; }
+  .amount-words { margin-top: 8px; padding: 7px 10px; background: #eef7f1;
+    border-inline-start: 3px solid #075c2e; font-size: 11px; font-weight: 600; }
+  .notes { margin-top: 10px; font-size: 11px; color: #555; }
 </style>
-<div class="invoice-wrapper">
-  <div class="alert alert-info"><strong>{{ t('Posted maintenance receipt voucher.') }}</strong>
-    {{ t('The amount is a snapshot at the time of collection; the balance shown on the order comes from its current record.') }}</div>
+{% endblock %}
+
+{% block document_content %}
+<div class="receipt">
   <div class="invoice-header">
-    <div class="invoice-logo">
-      <h2>{{ tenant.name_ar or tenant.name }}</h2>
-      <p>{{ t('Historical Receipt Record') }}</p>
-    </div>
-    <div class="invoice-meta">
-      <p><strong>{{ t('Receipt Number:') }}</strong> {{ receipt.receipt_no if receipt else '-' }}</p>
-      <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
-      <p><strong>{{ t('Date:') }}</strong> {{ receipt.posted_at.strftime('%Y-%m-%d %H:%M') if receipt and receipt.posted_at else '-' }}</p>
-      <p><strong>{{ t('Payment Method:') }}</strong> {{ receipt.payment_method if receipt else '-' }}</p>
+    <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
+    <div class="company-info">
+      <div>{{ settings.address_ar or '' }}</div>
+      <div>{{ settings.phone_1 or '' }}</div>
+      {% if settings.tax_number and settings.tax_number != 'None' %}<div>{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
 
-  <div class="invoice-body">
-    <div class="customer-info">
-      <h4>{{ t('Customer Details:') }}</h4>
-      <p><strong>{{ t('Name:') }}</strong> {{ order.customer.name if order.customer else '-' }}</p>
-      <p><strong>{{ t('Phone:') }}</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+  <div class="invoice-title">
+    <h2>{{ t("Maintenance Receipt Voucher") }}</h2>
+    <div class="invoice-number">
+      {{ t("Receipt Number") }}: {{ receipt.receipt_no if receipt else '-' }}
+      &nbsp;|&nbsp; {{ t("Order Number") }}: {{ order.order_no }}
+      &nbsp;|&nbsp; {{ t("Date") }}: {{ receipt.posted_at.strftime('%Y-%m-%d %H:%M') if receipt and receipt.posted_at else '-' }}
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="info-grid">
+      <div class="info-box">
+        <h3>{{ t("Customer Details") }}</h3>
+        <p><strong>{{ t("Name") }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p><strong>{{ t("Phone") }}:</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+      </div>
+      <div class="info-box">
+        <h3>{{ t("Collection Details") }}</h3>
+        <p><strong>{{ t("Payment Method") }}:</strong> {{ _m_payment.get(receipt.payment_method, receipt.payment_method) if receipt else '-' }}</p>
+        <p><strong>{{ t("Order Status") }}:</strong> {{ _m_status.get(order.status, order.status) }}</p>
+      </div>
     </div>
 
-    <div class="device-info">
-      <h4>{{ t('Device Details:') }}</h4>
-      <p><strong>{{ t('Make') }}:</strong> {{ order.device_brand or '-' }}</p>
-      <p><strong>{{ t('Model') }}:</strong> {{ order.device_model or '-' }}</p>
-      <p><strong>{{ t('Serial Number') }}:</strong> {{ order.device_serial or '-' }}</p>
-    </div>
-
-    <table class="invoice-table">
+    <table class="m-table">
       <thead>
-        <tr>
-          <th>{{ t('Item') }}</th>
-          <th class="text-right">{{ t('Amount') }}</th>
-        </tr>
+        <tr><th>{{ t("Description") }}</th><th>{{ t("Amount") }}</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td>{{ t('Collection Amount for Maintenance Order') }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td>
+          <td>{{ t("Collection Amount for Maintenance Order") }} {{ order.order_no }}</td>
+          <td>{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td>
         </tr>
       </tbody>
       <tfoot>
-        <tr>
-          <th>{{ t('Total Amount Paid') }}</th>
-          <td class="text-right">{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td>
-        </tr>
+        <tr><td>{{ t("Total Amount Paid") }} ({{ order.currency or 'AED' }})</td><td>{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td></tr>
       </tfoot>
     </table>
+
+    {% if amount_words_ar or amount_words_en %}
+    <div class="amount-words">{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
+    {% endif %}
+
+    <div class="notes">
+      <p><strong>{{ t("Current balance per the unaudited order record:") }}</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
+      <p>{{ t('Thank you for doing business with us; we hope you are satisfied with the service.') }}</p>
+    </div>
   </div>
 
-  <div class="invoice-footer">
-    <p><strong>{{ t('Status:') }}</strong> {{ {'received': t('Reception'), 'diagnosis': t('Diagnosis'), 'in_progress': t('In Progress'), 'waiting_parts': t('Awaiting Parts'), 'ready': t('Ready for Delivery'), 'on_hold': t('On Hold'), 'cancelled': t('Cancelled'), 'closed': t('Closed')}.get(order.status, order.status) }}</p>
-    <p><strong>{{ t('Current balance per the unaudited order record:') }}</strong> {{ "{:,.3f}".format(order.balance_due or 0) }}</p>
-    <p class="text-muted small">{{ t('Thank you for doing business with us; we hope you are satisfied with the service.') }}</p>
+  <div class="invoice-footer" style="text-align:center; font-size:11px; color:#666; padding:10px;">
+    {{ t("Posted maintenance receipt voucher. The amount is a snapshot at the time of collection.") }}
   </div>
 </div>
-
-<script>
-  window.print();
-</script>
 {% endblock %}

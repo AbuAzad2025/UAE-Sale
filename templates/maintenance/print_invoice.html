@@ -1,131 +1,127 @@
-{% extends 'base.html' %}
-{% block title %}{{ t('Maintenance Invoice') }} - {{ order.order_no }}{% endblock %}
-{% block page_title %}<i class="fas fa-file-invoice mr-2"></i>{{ t('Maintenance Invoice') }} - {{ order.order_no }}{% endblock %}
-{% block content %}
+{% extends 'base_print.html' %}
+
+{% set _m_payment = {'cash': t('Cash'), 'card': t('Card'), 'cheque': t('Cheque'), 'transfer': t('Bank Transfer'), 'account': t('On Account')} %}
+{% set _m_warranty = {'under_warranty': t('Under Warranty'), 'out_of_warranty': t('Out of Warranty'), 'expired': t('Expired'), 'void': t('Void'), 'unknown': t('Unknown')} %}
+
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or '' }} - {{ t("Maintenance Invoice") }} #{{ order.invoice.invoice_no if order.invoice else order.order_no }}{% endblock %}
+
+{% block extra_print_css %}
 <style>
-  .invoice-wrapper { max-width: 800px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-  .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-  .invoice-logo h2 { margin: 0; color: #2c3e50; }
-  .invoice-logo p { margin: 5px 0 0; color: #7f8c8d; }
-  .invoice-meta p { margin: 3px 0; }
-  .invoice-body { margin-bottom: 30px; }
-  .invoice-body h4 { border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-top: 20px; }
-  .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  .invoice-table th, .invoice-table td { border: 1px solid #ddd; padding: 10px; text-align: right; }
-  .invoice-table th { background-color: #f2f2f2; }
-  .invoice-table tfoot td, .invoice-table tfoot th { border-top: 2px solid #333; font-weight: bold; }
-  .invoice-footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; font-size: 0.9em; color: #7f8c8d; }
-  .text-right { text-align: right; }
-  @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; } }
+  .invoice-header { text-align: center; }
+  .company-name { font-size: 12px; font-weight: 700; }
+  .company-info { font-size: 11px; opacity: .95; line-height: 1.5; }
+  .invoice-title { background: #f8f9fa; padding: 10px 15px; text-align: center;
+    border-bottom: 2px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .invoice-title h2 { color: {{ settings.header_color if settings else '#667eea' }}; font-size: 15px; margin: 0; }
+  .invoice-number { color: {{ settings.accent_color if settings else '#764ba2' }}; font-size: 11px; margin-top: 4px; }
+  .content { padding: 12px 20px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .info-box { background: #f8f9fa; padding: 8px 10px; border-radius: 6px;
+    border-inline-start: 3px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .info-box h3 { color: {{ settings.header_color if settings else '#667eea' }}; margin: 0 0 5px; font-size: 11px; }
+  .info-box p { margin: 2px 0; color: #555; font-size: 11px; }
+  .m-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px; }
+  .m-table thead { background: {{ settings.header_color if settings else '#667eea' }}; color: #fff; }
+  .m-table th, .m-table td { padding: 6px 8px; border-bottom: 1px solid #e0e0e0; text-align: right; }
+  .m-table th { font-size: 11px; }
+  .totals { background: #f8f9fa; padding: 10px 14px; border-radius: 6px; margin-top: 10px; }
+  .trow { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; }
+  .trow.final { border-top: 2px solid {{ settings.header_color if settings else '#667eea' }};
+    margin-top: 6px; padding-top: 7px; font-weight: 700; font-size: 12px;
+    color: {{ settings.header_color if settings else '#667eea' }}; }
+  .amount-words { margin-top: 8px; padding: 7px 10px; background: #eef7f1;
+    border-inline-start: 3px solid #075c2e; font-size: 11px; font-weight: 600; }
+  .notes { margin-top: 10px; font-size: 11px; color: #555; }
 </style>
-<div class="invoice-wrapper">
-  <div class="alert alert-info"><strong>{{ t('Posted maintenance invoice.') }}</strong>
-    {{ t('Amounts are a snapshot at invoice issuance; later changes to the order do not affect this document.') }}</div>
+{% endblock %}
+
+{% block document_content %}
+<div class="invoice">
   <div class="invoice-header">
-    <div class="invoice-logo">
-      <h2>{{ tenant.name_ar or tenant.name }}</h2>
-      <p>{{ t('Historical Maintenance Invoice Record') }}</p>
-    </div>
-    <div class="invoice-meta">
-      <p><strong>{{ t('Invoice Number:') }}</strong> {{ order.invoice.invoice_no if order.invoice else '-' }}</p>
-      <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
-      <p><strong>{{ t('Invoice Date:') }}</strong> {{ order.invoice.posted_at.strftime('%Y-%m-%d %H:%M') if order.invoice and order.invoice.posted_at else '-' }}</p>
-      <p><strong>{{ t('Payment Method:') }}</strong> {{ order.payment_mode }}</p>
+    <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
+    <div class="company-info">
+      <div>{{ settings.address_ar or '' }}</div>
+      <div>{{ settings.phone_1 or '' }}</div>
+      {% if settings.tax_number and settings.tax_number != 'None' %}<div>{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
     </div>
   </div>
 
-  <div class="invoice-body">
-    <div class="customer-info">
-      <h4>{{ t('Customer Details:') }}</h4>
-      <p><strong>{{ t('Name:') }}</strong> {{ order.customer.name if order.customer else '-' }}</p>
-      <p><strong>{{ t('Phone:') }}</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+  <div class="invoice-title">
+    <h2>{{ t("Maintenance Invoice") }}</h2>
+    <div class="invoice-number">
+      {{ t("Invoice Number") }}: {{ order.invoice.invoice_no if order.invoice else '-' }}
+      &nbsp;|&nbsp; {{ t("Order Number") }}: {{ order.order_no }}
+      &nbsp;|&nbsp; {{ t("Date") }}: {{ order.invoice.posted_at.strftime('%Y-%m-%d %H:%M') if order.invoice and order.invoice.posted_at else '-' }}
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="info-grid">
+      <div class="info-box">
+        <h3>{{ t("Customer Details") }}</h3>
+        <p><strong>{{ t("Name") }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p><strong>{{ t("Phone") }}:</strong> {{ order.customer.phone if order.customer else '-' }}</p>
+        <p><strong>{{ t("Payment Method") }}:</strong> {{ _m_payment.get(order.payment_mode, order.payment_mode) }}</p>
+      </div>
+      <div class="info-box">
+        <h3>{{ t("Device Details") }}</h3>
+        <p><strong>{{ t("Make") }}:</strong> {{ order.device_brand or '-' }} &nbsp; <strong>{{ t("Model") }}:</strong> {{ order.device_model or '-' }}</p>
+        <p><strong>{{ t("Serial Number") }}:</strong> {{ order.device_serial or '-' }} &nbsp; <strong>{{ t("IMEI") }}:</strong> {{ order.device_imei or '-' }}</p>
+        <p><strong>{{ t("Problem") }}:</strong> {{ order.device_problem or '-' }}</p>
+      </div>
     </div>
 
-    <div class="device-info">
-      <h4>{{ t('Device Details:') }}</h4>
-      <p><strong>{{ t('Make') }}:</strong> {{ order.device_brand or '-' }}</p>
-      <p><strong>{{ t('Model') }}:</strong> {{ order.device_model or '-' }}</p>
-      <p><strong>{{ t('Serial Number') }}:</strong> {{ order.device_serial or '-' }}</p>
-      <p><strong>{{ t('IMEI') }}:</strong> {{ order.device_imei or '-' }}</p>
-      <p><strong>{{ t('Problem:') }}</strong> {{ order.device_problem or '-' }}</p>
-    </div>
-
-    <table class="invoice-table">
+    <table class="m-table">
       <thead>
         <tr>
-          <th>{{ t('Description') }}</th>
-          <th class="text-right">{{ t('Quantity') }}</th>
-          <th class="text-right">{{ t('Price') }}</th>
-          <th class="text-right">{{ t('Total') }}</th>
+          <th>{{ t("Description") }}</th>
+          <th>{{ t("Quantity") }}</th>
+          <th>{{ t("Price") }}</th>
+          <th>{{ t("Total") }}</th>
         </tr>
       </thead>
       <tbody>
         {% for it in order.items %}
         <tr>
           <td>{{ it.product.name if it.product and it.product.tenant_id == order.tenant_id else t('Unspecified Part') }}</td>
-          <td class="text-right">{{ it.quantity }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(it.line_total or 0) }}</td>
+          <td>{{ it.quantity }}</td>
+          <td>{{ "{:,.3f}".format(it.unit_price or 0) }}</td>
+          <td>{{ "{:,.3f}".format(it.line_total or 0) }}</td>
         </tr>
         {% endfor %}
         {% for sv in order.services %}
         <tr>
-          <td>{{ sv.service_name }} {{ sv.service_name_ar or '' }}</td>
-          <td class="text-right">1</td>
-          <td class="text-right">{{ "{:,.3f}".format(sv.unit_price or 0) }}</td>
-          <td class="text-right">{{ "{:,.3f}".format(sv.line_total or 0) }}</td>
+          <td>{{ (sv.service_name_ar if current_language == 'ar' and sv.service_name_ar else sv.service_name) or '-' }}</td>
+          <td>{{ sv.quantity or 1 }}</td>
+          <td>{{ "{:,.3f}".format(sv.unit_price or 0) }}</td>
+          <td>{{ "{:,.3f}".format(sv.line_total or 0) }}</td>
         </tr>
         {% endfor %}
-        <tr>
-          <td>{{ t('Subtotal') }}</td>
-          <td class="text-right"></td>
-          <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.invoice.subtotal or 0) }}</td>
-        </tr>
-        <tr>
-          <td>{{ t('Discount') }}</td>
-          <td class="text-right"></td>
-          <td class="text-right"></td>
-          <td class="text-right">- {{ "{:,.3f}".format(order.invoice.discount_total or 0) }}</td>
-        </tr>
-        <tr>
-          <td>{{ t('Tax') }}</td>
-          <td class="text-right"></td>
-          <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</td>
-        </tr>
       </tbody>
-      <tfoot>
-        <tr>
-          <th>{{ t('Grand Total') }}</th>
-          <th class="text-right"></th>
-          <th class="text-right"></th>
-          <td class="text-right" style="font-size: 1.2em; font-weight: bold;">{{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</td>
-        </tr>
-        <tr>
-          <th>{{ t('Paid at Record Issuance') }}</th>
-          <td class="text-right"></td>
-          <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.invoice.paid_amount or 0) }}</td>
-        </tr>
-        <tr>
-          <th>{{ t('Balance at Record Issuance') }}</th>
-          <td class="text-right"></td>
-          <td class="text-right"></td>
-          <td class="text-right">{{ "{:,.3f}".format(order.invoice.balance_due or 0) }}</td>
-        </tr>
-      </tfoot>
     </table>
+
+    <div class="totals">
+      <div class="trow"><span>{{ t("Subtotal") }}</span><span>{{ "{:,.3f}".format(order.invoice.subtotal or 0) }}</span></div>
+      <div class="trow"><span>{{ t("Discount") }}</span><span>- {{ "{:,.3f}".format(order.invoice.discount_total or 0) }}</span></div>
+      <div class="trow"><span>{{ t("Tax") }}</span><span>{{ "{:,.3f}".format(order.invoice.tax_amount or 0) }}</span></div>
+      <div class="trow final"><span>{{ t("Grand Total") }} ({{ order.currency or 'AED' }})</span><span>{{ "{:,.3f}".format(order.invoice.total_amount or 0) }}</span></div>
+      <div class="trow"><span>{{ t("Paid at Record Issuance") }}</span><span>{{ "{:,.3f}".format(order.invoice.paid_amount or 0) }}</span></div>
+      <div class="trow"><span>{{ t("Balance at Record Issuance") }}</span><span>{{ "{:,.3f}".format(order.invoice.balance_due or 0) }}</span></div>
+    </div>
+
+    {% if amount_words_ar or amount_words_en %}
+    <div class="amount-words">{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
+    {% endif %}
+
+    <div class="notes">
+      <p><strong>{{ t("Warranty Status") }}:</strong> {{ _m_warranty.get(order.warranty_status, order.warranty_status) if order.warranty_status else '-' }}</p>
+      {% if order.warranty_notes %}<p><strong>{{ t("Warranty Notes") }}:</strong> {{ order.warranty_notes }}</p>{% endif %}
+      <p>{{ t('Thank you for doing business with us. The warranty is valid per the agreed terms.') }}</p>
+    </div>
   </div>
 
-  <div class="invoice-footer">
-    <p><strong>{{ t('Warranty Status:') }}</strong> {{ order.warranty_status or '-' }}</p>
-    <p><strong>{{ t('Warranty Notes:') }}</strong> {{ order.warranty_notes or '-' }}</p>
-    <p class="text-muted small">{{ t('Thank you for doing business with us. The warranty is valid per the agreed terms.') }}</p>
+  <div class="invoice-footer" style="text-align:center; font-size:11px; color:#666; padding:10px;">
+    {{ t("This is a posted maintenance invoice. Amounts are a snapshot at invoice issuance.") }}
   </div>
 </div>
-
-<script>
-  window.print();
-</script>
 {% endblock %}

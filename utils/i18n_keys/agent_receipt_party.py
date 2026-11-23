@@ -18,4 +18,12 @@ TRANSLATIONS = {
     "Not Completed": {"ar": "غير مكتمل", "en": "Not Completed"},
     "Return": {"ar": "إرجاع", "en": "Return"},
     "Return part to stock": {"ar": "إرجاع القطعة إلى المخزون", "en": "Return part to stock"},
+    "Problem": {"ar": "المشكلة", "en": "Problem"},
+    "Warranty Status": {"ar": "حالة الكفالة", "en": "Warranty Status"},
+    "This is a posted maintenance invoice. Amounts are a snapshot at invoice issuance.": {"ar": "هذه فاتورة صيانة مرحّلة. المبالغ لقطة عند الإصدار ولا تتأثر بتعديلات لاحقة على الأمر.", "en": "This is a posted maintenance invoice. Amounts are a snapshot at invoice issuance."},
+    "Posted maintenance receipt voucher. The amount is a snapshot at the time of collection.": {"ar": "سند قبض صيانة مرحّل. المبلغ لقطة وقت التحصيل.", "en": "Posted maintenance receipt voucher. The amount is a snapshot at the time of collection."},
+    "Device intake voucher — no financial value. Revenue and collection are recorded in their own documents.": {"ar": "سند استلام جهاز — بلا قيمة مالية. تُسجّل الإيرادات والتحصيلات في مستنداتها الخاصة.", "en": "Device intake voucher — no financial value. Revenue and collection are recorded in their own documents."},
+    "Order Status": {"ar": "حالة الأمر", "en": "Order Status"},
+    "Collection Details": {"ar": "بيانات التحصيل", "en": "Collection Details"},
+    "Customer & Intake": {"ar": "العميل والاستلام", "en": "Customer & Intake"},
 }

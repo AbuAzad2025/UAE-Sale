@@ -1,48 +1,83 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow">
-  <title>{{ t('Device Intake') }} - {{ order.order_no }}</title>
-  <style>
-    body { font-family: Tahoma, Arial, sans-serif; color: #222; margin: 24px; }
-    main { max-width: 800px; margin: auto; }
-    h1, h2 { margin-bottom: 8px; }
-    .warning { border: 2px solid #a66b00; padding: 12px; margin: 18px 0; }
-    .meta, .device { width: 100%; border-collapse: collapse; margin: 18px 0; }
-    th, td { border: 1px solid #aaa; padding: 10px; text-align: right; vertical-align: top; overflow-wrap: anywhere; }
-    th { width: 25%; background: #f2f2f2; }
-    .problem { white-space: pre-wrap; }
-    .signatures { display: flex; justify-content: space-between; gap: 32px; margin-top: 50px; }
-    .signature { flex: 1; border-top: 1px solid #555; padding-top: 8px; }
-    .no-print { margin-bottom: 20px; }
-    @media print { .no-print { display: none; } body { margin: 0; } }
-  </style>
-</head>
-<body>
-<main>
-  <div class="no-print"><button type="button" onclick="window.print()">{{ t('Print') }}</button></div>
-  <h1>{{ tenant.name_ar or tenant.name }}</h1>
-  <h2>{{ t('Device Intake Voucher for Maintenance') }}</h2>
-  <div class="warning"><strong>{{ t('This is an intake voucher — not an invoice, receipt voucher or proof of warranty.') }}</strong>
-    {{ t('It documents device handover only; revenue and collection are recorded in their own documents.') }}</div>
-  <table class="meta">
-    <tr><th>{{ t('Order Number') }}</th><td>{{ order.order_no }}</td></tr>
-    <tr><th>{{ t('Intake Date') }}</th><td>{{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</td></tr>
-    <tr><th>{{ t('Customer') }}</th><td>{{ order.customer.name }}</td></tr>
-    <tr><th>{{ t('Phone') }}</th><td>{{ order.customer.phone or '-' }}</td></tr>
-    <tr><th>{{ t('Received By') }}</th><td>{{ (order.received_by_user.full_name or order.received_by_user.username) if order.received_by_user and order.received_by_user.tenant_id == order.tenant_id else '-' }}</td></tr>
-  </table>
-  <table class="device">
-    <tr><th>{{ t('Brand') }}</th><td>{{ order.device_brand or '-' }}</td></tr>
-    <tr><th>{{ t('Model') }}</th><td>{{ order.device_model or '-' }}</td></tr>
-    <tr><th>{{ t('Serial Number') }}</th><td>{{ order.device_serial or '-' }}</td></tr>
-    <tr><th>{{ t('IMEI') }}</th><td>{{ order.device_imei or '-' }}</td></tr>
-    <tr><th>{{ t('Plate number') }}</th><td>{{ order.device_plate or '-' }}</td></tr>
-    <tr><th>{{ t('Reported Problem') }}</th><td class="problem">{{ order.device_problem or '-' }}</td></tr>
-  </table>
-  <div class="signatures"><div class="signature">{{ t('Customer Signature') }}</div><div class="signature">{{ t('Receiver Signature') }}</div></div>
-</main>
-</body>
-</html>
+{% extends 'base_print.html' %}
+
+{% set _prio = {'urgent': t('Urgent'), 'normal': t('Normal'), 'low': t('Low')} %}
+
+{% block print_title %}{{ settings.company_name_ar or settings.company_name_en or '' }} - {{ t("Device Intake") }} #{{ order.order_no }}{% endblock %}
+
+{% block extra_print_css %}
+<style>
+  .invoice-header { text-align: center; }
+  .company-name { font-size: 12px; font-weight: 700; }
+  .company-info { font-size: 11px; opacity: .95; line-height: 1.5; }
+  .invoice-title { background: #f8f9fa; padding: 10px 15px; text-align: center;
+    border-bottom: 2px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .invoice-title h2 { color: {{ settings.header_color if settings else '#667eea' }}; font-size: 15px; margin: 0; }
+  .invoice-number { color: {{ settings.accent_color if settings else '#764ba2' }}; font-size: 11px; margin-top: 4px; }
+  .content { padding: 12px 20px; }
+  .warning { border: 2px solid #a66b00; background: #fff8e6; padding: 10px 12px;
+    margin-bottom: 12px; border-radius: 6px; font-size: 11px; line-height: 1.6; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .info-box { background: #f8f9fa; padding: 8px 10px; border-radius: 6px;
+    border-inline-start: 3px solid {{ settings.accent_color if settings else '#764ba2' }}; }
+  .info-box h3 { color: {{ settings.header_color if settings else '#667eea' }}; margin: 0 0 5px; font-size: 11px; }
+  .info-box p { margin: 3px 0; color: #555; font-size: 11px; }
+  .info-box p strong { color: #222; }
+  .problem { white-space: pre-wrap; }
+  .signatures { display: flex; justify-content: space-between; gap: 32px; margin-top: 38px; }
+  .signature { flex: 1; border-top: 1px solid #555; padding-top: 8px; text-align: center; font-size: 11px; color: #555; }
+</style>
+{% endblock %}
+
+{% block document_content %}
+<div class="receipt">
+  <div class="invoice-header">
+    <div class="company-name">{{ settings.company_name_ar or settings.company_name_en or '' }}</div>
+    <div class="company-info">
+      <div>{{ settings.address_ar or '' }}</div>
+      <div>{{ settings.phone_1 or '' }}</div>
+      {% if settings.tax_number and settings.tax_number != 'None' %}<div>{{ t("Tax Number") }}: {{ settings.tax_number }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="invoice-title">
+    <h2>{{ t("Device Intake Voucher for Maintenance") }}</h2>
+    <div class="invoice-number">
+      {{ t("Order Number") }}: {{ order.order_no }}
+      &nbsp;|&nbsp; {{ t("Intake Date") }}: {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="warning">
+      <strong>{{ t('This is an intake voucher — not an invoice, receipt voucher or proof of warranty.') }}</strong>
+      {{ t('It documents device handover only; revenue and collection are recorded in their own documents.') }}
+    </div>
+
+    <div class="info-grid">
+      <div class="info-box">
+        <h3>{{ t("Customer & Intake") }}</h3>
+        <p><strong>{{ t("Customer") }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p><strong>{{ t("Phone") }}:</strong> {{ order.customer.phone or '-' }}</p>
+        <p><strong>{{ t("Received By") }}:</strong> {{ (order.received_by_user.full_name or order.received_by_user.username) if order.received_by_user and order.received_by_user.tenant_id == order.tenant_id else '-' }}</p>
+        <p><strong>{{ t("Priority") }}:</strong> {{ _prio.get(order.priority, order.priority) }}</p>
+      </div>
+      <div class="info-box">
+        <h3>{{ t("Device Details") }}</h3>
+        <p><strong>{{ t("Brand") }}:</strong> {{ order.device_brand or '-' }} &nbsp; <strong>{{ t("Model") }}:</strong> {{ order.device_model or '-' }}</p>
+        <p><strong>{{ t("Serial Number") }}:</strong> {{ order.device_serial or '-' }} &nbsp; <strong>{{ t("IMEI") }}:</strong> {{ order.device_imei or '-' }}</p>
+        <p><strong>{{ t("Plate number") }}:</strong> {{ order.device_plate or '-' }}</p>
+        <p class="problem"><strong>{{ t("Reported Problem") }}:</strong> {{ order.device_problem or '-' }}</p>
+      </div>
+    </div>
+
+    <div class="signatures">
+      <div class="signature">{{ t("Customer Signature") }}</div>
+      <div class="signature">{{ t("Receiver Signature") }}</div>
+    </div>
+  </div>
+
+  <div class="invoice-footer" style="text-align:center; font-size:11px; color:#666; padding:10px;">
+    {{ t("Device intake voucher — no financial value. Revenue and collection are recorded in their own documents.") }}
+  </div>
+</div>
+{% endblock %}

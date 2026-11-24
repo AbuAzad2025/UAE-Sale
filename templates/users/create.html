@@ -30,9 +30,11 @@
 .required-field::before {
   content: '';
   position: absolute;
-  left: -10px;
-  top: 0;
-  bottom: 0;
+  inset-inline-start: -10px;
+  /* Keep the marker beside the input only, not spanning the whole column
+     (label + field + help text) which caused it to cross neighbouring rows. */
+  top: 32px;
+  height: 48px;
   width: 4px;
   background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
   border-radius: 2px;
@@ -46,7 +48,7 @@
 .optional-field::after {
   content: '({{ t("Optional") }})';
   position: absolute;
-  left: 10px;
+  inset-inline-end: 10px;
   top: 8px;
   font-size: 12px;
   color: #95a5a6;
@@ -62,11 +64,11 @@
 }
 
 .required-field .form-control {
-  border-left: 3px solid #e74c3c;
+  border-inline-start: 3px solid #e74c3c;
 }
 
 .optional-field .form-control {
-  border-left: 3px solid #95a5a6;
+  border-inline-start: 3px solid #95a5a6;
 }
 
 .field-section {

@@ -22,7 +22,11 @@ try:
             return pickle.dumps(value, protocol)
         except (pickle.PickleError, pickle.PicklingError) as e:
             self._warn(e)
-            return None
+            # Returning bare None makes cache.get() call loads(None) and raise
+            # "a bytes-like object is required, not 'NoneType'". Store a
+            # pickled None instead: loads() returns None, callers treat it as
+            # a cache miss and recompute cleanly.
+            return pickle.dumps(None, protocol)
 
     BaseSerializer.dumps = patched_dumps
 except ImportError:

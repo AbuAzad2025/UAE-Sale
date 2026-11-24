@@ -87,7 +87,6 @@
                 <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> Reports & Export</li>
                 <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> AI Assistant</li>
                 <li onclick="scrollToSection('vault')"><i class="fas fa-vault"></i> Payment Vault</li>
-                <li onclick="scrollToSection('owner')"><i class="fas fa-crown"></i> Owner Panel</li>
                 <li onclick="scrollToSection('support')"><i class="fas fa-headset"></i> Support</li>
             </ul>
         </aside>
@@ -100,7 +99,7 @@
                 <ol>
                     <li><strong>Get an account:</strong> Contact us on WhatsApp <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}">{{ config.COMPANY_WHATSAPP }}</a> to create your account and set your role.</li>
                     <li><strong>Log in</strong> with the username/password you receive, then <strong>change your password</strong> from your profile.</li>
-                    <li><strong>Company setup:</strong> Owner Panel → Company Info (name, logo, VAT details), and tax/currency settings.</li>
+                    <li><strong>Company setup:</strong> Company Info (name, logo, VAT details) and tax/currency settings.</li>
                     <li><strong>Enter data:</strong> Products → Suppliers → Customers → then create your first sale or purchase.</li>
                 </ol>
                 <div class="tip-box">
@@ -119,9 +118,9 @@
                 <h3>The 10 Roles</h3>
                 <table class="roles">
                     <tr><th>Role</th><th>Main permissions</th></tr>
-                    <tr><td><strong>Owner</strong></td><td>Everything + Owner panel (databases, backups, security, tenants).</td></tr>
-                    <tr><td><strong>Super Admin</strong></td><td>All permissions except Owner secrets (Master Key).</td></tr>
-                    <tr><td><strong>Developer</strong></td><td>All permissions, may access Owner UI.</td></tr>
+                    <tr><td><strong>Administrator</strong></td><td>Full system administration and configuration.</td></tr>
+                    <tr><td><strong>Super Admin</strong></td><td>All operational permissions and system configuration.</td></tr>
+                    <tr><td><strong>Developer</strong></td><td>All operational permissions for implementation work.</td></tr>
                     <tr><td><strong>Manager</strong></td><td>Sales, customers, products, suppliers, purchases, payments, expenses, warehouse, users, reports.</td></tr>
                     <tr><td><strong>Accountant</strong></td><td>Ledger, journal entries, reports, costs, payments, expenses.</td></tr>
                     <tr><td><strong>HR</strong></td><td>Employees, leaves, payroll.</td></tr>
@@ -131,9 +130,9 @@
                     <tr><td><strong>Viewer</strong></td><td>Read-only access to reports and ledger.</td></tr>
                 </table>
                 <div class="warning-box">
-                    <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> The <strong>Owner</strong> account is confidential and must never be shared. Every Owner action is logged in the Audit Log.
+                    <strong><i class="fas fa-exclamation-triangle"></i> Important:</strong> Administrator accounts are confidential and must never be shared. All privileged actions are recorded in the Audit Log.
                 </div>
-                <p>Manage users under <strong>/users</strong>, and customize role permissions under Owner → Roles & Permissions.</p>
+                <p>Manage users and role permissions from the Users and Settings sections.</p>
             </section>
 
             <section class="section" id="products">
@@ -315,9 +314,9 @@
                 <h2><i class="fas fa-user-cog"></i> Users & Permissions</h2>
                 <ul>
                     <li>Add users (name, role, branch/company).</li>
-                    <li>Customize roles in detail from Owner → Roles & Permissions.</li>
+                    <li>Customize roles in detail from Settings → Roles & Permissions.</li>
                     <li>Reset passwords, enable/disable users.</li>
-                    <li>Login history is available in the Owner panel for review.</li>
+                    <li>Login history is available in the Security section for review.</li>
                 </ul>
             </section>
 
@@ -325,7 +324,7 @@
                 <h2><i class="fas fa-paper-plane"></i> Notifications</h2>
                 <ul>
                     <li><strong>WhatsApp:</strong> send invoices, payment reminders and dunning letters.</li>
-                    <li><strong>SMS</strong> and <strong>Email</strong> notifications (configured in Owner settings).</li>
+                    <li><strong>SMS</strong> and <strong>Email</strong> notifications (configured in Settings).</li>
                     <li><strong>In-system alerts:</strong> low stock, cheque due dates, pending approvals.</li>
                 </ul>
             </section>
@@ -342,7 +341,7 @@
                     <li>AP Aging (0-30 / 31-60 / 61-90 / 90+ days).</li>
                     <li>Cash flow statement.</li>
                     <li><strong>VAT report</strong> (output − input = net payable).</li>
-                    <li>Partners & merchants report and overall performance analytics in the Owner panel.</li>
+                    <li>Partners & merchants report and overall performance analytics in the Dashboard.</li>
                 </ul>
                 <h3>Export</h3>
                 <ul>
@@ -380,25 +379,6 @@
                     <li>Secure encrypted card storage with on-demand decryption under special permission.</li>
                     <li>Public checkout for purchases without login.</li>
                 </ul>
-            </section>
-
-            <section class="section" id="owner">
-                <h2><i class="fas fa-crown"></i> Owner Panel</h2>
-                <p>Available for the Owner and Developer only - every action is audited:</p>
-                <ul>
-                    <li>Owner dashboard with business performance analytics.</li>
-                    <li>Roles & Permissions editor.</li>
-                    <li>Database tools - browse tables, optimize, export, convert.</li>
-                    <li><strong>Backup / Restore</strong> - on-demand or scheduled, with verification and download.</li>
-                    <li>Audit log, error log, login history and monitoring.</li>
-                    <li>Company settings, per-tenant currencies and tax configuration.</li>
-                    <li>Security: IP whitelist, API keys, security alerts, data cleanup.</li>
-                    <li>SMS / WhatsApp / Email settings and notification templates.</li>
-                    <li>Tenants management for multi-entity businesses.</li>
-                </ul>
-                <div class="warning-box">
-                    <strong><i class="fas fa-exclamation-triangle"></i> Professional advice:</strong> Never grant Owner-level access to staff. Use the tiered roles and keep weekly scheduled backups.
-                </div>
             </section>
 
             <section class="section" id="support" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">

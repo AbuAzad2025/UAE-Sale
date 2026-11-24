@@ -88,7 +88,10 @@
             <li onclick="scrollToSection('payments')"><i class="fas fa-money-bill-wave"></i> {{ t('Payments') }}</li>
             <li onclick="scrollToSection('reports')"><i class="fas fa-chart-line"></i> {{ t('Reports') }}</li>
             <li onclick="scrollToSection('hr')"><i class="fas fa-id-badge"></i> {{ t('Human Resources') }}</li>
+            <li onclick="scrollToSection('notifications')"><i class="fas fa-paper-plane"></i> {{ t('Notifications') }}</li>
             <li onclick="scrollToSection('ai')"><i class="fas fa-brain"></i> {{ t('Artificial Intelligence') }}</li>
+            <li onclick="scrollToSection('vault')"><i class="fas fa-vault"></i> {{ t('Payment Vault') }}</li>
+            <li onclick="scrollToSection('support')"><i class="fas fa-headset"></i> {{ t('Technical Support') }}</li>
         </ul>
     </aside>
 
@@ -249,8 +252,20 @@
             <ul>
                 <li><strong>{{ t('Employees') }}:</strong> /hr/employees</li>
                 <li><strong>{{ t('Payroll') }}:</strong> /hr/payroll</li>
-                <li><strong>{{ t('Leaves') }}:</strong> /hr/leaves</li>
-                <li><strong>{{ t('Attendance') }}:</strong> /hr/attendance</li>
+                <li><strong>{{ t('Leave Requests') }}:</strong> /hr/leave</li>
+                <li><strong>{{ t('Leave Types') }}:</strong> /hr/leave-types</li>
+                <li><strong>{{ t('Departments') }}:</strong> /hr/departments</li>
+            </ul>
+            <p>{{ t('Income tax is withheld per employee settings and posted to tax payable; daily-wage workers are paid per worked day.') }}</p>
+        </section>
+
+        <section id="notifications">
+            <h2><i class="fas fa-paper-plane"></i> {{ t('Notifications') }}</h2>
+            <p>{{ t('Send notifications to customers through WhatsApp, email or SMS.') }}</p>
+            <ul>
+                <li>{{ t('WhatsApp and email notifications from sales and receipts.') }}</li>
+                <li>{{ t('Cheque alerts and due reminders.') }}</li>
+                <li>{{ t('Newsletter and manual notification templates.') }}</li>
             </ul>
         </section>
 
@@ -258,10 +273,25 @@
             <h2><i class="fas fa-brain"></i> {{ t('Artificial Intelligence') }}</h2>
             <p>{{ t('A smart assistant for data analysis:') }}</p>
             <ul>
-                <li><strong>{{ t('Chat') }}:</strong> /ai/chat</li>
-                <li><strong>{{ t('Analytics') }}:</strong> /ai/sales-insights</li>
-                <li><strong>{{ t('Forecasting') }}:</strong> /ai/forecasting</li>
+                <li><strong>{{ t('Assistant') }}:</strong> /ai/assistant</li>
+                <li><strong>{{ t('Configuration') }}:</strong> /ai/config</li>
             </ul>
+        </section>
+
+        <section id="vault">
+            <h2><i class="fas fa-vault"></i> {{ t('Payment Vault') }}</h2>
+            <p>{{ t(' securely stored payment instruments with controlled access.') }}</p>
+            <ul>
+                <li>{{ t('Encrypted storage and on-demand decryption under special permission.') }}</li>
+                <li>{{ t('Public checkout for purchases without login.') }}</li>
+            </ul>
+        </section>
+
+        <section id="support">
+            <h2><i class="fas fa-headset"></i> {{ t('Technical Support') }}</h2>
+            <p>{{ t('For help, use the AI assistant inside the system or contact us:') }}</p>
+            <p><i class="fab fa-whatsapp"></i> {{ t('WhatsApp') }}: <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}">+{{ config.COMPANY_WHATSAPP }}</a></p>
+            <p><i class="fas fa-phone"></i> {{ t('Phone') }}: {{ config.COMPANY_PHONE }}</p>
         </section>
 
     </main>
@@ -269,6 +299,7 @@
 
 <footer>
     <p>&copy; {{ current_year }} {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}. {{ t('All rights reserved.') }}</p>
+    <p>{{ config.DEVELOPER_CREDIT }}</p>
 </footer>
 
 <script>

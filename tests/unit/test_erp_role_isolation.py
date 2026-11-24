@@ -1212,7 +1212,6 @@ class TestDiscoveredRoleEndpointMatrix:
             ("cashier_user", "POST", "/sales/create"),
             ("cashier_user", "POST", "/products/create"),
             ("accountant_user", "POST", "/sales/create"),
-            ("manager_user", "POST", "/ledger/manual-entry"),
             ("inventory_user", "POST", "/sales/create"),
             ("inventory_user", "POST", "/purchases/create"),
             ("hr_user", "POST", "/expenses/create"),
@@ -1236,6 +1235,12 @@ class TestDiscoveredRoleEndpointMatrix:
             f"{fixture_name} {method} {url} returned {resp.status_code}, "
             "expected deny (403/404/302)"
         )
+
+    def test_manager_may_open_manual_entry(self, client, manager_user):
+        """Manager holds manage_ledger by design — GET must be allowed."""
+        _login(client, manager_user)
+        resp = client.get("/ledger/manual-entry", follow_redirects=False)
+        assert resp.status_code == 200
 
     @pytest.mark.parametrize(
         "fixture_name,url",

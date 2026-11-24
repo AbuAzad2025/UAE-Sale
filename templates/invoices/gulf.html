@@ -27,7 +27,7 @@
   }
   .invoice-title { font-size: 11px; font-weight: 700; color: {{ settings.header_color or '#c9a961' }}; margin-bottom: 3px; }
   .invoice-number { font-size: 11px; color: #666; }
-  .content { padding: 7px; }
+  .content { padding: 12px 18px; }
   .info-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .info-box { background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%); border: 1px solid {{ settings.accent_color or '#8b7355' }}; border-radius: 5px; padding: 6px; }
   .info-box h3 { color: {{ settings.header_color or '#c9a961' }}; font-size: 11px; margin-bottom: 4px; border-bottom: 1px solid {{ settings.accent_color or '#8b7355' }}; padding-bottom: 3px; }
@@ -103,7 +103,7 @@
     <div class="info-boxes">
       <div class="info-box">
         <h3> {{ t("Customer Details") }}</h3>
-        <p><strong>{{ t("Name") }}:</strong> {{ sale.customer.name }}</p>
+        <p><strong>{{ t("Name") }}:</strong> {{ (sale.customer.name_ar if current_language == 'ar' and sale.customer.name_ar else sale.customer.name) if sale.customer else '-' }}</p>
         {% if sale.customer.phone %}<p><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone }}</p>{% endif %}
         {% if sale.customer.email %}<p><strong>{{ t("Email") }}:</strong> {{ sale.customer.email }}</p>{% endif %}
         {% if sale.customer.tax_number %}<p><strong>{{ t("Tax Number") }}:</strong> {{ sale.customer.tax_number }}</p>{% endif %}

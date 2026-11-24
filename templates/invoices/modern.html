@@ -108,7 +108,7 @@
     <div class="info-grid">
       <div class="info-box">
         <h3> {{ t("Client Details") }}</h3>
-        <p><strong>{{ t("Name") }}:</strong> {{ sale.customer.name }}</p>
+        <p><strong>{{ t("Name") }}:</strong> {{ (sale.customer.name_ar if current_language == 'ar' and sale.customer.name_ar else sale.customer.name) if sale.customer else '-' }}</p>
         <p><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone }}</p>
         <p><strong>{{ t("Address") }}:</strong> {{ sale.customer.address }}</p>
         {% if sale.customer.tax_number %}<p><strong>{{ t("Tax Number") }}:</strong> {{ sale.customer.tax_number }}</p>{% endif %}

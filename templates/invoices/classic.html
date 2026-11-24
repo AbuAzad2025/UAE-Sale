@@ -7,7 +7,8 @@
 <style>
   body { font-family: 'Amiri', 'Times New Roman', serif; }
   .document { border: 3px double #333; }
-  @media print { .document { border: 2px double #333; } }
+  .invoice { padding: 0 16px 14px; }
+  @media print { .document { border: 2px double #333; } .invoice { padding: 0 10px 10px; } }
   .invoice-header { text-align: center; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 8px; }
   .logo { height: 50px; margin-bottom: 8px; }
   .company-name { font-size: 20px; font-weight: 700; color: #333; margin: 5px 0; }
@@ -55,7 +56,7 @@
   <div class="info-section">
     <div class="info-box">
       <h3> {{ t("Customer Details") }}</h3>
-      <p><strong>{{ t("Name") }}:</strong> {{ sale.customer.name }}</p>
+      <p><strong>{{ t("Name") }}:</strong> {{ (sale.customer.name_ar if current_language == 'ar' and sale.customer.name_ar else sale.customer.name) if sale.customer else '-' }}</p>
       {% if sale.customer.phone %}<p><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone }}</p>{% endif %}
       {% if sale.customer.email %}<p><strong>{{ t("Email") }}:</strong> {{ sale.customer.email }}</p>{% endif %}
       {% if sale.customer.tax_number %}<p><strong>{{ t("Tax Number") }}:</strong> {{ sale.customer.tax_number }}</p>{% endif %}

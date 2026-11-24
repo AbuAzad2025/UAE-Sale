@@ -24,7 +24,7 @@
   }
   .invoice-title h2 { color: #333; font-size: 16px; margin: 0; }
   .invoice-number { color: #666; font-size: 11px; margin-top: 5px; font-weight: 700; }
-  .content { padding: 10px; }
+  .content { padding: 14px 18px; }
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -88,7 +88,7 @@
     <div class="info-grid">
       <div class="info-box">
         <h3> {{ t("Client Details") }}</h3>
-        <p><strong>{{ t("Name") }}:</strong> {{ sale.customer.name }}</p>
+        <p><strong>{{ t("Name") }}:</strong> {{ (sale.customer.name_ar if current_language == 'ar' and sale.customer.name_ar else sale.customer.name) if sale.customer else '-' }}</p>
         <p><strong>{{ t("Phone") }}:</strong> {{ sale.customer.phone }}</p>
         <p><strong>{{ t("Address") }}:</strong> {{ sale.customer.address }}</p>
         {% if sale.customer.tax_number %}<p><strong>{{ t("Tax Number") }}:</strong> {{ sale.customer.tax_number }}</p>{% endif %}

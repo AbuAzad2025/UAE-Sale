@@ -29,6 +29,12 @@ def test_amount_words_follow_language():
         assert "amount_words_ar if current_language == 'ar' else amount_words_en" in src, name
 
 
+def test_templates_have_inner_padding():
+    for name in ('modern', 'classic', 'gulf', 'minimal', 'simple'):
+        src = _read(f'templates/invoices/{name}.html')
+        assert 'padding:' in src, name
+
+
 def test_tax_label_localised():
     src = _read('templates/invoices/_tax_label.html')
     for key in ('Zero-rated (0%)', 'Tax Exempt', 'Tax Included in Total', 'Additional Tax'):

@@ -43,4 +43,7 @@ TRANSLATIONS = {
     "Use This Rate": {"ar": "استخدم هذا السعر", "en": "Use This Rate"},
     "Using a manually entered rate.": {"ar": "يتم استخدام سعر أدخلته يدوياً.", "en": "Using a manually entered rate."},
     "Live exchange rate.": {"ar": "سعر صرف حي.", "en": "Live exchange rate."},
+    "Integrated ERP & Accounting System": {"ar": "نظام متكامل لإدارة الموارد المؤسسية والمحاسبة", "en": "Integrated ERP & Accounting System"},
+    "Palestine - Ramallah": {"ar": "فلسطين - رام الله", "en": "Palestine - Ramallah"},
+    "Developed by Eng. Ahmad Ghannam": {"ar": "تطوير وبرمجة: المهندس أحمد غنام", "en": "Developed by Eng. Ahmad Ghannam"},
 }

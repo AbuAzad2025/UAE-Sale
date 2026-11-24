@@ -5,218 +5,143 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ t('Azad Smart Systems Company') }} - {{ t('Login') }}</title>
   <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/css/adminlte.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-  <style>
-    body {
-      font-family: 'Tajawal', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .login-box {
-      width: 450px;
-    }
-    .card {
-      border-radius: 15px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      overflow: hidden;
-    }
-    .card-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 30px;
-      text-align: center;
-    }
-    .login-logo img {
-      height: 70px;
-      margin-bottom: 15px;
-    }
-    .login-box-msg {
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
-      margin: 20px 0;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 700;
-    }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    .card-footer {
-      background: #f8f9fa;
-    }
-    .palestine-flag {
-      display: inline-block;
-      width: 20px;
-      height: 13px;
-      background: linear-gradient(180deg, #000 0%, #000 33.33%, #fff 33.33%, #fff 66.66%, #007A3D 66.66%, #007A3D 100%);
-      position: relative;
-      margin: 0 3px;
-      vertical-align: middle;
-    }
-    .palestine-flag::before {
-      content: '';
-      position: absolute;
-      right: 0;
-      top: 0;
-      width: 0;
-      height: 0;
-      border-style: solid;
-      border-width: 6.5px 0 6.5px 10px;
-      border-color: transparent transparent transparent #CE1126;
-    }
-  </style>
 </head>
 <body class="hold-transition login-page">
 
-<div style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+  {# Language switcher — secondary control, kept out of the layout flow #}
+  <div class="login-lang">
     <div class="dropdown">
-        <button class="btn btn-outline-light dropdown-toggle" type="button" id="langDropdown" data-toggle="dropdown" style="background: rgba(102,126,234,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 20px;">
-            <i class="fas fa-globe" style="margin-inline-end: .5rem;"></i>{{ t('Arabic') if current_language == 'ar' else t('English') }}
-        </button>
-        <div class="dropdown-menu dropdown-menu-right">
-            <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
-                <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}" style="margin-inline-end: .5rem;"></i>
-                {{ t('Arabic') }}
-            </a>
-            <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
-                <i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}" style="margin-inline-end: .5rem;"></i>
-                {{ t('English') }}
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="login-box">
-  <div class="card card-outline">
-    <div class="card-header">
-      <div class="login-logo">
-        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad ERP" class="platform-logo-top">
+      <button class="btn btn-outline-light dropdown-toggle" type="button" id="langDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <i class="fas fa-globe" aria-hidden="true"></i>{{ t('Arabic') if current_language == 'ar' else t('English') }}
+      </button>
+      <div class="dropdown-menu dropdown-menu-right">
+        <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
+          <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}" aria-hidden="true"></i>{{ t('Arabic') }}
+        </a>
+        <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
+          <i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}" aria-hidden="true"></i>{{ t('English') }}
+        </a>
       </div>
-      <h3 class="text-white mb-0"><b>{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</b></h3>
-      <p class="text-white-50 mt-2">{{ company_address }}</p>
-    </div>
-    <div class="card-body">
-      <p class="login-box-msg">{{ t('Sign in to start your session') }} <span class="palestine-flag"></span></p>
-
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible">
-              <button type="button" class="close" data-dismiss="alert">&times;</button>
-              {{ message }}
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-
-      <form method="POST" action="{{ url_for('auth.login') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        
-        <div class="input-group mb-3 auth-input-group">
-          <label class="sr-only" for="username">{{ t('Username') }}</label>
-          <input type="text" id="username" name="username" class="form-control auth-input" placeholder="{{ t('Username') }}" required autofocus autocomplete="username">
-          <div class="input-group-append">
-            <div class="input-group-text">
-              <span class="fas fa-user"></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="input-group mb-3 auth-input-group">
-          <label class="sr-only" for="password">{{ t('Password') }}</label>
-          <input type="password" name="password" id="password" class="form-control auth-input" placeholder="{{ t('Password') }}" required autocomplete="current-password">
-          <div class="input-group-append">
-            <div class="input-group-text">
-              <span class="fas fa-lock"></span>
-            </div>
-          </div>
-          <div class="input-group-append">
-            <button type="button" class="input-group-text btn btn-link text-secondary" id="togglePassword" aria-label="{{ t('Show/Hide password') }}" style="text-decoration: none;">
-              <i class="fas fa-eye" aria-hidden="true"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col-7">
-            <div class="icheck-primary">
-              <input type="checkbox" name="remember" id="remember">
-              <label for="remember">{{ t('Remember Me') }}</label>
-            </div>
-            <div class="mt-2">
-              <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-muted small">
-                <i class="fas fa-key" style="margin-inline-end: .4rem;"></i>{{ t('Forgot password? Contact admin') }}
-              </a>
-            </div>
-          </div>
-          <div class="col-5">
-            <button type="submit" class="btn btn-primary btn-block">
-              <i class="fas fa-sign-in-alt" style="margin-inline-end: .5rem;"></i>{{ t('Sign In') }}
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-    
-    <div class="card-footer login-card-footer-platform">
-      <img src="{{ url_for('static', filename='img/azad_login_graphic.png') }}" alt="Azad ERP" class="platform-logo-bottom">
     </div>
   </div>
-</div>
-<script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
-<script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var pwd = document.getElementById('password');
-    var toggle = document.getElementById('togglePassword');
-    if (pwd && toggle) {
-      toggle.addEventListener('click', function () {
-        var isText = pwd.type === 'text';
-        pwd.type = isText ? 'password' : 'text';
-        var icon = toggle.querySelector('i');
-        if (icon) {
-          icon.classList.toggle('fa-eye');
-          icon.classList.toggle('fa-eye-slash');
-        }
-        toggle.setAttribute('aria-pressed', (!isText).toString());
-      });
-    }
-  });
-</script>
-<style>
-  .auth-input-group .form-control {
-    min-height: 56px;
-    height: auto !important;
-    padding: 0.95rem 1.35rem;
-    font-size: 0.95rem;
-    line-height: 1.7;
-    text-align: center;
-  }
 
-  .auth-input-group .form-control::placeholder {
-    text-align: center;
-    color: #64748b;
-    opacity: 0.85;
-  }
+  <main class="login-shell">
+    <section class="login-card" aria-label="{{ t('Login') }}">
 
-  .auth-input-group .form-control:focus {
-    box-shadow: none;
-    border-color: #667eea;
-  }
-</style>
+      {# Compact branded header — logo mark only, no repeated company name #}
+      <header class="login-header">
+        <img src="{{ url_for('static', filename='img/azad_erp_logo.png') }}"
+             alt="Azad ERP" class="login-logo-img">
+        <div class="login-brand-text">
+          <span class="login-product">Azad ERP</span>
+          <span class="login-tagline">{{ t('Integrated ERP & Accounting System') }}</span>
+        </div>
+        <span class="login-location">{{ t('Palestine - Ramallah') }}</span>
+      </header>
+
+      <div class="login-body">
+        <p class="login-box-msg">
+          {{ t('Sign in to start your session') }}
+          <span class="palestine-flag" aria-hidden="true"></span>
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="{{ t('Close') }}">&times;</button>
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="input-group auth-input-group">
+            <label class="sr-only" for="username">{{ t('Username') }}</label>
+            <input type="text" id="username" name="username" class="form-control auth-input"
+                   placeholder="{{ t('Username') }}" required autofocus autocomplete="username">
+            <div class="input-group-append">
+              <span class="input-group-text"><i class="fas fa-user" aria-hidden="true"></i></span>
+            </div>
+          </div>
+
+          <div class="input-group auth-input-group">
+            <label class="sr-only" for="password">{{ t('Password') }}</label>
+            <input type="password" id="password" name="password" class="form-control auth-input"
+                   placeholder="{{ t('Password') }}" required autocomplete="current-password">
+            <div class="input-group-append">
+              <span class="input-group-text"><i class="fas fa-lock" aria-hidden="true"></i></span>
+            </div>
+            <div class="input-group-append">
+              <button type="button" class="input-group-text toggle-password" id="togglePassword"
+                      aria-label="{{ t('Show/Hide password') }}" aria-pressed="false">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="login-actions">
+            <div class="login-remember">
+              <div class="icheck-primary">
+                <input type="checkbox" name="remember" id="remember">
+                <label for="remember">{{ t('Remember Me') }}</label>
+              </div>
+              <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" rel="noopener" class="login-recover">
+                <i class="fas fa-key" aria-hidden="true"></i>{{ t('Forgot password? Contact admin') }}
+              </a>
+            </div>
+            <button type="submit" class="btn btn-primary login-submit">
+              <i class="fas fa-sign-in-alt" aria-hidden="true"></i>{{ t('Sign In') }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {# Compact, real-HTML developer footer — no promotional banner image #}
+      <footer class="login-footer">
+        <div class="login-footer-company">
+          <i class="fas fa-building" aria-hidden="true"></i>
+          {{ config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME }}
+        </div>
+        <div class="login-footer-dev">
+          {{ t('Developed by Eng. Ahmad Ghannam') }}
+        </div>
+        <a class="login-footer-wa" href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" rel="noopener">
+          <i class="fab fa-whatsapp" aria-hidden="true"></i>+{{ config.COMPANY_WHATSAPP }}
+        </a>
+      </footer>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='adminlte/plugins/jquery/jquery.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='adminlte/js/adminlte.min.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var pwd = document.getElementById('password');
+      var toggle = document.getElementById('togglePassword');
+      if (pwd && toggle) {
+        toggle.addEventListener('click', function () {
+          var isText = pwd.type === 'text';
+          pwd.type = isText ? 'password' : 'text';
+          var icon = toggle.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+          }
+          toggle.setAttribute('aria-pressed', (!isText).toString());
+        });
+      }
+    });
+  </script>
 </body>
 </html>

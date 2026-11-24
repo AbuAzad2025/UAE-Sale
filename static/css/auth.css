@@ -173,6 +173,32 @@ body::after {
   cursor: pointer;
 }
 
+/* AdminLTE icheck absolutely positions the input and paints a pseudo box;
+   in RTL the label ends up stuck to the button. Use a simple flex row with a
+   visible native checkbox and a fixed gap, mirroring automatically. */
+html[dir="rtl"] .icheck-primary {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+html[dir="rtl"] .icheck-primary > input[type="checkbox"] {
+  position: static !important;
+  opacity: 1 !important;
+  inset: auto !important;
+  margin: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none !important;
+}
+html[dir="rtl"] .icheck-primary > label {
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+html[dir="rtl"] .icheck-primary > label::before,
+html[dir="rtl"] .icheck-primary > label::after { display: none !important; }
+
 .btn-primary {
   background: var(--gradient-brand);
   border: none;

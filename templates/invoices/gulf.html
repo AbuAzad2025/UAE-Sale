@@ -44,8 +44,8 @@
     border-radius: 8px;
     padding: 5px;
     width: 400px;
-    margin-right: 0;
-    margin-left: auto;
+    margin-inline-end: 0;
+    margin-inline-start: auto;
   }
   .total-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 11px; border-bottom: 1px dashed #dee2e6; }
   .total-row.final {
@@ -131,7 +131,7 @@
         {% for line in sale.lines %}
         <tr>
           <td>{{ loop.index }}</td>
-          <td style="text-align: right;"><strong>{{ line.product.name if line.product else '-' }}</strong>{% include 'invoices/_line_treatment_badge.html' %}</td>
+          <td style="text-align: end;"><strong>{{ line.product.name if line.product else '-' }}</strong>{% include 'invoices/_line_treatment_badge.html' %}</td>
           <td>{{ line.quantity }}</td>
           <td>{{ "{:,.2f}".format(line.unit_price) }}</td>
           <td>{{ line.discount_percent if line.discount_percent else '-' }}</td>
@@ -265,7 +265,7 @@
     {% endif %}
     
     {% if settings and settings.default_invoice_note_ar and settings.default_invoice_note_ar != 'None' %}
-    <div style="background: rgba(255,243,205,0.3); border-right: 3px solid #ffc107; padding: 8px; margin: 10px 0; border-radius: 5px;">
+    <div style="background: rgba(255,243,205,0.3); border-inline-start: 3px solid #ffc107; padding: 8px; margin: 10px 0; border-radius: 5px;">
       <p style="font-size: 11px; margin: 0;"> {{ settings.default_invoice_note_ar }}</p>
     </div>
     {% endif %}

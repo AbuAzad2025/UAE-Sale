@@ -114,29 +114,39 @@
       inset-inline-end: 12px;
       top: 50%;
       transform: translateY(-50%);
-      width: 54px;
-      height: 54px;
+      width: 58px;
+      height: 72px;
       background: #ffffff;
       padding: 3px;
       border-radius: 6px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       border: 1px solid rgba(0,0,0,0.12);
       z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    .tenant-wa-qr img { width: 100%; height: 100%; display: block; }
+    .tenant-wa-qr img { width: 50px; height: 50px; display: block; }
+    /* The label stays INSIDE the box so print clipping cannot hide it. */
     .tenant-wa-qr .wa-tag {
-      position: absolute;
-      inset-inline-start: 50%;
-      bottom: -7px;
-      transform: translateX(-50%);
+      position: static;
+      margin-top: 2px;
       background: #25D366;
       color: #ffffff;
       font-size: 9px;
       font-weight: 700;
-      line-height: 1;
+      line-height: 1.1;
       padding: 2px 4px;
       border-radius: 3px;
       white-space: nowrap;
+    }
+    @media print {
+      .tenant-wa-qr .wa-tag {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
     }
 
     body {

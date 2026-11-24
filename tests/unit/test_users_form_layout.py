@@ -21,6 +21,17 @@ def test_user_form_uses_logical_properties():
     assert 'bottom: 0;' not in src
 
 
+def test_create_pages_use_form_check_not_custom_control():
+    # Bootstrap .custom-control positions the input and its painted box far
+    # apart in RTL. Create forms use the reliable .form-check pattern instead.
+    for rel in ('templates/suppliers/create.html',
+                'templates/warehouse/create_warehouse.html'):
+        src = _read(rel)
+        assert 'custom-control custom-checkbox' not in src, rel
+        assert 'class="form-check"' in src, rel
+        assert 'class="form-check-input"' in src, rel
+
+
 def test_select2_matches_form_control_height():
     src = _read('static/css/select2-enhanced.css')
     assert '.select2-container--bootstrap4 .select2-selection--single' in src

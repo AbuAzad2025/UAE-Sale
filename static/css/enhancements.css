@@ -21,6 +21,11 @@ html[dir="rtl"] .custom-control-label {
     margin-inline-start: 0;
     cursor: pointer;
 }
+/* Any remaining Bootstrap custom-checkbox keeps its input and painted box
+   aligned by hiding the pseudo-element and showing the native control. */
+html[dir="rtl"] .custom-control-label::before,
+html[dir="rtl"] .custom-control-label::after { display: none !important; }
+html[dir="rtl"] .custom-control-input { opacity: 1 !important; }
 /* Also cover plain inline label+checkbox pairs not using .form-check */
 html[dir="rtl"] label input[type="checkbox"]:not(.form-check-input):not(.custom-control-input) {
     margin-inline-end: 0.4rem;

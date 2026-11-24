@@ -36,6 +36,9 @@ def test_login_shows_both_platform_logos():
     assert 'img/azad_login_graphic.png' in html
     assert '.login-logo img.platform-logo-top' in css
     assert '.login-card-footer-platform img.platform-logo-bottom' in css
+    # the full graphic (including the bottom credit lines) must never be cropped
+    assert 'object-fit: contain' in css
+    assert 'object-fit: cover' not in css
     assert os.path.exists(os.path.join(ROOT, 'static', 'img', 'azad_login_graphic.png'))
     # tenant logo must remain untouched
     tenant = os.path.join(ROOT, 'static', 'img', 'tenants', 'samarkand_logo.png')

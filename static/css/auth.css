@@ -225,11 +225,10 @@ html[dir="rtl"] .icheck-primary > label::after { display: none !important; }
 .login-card-footer-platform img.platform-logo-bottom {
   display: block !important;
   width: 100% !important;
-  /* Fill the footer slot without an oversized scroll: crop the tall source
-     graphic to its branded centre via object-fit. */
-  height: 200px !important;
-  object-fit: cover !important;
-  object-position: center 35% !important;
+  /* Show the WHOLE graphic including the developer/contact lines at the
+     bottom — never crop it with object-fit. */
+  height: auto !important;
+  object-fit: contain !important;
   border-radius: 0 0 10px 10px !important;
 }
 

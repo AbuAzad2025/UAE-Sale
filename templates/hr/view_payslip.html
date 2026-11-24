@@ -11,7 +11,7 @@
           {{ payslip.employee.user.full_name if payslip.employee and payslip.employee.user else '' }}
           - {{ payslip.employee.employee_number if payslip.employee else '' }}
         </h5>
-        <span class="badge badge-{{ payslip.status_badge }} badge-lg" style="font-size: 14px;">{{ payslip.status_ar }}</span>
+        <span class="badge badge-{{ payslip.status_badge }} badge-lg" style="font-size: 14px;">{{ payslip.status_label }}</span>
       </div>
       <div class="card-body">
         <div class="row mb-4">
@@ -23,7 +23,7 @@
             <h2 class="text-success mb-0">{{ "{:,.2f}".format(payslip.net_salary|float) }} {{ base_currency_name }}</h2>
             <p class="text-muted">{{ t('Net Salary') }}</p>
           </div>
-          <div class="col-md-4 text-left">
+          <div class="col-md-4">
             <p><strong>{{ t('Working Days') }}:</strong> {{ payslip.working_days }}</p>
             <p><strong>{{ t('Actual Days') }}:</strong> {{ payslip.actual_worked_days }}</p>
             <p><strong>{{ t('Leave Days') }}:</strong> {{ payslip.leave_days }}</p>
@@ -37,20 +37,20 @@
               <div class="card-header"><h6 class="mb-0 text-success"><i class="fas fa-plus-circle mr-2"></i>{{ t('Earnings') }}</h6></div>
               <div class="card-body p-0">
                 <table class="table table-sm mb-0">
-                  <tr><td>{{ t('Basic Salary') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.base_salary|float) }}</td></tr>
-                  <tr><td>{{ t('Housing Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.housing_allowance|float) }}</td></tr>
-                  <tr><td>{{ t('Transport Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.transport_allowance|float) }}</td></tr>
-                  <tr><td>{{ t('Phone Allowance') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.phone_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Basic Salary') }}</td><td>{{ "{:,.2f}".format(payslip.base_salary|float) }}</td></tr>
+                  <tr><td>{{ t('Housing Allowance') }}</td><td>{{ "{:,.2f}".format(payslip.housing_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Transport Allowance') }}</td><td>{{ "{:,.2f}".format(payslip.transport_allowance|float) }}</td></tr>
+                  <tr><td>{{ t('Phone Allowance') }}</td><td>{{ "{:,.2f}".format(payslip.phone_allowance|float) }}</td></tr>
                   {% if payslip.overtime_amount and payslip.overtime_amount > 0 %}
-                  <tr><td>{{ t('Overtime') }} ({{ payslip.overtime_hours }} {{ t('hours') }})</td><td class="text-left">{{ "{:,.2f}".format(payslip.overtime_amount|float) }}</td></tr>
+                  <tr><td>{{ t('Overtime') }} ({{ payslip.overtime_hours }} {{ t('hours') }})</td><td>{{ "{:,.2f}".format(payslip.overtime_amount|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.bonus and payslip.bonus > 0 %}
-                  <tr><td>{{ t('Bonus') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.bonus|float) }}</td></tr>
+                  <tr><td>{{ t('Bonus') }}</td><td>{{ "{:,.2f}".format(payslip.bonus|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.other_earnings and payslip.other_earnings > 0 %}
-                  <tr><td>{{ t('Other') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_earnings|float) }}</td></tr>
+                  <tr><td>{{ t('Other') }}</td><td>{{ "{:,.2f}".format(payslip.other_earnings|float) }}</td></tr>
                   {% endif %}
-                  <tr class="table-success"><td><strong>{{ t('Sum') }}</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_earnings|float) }}</strong></td></tr>
+                  <tr class="table-success"><td><strong>{{ t('Sum') }}</strong></td><td><strong>{{ "{:,.2f}".format(payslip.total_earnings|float) }}</strong></td></tr>
                 </table>
               </div>
             </div>
@@ -63,15 +63,15 @@
               <div class="card-body p-0">
                 <table class="table table-sm mb-0">
                   {% if payslip.leave_deduction and payslip.leave_deduction > 0 %}
-                  <tr><td>{{ t('Leave Deduction') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.leave_deduction|float) }}</td></tr>
+                  <tr><td>{{ t('Leave Deduction') }}</td><td>{{ "{:,.2f}".format(payslip.leave_deduction|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.advance_deduction and payslip.advance_deduction > 0 %}
-                  <tr><td>{{ t('Advance Deduction') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.advance_deduction|float) }}</td></tr>
+                  <tr><td>{{ t('Advance Deduction') }}</td><td>{{ "{:,.2f}".format(payslip.advance_deduction|float) }}</td></tr>
                   {% endif %}
                   {% if payslip.other_deductions and payslip.other_deductions > 0 %}
-                  <tr><td>{{ t('Other') }}</td><td class="text-left">{{ "{:,.2f}".format(payslip.other_deductions|float) }}</td></tr>
+                  <tr><td>{{ t('Other') }}</td><td>{{ "{:,.2f}".format(payslip.other_deductions|float) }}</td></tr>
                   {% endif %}
-                  <tr class="table-danger"><td><strong>{{ t('Sum') }}</strong></td><td class="text-left"><strong>{{ "{:,.2f}".format(payslip.total_deductions|float) }}</strong></td></tr>
+                  <tr class="table-danger"><td><strong>{{ t('Sum') }}</strong></td><td><strong>{{ "{:,.2f}".format(payslip.total_deductions|float) }}</strong></td></tr>
                 </table>
               </div>
             </div>

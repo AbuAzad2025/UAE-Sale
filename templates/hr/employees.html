@@ -24,7 +24,7 @@
         <select name="department" class="form-control">
           <option value="">{{ t('All Departments') }}</option>
           {% for dept in departments %}
-          <option value="{{ dept.id }}" {% if request.args.get('department', 0)|int == dept.id %}selected{% endif %}>{{ dept.code }} - {{ dept.name }}</option>
+          <option value="{{ dept.id }}" {% if request.args.get('department', 0)|int == dept.id %}selected{% endif %}>{{ dept.code }} - {{ (dept.name_ar if current_language == 'ar' and dept.name_ar else dept.name) }}</option>
           {% endfor %}
         </select>
       </div>
@@ -62,11 +62,11 @@
         {% for emp in employees %}
         <tr>
           <td><span class="badge badge-primary">{{ emp.employee_number }}</span></td>
-          <td><strong>{{ emp.user.full_name if emp.user else '-' }}</strong><br><small class="text-muted">{{ emp.user.full_name_ar if emp.user else '' }}</small></td>
-          <td>{{ emp.department.name if emp.department else '-' }}</td>
-          <td>{{ emp.position or '-' }}</td>
+          <td><strong>{{ (emp.user.full_name_ar if current_language == 'ar' and emp.user.full_name_ar else (emp.user.full_name or emp.user.username)) if emp.user else '-' }}</strong><br><small class="text-muted">{{ (emp.user.full_name or emp.user.username or '') if current_language == 'ar' and emp.user and emp.user.full_name_ar else '' }}</small></td>
+          <td>{{ (emp.department.name_ar if current_language == 'ar' and emp.department.name_ar else emp.department.name) if emp.department else '-' }}</td>
+          <td>{{ (emp.position_ar if current_language == 'ar' and emp.position_ar else emp.position) or '-' }}</td>
           <td>{{ emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else '-' }}</td>
-          <td>{{ "{:,.0f}".format(emp.base_salary|float) }} د.إ</td>
+          <td>{{ "{:,.0f}".format(emp.base_salary|float) }} {{ base_currency_name }}</td>
           <td>
             {% if emp.employment_status == 'active' %}
             <span class="badge badge-success">{{ t('Active') }}</span>
@@ -77,7 +77,7 @@
             {% elif emp.employment_status == 'resigned' %}
             <span class="badge badge-secondary">{{ t('Resigned') }}</span>
             {% else %}
-            <span class="badge badge-secondary">{{ emp.employment_status }}</span>
+            <span class="badge badge-secondary">{{ emp.employment_status_label }}</span>
             {% endif %}
           </td>
           <td>

@@ -61,7 +61,7 @@
           <td>{{ req.end_date.strftime('%Y-%m-%d') }}</td>
           <td><span class="badge badge-primary">{{ req.days }}</span></td>
           <td>{{ req.reason[:50] if req.reason else '-' }}{% if req.reason and req.reason|length > 50 %}...{% endif %}</td>
-          <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+          <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_label }}</span></td>
           <td>
             {% if req.status == 'pending' %}
             <form method="POST" action="{{ url_for('hr.approve_leave', id=req.id) }}" style="display:inline">

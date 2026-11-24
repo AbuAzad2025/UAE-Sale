@@ -29,3 +29,32 @@
     <input type="number" name="other_allowances" class="form-control" step="0.01" value="{{ employee.other_allowances if employee else 0 }}">
   </div>
 </div>
+
+{# Income tax withheld at source, posted to TAX_PAYABLE on payment #}
+<div class="col-md-3">
+  <div class="form-group">
+    <label>{{ t('Income Tax Rate (%)') }}</label>
+    <input type="number" name="income_tax_rate" class="form-control" step="0.01" min="0" max="100" value="{{ employee.income_tax_rate if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>{{ t('Monthly Tax Exemption') }}</label>
+    <input type="number" name="tax_exemption" class="form-control" step="0.01" min="0" value="{{ employee.tax_exemption if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>{{ t('Daily Wage Rate') }} ({{ t('Daily Wage') }})</label>
+    <input type="number" name="daily_wage_rate" class="form-control" step="0.01" min="0" value="{{ employee.daily_wage_rate if employee else 0 }}">
+  </div>
+</div>
+<div class="col-md-3">
+  <div class="form-group">
+    <label>{{ t('Daily-wage worker') }}</label>
+    <div class="form-check">
+      <input type="checkbox" class="form-check-input" id="is_daily_wage" name="is_daily_wage" value="on" {% if employee and employee.is_daily_wage %}checked{% endif %}>
+      <label class="form-check-label" for="is_daily_wage">{{ t('Paid per worked day') }}</label>
+    </div>
+  </div>
+</div>

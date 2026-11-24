@@ -1284,15 +1284,17 @@ $(function() {
   
   function updateDateTime() {
     const now = new Date();
-    
-    const timeString = now.toLocaleTimeString('ar-SA', {
+    // Follow the active UI language: Latin digits in EN, Arabic digits in AR.
+    const lang = document.documentElement.lang === 'en' ? 'en-GB' : 'ar-SA';
+
+    const timeString = now.toLocaleTimeString(lang, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
       hour12: false
     });
-    
-    const dateString = now.toLocaleDateString('ar-SA', {
+
+    const dateString = now.toLocaleDateString(lang, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'

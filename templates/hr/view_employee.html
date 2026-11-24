@@ -11,16 +11,16 @@
         <div class="profile-avatar mb-3">
           <i class="fas fa-user-circle fa-6x text-primary"></i>
         </div>
-        <h4>{{ employee.user.full_name if employee.user else '' }}</h4>
-        <p class="text-muted">{{ employee.user.full_name_ar if employee.user else '' }}</p>
+        <h4>{{ (employee.user.full_name_ar if current_language == 'ar' and employee.user.full_name_ar else (employee.user.full_name or employee.user.username)) if employee.user else '' }}</h4>
+        <p class="text-muted">{{ (employee.user.full_name or employee.user.username or '') if current_language == 'ar' and employee.user and employee.user.full_name_ar else '' }}</p>
         <span class="badge badge-{{ 'success' if employee.employment_status == 'active' else 'warning' }} badge-lg">
-          {{ employee.employment_status }}
+          {{ employee.employment_status_label }}
         </span>
         <hr>
-        <div class="text-right">
+        <div>
           <p><strong>{{ t('Employee Number') }}:</strong> {{ employee.employee_number }}</p>
-          <p><strong>{{ t('Department') }}:</strong> {{ employee.department.name if employee.department else '-' }}</p>
-          <p><strong>{{ t('Position') }}:</strong> {{ employee.position or '-' }}</p>
+          <p><strong>{{ t('Department') }}:</strong> {{ (employee.department.name_ar if current_language == 'ar' and employee.department.name_ar else employee.department.name) if employee.department else '-' }}</p>
+          <p><strong>{{ t('Position') }}:</strong> {{ (employee.position_ar if current_language == 'ar' and employee.position_ar else employee.position) or '-' }}</p>
           <p><strong>{{ t('Hire Date') }}:</strong> {{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '-' }}</p>
           <p><strong>{{ t('Years of Service') }}:</strong> {{ employee.years_of_service }} {{ t('years') }}</p>
         </div>
@@ -48,15 +48,18 @@
             <p class="text-muted mb-0">{{ t('Monthly Total') }}</p>
           </div>
           <div class="col-md-4 text-center p-3">
-            <h3 class="text-info">{{ employee.payment_frequency or t('Monthly') }}</h3>
+            <h3 class="text-info">{{ employee.payment_frequency_label }}</h3>
             <p class="text-muted mb-0">{{ t('Payment Frequency') }}</p>
           </div>
         </div>
         <table class="table table-sm">
-          <tr><td>{{ t('Housing Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.housing_allowance|float) }} د.إ</td></tr>
-          <tr><td>{{ t('Transport Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.transport_allowance|float) }} د.إ</td></tr>
-          <tr><td>{{ t('Phone Allowance') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.phone_allowance|float) }} د.إ</td></tr>
-          <tr><td>{{ t('Other Allowances') }}</td><td class="text-left">{{ "{:,.0f}".format(employee.other_allowances|float) }} د.إ</td></tr>
+          <tr><td>{{ t('Housing Allowance') }}</td><td>{{ "{:,.0f}".format(employee.housing_allowance|float) }} {{ base_currency_name }}</td></tr>
+          <tr><td>{{ t('Transport Allowance') }}</td><td>{{ "{:,.0f}".format(employee.transport_allowance|float) }} {{ base_currency_name }}</td></tr>
+          <tr><td>{{ t('Phone Allowance') }}</td><td>{{ "{:,.0f}".format(employee.phone_allowance|float) }} {{ base_currency_name }}</td></tr>
+          <tr><td>{{ t('Other Allowances') }}</td><td>{{ "{:,.0f}".format(employee.other_allowances|float) }} {{ base_currency_name }}</td></tr>
+          <tr><td>{{ t('Income Tax Rate (%)') }}</td><td>{{ "{:,.2f}".format(employee.income_tax_rate|float) }}%</td></tr>
+          <tr><td>{{ t('Daily Wage Rate') }}</td><td>{{ "{:,.0f}".format(employee.daily_wage_rate|float) }} {{ base_currency_name }}</td></tr>
+          <tr><td>{{ t('Daily-wage worker') }}</td><td>{{ t('Yes') if employee.is_daily_worker else t('No') }}</td></tr>
         </table>
       </div>
     </div>
@@ -101,7 +104,7 @@
             <td>{{ req.start_date.strftime('%Y-%m-%d') }}</td>
             <td>{{ req.end_date.strftime('%Y-%m-%d') }}</td>
             <td>{{ req.days }}</td>
-            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_label }}</span></td>
           </tr>
           {% else %}
           <tr><td colspan="5" class="text-center text-muted">{{ t('No requests') }}</td></tr>
@@ -122,8 +125,8 @@
           <tr>
             <td><a href="{{ url_for('hr.view_payslip', id=ps.id) }}">{{ ps.payslip_number }}</a></td>
             <td>{{ ps.pay_period_start.strftime('%Y-%m') }}</td>
-            <td>{{ "{:,.2f}".format(ps.net_salary|float) }} د.إ</td>
-            <td><span class="badge badge-{{ ps.status_badge }}">{{ ps.status_ar }}</span></td>
+            <td>{{ "{:,.2f}".format(ps.net_salary|float) }} {{ base_currency_name }}</td>
+            <td><span class="badge badge-{{ ps.status_badge }}">{{ ps.status_label }}</span></td>
           </tr>
           {% else %}
           <tr><td colspan="4" class="text-center text-muted">{{ t('No payslips') }}</td></tr>

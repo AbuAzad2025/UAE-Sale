@@ -28,7 +28,7 @@
                 <select name="leave_type_id" class="form-control" required>
                   <option value="">{{ t('Select Type') }}</option>
                   {% for lt in leave_types %}
-                  <option value="{{ lt.id }}">{{ lt.name_ar or lt.name }}</option>
+                  <option value="{{ lt.id }}">{{ (lt.name if current_language == 'en' and lt.name else (lt.name_ar or lt.name)) }}</option>
                   {% endfor %}
                 </select>
               </div>

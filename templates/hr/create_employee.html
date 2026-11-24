@@ -43,7 +43,7 @@
                 <select name="department_id" class="form-control">
                   <option value="">{{ t('None Option') }}</option>
                   {% for d in departments %}
-                  <option value="{{ d.id }}">{{ d.code }} - {{ d.name }}</option>
+                  <option value="{{ d.id }}">{{ d.code }} - {{ (d.name_ar if current_language == 'ar' and d.name_ar else d.name) }}</option>
                   {% endfor %}
                 </select>
               </div>

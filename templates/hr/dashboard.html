@@ -9,7 +9,7 @@
     <div class="card card-primary card-outline">
       <div class="card-body">
         <div class="d-flex align-items-center">
-          <div class="mr-3">
+          <div style="margin-inline-end: 1rem;">
             <i class="fas fa-users fa-3x text-primary"></i>
           </div>
           <div>
@@ -24,7 +24,7 @@
     <div class="card card-success card-outline">
       <div class="card-body">
         <div class="d-flex align-items-center">
-          <div class="mr-3">
+          <div style="margin-inline-end: 1rem;">
             <i class="fas fa-building fa-3x text-success"></i>
           </div>
           <div>
@@ -39,7 +39,7 @@
     <div class="card card-warning card-outline">
       <div class="card-body">
         <div class="d-flex align-items-center">
-          <div class="mr-3">
+          <div style="margin-inline-end: 1rem;">
             <i class="fas fa-calendar-times fa-3x text-warning"></i>
           </div>
           <div>
@@ -54,7 +54,7 @@
     <div class="card card-danger card-outline">
       <div class="card-body">
         <div class="d-flex align-items-center">
-          <div class="mr-3">
+          <div style="margin-inline-end: 1rem;">
             <i class="fas fa-passport fa-3x text-danger"></i>
           </div>
           <div>
@@ -95,7 +95,7 @@
             <td>{{ req.start_date.strftime('%Y-%m-%d') if req.start_date else '-' }}</td>
             <td>{{ req.end_date.strftime('%Y-%m-%d') if req.end_date else '-' }}</td>
             <td>{{ req.days }}</td>
-            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_ar }}</span></td>
+            <td><span class="badge badge-{{ req.status_badge }}">{{ req.status_label }}</span></td>
           </tr>
           {% else %}
           <tr><td colspan="6" class="text-center text-muted">{{ t('No requests') }}</td></tr>

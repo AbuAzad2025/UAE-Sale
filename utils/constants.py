@@ -242,6 +242,7 @@ SUPPLIER_RATINGS = [
 CONTRACT_TYPES = [
     ("full_time", {"ar": "دوام كامل", "en": "Full Time"}),
     ("part_time", {"ar": "دوام جزئي", "en": "Part Time"}),
+    ("daily", {"ar": "مياومة", "en": "Daily Wage"}),
     ("contract", {"ar": "عقد مؤقت", "en": "Contract"}),
     ("intern", {"ar": "تدريب", "en": "Intern"}),
 ]
@@ -269,6 +270,7 @@ PAYMENT_FREQUENCIES = [
     ("monthly", {"ar": "شهري", "en": "Monthly"}),
     ("bi_weekly", {"ar": "نصف شهري", "en": "Bi-weekly"}),
     ("weekly", {"ar": "أسبوعي", "en": "Weekly"}),
+    ("daily", {"ar": "يومي (مياومة)", "en": "Daily (Casual)"}),
 ]
 
 LEAVE_STATUSES = [

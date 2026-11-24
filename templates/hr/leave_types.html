@@ -24,8 +24,8 @@
         {% for lt in leave_types %}
         <tr>
           <td><span class="badge badge-primary">{{ lt.code }}</span></td>
-          <td>{{ lt.name }}</td>
-          <td>{{ lt.name_ar or '-' }}</td>
+          <td>{{ (lt.name_ar if current_language == 'ar' and lt.name_ar else lt.name) }}</td>
+          <td>{{ (lt.name if current_language == 'en' and lt.name else (lt.name_ar or '-')) }}</td>
           <td>{{ lt.default_days }} {{ t('days') }}</td>
           <td>
             {% if lt.is_paid %}

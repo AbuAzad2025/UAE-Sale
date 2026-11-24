@@ -222,6 +222,10 @@ def create_employee():
                 position_ar=request.form.get("position_ar", "").strip(),
                 salary_currency=request.form.get("salary_currency", "AED"),
                 payment_frequency=request.form.get("payment_frequency", "monthly"),
+                income_tax_rate=request.form.get("income_tax_rate", 0, type=float),
+                tax_exemption=request.form.get("tax_exemption", 0, type=float),
+                is_daily_wage=request.form.get("is_daily_wage") in ("on", "1", "true"),
+                daily_wage_rate=request.form.get("daily_wage_rate", 0, type=float),
                 bank_name=request.form.get("bank_name"),
                 bank_account_number=request.form.get("bank_account_number"),
                 iban=request.form.get("iban"),
@@ -253,12 +257,12 @@ def create_employee():
             return redirect(url_for("hr.view_employee", id=emp.id))
 
         except ValueError as e:
-            current_app.logger.exception("handler failed")
-            flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-        except Exception as e:
+            db.session.rollback()
+            flash(f"⚠️ {e}", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     existing_emp_user_ids = [e.user_id for e in Employee.query.all()]
     available_users = (
@@ -334,6 +338,10 @@ def edit_employee(id):
                 base_salary=request.form.get("base_salary", 0, type=float),
                 salary_currency=request.form.get("salary_currency"),
                 payment_frequency=request.form.get("payment_frequency"),
+                income_tax_rate=request.form.get("income_tax_rate", 0, type=float),
+                tax_exemption=request.form.get("tax_exemption", 0, type=float),
+                is_daily_wage=request.form.get("is_daily_wage") in ("on", "1", "true"),
+                daily_wage_rate=request.form.get("daily_wage_rate", 0, type=float),
                 bank_name=request.form.get("bank_name"),
                 bank_account_number=request.form.get("bank_account_number"),
                 iban=request.form.get("iban"),
@@ -366,12 +374,12 @@ def edit_employee(id):
             return redirect(url_for("hr.view_employee", id=emp.id))
 
         except ValueError as e:
-            current_app.logger.exception("handler failed")
-            flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-        except Exception as e:
+            db.session.rollback()
+            flash(f"⚠️ {e}", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     departments = (
         Department.query.filter_by(is_active=True).order_by(Department.code).all()
@@ -581,6 +589,7 @@ def generate_payroll():
                 request.form.get("pay_date"), "%Y-%m-%d"
             ).date()
             working_days = request.form.get("working_days", 22, type=int)
+            days_worked = request.form.get("days_worked", 0, type=int)
 
             if period_end < period_start:
                 flash("⚠️ تاريخ النهاية يجب أن يكون بعد تاريخ البداية", "danger")
@@ -592,6 +601,7 @@ def generate_payroll():
                 pay_date=pay_date,
                 working_days=working_days,
                 created_by=current_user.id,
+                days_worked=days_worked,
             )
             db.session.commit()
 

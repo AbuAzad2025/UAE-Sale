@@ -54,6 +54,12 @@ class HRService:
         """Create an employee profile linked to a user"""
         if Decimal(str(base_salary or 0)) < 0:
             raise ValueError("الراتب الأساسي لا يمكن أن يكون سالباً")
+        tax_rate = Decimal(str(kwargs.get("income_tax_rate", 0) or 0))
+        if tax_rate < 0 or tax_rate > 100:
+            raise ValueError("نسبة ضريبة الدخل يجب أن تكون بين 0 و 100")
+        daily_rate = Decimal(str(kwargs.get("daily_wage_rate", 0) or 0))
+        if daily_rate < 0:
+            raise ValueError("أجر اليوم لا يمكن أن يكون سالباً")
         existing = Employee.query.filter_by(user_id=user_id).first()
         if existing:
             raise ValueError("هذا المستخدم لديه ملف موظف بالفعل")
@@ -78,6 +84,10 @@ class HRService:
             base_salary=Decimal(str(base_salary)),
             salary_currency=kwargs.get("salary_currency", "AED"),
             payment_frequency=kwargs.get("payment_frequency", "monthly"),
+            income_tax_rate=tax_rate,
+            tax_exemption=Decimal(str(kwargs.get("tax_exemption", 0) or 0)),
+            is_daily_wage=bool(kwargs.get("is_daily_wage")),
+            daily_wage_rate=daily_rate,
             bank_name=kwargs.get("bank_name"),
             bank_account_number=kwargs.get("bank_account_number"),
             iban=kwargs.get("iban"),
@@ -122,6 +132,10 @@ class HRService:
             "base_salary",
             "salary_currency",
             "payment_frequency",
+            "income_tax_rate",
+            "tax_exemption",
+            "is_daily_wage",
+            "daily_wage_rate",
             "bank_name",
             "bank_account_number",
             "iban",
@@ -155,8 +169,15 @@ class HRService:
                     "transport_allowance",
                     "phone_allowance",
                     "other_allowances",
+                    "income_tax_rate",
+                    "tax_exemption",
+                    "daily_wage_rate",
                 ):
                     value = Decimal(str(value))
+                if field == "income_tax_rate" and (
+                    Decimal(str(value)) < 0 or Decimal(str(value)) > 100
+                ):
+                    raise ValueError("نسبة ضريبة الدخل يجب أن تكون بين 0 و 100")
                 setattr(emp, field, value)
 
         db.session.flush()
@@ -279,6 +300,15 @@ class HRService:
             )
 
         base = emp.base_salary or Decimal("0")
+        daily_worker = emp.is_daily_worker
+        if daily_worker:
+            # Daily wage: pay only for days actually worked in the period.
+            days_worked = Decimal(str(adjustments.get("days_worked", 0)))
+            if days_worked < 0:
+                raise ValueError("عدد أيام العمل لا يمكن أن يكون سالباً")
+            base = (Decimal(str(emp.daily_wage_rate or 0)) * days_worked).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
         days_in_month = HRService._working_days_in_period(
             pay_period_start, pay_period_end
         )
@@ -332,6 +362,10 @@ class HRService:
             absent_days=absent_days,
             created_by=created_by,
         )
+        # Totals must be computed before withholding tax, which is based on
+        # gross earnings; then recompute so deductions/net include the tax.
+        payslip.calculate_totals()
+        payslip.tax_deduction = emp.withholding_tax(payslip.total_earnings)
         payslip.calculate_totals()
         db.session.add(payslip)
         db.session.flush()
@@ -345,10 +379,12 @@ class HRService:
         working_days=22,
         created_by=None,
         adjustments_map=None,
+        days_worked=0,
     ):
         """
         Generate payslips for all active employees.
         adjustments_map: {employee_id: {overtime_hours, bonus, ...}}
+        days_worked: worked days applied to daily-wage ("مياومة") workers.
         """
         if adjustments_map is None:
             adjustments_map = {}
@@ -361,7 +397,9 @@ class HRService:
 
         for emp in employees:
             try:
-                adj = adjustments_map.get(emp.id, {})
+                adj = dict(adjustments_map.get(emp.id, {}))
+                if emp.is_daily_worker and "days_worked" not in adj:
+                    adj["days_worked"] = days_worked
                 payslip = HRService.generate_payslip(
                     employee_id=emp.id,
                     pay_period_start=pay_period_start,

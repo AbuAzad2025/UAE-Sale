@@ -102,7 +102,22 @@ class Employee(TenantScopedMixin, db.Model):
     salary_currency = db.Column(db.String(3), default="AED")
     payment_frequency = db.Column(
         db.String(20), default="monthly"
-    )  # monthly, bi_weekly, weekly
+    )  # monthly, bi_weekly, weekly, daily
+
+    # Income tax (withheld at source and posted to TAX_PAYABLE on payment).
+    income_tax_rate = db.Column(
+        db.Numeric(5, 2), nullable=False, default=0
+    )  # percent of taxable income above exemption
+    tax_exemption = db.Column(
+        db.Numeric(15, 3), nullable=False, default=0
+    )  # monthly exempt amount per employee
+
+    # Daily-wage ("مياومة") workers are paid per worked day, not per month.
+    is_daily_wage = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    daily_wage_rate = db.Column(
+        db.Numeric(15, 3), nullable=False, default=0
+    )  # amount per worked day
+
     bank_name = db.Column(db.String(100))
     bank_account_number = db.Column(db.String(50))
     iban = db.Column(db.String(50))
@@ -166,6 +181,74 @@ class Employee(TenantScopedMixin, db.Model):
             + (self.other_allowances or Decimal("0"))
         )
         return base + allowances
+
+    @property
+    def employment_status_label(self):
+        """Localised employment status for the active UI language."""
+        from flask import has_request_context
+        from utils.i18n import get_current_language
+
+        en = {
+            "active": "Active",
+            "on_leave": "On Leave",
+            "terminated": "Terminated",
+            "resigned": "Resigned",
+        }
+        lang = get_current_language() if has_request_context() else "ar"
+        if lang == "en":
+            return en.get(self.employment_status, self.employment_status or "")
+        return self.employment_status_ar
+
+    @property
+    def employment_status_ar(self):
+        return {
+            "active": "نشط",
+            "on_leave": "في إجازة",
+            "terminated": "منتهي الخدمة",
+            "resigned": "مستقيل",
+        }.get(self.employment_status, self.employment_status or "")
+
+    @property
+    def payment_frequency_label(self):
+        """Localised label for the current UI language."""
+        from flask import has_request_context
+        from utils.i18n import get_current_language
+
+        en = {
+            "monthly": "Monthly",
+            "bi_weekly": "Bi-weekly",
+            "weekly": "Weekly",
+            "daily": "Daily (Casual)",
+        }
+        ar = {
+            "monthly": "شهري",
+            "bi_weekly": "نصف شهري",
+            "weekly": "أسبوعي",
+            "daily": "يومي (مياومة)",
+        }
+        code = (self.payment_frequency or "monthly").lower()
+        lang = get_current_language() if has_request_context() else "ar"
+        return (en if lang == "en" else ar).get(code, self.payment_frequency or "")
+
+    @property
+    def is_daily_worker(self):
+        """True for daily-wage ("مياومة") workers."""
+        return bool(self.is_daily_wage) or (self.contract_type or "") == "daily"
+
+    def withholding_tax(self, gross_income):
+        """Income tax withheld from gross pay for one payroll period."""
+        from decimal import Decimal
+
+        if gross_income is None or gross_income <= 0:
+            return Decimal("0")
+        rate = Decimal(str(self.income_tax_rate or 0))
+        if rate <= 0:
+            return Decimal("0")
+        exemption = Decimal(str(self.tax_exemption or 0))
+        taxable = max(Decimal(str(gross_income)) - exemption, Decimal("0"))
+        return (taxable * rate / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
     @property
     def total_annual_leave(self):
@@ -303,6 +386,32 @@ class LeaveRequest(TenantScopedMixin, db.Model):
             "cancelled": "ملغي",
         }
         return statuses.get(self.status, self.status)
+
+    @property
+    def status_label(self):
+        """Localised status label for the active UI language."""
+        from flask import has_request_context
+        from utils.i18n import get_current_language
+
+        en = {
+            "pending": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected",
+            "cancelled": "Cancelled",
+        }
+        lang = get_current_language() if has_request_context() else "ar"
+        return (en if lang == "en" else self.status_ar_map).get(
+            self.status, self.status or ""
+        )
+
+    @property
+    def status_ar_map(self):
+        return {
+            "pending": "قيد المراجعة",
+            "approved": "تمت الموافقة",
+            "rejected": "مرفوض",
+            "cancelled": "ملغي",
+        }
 
     @property
     def status_badge(self):
@@ -455,6 +564,32 @@ class Payslip(TenantScopedMixin, db.Model):
             "cancelled": "ملغاة",
         }
         return statuses.get(self.status, self.status)
+
+    @property
+    def status_label(self):
+        """Localised status label for the active UI language."""
+        from flask import has_request_context
+        from utils.i18n import get_current_language
+
+        en = {
+            "draft": "Draft",
+            "approved": "Approved",
+            "paid": "Paid",
+            "cancelled": "Cancelled",
+        }
+        lang = get_current_language() if has_request_context() else "ar"
+        return (en if lang == "en" else self.status_ar_map).get(
+            self.status, self.status or ""
+        )
+
+    @property
+    def status_ar_map(self):
+        return {
+            "draft": "مسودة",
+            "approved": "معتمدة",
+            "paid": "مدفوعة",
+            "cancelled": "ملغاة",
+        }
 
     @property
     def status_badge(self):

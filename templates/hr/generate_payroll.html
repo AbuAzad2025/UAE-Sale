@@ -35,6 +35,12 @@
                 <input type="number" name="working_days" class="form-control" value="22">
               </div>
             </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label>{{ t('Worked days (daily wage)') }}</label>
+                <input type="number" name="days_worked" class="form-control" value="0" min="0">
+              </div>
+            </div>
           </div>
         </div>
         <div class="card-footer">
@@ -50,9 +56,11 @@
     <div class="card card-warning card-outline">
       <div class="card-header"><h5 class="card-title mb-0"><i class="fas fa-info-circle mr-2"></i>{{ t('Notes') }}</h5></div>
       <div class="card-body">
-        <ul class="mb-0" style="padding-right: 20px;">
+        <ul class="mb-0" style="padding-inline-start: 20px;">
           <li>{{ t('A payslip will be generated for each active employee') }}</li>
           <li>{{ t('Salary is calculated based on the basic salary and allowances') }}</li>
+          <li>{{ t('Daily-wage workers are paid per worked day') }}</li>
+          <li>{{ t('Income tax is withheld and posted to tax payable') }}</li>
           <li>{{ t('Default working days: 22 days (Sun-Thu)') }}</li>
           <li>{{ t('The payslip can be edited after creation') }}</li>
           <li>{{ t('A duplicate payslip cannot be created for the same period') }}</li>

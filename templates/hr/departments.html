@@ -31,11 +31,11 @@
         {% for dept in departments %}
         <tr>
           <td><span class="badge badge-primary">{{ dept.code }}</span></td>
-          <td><strong>{{ dept.name }}</strong></td>
-          <td>{{ dept.name_ar or '-' }}</td>
+          <td><strong>{{ (dept.name_ar if current_language == 'ar' and dept.name_ar else dept.name) }}</strong></td>
+          <td>{{ (dept.name if current_language == 'en' and dept.name else (dept.name_ar or '-')) }}</td>
           <td>{{ dept.manager.full_name if dept.manager else '-' }}</td>
           <td><span class="badge badge-info">{{ dept.employee_count }}</span></td>
-          <td>{{ "{:,.0f}".format(dept.budget_amount|float) }} د.إ</td>
+          <td>{{ "{:,.0f}".format(dept.budget_amount|float) }} {{ base_currency_name }}</td>
           <td>
             {% if dept.is_active %}
             <span class="badge badge-success">{{ t('Active') }}</span>

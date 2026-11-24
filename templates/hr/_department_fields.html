@@ -24,7 +24,7 @@
       <select name="parent_id" class="form-control">
         <option value="">{{ t('None Option') }}</option>
         {% for d in parent_departments %}
-        <option value="{{ d.id }}" {% if department and department.parent_id == d.id %}selected{% endif %}>{{ d.code }} - {{ d.name }}</option>
+        <option value="{{ d.id }}" {% if department and department.parent_id == d.id %}selected{% endif %}>{{ d.code }} - {{ (d.name_ar if current_language == 'ar' and d.name_ar else d.name) }}</option>
         {% endfor %}
       </select>
     </div>

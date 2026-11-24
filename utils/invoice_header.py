@@ -53,8 +53,10 @@ def with_tenant_header(settings, tenant):
     data.update({field: getattr(tenant, field, None) for field in fields})
     data["company_name_ar"] = tenant.name_ar or tenant.name
     data["company_name_en"] = tenant.name_en or tenant.name
-    data["address_ar"] = "، ".join(
-        filter(None, (tenant.address_ar, tenant.city, tenant.country))
+    # Use the Arabic address when present; only fall back to city/country so
+    # an English country name is not appended next to an Arabic address.
+    data["address_ar"] = tenant.address_ar or "، ".join(
+        filter(None, (tenant.city, tenant.country))
     )
     data["phone_1"] = tenant.phone_1 or tenant.mobile
     # The owner invoice-settings form stores an uploaded logo in

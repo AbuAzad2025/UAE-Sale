@@ -490,11 +490,11 @@
         box.className = 'tenant-wa-qr';
         var img = document.createElement('img');
         img.src = TENANT_WHATSAPP_QR;
-        img.alt = 'WhatsApp QR';
+        img.alt = '{{ t("WhatsApp") }} {{ t("QR") }}';
         box.appendChild(img);
         var tag = document.createElement('span');
         tag.className = 'wa-tag';
-        tag.textContent = 'WhatsApp';
+        tag.textContent = '{{ t("WhatsApp") }}';
         box.appendChild(tag);
         f.appendChild(box);
       });

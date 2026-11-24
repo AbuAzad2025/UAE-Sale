@@ -39,7 +39,10 @@ def test_login_shows_both_platform_logos():
     # the full graphic (including the bottom credit lines) must never be cropped
     assert 'object-fit: contain' in css
     assert 'object-fit: cover' not in css
-    assert os.path.exists(os.path.join(ROOT, 'static', 'img', 'azad_login_graphic.png'))
+    graphic = os.path.join(ROOT, 'static', 'img', 'azad_login_graphic.png')
+    assert os.path.exists(graphic)
+    # keep the footer graphic lightweight for the login page
+    assert os.path.getsize(graphic) < 800 * 1024
     # tenant logo must remain untouched
     tenant = os.path.join(ROOT, 'static', 'img', 'tenants', 'samarkand_logo.png')
     assert os.path.getsize(tenant) > 0

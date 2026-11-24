@@ -199,6 +199,40 @@ html[dir="rtl"] .icheck-primary > label {
 html[dir="rtl"] .icheck-primary > label::before,
 html[dir="rtl"] .icheck-primary > label::after { display: none !important; }
 
+/* Platform branding on the login card: one graphic at the top filling its
+   slot, one at the bottom spanning the full footer width. Tenant logos are
+   never touched here. */
+.login-logo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+.login-logo img.platform-logo-top {
+  display: block !important;
+  width: 100% !important;
+  max-width: 170px !important;
+  height: auto !important;
+  background: #ffffff !important;
+  padding: 8px !important;
+  border-radius: 12px !important;
+}
+.login-card-footer-platform {
+  background: transparent !important;
+  padding: 0 !important;
+}
+.login-card-footer-platform img.platform-logo-bottom {
+  display: block !important;
+  width: 100% !important;
+  /* Fill the footer slot without an oversized scroll: crop the tall source
+     graphic to its branded centre via object-fit. */
+  height: 200px !important;
+  object-fit: cover !important;
+  object-position: center 35% !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
 .btn-primary {
   background: var(--gradient-brand);
   border: none;

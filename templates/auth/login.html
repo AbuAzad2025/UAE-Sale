@@ -84,15 +84,15 @@
 <div style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
     <div class="dropdown">
         <button class="btn btn-outline-light dropdown-toggle" type="button" id="langDropdown" data-toggle="dropdown" style="background: rgba(102,126,234,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 20px;">
-            <i class="fas fa-globe mr-2"></i>{{ session.get('language', 'ar')|upper }}
+            <i class="fas fa-globe" style="margin-inline-end: .5rem;"></i>{{ t('Arabic') if current_language == 'ar' else t('English') }}
         </button>
         <div class="dropdown-menu dropdown-menu-right">
             <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
-                <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>
+                <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}" style="margin-inline-end: .5rem;"></i>
                 {{ t('Arabic') }}
             </a>
             <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
-                <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>
+                <i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}" style="margin-inline-end: .5rem;"></i>
                 {{ t('English') }}
             </a>
         </div>
@@ -103,7 +103,7 @@
   <div class="card card-outline">
     <div class="card-header">
       <div class="login-logo">
-        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad" style="background: white; padding: 10px; border-radius: 10px;">
+        <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad ERP" class="platform-logo-top">
       </div>
       <h3 class="text-white mb-0"><b>{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</b></h3>
       <p class="text-white-50 mt-2">{{ company_address }}</p>
@@ -158,26 +158,21 @@
             </div>
             <div class="mt-2">
               <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-muted small">
-                <i class="fas fa-key mr-1"></i>{{ t('Forgot password? Contact admin') }}
+                <i class="fas fa-key" style="margin-inline-end: .4rem;"></i>{{ t('Forgot password? Contact admin') }}
               </a>
             </div>
           </div>
           <div class="col-5">
             <button type="submit" class="btn btn-primary btn-block">
-              <i class="fas fa-sign-in-alt {{ 'mr-2' if is_rtl else 'ml-2' }}"></i>{{ t('Sign In') }}
+              <i class="fas fa-sign-in-alt" style="margin-inline-end: .5rem;"></i>{{ t('Sign In') }}
             </button>
           </div>
         </div>
       </form>
     </div>
     
-    <div class="card-footer text-center bg-light">
-      <p class="mb-1"><small class="text-muted">{{ config.DEVELOPER_CREDIT }}</small></p>
-      <p class="mb-0">
-        <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" class="text-success">
-          <i class="fab fa-whatsapp"></i> {{ t('WhatsApp') }}: {{ config.COMPANY_PHONE }}
-        </a>
-      </p>
+    <div class="card-footer login-card-footer-platform">
+      <img src="{{ url_for('static', filename='img/azad_login_graphic.png') }}" alt="Azad ERP" class="platform-logo-bottom">
     </div>
   </div>
 </div>

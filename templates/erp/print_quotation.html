@@ -4,97 +4,118 @@
 
 {% block extra_print_css %}
 <style>
-  .quotation-header { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; padding: 15px 20px; text-align: center; }
-  .quotation-title { background: linear-gradient(to right, #cfe2ff 0%, #b6d4fe 100%); padding: 8px; text-align: center; border-bottom: 1px solid #0d6efd; }
-  .quotation-title h2 { color: #0d6efd; font-size: 9px; margin: 0; }
-  .content { padding: 10px; }
-  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 8px; }
-  thead { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; }
-  th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #e0e0e0; }
-  .total-section { margin-top: 12px; background: #f8f9fa; padding: 12px 15px; border-radius: 6px; }
-  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 9px; }
-  .total-row.final { border-top: 2px solid #0d6efd; padding-top: 8px; margin-top: 8px; font-size: 9px; font-weight: 700; color: #0d6efd; }
-  .footer { background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%); color: white; padding: 8px; text-align: center; margin-top: 10px; border-radius: 0 0 8px 8px; font-size: 9px; }
-  .expired-banner { background: #f8d7da; color: #842029; padding: 6px; text-align: center; font-weight: 700; margin-bottom: 8px; }
+  .quotation-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff; padding: 16px 20px; text-align: center;
+    min-height: 70px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 16px 16px 0 0;
+  }
+  .quotation-header .logo {
+    height: 48px; width: auto; max-width: 100%; object-fit: contain;
+    background: #fff; padding: 4px; border-radius: 8px; margin-bottom: 6px;
+  }
+  .company-name { font-size: 13px; font-weight: 700; }
+  .company-info { font-size: 11px; opacity: .9; line-height: 1.5; }
+  .quotation-title {
+    background: #eef2ff; padding: 10px; text-align: center;
+    border-bottom: 2px solid #667eea;
+  }
+  .quotation-title h2 { color: #4c51bf; font-size: 15px; margin: 0; }
+  .quotation-title .purchase-number { color: #4c51bf; font-size: 12px; margin-top: 5px; font-weight: 700; }
+  .content { padding: 14px 18px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .info-box { background: #f8f9fa; padding: 10px 12px; border-radius: 8px; border-inline-start: 3px solid #667eea; }
+  .info-box h3 { color: #4c51bf; margin: 0 0 6px; font-size: 12px; }
+  .info-box p { margin: 4px 0; font-size: 11px; color: #475569; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
+  thead { background: #667eea; color: #fff; }
+  th, td { padding: 7px 9px; text-align: start; border-bottom: 1px solid #e0e0e0; }
+  .total-section { margin-top: 12px; background: #f8f9fa; padding: 12px 15px; border-radius: 8px; }
+  .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
+  .total-row.final { border-top: 2px solid #667eea; padding-top: 8px; margin-top: 8px; font-weight: 700; color: #4c51bf; }
+  .footer { background: #f8f9fa; color: #555; padding: 12px; text-align: center; margin-top: 10px; border-top: 2px solid #667eea; font-size: 11px; border-radius: 0 0 16px 16px; }
+  .expired-banner { background: #fdecea; color: #8a1c11; padding: 8px; text-align: center; font-weight: 700; margin-bottom: 10px; border-radius: 6px; }
+  .amount-words { margin-top: 8px; padding: 8px; background: #eef2ff; border-radius: 6px; font-size: 12px; }
+  @media print { .document { padding-top: 0 !important; } }
 </style>
 {% endblock %}
 
 {% block document_content %}
-<div class="document">
-  <div class="quotation">
-    <div class="quotation-header">
-      {% if settings and settings.show_logo and settings.logo_url %}
-      <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
-      {% endif %}
-      <div class="company-name">{{ settings.company_name_ar or settings.company_name or '' }}</div>
-      <div class="company-info">
-        {% if settings and settings.tax_number %}TRN: {{ settings.tax_number }} | {% endif %}
-        {% if settings and settings.address %}{{ settings.address }}{% endif %}
+<div class="quotation">
+  <div class="quotation-header">
+    {% if settings and settings.show_logo and settings.logo_url %}
+    <img src="{{ settings.logo_url if settings.logo_url.startswith(('https://', 'http://', '/')) else url_for('static', filename=settings.logo_url) }}" alt="Logo" class="logo">
+    {% endif %}
+    <div class="company-name">{{ settings.company_name_ar if current_language == 'ar' else (settings.company_name_en or settings.company_name or '') }}</div>
+    <div class="company-info">
+      {% if settings.tax_number and settings.tax_number != 'None' %}{{ t('Tax Number') }}: {{ settings.tax_number }} &nbsp;|&nbsp; {% endif %}
+      {{ settings.address_ar if current_language == 'ar' else (settings.address_en or settings.address or '') }}
+    </div>
+  </div>
+
+  <div class="quotation-title">
+    <h2>{{ t('Quotation') }}</h2>
+    <div class="purchase-number">{{ quotation.quotation_number }}</div>
+  </div>
+
+  <div class="content">
+    {% if quotation.is_expired %}
+    <div class="expired-banner">{{ t('This quotation has expired') }} ({{ quotation.valid_until }})</div>
+    {% endif %}
+
+    <div class="info-grid">
+      <div class="info-box">
+        <h3>{{ t('Customer') }}</h3>
+        <p><strong>{{ (quotation.customer.name_ar if current_language == 'ar' and quotation.customer.name_ar else quotation.customer.name) if quotation.customer else '—' }}</strong></p>
+        {% if quotation.customer and quotation.customer.phone %}<p>{{ t('Phone') }}: {{ quotation.customer.phone }}</p>{% endif %}
+        {% if quotation.customer and quotation.customer.tax_number %}<p>{{ t('Tax Number') }}: {{ quotation.customer.tax_number }}</p>{% endif %}
+      </div>
+      <div class="info-box">
+        <h3>{{ t('Quotation Details') }}</h3>
+        <p>{{ t('Date') }}: {{ quotation.quotation_date }}</p>
+        <p>{{ t('Valid Until') }}: {{ quotation.valid_until }}</p>
+        <p>{{ t('Status') }}: {{ quotation.status|status_label }}</p>
+        {% if quotation.currency %}<p>{{ t('Currency') }}: {{ quotation.currency }}</p>{% endif %}
       </div>
     </div>
-    <div class="quotation-title">
-      <h2>{{ t('Quotation') }}</h2>
-      <div class="purchase-number">{{ quotation.quotation_number }}</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th>
+          <th>{{ t('Price') }}</th><th>{{ t('Discount') }}%</th><th>{{ t('Total') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in quotation.lines %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ (line.product.name_ar if current_language == 'ar' and line.product.name_ar else line.product.name) if line.product else '-' }}</td>
+          <td>{{ "{:,.2f}".format(line.quantity or 0) }}</td>
+          <td>{{ "{:,.2f}".format(line.unit_price or 0) }}</td>
+          <td>{{ "{:,.2f}".format(line.discount_percent or 0) }}%</td>
+          <td>{{ "{:,.2f}".format(line.line_total or 0) }} {{ quotation.currency }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="total-section">
+      <div class="total-row"><span>{{ t('Subtotal') }}</span><span>{{ "{:,.2f}".format(quotation.subtotal or 0) }} {{ quotation.currency }}</span></div>
+      {% if quotation.discount_amount %}<div class="total-row"><span>{{ t('Discount') }}</span><span>- {{ "{:,.2f}".format(quotation.discount_amount) }} {{ quotation.currency }}</span></div>{% endif %}
+      {% if quotation.shipping_cost %}<div class="total-row"><span>{{ t('Shipping') }}</span><span>{{ "{:,.2f}".format(quotation.shipping_cost) }} {{ quotation.currency }}</span></div>{% endif %}
+      {% if quotation.tax_amount %}<div class="total-row"><span>{{ t('Tax') }}</span><span>{{ "{:,.2f}".format(quotation.tax_amount) }} {{ quotation.currency }}</span></div>{% endif %}
+      <div class="total-row final"><span>{{ t('Grand Total') }}</span><span>{{ "{:,.2f}".format(quotation.total_amount or 0) }} {{ quotation.currency }}</span></div>
     </div>
-    <div class="content">
-      {% if quotation.is_expired %}
-      <div class="expired-banner"> {{ t('This quotation has expired') }} ({{ quotation.valid_until }})</div>
-      {% endif %}
-      <div class="info-grid">
-        <div class="info-box">
-          <h3>{{ t('Customer') }}</h3>
-          <p><strong>{{ quotation.customer.name if quotation.customer else '—' }}</strong></p>
-          {% if quotation.customer and quotation.customer.phone %}<p>{{ t('Phone') }}: {{ quotation.customer.phone }}</p>{% endif %}
-          {% if quotation.customer and quotation.customer.tax_number %}<p>TRN: {{ quotation.customer.tax_number }}</p>{% endif %}
-        </div>
-        <div class="info-box">
-          <h3>{{ t('Quotation Details') }}</h3>
-          <p>{{ t('Date') }}: {{ quotation.quotation_date }}</p>
-          <p>{{ t('Valid Until') }}: {{ quotation.valid_until }}</p>
-          <p>{{ t('Status') }}: {{ quotation.status|status_label }}</p>
-          {% if quotation.currency %}<p>{{ t('Currency') }}: {{ quotation.currency }}</p>{% endif %}
-        </div>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>{{ t('Product') }}</th>
-            <th>{{ t('Quantity') }}</th>
-            <th>{{ t('Unit Price') }}</th>
-            <th>{{ t('Discount') }} %</th>
-            <th>{{ t('Total Amount') }}</th>
-            <th>{{ t('Treatment') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for line in quotation.lines %}
-          <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ line.product.name if line.product else '—' }}</td>
-            <td>{{ line.quantity }}</td>
-            <td>{{ '{:,.3f}'.format(line.unit_price) }}</td>
-            <td>{{ line.discount_percent or 0 }}</td>
-            <td>{{ '{:,.3f}'.format(line.line_total) }}</td>
-            <td>{{ line.tax_treatment or 'standard' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <div class="total-section">
-        <div class="total-row"><span>{{ t('Subtotal') }}</span><span>{{ '{:,.3f}'.format(quotation.subtotal) }}</span></div>
-        {% if quotation.discount_amount %}<div class="total-row"><span>{{ t('Discount') }}</span><span>- {{ '{:,.3f}'.format(quotation.discount_amount) }}</span></div>{% endif %}
-        {% if quotation.shipping_cost %}<div class="total-row"><span>{{ t('Shipping') }}</span><span>{{ '{:,.3f}'.format(quotation.shipping_cost) }}</span></div>{% endif %}
-        {% if quotation.tax_amount %}<div class="total-row"><span>{{ t('Tax') }}</span><span>{{ '{:,.3f}'.format(quotation.tax_amount) }}</span></div>{% endif %}
-        <div class="total-row final"><span>{{ t('Total Amount') }}</span><span>{{ '{:,.3f}'.format(quotation.total_amount) }} {{ quotation.currency }}</span></div>
-      </div>
-      {% if quotation.payment_terms %}<div class="mt-2"><strong>{{ t('Payment Terms') }}:</strong> {{ quotation.payment_terms }}</div>{% endif %}
-      {% if quotation.terms_and_conditions %}<div class="mt-2"><strong>{{ t('Terms and Conditions') }}:</strong> {{ quotation.terms_and_conditions }}</div>{% endif %}
-      {% if quotation.notes %}<div class="mt-2"><strong>{{ t('Notes') }}:</strong> {{ quotation.notes }}</div>{% endif %}
-    </div>
-    <div class="footer">
-      <p>{{ t('Generated by') }} AzadERP — {{ settings.company_name_ar or settings.company_name or '' }}</p>
-    </div>
+
+    {% if quotation.notes %}<div class="amount-words">{{ quotation.notes }}</div>{% endif %}
+  </div>
+
+  <div class="footer">
+    {% if quotation.payment_terms %}<p>{{ quotation.payment_terms }}</p>{% endif %}
+    <p>{{ t('Thank you for dealing with us') }}</p>
+    <p class="azad_invoice_footer" style="font-size:11px;color:#888;margin-top:6px;">{{ t('Generated by AzadERP ©') }} {{ current_year if current_year is defined else 2026 }}</p>
   </div>
 </div>
 {% endblock %}

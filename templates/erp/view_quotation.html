@@ -25,13 +25,13 @@
         <div class="row mb-4">
           <div class="col-md-4"><p><strong>{{ t('Date') }}:</strong> {{ quotation.quotation_date.strftime('%Y-%m-%d') if quotation.quotation_date else '' }}</p><p><strong>{{ t('Valid Until') }}:</strong> {{ quotation.valid_until.strftime('%Y-%m-%d') if quotation.valid_until else '' }}</p></div>
           <div class="col-md-4 text-center"><h3 class="text-primary">{{ "{:,.2f}".format(quotation.total_amount|float) }} {{ quotation.currency }}</h3></div>
-          <div class="col-md-4 text-left"><p><strong>{{ t('Currency') }}:</strong> {{ quotation.currency }}</p><p><strong>{{ t('Tax') }}:</strong> {{ quotation.tax_rate }}% ({% if quotation.tax_inclusive %}{{ t('Inclusive') }}{% else %}{{ t('Exclusive') }}{% endif %}) — {{ quotation.tax_treatment or 'standard' }}</p></div>
+          <div class="col-md-4"><p><strong>{{ t('Currency') }}:</strong> {{ quotation.currency }}</p><p><strong>{{ t('Tax') }}:</strong> {{ quotation.tax_rate }}% ({% if quotation.tax_inclusive %}{{ t('Inclusive') }}{% else %}{{ t('Exclusive') }}{% endif %}) — {{ quotation.tax_treatment|tax_treatment_label }}</p></div>
         </div>
         <table class="table table-bordered">
           <thead><tr><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Price') }}</th><th>{{ t('Discount') }}%</th><th>{{ t('Treatment') }}</th><th>{{ t('Total Amount') }}</th></tr></thead>
           <tbody>
           {% for line in quotation.lines %}
-          <tr><td>{{ line.product.name if line.product else '-' }}</td><td>{{ line.quantity }}</td><td>{{ "{:,.2f}".format(line.unit_price|float) }}</td><td>{{ line.discount_percent }}%</td><td>{{ line.tax_treatment or 'standard' }}</td><td>{{ "{:,.2f}".format(line.line_total|float) }}</td></tr>
+          <tr><td>{{ (line.product.name_ar if current_language == 'ar' and line.product.name_ar else line.product.name) if line.product else '-' }}</td><td>{{ line.quantity }}</td><td>{{ "{:,.2f}".format(line.unit_price|float) }}</td><td>{{ line.discount_percent }}%</td><td>{{ line.tax_treatment|tax_treatment_label }}</td><td>{{ "{:,.2f}".format(line.line_total|float) }}</td></tr>
           {% endfor %}
           </tbody>
         </table>

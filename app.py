@@ -244,6 +244,21 @@ def _status_label(value, kind="status"):
     return _t(s, default=s)
 
 
+_TAX_TREATMENT = {
+    "standard": {"ar": "خاضعة (عادية)", "en": "Standard"},
+    "zero": {"ar": "صفرية 0%", "en": "Zero-rated 0%"},
+    "exempt": {"ar": "معفاة", "en": "Exempt"},
+}
+
+
+def _tax_treatment_label(value):
+    """Tax treatment code -> label in the active UI language."""
+    from utils.i18n import get_current_language
+    s = str(value or "standard").lower()
+    entry = _TAX_TREATMENT.get(s, _TAX_TREATMENT["standard"])
+    return entry[get_current_language() if get_current_language() in ("ar", "en") else "ar"]
+
+
 def _page_title_text(value):
     """Plain-text label for the breadcrumb from a page_title block.
 
@@ -805,6 +820,7 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter("num")(_format_num)
     app.template_filter("status_badge")(_status_badge)
     app.template_filter("status_label")(_status_label)
+    app.template_filter("tax_treatment_label")(_tax_treatment_label)
     app.template_filter("page_title_text")(_page_title_text)
 
     # Tenant isolation is a hard security requirement: if any hook fails to

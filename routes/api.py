@@ -259,12 +259,21 @@ def currency_rate(from_currency, to_currency):
     from services.currency_service import CurrencyService
 
     try:
-        rate = CurrencyService.get_exchange_rate(from_currency, to_currency)
+        from services.currency_service import CurrencyService as CS
+        rate = CS.get_exchange_rate(from_currency, to_currency)
+        source = CS.get_rate_provenance(from_currency)
+        # A static fallback rate is not reliable for accounting: require the
+        # operator to confirm/enter a manual rate when the provider is offline.
+        manual_required = source == "fallback" and (
+            from_currency.upper() != to_currency.upper()
+        )
         return jsonify(
             {
                 "from": from_currency,
                 "to": to_currency,
                 "rate": float(rate),
+                "source": source,
+                "manual_input_required": manual_required,
                 "success": True,
             }
         )

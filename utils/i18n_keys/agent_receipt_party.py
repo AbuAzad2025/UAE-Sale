@@ -35,4 +35,12 @@ TRANSLATIONS = {
     "Arabic Description": {"ar": "الوصف بالعربية", "en": "Arabic Description"},
     "Arabic description (optional)": {"ar": "وصف عربي (اختياري)", "en": "Arabic description (optional)"},
     "Arabic description...": {"ar": "وصف عربي...", "en": "Arabic description..."},
+    "Manual Exchange Rate Required": {"ar": "مطلوب سعر صرف يدوي", "en": "Manual Exchange Rate Required"},
+    "Could not retrieve a live exchange rate (internet unavailable). Enter the rate manually to continue.": {"ar": "تعذّر جلب سعر صرف حي (الإنترنت غير متاح). أدخل السعر يدوياً للمتابعة.", "en": "Could not retrieve a live exchange rate (internet unavailable). Enter the rate manually to continue."},
+    "Convert 1": {"ar": "حوّل 1", "en": "Convert 1"},
+    "Exchange rate": {"ar": "سعر الصرف", "en": "Exchange rate"},
+    "A static fallback value is prefilled — verify it before saving.": {"ar": "تم تعبئة قيمة احتياطية ثابتة — تحقق منها قبل الحفظ.", "en": "A static fallback value is prefilled — verify it before saving."},
+    "Use This Rate": {"ar": "استخدم هذا السعر", "en": "Use This Rate"},
+    "Using a manually entered rate.": {"ar": "يتم استخدام سعر أدخلته يدوياً.", "en": "Using a manually entered rate."},
+    "Live exchange rate.": {"ar": "سعر صرف حي.", "en": "Live exchange rate."},
 }

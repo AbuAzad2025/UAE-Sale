@@ -25,6 +25,9 @@ except ImportError:
 class CurrencyService:
     CACHE_TTL_SECONDS = 300  # 5 دقائق
     _rates_cache = {}
+    # Tracks whether the cached rates came from a live provider or the static
+    # fallback. The UI needs this to ask for a manual rate when offline.
+    _rates_source = {}
     DEFAULT_BASE = (
         "ILS"  # يُستخدم فقط إذا لم تُعرّف عملة قاعدة للشركة/النظام (الافتراضي شيقل)
     )
@@ -125,6 +128,7 @@ class CurrencyService:
                                 "timestamp": time.time(),
                                 "rates": rates,
                             }
+                            CurrencyService._rates_source[base] = "live"
                             return rates.copy()
                 except Exception as e:
                     print(f"Free API {url} failed: {e}")
@@ -146,6 +150,7 @@ class CurrencyService:
                     "timestamp": time.time(),
                     "rates": rates,
                 }
+                CurrencyService._rates_source[base] = "live"
                 return rates.copy()
             except Exception as e:
                 print(f"Forex API failed: {e}")
@@ -181,7 +186,13 @@ class CurrencyService:
                 )
 
         CurrencyService._rates_cache[base] = {"timestamp": time.time(), "rates": rates}
+        CurrencyService._rates_source[base] = "fallback"
         return rates.copy()
+
+    @staticmethod
+    def get_rate_provenance(currency):
+        """'live', 'fallback' or 'unknown' for the given base currency cache."""
+        return CurrencyService._rates_source.get((currency or "").upper(), "unknown")
 
     @staticmethod
     def get_exchange_rate(from_currency, to_currency=None, user_rate=None):

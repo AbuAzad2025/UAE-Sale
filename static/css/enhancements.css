@@ -1,3 +1,31 @@
+/* ---- RTL checkbox/label spacing (system-wide, root fix) ----
+   Bootstrap 4 uses physical padding-left:20px + margin-left:-20px for
+   .form-check (LTR). Under dir=rtl that leaves the checkbox flush against
+   the Arabic label. Use logical properties so the checkbox sits at the
+   inline-start with a consistent gap before the label in BOTH directions. */
+html[dir="rtl"] .form-check,
+html[dir="rtl"] .custom-control {
+    padding-inline-start: 1.4rem;
+    padding-inline-end: 0;
+}
+html[dir="rtl"] .form-check-input,
+html[dir="rtl"] .custom-control-input {
+    margin-inline-start: -1.4rem !important;
+    margin-inline-end: 0 !important;
+    float: inline-start;
+}
+html[dir="rtl"] .form-check-label,
+html[dir="rtl"] .custom-control-label {
+    padding-inline-start: 0.5rem;
+    padding-inline-end: 0;
+    margin-inline-start: 0;
+    cursor: pointer;
+}
+/* Also cover plain inline label+checkbox pairs not using .form-check */
+html[dir="rtl"] label input[type="checkbox"]:not(.form-check-input):not(.custom-control-input) {
+    margin-inline-end: 0.4rem;
+}
+
 .performance-badge {
     position: fixed;
     top: 10px;

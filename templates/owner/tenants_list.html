@@ -33,7 +33,7 @@
 </div>
 
 <div class="card shadow-sm">
-  <div class="card-body p-0">
+  <div class="card-body p-0 table-responsive">
     <table class="table table-bordered table-striped mb-0">
       <thead>
         <tr>
@@ -48,32 +48,32 @@
       </thead>
       <tbody>
         {% for row in rows %}
-        {% set t = row.tenant %}
+        {% set tenant = row.tenant %}
         <tr>
-          <td>{{ t.id }}</td>
-          <td><strong>{{ t.name_ar }}</strong><br><small class="text-muted">{{ t.name_en or '' }}</small></td>
-          <td><code>{{ t.slug }}</code></td>
+          <td>{{ tenant.id }}</td>
+          <td><strong>{{ tenant.name_ar }}</strong><br><small class="text-muted">{{ tenant.name_en or '' }}</small></td>
+          <td><code>{{ tenant.slug }}</code></td>
           <td>{{ row.users }}</td>
           <td>{{ row.sales }}</td>
           <td>
-            {% if t.is_suspended %}
+            {% if tenant.is_suspended %}
             <span class="badge badge-danger">{{ t('Suspended') }}</span>
-            {% elif not t.is_active %}
+            {% elif not tenant.is_active %}
             <span class="badge badge-secondary">{{ t('Inactive') }}</span>
             {% else %}
             <span class="badge badge-success">{{ t('Active') }}</span>
             {% endif %}
           </td>
           <td class="text-nowrap">
-            <a href="{{ url_for('owner.tenant_detail', id=t.id) }}" class="btn btn-info btn-sm" title="{{ t('View') }}"><i class="fas fa-eye"></i></a>
-            <a href="{{ url_for('owner.tenant_edit', id=t.id) }}" class="btn btn-warning btn-sm" title="{{ t('Edit') }}"><i class="fas fa-edit"></i></a>
-            {% if t.is_active and not t.is_suspended %}
-            <form method="POST" action="{{ url_for('owner.tenant_suspend', id=t.id) }}" style="display:inline;" onsubmit='return confirm({{ t('Suspend tenant {name}?', name=t.name_ar)|tojson }})'>
+            <a href="{{ url_for('owner.tenant_detail', id=tenant.id) }}" class="btn btn-info btn-sm" title="{{ t('View') }}"><i class="fas fa-eye"></i></a>
+            <a href="{{ url_for('owner.tenant_edit', id=tenant.id) }}" class="btn btn-warning btn-sm" title="{{ t('Edit') }}"><i class="fas fa-edit"></i></a>
+            {% if tenant.is_active and not tenant.is_suspended %}
+            <form method="POST" action="{{ url_for('owner.tenant_suspend', id=tenant.id) }}" style="display:inline;" onsubmit='return confirm({{ t('Suspend tenant {name}?', name=tenant.name_ar)|tojson }})'>
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-danger btn-sm" title="{{ t('Suspend') }}"><i class="fas fa-ban"></i></button>
             </form>
             {% else %}
-            <form method="POST" action="{{ url_for('owner.tenant_activate', id=t.id) }}" style="display:inline;">
+            <form method="POST" action="{{ url_for('owner.tenant_activate', id=tenant.id) }}" style="display:inline;">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-success btn-sm" title="{{ t('Activate') }}"><i class="fas fa-check"></i></button>
             </form>

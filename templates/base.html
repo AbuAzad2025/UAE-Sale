@@ -176,7 +176,7 @@
     </ul>
 
     <!-- Right: utilities, grouped and consistently spaced -->
-    <ul class="navbar-nav ml-auto align-items-center">
+    <ul class="navbar-nav navbar-widgets ml-auto align-items-center">
       <!-- Clock + date -->
       <li class="nav-item navbar-meta d-none d-lg-inline-block">
         <span class="nav-link navbar-meta-item"><i class="fas fa-clock"></i><span id="time-display">--:--</span></span>
@@ -226,7 +226,7 @@
 
       <!-- User -->
       <li class="nav-item dropdown">
-        <a class="nav-link nav-user" data-toggle="dropdown" href="#">
+        <a class="nav-link nav-user" data-toggle="dropdown" href="#" aria-label="{{ t('Account') }}">
           <i class="far fa-user-circle"></i>
           <span class="nav-username">{{ current_user.username }}</span>
           {% if current_user.is_owner %}<span class="badge badge-danger">{{ t('Owner') }}</span>{% endif %}
@@ -1075,7 +1075,7 @@
   <div class="content-wrapper">
     <div class="content-header">
       <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="page-header-layout d-flex justify-content-between align-items-center">
           {# page_title is rendered ONCE here. Templates may put a full toolbar
              inside it, so this is a div (not h1) to avoid nested headings. #}
           <div class="page-title-host">{% block page_title %}{% endblock %}</div>
@@ -1342,88 +1342,11 @@ $(function() {
 })();
 
 function toggleSidebarDirection() {
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const sidebar = document.querySelector('.main-sidebar');
-  const content = document.querySelector('.content-wrapper');
-  const navbar = document.querySelector('.main-header');
-  const savedLayout = localStorage.getItem('sidebarLayout') || 'left';
-  
-  if (savedLayout === 'left') {
-    if (sidebar) {
-      sidebar.style.left = 'auto';
-      sidebar.style.right = '0';
-      sidebar.style.transition = 'all 0.3s ease';
-    }
-    if (content) {
-      content.style.marginLeft = '0';
-      content.style.marginRight = '250px';
-      content.style.transition = 'all 0.3s ease';
-    }
-    if (navbar) {
-      navbar.style.marginLeft = '0';
-      navbar.style.marginRight = '250px';
-      navbar.style.transition = 'all 0.3s ease';
-    }
-    localStorage.setItem('sidebarLayout', 'right');
-    
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: '{{ t("Sidebar moved to the right") }}',
-      showConfirmButton: false,
-      timer: 1500
-    });
-  } else {
-    if (sidebar) {
-      sidebar.style.left = '0';
-      sidebar.style.right = 'auto';
-      sidebar.style.transition = 'all 0.3s ease';
-    }
-    if (content) {
-      content.style.marginLeft = '250px';
-      content.style.marginRight = '0';
-      content.style.transition = 'all 0.3s ease';
-    }
-    if (navbar) {
-      navbar.style.marginLeft = '250px';
-      navbar.style.marginRight = '0';
-      navbar.style.transition = 'all 0.3s ease';
-    }
-    localStorage.setItem('sidebarLayout', 'left');
-    
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: '{{ t("Sidebar moved to the left") }}',
-      showConfirmButton: false,
-      timer: 1500
-    });
-  }
+  const onRight = document.body.classList.toggle('sidebar-on-right');
+  localStorage.setItem('sidebarLayout', onRight ? 'right' : 'left');
 }
 
-(function() {
-  const savedLayout = localStorage.getItem('sidebarLayout');
-  const sidebar = document.querySelector('.main-sidebar');
-  const content = document.querySelector('.content-wrapper');
-  const navbar = document.querySelector('.main-header');
-  
-  if (savedLayout === 'right') {
-    if (sidebar) {
-      sidebar.style.left = 'auto';
-      sidebar.style.right = '0';
-    }
-    if (content) {
-      content.style.marginLeft = '0';
-      content.style.marginRight = '250px';
-    }
-    if (navbar) {
-      navbar.style.marginLeft = '0';
-      navbar.style.marginRight = '250px';
-    }
-  }
-})();
+document.body.classList.toggle('sidebar-on-right', localStorage.getItem('sidebarLayout') === 'right');
 </script>
 </body>
 </html>

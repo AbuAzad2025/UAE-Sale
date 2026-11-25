@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    abort,
     render_template,
     request,
     jsonify,
@@ -156,61 +157,55 @@ def expense_categories():
 @login_required
 @admin_required
 def add_expense_category():
-    """إضافة فئة مصروفات جديدة"""
-    parent_categories = ExpenseCategory.query.filter_by(is_active=True).all()
+    """Create or edit a flat expense category."""
+    category = None
+    if "id" in request.args:
+        category_id = request.args.get("id", type=int)
+        category = db.session.get(ExpenseCategory, category_id) if category_id else None
+        if category is None:
+            abort(404)
     accounts = (
         GLAccount.query.filter_by(is_active=True, is_header=False)
         .order_by(GLAccount.code)
         .all()
     )
-
+    form_data = request.form
     if request.method == "POST":
-        try:
-            gl_account_id = request.form.get("gl_account_id", type=int)
-            if not gl_account_id:
-                flash("⚠️ يرجى اختيار الحساب المحاسبي.", "warning")
-                return render_template(
-                    "ledger/advanced/add_expense_category.html",
-                    parent_categories=parent_categories,
-                    accounts=accounts,
-                    form_data=request.form,
-                )
-
-            _ = (
-                request.form.get("parent_id", type=int)
-                if request.form.get("parent_id")
-                else None
-            )
-
-            account = db.session.get(GLAccount, gl_account_id)
-            category = ExpenseCategory(
-                name=request.form.get("name"),
-                name_ar=request.form.get("name_ar"),
-                gl_account_code=account.code if account else None,
-            )
-
-            db.session.add(category)
-            db.session.commit()
-
-            create_audit_log("create", "expense_categories", category.id)
-            flash(f"✅ تم إضافة فئة المصروفات {category.name_ar} بنجاح", "success")
-            return redirect(url_for("advanced_ledger.expense_categories"))
-
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
-            return render_template(
-                "ledger/advanced/add_expense_category.html",
-                parent_categories=parent_categories,
-                accounts=accounts,
-                form_data=request.form,
-            )
-
+        name = request.form.get("name", "").strip()
+        name_ar = request.form.get("name_ar", "").strip()
+        account_id = request.form.get("gl_account_id", type=int)
+        account = next((candidate for candidate in accounts if candidate.id == account_id), None)
+        if not name or not name_ar or len(name) > 100 or len(name_ar) > 100 or account is None:
+            flash("يرجى إدخال الاسمين واختيار حساب محاسبي نشط.", "warning")
+        else:
+            try:
+                action = "update" if category is not None else "create"
+                if category is None:
+                    category = ExpenseCategory()
+                category.name = name
+                category.name_ar = name_ar
+                category.gl_account_code = account.code
+                db.session.add(category)
+                db.session.flush()
+                create_audit_log(action, "expense_categories", category.id, commit=False)
+                db.session.commit()
+                flash("تم حفظ فئة المصروفات.", "success")
+                return redirect(url_for("advanced_ledger.expense_categories"))
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Expense category save failed")
+                flash("تعذر حفظ الفئة. تحقق من أن اسمها غير مستخدم.", "danger")
+    elif category is not None:
+        form_data = {
+            "name": category.name,
+            "name_ar": category.name_ar,
+            "gl_account_id": next((account.id for account in accounts if account.code == category.gl_account_code), None),
+        }
     return render_template(
         "ledger/advanced/add_expense_category.html",
-        parent_categories=parent_categories,
         accounts=accounts,
+        form_data=form_data,
+        editing="id" in request.args,
     )
 
 

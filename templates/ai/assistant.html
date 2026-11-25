@@ -11,7 +11,7 @@
     <p class="text-muted mb-0 small">{{ 'Choose a company to view its data.' if current_language == 'en' else 'اختر شركة من قائمة الشركات لعرض بياناتها.' }}</p>
     {% endif %}
   </div>
-  <div class="d-flex align-items-center gap-2">
+  <div class="assistant-title-controls d-flex flex-wrap align-items-center gap-2">
     <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-book mr-1"></i> {{ t('Guide') }}
     </a>
@@ -244,8 +244,26 @@
 .ai-feature-card h5 { font-size: .98rem; margin-bottom: 4px; }
 .ai-feature-card p { font-size: .78rem; margin: 0; }
 @media (max-width: 768px) {
-  .chat-container { height: 70vh; }
-  .chat-input-area .btn-group { flex-wrap: wrap; }
+  .assistant-title-controls { min-width: 0; }
+  .chat-container { min-height: 0; max-height: none; height: auto; }
+  .chat-messages { flex: none; min-height: 10rem; max-height: 48vh; padding: .75rem; }
+  .chat-input-area { padding: .75rem; }
+  .assistant-toolbar, .assistant-tools { flex-wrap: wrap; gap: .375rem; }
+  .assistant-toolbar .btn-group, .assistant-tools .btn-group {
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+  .chat-input-area .btn-group > .btn {
+    flex: 0 0 auto;
+    width: auto !important;
+    min-height: 36px;
+    margin: 0;
+    border-radius: .375rem;
+    padding-inline: .5rem !important;
+  }
+  #sendBtn { padding-inline: .625rem !important; }
+  .ai-feature-card { padding: .625rem .375rem; }
+  .ai-feature-icon { font-size: 1.2rem; margin-bottom: .25rem; }
 }
 </style>
 {% endblock %}
@@ -298,7 +316,7 @@
         
     <div class="chat-input-area">
         
-        <div class="d-flex justify-content-between mb-2">
+        <div class="assistant-toolbar d-flex justify-content-between mb-2">
           <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-outline-danger" onclick="clearChat()" title="{{ t('Clear Chat') }}">
               <i class="fas fa-trash"></i> {{ t('Clear') }}
@@ -396,7 +414,7 @@
           </div>
         </div>
         
-      <div class="mt-2 d-flex justify-content-between align-items-center">
+      <div class="assistant-tools mt-2 d-flex justify-content-between align-items-center">
         <small class="text-muted">
           <i class="fas fa-shield-alt mr-1"></i>
           {{ 'Local AI' if current_language == 'en' else 'ذكاء اصطناعي محلي' }}

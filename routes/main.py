@@ -482,6 +482,11 @@ def company_settings():
     """
     from flask import abort
 
+    if current_user.is_owner:
+        tenant_id = get_current_tenant_id()
+        if tenant_id is not None:
+            return redirect(url_for("owner.tenant_edit", id=tenant_id))
+        return redirect(url_for("owner.tenants_list"))
     tid = getattr(current_user, "tenant_id", None)
     if not tid:
         flash("هذه الصفحة خاصة بمديري المستأجرين.", "danger")
@@ -535,6 +540,9 @@ def company_partners():
     """
     from flask import abort
 
+    if current_user.is_owner:
+        period = {key: request.args[key] for key in ("from", "to") if key in request.args}
+        return redirect(url_for("owner.partners", **period))
     tid = getattr(current_user, "tenant_id", None)
     if not tid:
         flash("هذه الصفحة خاصة بمديري المستأجرين.", "danger")

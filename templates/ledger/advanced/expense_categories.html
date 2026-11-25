@@ -17,15 +17,12 @@
             </a>
           </div>
         </div>
-        <div class="card-body">
+        <div class="card-body table-responsive">
           <table class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>{{ t('Code') }}</th>
                 <th>{{ t('Name') }}</th>
-                <th>{{ t('Parent Category') }}</th>
                 <th>{{ t('GL Account') }}</th>
-                <th>{{ t('Subcategories Count') }}</th>
                 <th>{{ t('Status') }}</th>
                 <th>{{ t('Actions') }}</th>
               </tr>
@@ -33,11 +30,8 @@
             <tbody>
               {% for category in categories %}
               <tr>
-                <td>{{ category.code }}</td>
                 <td>{{ display_name(category) }}</td>
-                <td>{{ display_name(category.parent) if category.parent else '-' }}</td>
-                <td>{{ category.gl_account.code if category.gl_account else '-' }}</td>
-                <td>{{ category.children.count() }}</td>
+                <td>{{ category.gl_account_code or '—' }}</td>
                 <td>
                   {% if category.is_active %}
                     <span class="badge badge-success">{{ t('Active') }}</span>
@@ -46,14 +40,14 @@
                   {% endif %}
                 </td>
                 <td>
-                  <a href="{{ url_for('advanced_ledger.add_expense_category') }}?id={{ category.id }}" class="btn btn-sm btn-warning">
+                  <a href="{{ url_for('advanced_ledger.add_expense_category', id=category.id) }}" class="btn btn-sm btn-warning" aria-label="{{ t('Edit') }}">
                     <i class="fas fa-edit"></i>
                   </a>
                 </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="7" class="text-center">{{ t('No categories found') }}</td>
+                <td colspan="4" class="text-center">{{ t('No categories found') }}</td>
               </tr>
               {% endfor %}
             </tbody>

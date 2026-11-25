@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t("Warehouse and Inventory Management") }}{% endblock %}
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
+<div class="d-flex flex-wrap justify-content-between align-items-center">
   <div>
     <h1 class="text-gradient mb-0"><i class="fas fa-warehouse mr-3"></i>{{ t("Warehouse Management") }}</h1>
     <p class="text-muted">{{ t("Inventory, movements and parts management") }}</p>
   </div>
   <div>
-    <div class="btn-group">
+    <div class="btn-group flex-wrap">
       <a href="{{ url_for('warehouse.movements') }}" class="btn btn-info btn-lg">
         <i class="fas fa-exchange-alt mr-2"></i>{{ t("Stock Movements") }}
       </a>
@@ -102,11 +102,11 @@
 
 <div class="card">
   <div class="card-header">
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
       <h3 class="card-title mb-0">
         <i class="fas fa-inventory mr-2"></i>{{ t("Current Stock") }}
       </h3>
-      <div class="btn-group">
+      <div class="btn-group flex-wrap">
         <button type="button" class="btn btn-sm btn-outline-success active" id="filterAll">
           <i class="fas fa-boxes mr-1"></i>{{ t("All") }}
         </button>

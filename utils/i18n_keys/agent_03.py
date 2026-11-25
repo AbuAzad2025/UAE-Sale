@@ -107,6 +107,10 @@ TRANSLATIONS = {
     "ar": "إضافة فئة مصروفات",
     "en": "Add Expense Category"
   },
+  "Edit Expense Category": {
+    "ar": "تعديل فئة المصروفات",
+    "en": "Edit Expense Category"
+  },
   "Add Line": {
     "ar": "إضافة سطر",
     "en": "Add Line"

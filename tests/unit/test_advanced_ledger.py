@@ -66,6 +66,32 @@ def _login(client, user):
     )
 
 
+def test_populated_expense_category_list_and_edit(client, ledger_owner):
+    from models import GLAccount
+    from models.expense import ExpenseCategory
+
+    account = GLAccount(code="VISUAL-EXP", name="Visual expense account", type="expense")
+    _db.session.add(account)
+    _db.session.flush()
+    category = ExpenseCategory(name="Visual expense fixture", name_ar="فئة اختبار العرض", gl_account_code=account.code)
+    _db.session.add(category)
+    _db.session.commit()
+    category_id = category.id
+    _login(client, ledger_owner)
+    listing = client.get("/ledger/advanced/expense-categories")
+    assert listing.status_code == 200
+    assert "فئة اختبار العرض" in listing.get_data(as_text=True)
+    edit_path = f"/ledger/advanced/expense-categories/add?id={category_id}"
+    edit = client.get(edit_path)
+    assert edit.status_code == 200
+    assert 'value="Visual expense fixture"' in edit.get_data(as_text=True)
+    response = client.post(edit_path, data={
+        "name": "Visual expense fixture edited", "name_ar": "فئة اختبار معدلة", "gl_account_id": account.id,
+    })
+    assert response.status_code == 302
+    assert _db.session.get(ExpenseCategory, category_id).name == "Visual expense fixture edited"
+
+
 READ_PAGES_OWNER = [
     "/ledger/advanced/professional-printing",
     "/ledger/advanced/customs-taxes",

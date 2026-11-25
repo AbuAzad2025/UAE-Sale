@@ -53,6 +53,22 @@ def _tenant_payload(slug="branch-a", name_ar="فرع أ", name_en="Branch A"):
 
 
 class TestTenantAccess:
+    def test_list_renders_populated_rows_and_owner_company_navigation(self, client, login_owner, db):
+        company = Tenant(name="Route fixture", name_ar="شركة المراجعة", slug="route-fixture")
+        db.session.add(company)
+        db.session.commit()
+
+        assert client.get("/settings/company").headers["Location"] == "/owner/tenants"
+        listing = client.get("/owner/tenants")
+        assert listing.status_code == 200
+        assert "route-fixture" in listing.get_data(as_text=True)
+
+        with client.session_transaction() as session:
+            session["impersonate_tenant_id"] = company.id
+        assert client.get("/settings/company").headers["Location"] == f"/owner/tenants/{company.id}/edit"
+        partners = client.get("/settings/partners?from=2026-01-01&to=2026-02-01")
+        assert partners.headers["Location"] == "/owner/partners?from=2026-01-01&to=2026-02-01"
+
     def test_list_owner_200(self, client, owner_user):
         _owner_login(client, owner_user)
         resp = client.get("/owner/tenants")

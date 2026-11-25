@@ -42,18 +42,18 @@
   </div>
   <div class="card-body p-0">
     <form method="get" class="p-3 border-bottom">
-      <div class="row g-2">
-        <div class="col-md-3">
+      <div class="row">
+        <div class="col-md-3 mb-2 mb-md-0">
           <input type="text" name="status" value="{{ status or '' }}" class="form-control form-control-sm" placeholder="{{ t('Status') }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 mb-2 mb-md-0">
           <input type="date" name="date_from" value="{{ date_from or '' }}" class="form-control form-control-sm" placeholder="{{ t('From') }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 mb-2 mb-md-0">
           <input type="date" name="date_to" value="{{ date_to or '' }}" class="form-control form-control-sm" placeholder="{{ t('To') }}">
         </div>
-        <div class="col-md-2">
-          <select name="warranty" class="form-select form-select-sm">
+        <div class="col-md-2 mb-2 mb-md-0">
+          <select name="warranty" class="form-control form-control-sm">
             <option value="">{{ t('Warranty') }}</option>
             <option value="under_warranty" {% if warranty=='under_warranty' %}selected{% endif %}>{{ t('Under Warranty') }}</option>
             <option value="expired" {% if warranty=='expired' %}selected{% endif %}>{{ t('Expired') }}</option>
@@ -108,6 +108,7 @@
         </tbody>
       </table>
     </div>
+    {% if pagination.pages > 0 %}
     <div class="p-3">
       {% if pagination.has_prev %}
         <a href="{{ url_for('maintenance.list_orders', page=pagination.prev_num, status=status, date_from=date_from, date_to=date_to, warranty=warranty) }}" class="btn btn-sm btn-outline-secondary">{{ t('Previous') }}</a>
@@ -117,6 +118,7 @@
         <a href="{{ url_for('maintenance.list_orders', page=pagination.next_num, status=status, date_from=date_from, date_to=date_to, warranty=warranty) }}" class="btn btn-sm btn-outline-secondary">{{ t('Next') }}</a>
       {% endif %}
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -363,9 +363,18 @@ class PurchaseOrderService:
         tax_rate=0,
         currency=None,
     ):
-        from models import Supplier, Product
+        from models import Supplier, Product, Warehouse
+        from services.currency_service import CurrencyService
 
-        _ = db.get_or_404(Supplier, supplier_id)
+        if not supplier_id or not get_owned_or_raise(Supplier, supplier_id):
+            raise ValueError("المورد غير موجود")
+        if warehouse_id and not get_owned_or_raise(Warehouse, warehouse_id):
+            raise ValueError("المستودع غير موجود")
+        rate = Decimal(str(tax_rate))
+        if not rate.is_finite() or not 0 <= rate <= 100:
+            raise ValueError("نسبة الضريبة يجب أن تكون بين 0 و100")
+        if not lines_data:
+            raise ValueError("يجب إضافة منتج واحد على الأقل")
 
         po = PurchaseOrder(
             po_number=generate_transactional_number("PO", PurchaseOrder, "po_number"),
@@ -374,18 +383,17 @@ class PurchaseOrderService:
             requested_by_id=user_id,
             po_date=date.today(),
             expected_delivery=expected_delivery,
-            tax_rate=Decimal(str(tax_rate)),
+            tax_rate=rate,
+            currency=currency or CurrencyService.get_base_currency(),
             notes=notes,
         )
-        if currency is not None:
-            po.currency = currency
         db.session.add(po)
         db.session.flush()
 
         for ld in lines_data:
-            product = db.session.get(Product, ld["product_id"])
+            product = get_owned_or_raise(Product, ld["product_id"])
             if not product:
-                continue
+                raise ValueError("المنتج غير موجود")
             line = PurchaseOrderLine(
                 order_id=po.id,
                 product_id=product.id,
@@ -402,7 +410,10 @@ class PurchaseOrderService:
 
     @staticmethod
     def approve_po(po_id, approver_id):
-        po = db.get_or_404(PurchaseOrder, po_id)
+        po = get_owned_or_raise(PurchaseOrder, po_id, for_update=True)
+        if po is None:
+            raise ValueError("أمر الشراء غير موجود")
+        db.session.refresh(po, attribute_names=["status"])
         if po.status != "submitted":
             raise ValueError('يمكن اعتماد أمر شراء في حالة "مقدمة" فقط')
         po.status = "approved"
@@ -415,21 +426,33 @@ class PurchaseOrderService:
     def receive_po(po_id, user_id):
         """Receive a PO and create a Purchase Invoice"""
         from models import Purchase, PurchaseLine
-        from decimal import Decimal
+        from services.due_date_service import due_date_for_purchase
 
-        po = db.get_or_404(PurchaseOrder, po_id)
+        # Serialize receipts for the same order and refresh any earlier copy.
+        po = (
+            PurchaseOrder.query.filter_by(id=po_id)
+            .populate_existing()
+            .with_for_update()
+            .first_or_404()
+        )
         if po.status not in ("approved", "partially_received"):
             raise ValueError("يمكن استلام أمر شراء معتمد فقط")
+        if not po.lines or po.is_fully_received:
+            raise ValueError("لا توجد كميات متبقية للاستلام")
 
         purchase_number = generate_number("P", Purchase, "purchase_number")
+        received_at = datetime.now(timezone.utc)
         purchase = Purchase(
+            tenant_id=po.tenant_id,
             purchase_number=purchase_number,
             supplier_id=po.supplier_id,
             warehouse_id=po.warehouse_id,
             supplier_name=po.supplier.name if po.supplier else "",
-            purchase_date=datetime.now(timezone.utc),
+            purchase_date=received_at,
+            due_date=due_date_for_purchase(received_at, supplier=po.supplier),
             currency=po.currency,
             exchange_rate=po.exchange_rate,
+            tax_rate=po.tax_rate,
             user_id=user_id,
             subtotal=Decimal("0"),
             tax_amount=Decimal("0"),
@@ -446,6 +469,7 @@ class PurchaseOrderService:
             if received_qty <= 0:
                 continue
             line = PurchaseLine(
+                tenant_id=po.tenant_id,
                 purchase_id=purchase.id,
                 product_id=po_line.product_id,
                 quantity=received_qty,
@@ -484,6 +508,8 @@ class PurchaseOrderService:
             reference_id=purchase.id,
             currency=purchase.currency,
             exchange_rate=purchase.exchange_rate,
+            created_by=user_id,
+            tenant_id=po.tenant_id,
         )
 
         db.session.flush()

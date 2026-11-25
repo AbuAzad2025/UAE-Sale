@@ -3,7 +3,8 @@ ERP Extended Modules Routes
 """
 
 from datetime import datetime, timezone, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import re
 from flask import (
     Blueprint,
     render_template,
@@ -403,25 +404,35 @@ def purchase_orders():
 @login_required
 @permission_required("manage_purchases")
 def create_purchase_order():
+    from models import Product, Supplier, Tenant, Warehouse
+    from models.tenant_scope import get_current_tenant_id
+    from services.tax_engine import resolve
+
+    tenant_id = get_current_tenant_id()
+    tenant = db.session.get(Tenant, tenant_id) if tenant_id else None
+    default_rate, _ = resolve(tenant)
+    tax_enabled = tenant is None or tenant.enable_tax
     if request.method == "POST":
         try:
-            from models import Supplier, Warehouse, Product
-
             supplier_id = request.form.get("supplier_id", type=int)
             warehouse_id = request.form.get("warehouse_id", type=int)
             lines_data = []
-            i = 0
-            while True:
-                pid = request.form.get(f"lines[{i}][product_id]", type=int)
-                if not pid:
-                    break
-                qty = request.form.get(f"lines[{i}][quantity]", type=float)
-                cost = request.form.get(f"lines[{i}][unit_cost]", type=float)
-                if pid and qty and qty > 0 and cost:
-                    lines_data.append(
-                        {"product_id": pid, "quantity": qty, "unit_cost": cost}
-                    )
-                i += 1
+            line_keys = re.compile(r"lines\[(\d+)\]\[product_id\]")
+            indices = sorted(
+                int(match[1]) for key in request.form if (match := line_keys.fullmatch(key))
+            )
+            for i in indices:
+                product_id = request.form.get(f"lines[{i}][product_id]", type=int)
+                quantity = Decimal(request.form.get(f"lines[{i}][quantity]") or "0")
+                unit_cost = Decimal(request.form.get(f"lines[{i}][unit_cost]") or "NaN")
+                if not (
+                    product_id and quantity.is_finite() and quantity > 0
+                    and unit_cost.is_finite() and unit_cost > 0
+                ):
+                    raise ValueError("تحقق من المنتج والكمية والسعر في كل سطر")
+                lines_data.append(
+                    {"product_id": product_id, "quantity": quantity, "unit_cost": unit_cost}
+                )
 
             if not lines_data:
                 flash("⚠️ يجب إضافة منتج واحد على الأقل", "danger")
@@ -432,24 +443,32 @@ def create_purchase_order():
                 datetime.strptime(exp_str, "%Y-%m-%d").date() if exp_str else None
             )
 
+            raw_rate = request.form.get("tax_rate")
+            explicit_rate = Decimal(raw_rate) if tax_enabled and raw_rate else None
+            tax_rate, _ = resolve(tenant, explicit_rate=explicit_rate)
             po = PurchaseOrderService.create_po(
                 supplier_id=supplier_id,
                 warehouse_id=warehouse_id,
                 lines_data=lines_data,
                 user_id=current_user.id,
                 expected_delivery=exp_date,
-                tax_rate=request.form.get("tax_rate", 0, type=float),
+                tax_rate=tax_rate,
                 notes=request.form.get("notes"),
             )
-            create_audit_log("create", "purchase_orders", po.id)
+            create_audit_log("create", "purchase_orders", po.id, commit=False)
+            db.session.commit()
             flash(f"✅ تم إنشاء أمر الشراء {po.po_number}", "success")
             return redirect(url_for("erp_modules.view_purchase_order", id=po.id))
-        except Exception as e:
+        except InvalidOperation:
+            db.session.rollback()
+            flash("⚠️ تحقق من القيم الرقمية", "danger")
+        except ValueError as exc:
+            db.session.rollback()
+            flash(f"⚠️ {exc}", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
             flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
-
-    from models import Supplier, Warehouse, Product  # noqa: F811  (local import intentional)
 
     suppliers = Supplier.query.filter_by(is_active=True).order_by(Supplier.name).all()
     warehouses = Warehouse.query.filter_by(is_active=True).all()
@@ -459,6 +478,8 @@ def create_purchase_order():
         suppliers=suppliers,
         warehouses=warehouses,
         products=products,
+        default_rate=default_rate,
+        tax_enabled=tax_enabled,
     )
 
 
@@ -486,13 +507,15 @@ def submit_purchase_order(id):
 @login_required
 @permission_required("manage_purchases")
 def approve_purchase_order(id):
+    get_owned_or_404(PurchaseOrder, id)
     try:
         po = PurchaseOrderService.approve_po(id, current_user.id)
-        create_audit_log("approve", "purchase_orders", po.id)
+        create_audit_log("approve", "purchase_orders", po.id, commit=False)
+        db.session.commit()
         flash("✅ تم اعتماد أمر الشراء", "success")
-    except ValueError as e:
-        current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        db.session.rollback()
+        flash(f"⚠️ {exc}", "danger")
     return redirect(url_for("erp_modules.view_purchase_order", id=id))
 
 
@@ -500,14 +523,16 @@ def approve_purchase_order(id):
 @login_required
 @permission_required("manage_purchases")
 def receive_purchase_order(id):
+    get_owned_or_404(PurchaseOrder, id)
     try:
         purchase = PurchaseOrderService.receive_po(id, current_user.id)
-        create_audit_log("receive", "purchase_orders", id)
+        create_audit_log("receive", "purchase_orders", id, commit=False)
+        db.session.commit()
         flash(f"✅ تم الاستلام وإنشاء فاتورة {purchase.purchase_number}", "success")
         return redirect(url_for("purchases.view", id=purchase.id))
-    except ValueError as e:
-        current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        db.session.rollback()
+        flash(f"⚠️ {exc}", "danger")
         return redirect(url_for("erp_modules.view_purchase_order", id=id))
 
 

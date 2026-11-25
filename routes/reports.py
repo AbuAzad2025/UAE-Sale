@@ -1957,7 +1957,9 @@ def _vat_report_data(date_from=None, date_to=None):
         invoice_treatment = getattr(purchase, "tax_treatment", None) or "standard"
         lines = list(purchase.lines or [])
         if not lines:
-            gross_base = purchase.amount_base or Decimal("0")
+            gross_base = (Decimal(str(purchase.total_amount or 0)) * fx).quantize(
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
             tax_base = Decimal(str(purchase.tax_amount or 0)) * fx
             net_all = gross_base - tax_base
             if invoice_treatment == "zero":

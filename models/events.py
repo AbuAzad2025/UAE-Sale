@@ -52,23 +52,12 @@ def register_all_listeners():
     register_validation_listeners()
     register_audit_listeners()
 
-    import os
-
-    app_env = os.environ.get("APP_ENV", "production").lower()
-    if app_env in ("development", "testing"):
-        register_ai_listeners()
-        register_neural_training_listeners()
-        logger.info("[OK] AI + Neural listeners ENABLED (non-production environment)")
-    else:
-        logger.info(
-            "[OK] AI + Neural listeners DISABLED (production environment — use services/ for AI)"
-        )
+    # Mapper hooks run before commit. The legacy learners also share files
+    # between tenants, so business-row events must never feed that storage.
 
     register_automatic_gl_listeners()
 
-    logger.info(
-        "[OK] All event listeners registered successfully - Full coverage + AI + Neural Networks + Auto GL enabled"
-    )
+    logger.info("[OK] Business and automatic GL event listeners registered")
 
 
 def register_sale_listeners():  # noqa: C901

@@ -5,9 +5,22 @@ import pytest
 from decimal import Decimal
 
 
-def test_net_unit_cost_strips_recoverable_vat(app, db):
-    from models import Product, Purchase, PurchaseLine, Supplier, User
+@pytest.mark.parametrize(
+    ("currency", "rate", "reverse_charge", "payable"),
+    [
+        ("ILS", "1", False, "1200.000"),
+        ("ILS", "1", True, "1034.480"),
+        ("USD", "3.7", True, "3827.576"),
+    ],
+)
+def test_net_unit_cost_strips_recoverable_vat(
+    app, db, owner_user, monkeypatch, currency, rate, reverse_charge, payable
+):
+    from models import Product, Purchase, PurchaseLine, Supplier
     from services.costing_service import CostingService
+    from services.currency_service import CurrencyService
+
+    monkeypatch.setattr(CurrencyService, "get_base_currency", lambda: "ILS")
 
     with app.app_context():
         product = Product(name="COS-TEST", sku="COS-TEST-1", cost_price=Decimal("1200"),
@@ -17,12 +30,12 @@ def test_net_unit_cost_strips_recoverable_vat(app, db):
         db.session.add_all([product, supplier])
         db.session.commit()
 
-        actor = User.query.first()
         p = Purchase(purchase_number="COS-TEST-P1", supplier_name="COS-TEST-SUP",
-                     user_id=actor.id if actor else 1,
-                     currency="ILS", tax_rate=Decimal("16"), tax_inclusive=True,
+                     user_id=owner_user.id,
+                     currency=currency, tax_rate=Decimal("16"), tax_inclusive=True,
                      vat_recoverable=True, tax_treatment="standard",
-                     exchange_rate=Decimal("1"), subtotal=Decimal("0"),
+                     reverse_charge=reverse_charge,
+                     exchange_rate=Decimal(rate), subtotal=Decimal("0"),
                      tax_amount=Decimal("0"), total_amount=Decimal("0"),
                      amount_base=Decimal("0"))
         db.session.add(p)
@@ -37,7 +50,8 @@ def test_net_unit_cost_strips_recoverable_vat(app, db):
 
         assert p.tax_amount == Decimal("165.52")
         assert p.total_amount == Decimal("1200.000")
+        assert p.amount_base == Decimal(payable)
         # Inventory net = gross - VAT, matching build_purchase_gl_lines.
         net = p.total_amount - p.tax_amount
         assert net == Decimal("1034.48")
-        assert CostingService.net_unit_cost(line, p) == net
+        assert CostingService.net_unit_cost(line, p) == (net * Decimal(rate)).quantize(Decimal("0.001"))

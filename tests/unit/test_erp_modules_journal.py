@@ -1,6 +1,7 @@
 """Unit tests for erp_modules_service + advanced_journal_manager."""
 
 import json
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -191,6 +192,46 @@ class TestQuotationService:
 
 
 class TestPurchaseOrderService:
+    def test_create_form_keeps_rows_after_deletion_and_uses_company_tax(
+        self, client, db, login_owner, test_product, supplier, warehouse
+    ):
+        from models import Tenant
+
+        tenant = Tenant(
+            name="Purchasing", name_ar="المشتريات", slug="purchasing",
+            enable_tax=True, default_tax_rate=Decimal("16"), default_currency="ILS",
+        )
+        db.session.add(tenant)
+        db.session.flush()
+        for record in (test_product, supplier, warehouse):
+            record.tenant_id = tenant.id
+        db.session.commit()
+        with client.session_transaction() as session:
+            session["impersonate_tenant_id"] = tenant.id
+
+        form = client.get("/erp/purchase-orders/create")
+        assert form.status_code == 200
+        tax_field = re.search(
+            r'name="tax_rate" class="form-control" value="([^"]+)"',
+            form.get_data(as_text=True),
+        )
+        assert tax_field and Decimal(tax_field[1]) == Decimal("16")
+
+        response = client.post(
+            "/erp/purchase-orders/create",
+            data={
+                "supplier_id": supplier.id,
+                "warehouse_id": warehouse.id,
+                "lines[2][product_id]": test_product.id,
+                "lines[2][quantity]": "2",
+                "lines[2][unit_cost]": "50",
+            },
+        )
+        assert response.status_code == 302
+        order = PurchaseOrder.query.filter_by(tenant_id=tenant.id).one()
+        assert len(order.lines) == 1
+        assert order.total_amount == Decimal("116")
+
     def test_create_po_calculates_totals(
         self, db, owner_user, test_product, supplier, warehouse
     ):
@@ -233,26 +274,47 @@ class TestPurchaseOrderService:
     def test_receive_po_creates_purchase_and_marks_received(
         self, db, owner_user, test_product, supplier, warehouse
     ):
-        po = PurchaseOrderService.create_po(
-            supplier_id=supplier.id,
-            warehouse_id=warehouse.id,
-            lines_data=[
-                {"product_id": test_product.id, "quantity": 2, "unit_cost": 50}
-            ],
-            user_id=owner_user.id,
-        )
-        po.status = "approved"
-        db.session.commit()
+        from models import Tenant
+        from models.tenant_scope import run_in_tenant_context
 
-        purchase = PurchaseOrderService.receive_po(po.id, owner_user.id)
+        tenant = Tenant(name="Purchasing", name_ar="المشتريات", slug="purchasing")
+        db.session.add(tenant)
+        db.session.flush()
+        for record in (owner_user, test_product, supplier, warehouse):
+            record.tenant_id = tenant.id
+        db.session.commit()
+        def create_and_receive():
+            po = PurchaseOrderService.create_po(
+                supplier_id=supplier.id,
+                warehouse_id=warehouse.id,
+                lines_data=[
+                    {"product_id": test_product.id, "quantity": 2, "unit_cost": 50}
+                ],
+                user_id=owner_user.id,
+                tax_rate=Decimal("16"),
+            )
+            po.status = "approved"
+            db.session.commit()
+            purchase = PurchaseOrderService.receive_po(po.id, owner_user.id)
+            with pytest.raises(ValueError, match="معتمد"):
+                PurchaseOrderService.receive_po(po.id, owner_user.id)
+            return po.id, purchase
+
+        po_id, purchase = run_in_tenant_context(tenant.id, create_and_receive)
         assert isinstance(purchase, Purchase)
         assert purchase.supplier_id == supplier.id
         assert len(purchase.lines) == 1
         assert purchase.lines[0].quantity == Decimal("2")
-        assert purchase.total_amount == Decimal("100")
+        assert purchase.tenant_id == purchase.lines[0].tenant_id == tenant.id
+        assert purchase.tax_rate == purchase.tax_amount == Decimal("16")
+        assert purchase.total_amount == purchase.amount_base == Decimal("116")
+        journal = GLJournalEntry.query.filter_by(
+            reference_type="Purchase", reference_id=purchase.id, tenant_id=tenant.id
+        ).one()
+        assert journal.total_credit == Decimal("116")
 
         db.session.expire_all()
-        po2 = db.session.get(PurchaseOrder, po.id)
+        po2 = db.session.get(PurchaseOrder, po_id)
         assert po2.status == "received"
         assert po2.purchase_id == purchase.id
         assert po2.is_fully_received

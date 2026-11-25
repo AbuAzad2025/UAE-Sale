@@ -227,17 +227,14 @@ class Purchase(TenantScopedMixin, db.Model):
             _base = CurrencyService.get_base_currency()
         except Exception:
             _base = "ILS"
+        supplier_total = self.total_amount
+        if self.reverse_charge:
+            supplier_total -= self.tax_amount
         if (self.currency or _base) == _base:
-            if self.tax_inclusive:
-                self.amount_base = (self.total_amount - (self.tax_amount or Decimal("0"))).quantize(
-                    Decimal("0.001"), rounding=ROUND_HALF_UP
-                )
-            else:
-                self.amount_base = self.total_amount
-        else:
-            self.amount_base = (self.total_amount * exchange_rate_decimal).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
-            )
+            exchange_rate_decimal = Decimal("1")
+        self.amount_base = (supplier_total * exchange_rate_decimal).quantize(
+            Decimal("0.001"), rounding=ROUND_HALF_UP
+        )
 
     def to_dict(self, include_lines=False):
         data = {

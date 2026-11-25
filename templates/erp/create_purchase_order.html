@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}{{ t('New Purchase Order') }}{% endblock %}
 {% block page_title %}<i class="fas fa-plus mr-2"></i>{{ t('New Purchase Order') }}{% endblock %}
+{% block extra_css %}
+<style>
+@media (max-width: 575.98px) {
+  #lines-table, #lines-table tbody { display: block; }
+  #lines-table thead { display: none; }
+  #lines-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin-block: .5rem;
+  }
+  #lines-table tbody td { display: block; min-width: 0; text-align: start; }
+  #lines-table tbody td:first-child,
+  #lines-table tbody td:last-child { grid-column: 1 / -1; }
+  #lines-table tbody td label { display: block; margin-block-end: .25rem; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <form method="POST">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -9,12 +26,25 @@
       <div class="col-md-4"><div class="form-group"><label>{{ t('Supplier') }} <span class="text-danger">*</span></label><select name="supplier_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }} <span class="text-danger">*</span></label><select name="warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>{{ t('Expected Delivery') }}</label><input type="date" name="expected_delivery" class="form-control"></div></div>
-      <div class="col-md-3"><div class="form-group"><label>{{ t('Tax') }} %</label><input type="number" name="tax_rate" class="form-control" value="5" step="0.01"></div></div>
+      <div class="col-md-3"><div class="form-group"><label for="po-tax-rate">{{ t('Tax') }} %</label><input id="po-tax-rate" type="number" name="tax_rate" class="form-control" value="{{ default_rate }}" min="0" max="100" step="0.01" {{ 'readonly' if not tax_enabled }}></div></div>
     </div>
   </div></div>
   <div class="card"><div class="card-header"><h5 class="mb-0">{{ t('Products') }}</h5></div><div class="card-body">
-    <table class="table" id="lines-table"><thead><tr><th>#</th><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Cost') }}</th><th></th></tr></thead><tbody></tbody></table>
-    <button type="button" class="btn btn-success btn-sm" onclick="addLine()"><i class="fas fa-plus mr-1"></i>{{ t('Add Row') }}</button>
+    <div class="table-responsive">
+      <table class="table" id="lines-table"><thead><tr><th scope="col">{{ t('Product') }}</th><th scope="col">{{ t('Quantity') }}</th><th scope="col">{{ t('Cost') }}</th><th scope="col">{{ t('Actions') }}</th></tr></thead><tbody></tbody></table>
+    </div>
+    <button type="button" id="po-add-row" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i>{{ t('Add Row') }}</button>
+    <template id="po-line">
+      <tr>
+        <td><label class="d-sm-none" data-label="product_id">{{ t('Product') }}</label><select class="form-control" data-field="product_id" aria-label="{{ t('Product') }}" required>
+          <option value="">{{ t('Select') }}</option>
+          {% for p in products %}<option value="{{ p.id }}" data-cost="{{ p.cost_price or 0 }}">{{ p.name }}</option>{% endfor %}
+        </select></td>
+        <td><label class="d-sm-none" data-label="quantity">{{ t('Quantity') }}</label><input type="number" class="form-control" data-field="quantity" aria-label="{{ t('Quantity') }}" min="0.001" step="0.001" required></td>
+        <td><label class="d-sm-none" data-label="unit_cost">{{ t('Cost') }}</label><input type="number" class="form-control" data-field="unit_cost" aria-label="{{ t('Cost') }}" min="0.001" step="0.001" required></td>
+        <td><button type="button" class="btn btn-danger btn-sm" aria-label="{{ t('Remove Row') }}"><i class="fas fa-trash" aria-hidden="true"></i></button></td>
+      </tr>
+    </template>
   </div></div>
   <div class="card"><div class="card-body">
     <div class="form-group"><label>{{ t('Notes') }}</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
@@ -23,9 +53,31 @@
   </div></div>
 </form>
 <script>
-var lineIndex=0;var products=[{% for p in products %}{id:{{p.id}},name:'{{p.name}}',cost:{{p.cost_price|float}}}{% if not loop.last %},{% endif %}{% endfor %}];
-function addLine(){var r='<tr><td>'+(lineIndex+1)+'</td><td><select name="lines['+lineIndex+'][product_id]" class="form-control" onchange="setCost(this,'+lineIndex+')"><option value="">' + {{ t('Select')|tojson }} + '</option>'+products.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>'}).join('')+'</select></td><td><input type="number" name="lines['+lineIndex+'][quantity]" class="form-control" step="0.01" required></td><td><input type="number" name="lines['+lineIndex+'][unit_cost]" class="form-control cost-input" step="0.01"></td><td><button type="button" class="btn btn-danger btn-sm" onclick="$(this).closest(\'tr\').remove()"><i class="fas fa-trash"></i></button></td></tr>';$('#lines-table tbody').append(r);lineIndex++}
-function setCost(sel,idx){var pid=$(sel).val();var p=products.find(function(x){return x.id==pid});if(p){$('input[name="lines['+idx+'][unit_cost]"]').val(p.cost)}}
-addLine();
+(() => {
+  const body = document.querySelector('#lines-table tbody');
+  const template = document.querySelector('#po-line');
+  let lineIndex = 0;
+
+  function addLine() {
+    const row = template.content.firstElementChild.cloneNode(true);
+    const product = row.querySelector('select');
+    const cost = row.querySelector('[data-field="unit_cost"]');
+    for (const field of row.querySelectorAll('[data-field]')) {
+      const name = field.dataset.field;
+      field.name = `lines[${lineIndex}][${name}]`;
+      field.id = `po-line-${lineIndex}-${name}`;
+      row.querySelector(`[data-label="${name}"]`).htmlFor = field.id;
+    }
+    lineIndex += 1;
+    product.addEventListener('change', () => {
+      cost.value = product.selectedOptions[0]?.dataset.cost ?? '';
+    });
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    body.append(row);
+  }
+
+  document.querySelector('#po-add-row').addEventListener('click', addLine);
+  addLine();
+})();
 </script>
 {% endblock %}

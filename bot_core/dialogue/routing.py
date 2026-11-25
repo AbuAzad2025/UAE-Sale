@@ -7,7 +7,9 @@ from bot_core.agent import ToolCall
 from bot_core.dialogue import Dialogue
 from bot_core.gateway import MessageEvent, normalize
 from bot_core.neural_nlu import Prediction, feature, tokenize
-from services.ai_questions import has_sales_subject, is_sales_question, summary_kind
+from services.ai_questions import (
+    has_sales_subject, is_preceding_sales_period, is_sales_question, preceding_sales_period, summary_kind,
+)
 
 _PATTERNS = (
     ("get_customer_balance", re.compile(r"^(?:رصيد(?: العميل)?|customer balance)(?=$|[ :])")),
@@ -106,7 +108,14 @@ def decide(event: MessageEvent, prior: Dialogue | None) -> Decision:
             if value and normalize(value) != normalized_argument:
                 value = normalized_argument
             return _decision(tool, value)
-    if is_sales_question(event.raw_input, "sales" if prior and prior.topic == "sales_report" else None):
+    sales_context = prior is not None and prior.topic == "sales_report"
+    if sales_context and is_preceding_sales_period(event.raw_input):
+        periods = prior.slots.get("periods", [])
+        period = preceding_sales_period(periods[0]) if len(periods) == 1 else None
+        if period:
+            return Decision("sales_report", ToolCall("sales_report", {"question": event.raw_input, "period": period}), "")
+        return Decision("sales_report", None, "أي فترة تقصد؟ اكتب الفترة التي تريد معرفة مبيعاتها.", dialogue=prior)
+    if is_sales_question(event.raw_input, "sales" if sales_context else None):
         return Decision("sales_report", ToolCall("sales_report", {"question": event.raw_input}), "")
     summary = summary_kind(event.raw_input)
     if summary:

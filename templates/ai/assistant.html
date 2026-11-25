@@ -397,14 +397,10 @@
         </div>
         
       <div class="mt-2 d-flex justify-content-between align-items-center">
-          <small class="text-muted">
+        <small class="text-muted">
           <i class="fas fa-shield-alt mr-1"></i>
-            {% if ai_enabled %}
-            {{ t('External + local AI together - doubled power') }}
-            {% else %}
-            {{ t('Super local AI - no internet needed') }}
-            {% endif %}
-          </small>
+          {{ 'Local AI' if current_language == 'en' else 'ذكاء اصطناعي محلي' }}
+        </small>
         <div class="btn-group btn-group-sm">
           <button type="button" class="btn btn-outline-secondary" onclick="quickAnalysis('sales')">
             <i class="fas fa-chart-line"></i>

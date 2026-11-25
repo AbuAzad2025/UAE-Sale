@@ -122,15 +122,35 @@ _SALES_PERIODS = (
 _SALES_PERIOD_RE = re.compile(
     r"\b(?:و?ب|و)?(?P<period>" + "|".join(pattern for pattern, _ in _SALES_PERIODS) + r")\b"
 )
-_SALES_FOLLOW_UP = re.compile(
-    rf"(?:و\s*|طيب\s+|what about\s+|and\s+)?"
-    rf"(?:{_SALES_PERIOD_RE.pattern}|ما قبل(?:ها|ذلك)?|قبل(?:ها|ذلك)?)"
+_SALES_FOLLOW_UP = re.compile(rf"(?:و\s*|طيب\s+|what about\s+|and\s+)?{_SALES_PERIOD_RE.pattern}")
+_PRECEDING_SALES_PERIOD = re.compile(
+    r"(?:و\s*|طيب\s+)?(?:ما )?قبل(?:ها| ذلك)|(?:and )?(?:the )?(?:period )?before that"
 )
+_SALES_PERIOD_PREDECESSORS = {
+    "اليوم": "أمس",
+    "أمس": "اليوم قبل أمس",
+    "هذا الشهر": "الشهر الماضي",
+    "الشهر الماضي": "الشهر الذي قبل الماضي",
+    "هذا الأسبوع": "الأسبوع الماضي",
+    "الأسبوع الماضي": "الأسبوع الذي قبل الماضي",
+    "آخر 7 أيام": "السبعة أيام السابقة",
+    "آخر 30 يوماً": "الثلاثون يوماً السابقة",
+}
+
+
+def is_preceding_sales_period(message: str) -> bool:
+    return bool(_PRECEDING_SALES_PERIOD.fullmatch(normalize(message)))
+
+
+def preceding_sales_period(period: str) -> str | None:
+    return _SALES_PERIOD_PREDECESSORS.get(period)
 
 
 def is_sales_question(message: str, follow_up_topic=None) -> bool:
     text = normalize(message)
-    if follow_up_topic == "sales" and _SALES_FOLLOW_UP.fullmatch(text):
+    if follow_up_topic == "sales" and (
+        _SALES_FOLLOW_UP.fullmatch(text) or is_preceding_sales_period(message)
+    ):
         return True
     return bool(
         _SALES_TERMS.search(text)
@@ -150,7 +170,7 @@ def has_sales_subject(message: str) -> bool:
     return bool(_SALES_TERMS.search(normalize(message)))
 
 
-def _sales_answer(query, Sale, message):
+def _sales_answer(query, Sale, message, *, period=None, resolved_periods=None):
     text = normalize(message)
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -160,6 +180,7 @@ def _sales_answer(query, Sale, message):
     windows = {
         "اليوم": (today, tomorrow),
         "أمس": (today - timedelta(days=1), today),
+        "اليوم قبل أمس": (today - timedelta(days=2), today - timedelta(days=1)),
         "هذا الشهر": (month_start, tomorrow),
         "الشهر الماضي": (previous_month, month_start),
         "الشهر الذي قبل الماضي": (
@@ -168,10 +189,15 @@ def _sales_answer(query, Sale, message):
         ),
         "هذا الأسبوع": (week_start, tomorrow),
         "الأسبوع الماضي": (week_start - timedelta(days=7), week_start),
+        "الأسبوع الذي قبل الماضي": (week_start - timedelta(days=14), week_start - timedelta(days=7)),
         "آخر 7 أيام": (tomorrow - timedelta(days=7), tomorrow),
         "آخر 30 يوماً": (tomorrow - timedelta(days=30), tomorrow),
+        "السبعة أيام السابقة": (tomorrow - timedelta(days=14), tomorrow - timedelta(days=7)),
+        "الثلاثون يوماً السابقة": (tomorrow - timedelta(days=60), tomorrow - timedelta(days=30)),
     }
-    periods = []
+    periods = [period] if period in windows else []
+    if is_preceding_sales_period(message) and not periods:
+        return "أي فترة تقصد؟ اكتب الفترة التي تريد معرفة مبيعاتها."
     for match in _SALES_PERIOD_RE.finditer(text):
         label = next(
             label for pattern, label in _SALES_PERIODS if re.fullmatch(pattern, match["period"])
@@ -190,10 +216,10 @@ def _sales_answer(query, Sale, message):
         if periods and periods[0] not in baseline:
             return "حدّد فترتين للمقارنة. مثلاً: قارن مبيعات اليوم وأمس."
         periods = periods + [baseline[periods[0]]] if periods else ["اليوم", "أمس"]
-    if not periods and re.search(r"قبل(ها|ذلك)?", text):
-        periods = ["الشهر الذي قبل الماضي"]
     if not periods:
         periods = ["آخر 30 يوماً"]
+    if resolved_periods is not None:
+        resolved_periods.extend(periods)
 
     results = []
     invoice_counts = []

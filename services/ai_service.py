@@ -1095,10 +1095,8 @@ class AIService:
             except Exception:
                 pass
 
-        api_key = AIService.get_api_key()
-        use_groq = api_key and not force_local
-
-        if use_groq:
+        api_key = None if force_local else AIService.get_api_key()
+        if api_key:
             try:
                 import requests
 
@@ -1226,14 +1224,6 @@ class AIService:
                     if action_result:
                         groq_response = action_result
 
-                    try:
-                        if not guidance_only:
-                            AIService._train_local_from_groq(
-                                message, str(local_response), str(groq_response), user_id
-                            )
-                    except Exception as e:
-                        print(f"Training skipped: {e}")
-
                     provider = AIService.get_provider()
                     final_answer = f"{groq_response}\n\n<sub>🤖 المصدر: {provider.upper()} API + التحليل المحلي</sub>"
 
@@ -1311,25 +1301,6 @@ class AIService:
             )
         except Exception:
             return None
-
-    @staticmethod
-    def _train_local_from_groq(question, local_answer, groq_answer, user_id):
-        """Groq يدرب ويحدث النظام المحلي"""
-        try:
-            from ai_knowledge.learning_system import learning_system
-
-            learning_data = {
-                "question": question,
-                "local_answer": local_answer,
-                "improved_answer": groq_answer,
-                "timestamp": datetime.now().isoformat(),
-                "user_id": user_id,
-            }
-
-            learning_system.learn_from_groq_feedback(learning_data)
-
-        except Exception as e:
-            print(f"Training from Groq failed: {e}")
 
     @staticmethod
     def _gather_relevant_knowledge(message, local_result):

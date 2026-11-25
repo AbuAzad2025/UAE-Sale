@@ -243,6 +243,21 @@ def test_quick_questions_use_tenant_reports_in_agent_mode(app, db, client, login
         assert result["outcome"] == "read" and expected in result["message"], (question, result)
 
 
+def test_sales_question_and_relative_period_in_agent_mode(app, db, client, login_owner):
+    _tenant_context(db, client)
+    turns = (
+        ("كيف كانت مبيعات الشهر الماضي؟", "الشهر الماضي", "read"),
+        ("وما قبلها؟", "الشهر الذي قبل الماضي", "read"),
+        ("كيف كانت مبيعات اليوم؟", "اليوم", "read"),
+        ("وما قبلها؟", "أمس", "read"),
+        ("قارن مبيعات اليوم وأمس", "المبيعات اليوم", "read"),
+        ("وما قبلها؟", "أي فترة تقصد", "clarification"),
+    )
+    for question, expected, outcome in turns:
+        result = _process(app, db, client, _enqueue(client, question))
+        assert result["outcome"] == outcome and expected in result["message"], (question, result)
+
+
 def test_sales_prediction_needs_a_sales_subject():
     message = "ما حالة الحساب؟"
     event = MessageEvent.receive(str(uuid4()), message, Actor(1, 2))

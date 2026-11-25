@@ -29,6 +29,26 @@ def test_chat_ignores_external_mode(client, login_owner):
     assert response.get_json().get("ai_mode") == "local"
 
 
+def test_local_guidance_ignores_external_credentials_and_client_override(client, login_owner, monkeypatch):
+    from services.ai_service import AIService
+
+    def external_access():
+        raise AssertionError("Local guidance must skip external provider credentials")
+
+    monkeypatch.setenv("GROQ_API_KEY", "synthetic-regression-key")
+    monkeypatch.setattr(AIService, "get_api_key", external_access)
+    monkeypatch.setattr(AIService, "get_provider", external_access)
+    for mode in ("groq", "grok"):
+        response = client.post("/ai/chat", json={
+            "message": "شرح استخدام الواجهة",
+            "ai_mode": mode,
+            "context": {"force_local": False},
+        })
+        assert response.status_code == 200
+        result = response.get_json()
+        assert result["ai_mode"] == "local" and result["response"]
+
+
 def test_question_detection():
     assert is_question("كم عدد المبيعات اليوم؟")
     assert is_question("how many customers?")
@@ -86,11 +106,11 @@ def test_sales_howto_is_not_a_data_question():
     assert not is_sales_question("كيف أنشئ فاتورة مبيعات؟")
 
 
-def test_sales_follow_up_previous_period(db, owner_user):
+def test_sales_follow_up_without_a_reference_period_asks_for_clarification(db, owner_user):
     result = answer("وما قبلها؟", owner_user, follow_up_topic="sales")
     assert result is not None
-    assert "الشهر الذي قبل الماضي" in result
-    assert "المبيعات" in result
+    assert "أي فترة تقصد" in result
+    assert "مبيعاتها" in result
 
 
 def test_sales_comparison_understands_joined_arabic_conjunction(db, owner_user):

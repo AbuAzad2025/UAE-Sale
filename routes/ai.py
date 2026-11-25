@@ -791,7 +791,7 @@ def chat():
 
     context["current_user"] = current_user
     context["is_owner"] = current_user.is_owner
-    context["force_local"] = ai_mode == "local"
+    context["force_local"] = True
 
     from services import assistant_actions
     from services.ai_questions import COMPANY_SELECTION_REQUIRED, answer as grounded_answer, is_sales_question
@@ -830,18 +830,7 @@ def chat():
         return _assistant_response(suggested)
 
     context["guidance_only"] = True
-    if current_app.config.get("AI_NLU_URL") and prediction is None:
-        context["force_local"] = True
-    from bot_core.neural_nlu.providers import OptionalExternalProvider
-
-    provider = OptionalExternalProvider(
-        AIService.get_api_key,
-        lambda prompt: AIService.chat_response(prompt, context),
-    )
-    response = provider.answer(message, selected=not context["force_local"])
-    if response is None:
-        context["force_local"] = True
-        response = AIService.chat_response(message, context)
+    response = AIService.chat_response(message, context)
 
     try:
         from utils.monitoring import AIMetricsCollector

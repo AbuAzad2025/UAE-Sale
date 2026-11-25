@@ -39,6 +39,7 @@ class CustomerNote(BaseModel):
 
 class SalesReport(BaseModel):
     question: str = Field(min_length=1, max_length=4000)
+    period: str | None = None
 
 
 class SummaryRequest(BaseModel):
@@ -54,10 +55,12 @@ def sales_report(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
 
     if actor.tenant_id is None:
         return ToolResult(COMPANY_SELECTION_REQUIRED, "clarification", {})
-    question = cast(SalesReport, args).question
+    report = cast(SalesReport, args)
     query = Sale.query.filter_by(tenant_id=actor.tenant_id, status="confirmed")
-    return ToolResult(_sales_answer(query, Sale, question), "read", {},
-                      {"follow_up_topic": "sales"}, Dialogue("sales_report", {}))
+    periods = []
+    message = _sales_answer(query, Sale, report.question, period=report.period, resolved_periods=periods)
+    return ToolResult(message, "read", {}, {"follow_up_topic": "sales"},
+                      Dialogue("sales_report", {"periods": periods}))
 
 
 def _query(model, actor: Actor):

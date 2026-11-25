@@ -57,7 +57,7 @@ class StockService:
         )
 
     @staticmethod
-    def post_adjustment_gl(product, delta, movement):
+    def post_adjustment_gl(product, delta, movement, *, unit_cost_base=None, actor_id=None):
         """Book the GL side of a manual stock adjustment.
 
         routes/products.py::adjust_stock moves current_stock and writes its own
@@ -73,11 +73,22 @@ class StockService:
         from services.gl_service import GLService
 
         delta = Decimal(str(delta))
-        cost = CostingService.current_unit_cost(product)
+        cost = CostingService.current_unit_cost(product) if unit_cost_base is None else Decimal(str(unit_cost_base))
         value = abs(delta) * cost
         if value <= 0:
             return None
 
+        return GLService.post_entry(
+            lines=StockService._adjustment_lines(product, delta, value),
+            description=f"Stock Adjustment - {product.name}",
+            reference_type="stock_adjustment",
+            reference_id=movement.id if movement else None,
+            tenant_id=product.tenant_id,
+            created_by=actor_id,
+        )
+
+    @staticmethod
+    def _adjustment_lines(product, delta, value):
         if delta < 0:
             lines = [
                 {
@@ -109,12 +120,33 @@ class StockService:
                 },
             ]
 
-        return GLService.post_entry(
-            lines=lines,
-            description=f"Stock Adjustment - {product.name}",
-            reference_type="stock_adjustment",
-            reference_id=movement.id if movement else None,
+        return lines
+
+    @staticmethod
+    def stage_import_adjustment(product, warehouse, quantity, cost, actor_id):
+        """Stage a positive receipt against product and warehouse rows locked by the importer."""
+        if warehouse.tenant_id is None or warehouse.tenant_id != product.tenant_id or quantity <= 0 or cost <= 0:
+            raise ValueError("Invalid stock import adjustment.")
+        CostingService.apply_inbound(product, quantity, cost)
+        product.current_stock = (product.current_stock or 0) + quantity
+        movement = StockMovement(
+            product_id=product.id, tenant_id=product.tenant_id, warehouse_id=warehouse.id,
+            movement_type="adjustment", quantity=quantity, reference_type="Excel Import",
+            reference_id=product.id, user_id=actor_id,
         )
+        db.session.add(movement)
+        return movement
+
+    @staticmethod
+    def post_import_adjustments(adjustments, tenant_id, currency, actor_id):
+        from services.gl_service import GLService
+
+        entries = [
+            (movement.id, f"Stock Adjustment - {product.name}",
+             StockService._adjustment_lines(product, quantity, quantity * cost))
+            for product, movement, quantity, cost in adjustments
+        ]
+        return GLService.post_import_adjustments(entries, tenant_id=tenant_id, currency=currency, created_by=actor_id)
 
     @staticmethod
     def adjust_stock(
@@ -191,6 +223,7 @@ class StockService:
         notes=None,
         warehouse_id=None,
         unit_cost_base=None,
+        actor_id=None,
     ):  # noqa: C901
         """حركة مخزون واحدة — الحركة هي نقطة الالتقاء الوحيدة للكلفة.
 
@@ -256,6 +289,8 @@ class StockService:
             )
         except Exception:
             user_id = None
+        if actor_id is not None:
+            user_id = actor_id
 
         quantity_decimal = Decimal(str(quantity))
         available_stock = Decimal(str(product.current_stock or 0))

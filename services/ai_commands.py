@@ -73,15 +73,17 @@ def _require_tenant_id():
     return tenant_id
 
 
-def _ai_audit(table_name, record_id, changes=None, action="create"):
+def _ai_audit(table_name, record_id, changes=None, action="create", *, commit=True, actor_id=None):
     """Phase 3: سجل تدقيق لكل إجراء AI (fail-closed داخل معاملة الكاتب)."""
     try:
         from utils.helpers import create_audit_log
 
         payload = dict(changes or {})
         payload.setdefault("via", "ai_assistant")
-        create_audit_log(action, table_name, record_id, changes=payload, commit=True)
+        create_audit_log(action, table_name, record_id, changes=payload, commit=commit, actor_id=actor_id)
     except Exception:
+        if not commit:
+            raise
         try:
             from flask import has_app_context, has_request_context
 
@@ -97,7 +99,7 @@ def _stamp_tenant(obj):
     return {"tenant_id": _require_tenant_id()}
 
 
-def create_customer(name, phone=None, address=None):
+def create_customer(name, phone=None, address=None, *, commit=True, actor_id=None):
     from models.customer import Customer
 
     customer = Customer(
@@ -112,7 +114,7 @@ def create_customer(name, phone=None, address=None):
     )
     db.session.add(customer)
     db.session.flush()
-    _ai_audit("customers", customer.id, {"name": name})
+    _ai_audit("customers", customer.id, {"name": name}, commit=commit, actor_id=actor_id)
     return customer
 
 

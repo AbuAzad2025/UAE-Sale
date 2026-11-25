@@ -9,6 +9,8 @@ from .purchase import Purchase, PurchaseLine
 from .payment import Payment, Receipt
 from .currency import Currency, ExchangeRate
 from .audit import AuditLog
+from .assistant_action import AssistantAction
+from . import bot_event
 from .archive import ArchivedRecord
 from .product_return import ProductReturn, ProductReturnLine
 from .card_vault import CardVault
@@ -209,6 +211,7 @@ __all__ = [
     "Currency",
     "ExchangeRate",
     "AuditLog",
+    "AssistantAction",
     "ArchivedRecord",
     "ProductReturn",
     "ProductReturnLine",

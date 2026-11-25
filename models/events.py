@@ -19,6 +19,7 @@ SQLAlchemy Event Listeners for Automatic Updates
 """
 
 from sqlalchemy import event
+from sqlalchemy.orm import object_session
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 import logging
@@ -26,6 +27,11 @@ import json
 from models import StockMovement
 
 logger = logging.getLogger(__name__)
+
+
+def _during_assistant_stock_import(target):
+    session = object_session(target)
+    return session is not None and session.info.get("assistant_bulk_stock_import", False)
 
 
 def register_all_listeners():
@@ -989,6 +995,8 @@ def register_ai_learning_listeners():  # noqa: C901
         التعلم من أداء المنتجات
         متكامل مع: ai_knowledge.learning_system
         """
+        if _during_assistant_stock_import(target):
+            return
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
@@ -1115,6 +1123,8 @@ def register_ai_linguistic_listeners():
     @event.listens_for(Product, "after_insert")
     def ai_learn_product_terminology(mapper, connection, target):
         """التعلم من مصطلحات المنتجات"""
+        if _during_assistant_stock_import(target):
+            return
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
 
@@ -1293,6 +1303,8 @@ def register_ai_accounting_listeners():  # noqa: C901
     @event.listens_for(GLJournalEntry, "after_insert")
     def ai_learn_accounting_entries(mapper, connection, target):
         """التعلم من القيود المحاسبية"""
+        if _during_assistant_stock_import(target):
+            return
         try:
             from ai_knowledge.learning_system import AzadLearningSystem
             from sqlalchemy import inspect

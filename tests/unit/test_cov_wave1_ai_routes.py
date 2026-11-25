@@ -302,26 +302,28 @@ class TestAiSystem:
 
     def test_add_customer_missing_fields(self, client, login_owner):
         resp = client.post("/ai/system/add-customer", json={})
-        assert resp.status_code == 200
-        assert resp.get_json()["success"] is False
+        assert resp.status_code == 400
 
-    def test_add_customer_success_db_effect(self, client, login_owner, db):
+    def test_add_customer_requires_confirmation(self, client, login_owner, db):
+        from uuid import uuid4
+
         from models import Customer
 
         before = Customer.query.count()
         resp = client.post(
             "/ai/system/add-customer",
-            json={
-                "name": "AI Customer",
-                "customer_type": "regular",
-                "phone": "+971500000001",
-            },
+            json={"name": "AI Customer", "phone": "+971500000001"},
+            headers={"Idempotency-Key": str(uuid4())},
         )
         assert resp.status_code == 200
         data = resp.get_json()
-        assert data["success"] is True
-        assert Customer.query.count() == before + 1
-        assert Customer.query.filter_by(name="AI Customer").first() is not None
+        assert data["action_status"] == "pending"
+        assert Customer.query.count() == before
+
+        confirmation = client.post(data["confirm_url"])
+        assert confirmation.status_code == 200
+        assert confirmation.get_json()["action_status"] == "confirmed"
+        assert Customer.query.filter_by(name="AI Customer").count() == 1
 
 
 class TestAiKnowledge:

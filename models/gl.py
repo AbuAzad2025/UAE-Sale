@@ -9,30 +9,10 @@ from models.tenant_scope import TenantScopedMixin
 
 
 def next_global_entry_number() -> str:
-    """Return the next ``JE-YYYY-NNNN`` number from a GLOBAL sequence.
+    """Allocate the next global journal number inside the posting transaction."""
+    from utils.helpers import generate_transactional_number
 
-    ``gl_journal_entries.entry_number`` carries a table-wide UNIQUE
-    constraint, therefore the sequence that produces it must be global: a
-    tenant-scoped "max + 1" makes two tenants compute the SAME number and
-    the second INSERT dies with an IntegrityError.
-
-    ``utils.helpers.generate_number`` already takes a distributed lock, but
-    it reads the maximum through the ORM, and the ORM query is rewritten by
-    the tenant filter. The tenant scope is therefore suspended for the
-    duration of the (locked) lookup only, so the maximum is computed over
-    the whole table. The scope is restored immediately afterwards.
-    """
-    from models.tenant_scope import get_current_tenant_id, set_current_tenant_id
-    from utils.helpers import generate_number
-
-    current_tenant = get_current_tenant_id()
-    if current_tenant is not None:
-        set_current_tenant_id(None)
-    try:
-        return generate_number("JE", GLJournalEntry, field_name="entry_number")
-    finally:
-        if current_tenant is not None:
-            set_current_tenant_id(current_tenant)
+    return generate_transactional_number("JE", GLJournalEntry, "entry_number")
 
 
 class GLAccount(db.Model):

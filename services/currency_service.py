@@ -40,9 +40,9 @@ class CurrencyService:
         من صفحة إعدادات المالك، وكل التحويلات والتقارير تتبعها تلقائيًا.
         """
         try:
-            from flask import current_app, has_request_context
+            from flask import current_app, has_app_context
 
-            if has_request_context():
+            if has_app_context():
                 try:
                     from models.tenant_scope import get_current_tenant_id
 

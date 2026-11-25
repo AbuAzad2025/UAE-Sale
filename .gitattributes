@@ -1,0 +1,2 @@
+/bot_core/artifacts/v7/model.pt -text
+/bot_core/artifacts/v7/vocab.json text eol=lf

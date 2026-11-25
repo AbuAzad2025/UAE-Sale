@@ -408,7 +408,7 @@ def _install_persistent_upload_serving(app):
     app.send_static_file = _send_static_file
 
 
-def create_app(config_class=Config):  # noqa: C901
+def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -439,13 +439,14 @@ def create_app(config_class=Config):  # noqa: C901
     setup_advanced_logging(app)
     setup_enhanced_logging(app)
 
-    from utils.system_init import ensure_system_integrity
+    if run_startup_tasks:
+        from utils.system_init import ensure_system_integrity
 
-    try:
-        ensure_system_integrity(app)
-        app.logger.info("[OK] System integrity verified (Master Key active)")
-    except Exception as e:
-        app.logger.error(f"[ERROR] System integrity check failed: {e}")
+        try:
+            ensure_system_integrity(app)
+            app.logger.info("[OK] System integrity verified (Master Key active)")
+        except Exception as e:
+            app.logger.error(f"[ERROR] System integrity check failed: {e}")
 
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
@@ -918,7 +919,8 @@ def create_app(config_class=Config):  # noqa: C901
     except Exception as e:
         app.logger.warning(f"Enhanced CLI commands not registered: {e}")
 
-    if os.environ.get("ALEMBIC_RUNNING") != "1":
+    check_schema = run_startup_tasks and os.environ.get("ALEMBIC_RUNNING") != "1"
+    if check_schema:
         try:
             from sqlalchemy import text
 
@@ -973,29 +975,19 @@ def create_app(config_class=Config):  # noqa: C901
             )
             raise
 
-    try:
-        with app.app_context():
-            from services.fiscal_period_guard import ensure_periods_for_active_tenants
+    if run_startup_tasks:
+        try:
+            with app.app_context():
+                from services.fiscal_period_guard import ensure_periods_for_active_tenants
 
-            try:
                 ensure_periods_for_active_tenants()
-                # The guard only FLUSHES the new period - the service stays
-                # flush-only and the transaction belongs to the caller.
-                # Without this commit the write is still open when this app
-                # context pops, the session is removed with a ROLLBACK, and
-                # the period the boot just "provisioned" never reaches the
-                # database: a freshly deployed tenant would have no open
-                # fiscal period at all and every posting would be refused
-                # with "no fiscal period for this date".
+                # Fiscal period provisioning flushes. Startup owns the commit.
                 db.session.commit()
-            except Exception:
-                db.session.rollback()
-                raise
-            app.logger.info("[OK] Fiscal period available for the current year.")
-    except Exception as e:  # never block boot on this
-        app.logger.warning("Could not auto-provision the current fiscal period: %s", e)
+                app.logger.info("[OK] Fiscal period available for the current year.")
+        except Exception as e:  # the app context rolls back on exit
+            app.logger.warning("Could not auto-provision the current fiscal period: %s", e)
 
-    if os.environ.get("ALEMBIC_RUNNING") != "1":
+    if check_schema:
         try:
             from sqlalchemy import inspect
 

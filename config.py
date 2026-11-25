@@ -217,6 +217,10 @@ class Config:
 
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
     CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
+    AI_NLU_URL = os.environ.get("AI_NLU_URL")
+    BOT_NLU_MODEL_DIR = os.environ.get("BOT_NLU_MODEL_DIR")
+    BOT_NLU_CONFIDENCE = _float("BOT_NLU_CONFIDENCE", 0.85)
+    BOT_QUEUE_ENABLED = os.environ.get("BOT_QUEUE_ENABLED", "0").lower() in ("1", "true", "yes")
 
     DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "ILS")
 

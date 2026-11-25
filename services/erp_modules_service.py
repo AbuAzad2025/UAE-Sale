@@ -20,7 +20,7 @@ from models.erp_modules import (
     RecurringExpense,
     EInvoice,
 )
-from utils.helpers import generate_number
+from utils.helpers import generate_number, generate_transactional_number
 from utils.errors import ValidationError
 from utils.decorators import get_owned_or_raise
 
@@ -79,7 +79,7 @@ class QuotationService:
             tax_rate = Decimal("0")
 
         q = Quotation(
-            quotation_number=generate_number("QT", Quotation, "quotation_number"),
+            quotation_number=generate_transactional_number("QT", Quotation, "quotation_number"),
             customer_id=customer_id,
             seller_id=seller_id,
             warehouse_id=warehouse_id,
@@ -262,7 +262,7 @@ class QuotationService:
         if q is None:
             raise ValueError("عرض الأسعار غير موجود")
         new_q = Quotation(
-            quotation_number=generate_number("QT", Quotation, "quotation_number"),
+            quotation_number=generate_transactional_number("QT", Quotation, "quotation_number"),
             customer_id=q.customer_id,
             seller_id=seller_id or q.seller_id,
             warehouse_id=q.warehouse_id,
@@ -361,13 +361,14 @@ class PurchaseOrderService:
         expected_delivery=None,
         notes=None,
         tax_rate=0,
+        currency=None,
     ):
         from models import Supplier, Product
 
         _ = db.get_or_404(Supplier, supplier_id)
 
         po = PurchaseOrder(
-            po_number=generate_number("PO", PurchaseOrder, "po_number"),
+            po_number=generate_transactional_number("PO", PurchaseOrder, "po_number"),
             supplier_id=supplier_id,
             warehouse_id=warehouse_id,
             requested_by_id=user_id,
@@ -376,6 +377,8 @@ class PurchaseOrderService:
             tax_rate=Decimal(str(tax_rate)),
             notes=notes,
         )
+        if currency is not None:
+            po.currency = currency
         db.session.add(po)
         db.session.flush()
 
@@ -669,7 +672,7 @@ class StockTransferService:
         db.get_or_404(Warehouse, to_warehouse_id)
 
         transfer = StockTransfer(
-            transfer_number=generate_number("TRF", StockTransfer, "transfer_number"),
+            transfer_number=generate_transactional_number("TRF", StockTransfer, "transfer_number"),
             from_warehouse_id=from_warehouse_id,
             to_warehouse_id=to_warehouse_id,
             transfer_date=date.today(),

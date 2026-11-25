@@ -1015,7 +1015,9 @@ def reverse_entry(id):
             "gl_journal_entries",
             reversed_entry.id,
             changes={"reversed_from": entry.entry_number},
+            commit=False,
         )
+        db.session.commit()
 
         flash(
             f"✅ تم عكس القيد بنجاح - القيد الجديد: {reversed_entry.entry_number}",
@@ -1024,10 +1026,12 @@ def reverse_entry(id):
         return redirect(url_for("ledger.view_entry", id=reversed_entry.id))
 
     except ValueError as e:
+        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))
     except Exception as e:
+        db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))

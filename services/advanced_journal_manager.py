@@ -171,7 +171,7 @@ class AdvancedJournalEntryManager:
         """عكس قيد محاسبي متقدم"""
         entry = get_owned_or_404(GLJournalEntry, entry_id)
 
-        if entry.is_reversed:
+        if entry.is_reversed or entry.reversed_entry_id is not None or entry.entry_type == "reversing":
             raise ValueError("القيد معكوس مسبقاً")
 
         if not entry.is_posted:
@@ -181,31 +181,17 @@ class AdvancedJournalEntryManager:
 
         reversal_entry = None
         if create_reversal_entry:
-            reversal_lines = []
-            for line in entry.lines:
-                reversal_lines.append(
-                    {
-                        "account_code": line.account.code,
-                        "debit": line.credit,  # عكس الاتجاه
-                        "credit": line.debit,  # عكس الاتجاه
-                        "description": f"عكس: {line.description or ''}",
-                    }
-                )
-
-            reversal_entry = AdvancedJournalEntryManager.create_entry_with_validation(
-                description=f"عكس القيد {entry.entry_number}",
-                lines=reversal_lines,
-                entry_date=datetime.now().date(),
-                notes=f"سبب العكس: {reason}",
-                created_by=reversed_by,
-                entry_type="reversing",
-                reference_type=entry.reference_type,
-                reference_id=entry.reference_id,
+            reversal_entry = entry.reverse_entry(
+                description=f"عكس القيد {entry.entry_number}", created_by=reversed_by, notes=f"سبب العكس: {reason}",
             )
-
-            entry.is_reversed = True
-            entry.reversed_entry_id = reversal_entry.id
-            reversal_entry.reversed_entry_id = entry.id
+            JournalEntryAudit.record(
+                journal_entry_id=reversal_entry.id,
+                action=JournalEntryAudit.ACTION_CREATE,
+                new_values=JournalEntryAudit.entry_payload(reversal_entry),
+                reason=reason,
+                performed_by=reversed_by,
+                fallback_entry=entry,
+            )
 
         AdvancedJournalEntryManager._log_audit(
             entry_id,

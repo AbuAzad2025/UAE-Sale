@@ -1140,14 +1140,14 @@ a[href*="/sales/create"] * {
 }
 
 /* تحسين الروابط */
-a:not(.dropdown-item) {
+a:not(.dropdown-item):where(:not(.btn)) {
   color: #0056b3 !important;
   text-decoration: none !important;
   font-weight: 600 !important;
   transition: all 0.2s ease;
 }
 
-a:not(.dropdown-item):hover {
+a:not(.dropdown-item):where(:not(.btn)):hover {
   color: #003d82 !important;
   text-decoration: underline !important;
 }

@@ -120,7 +120,12 @@ def _unique_entry_number() -> str:
 
 
 def _current_tenant_id() -> int | None:
-    """Tenant id of the currently authenticated user, if any."""
+    """Resolve the effective request or background tenant."""
+    from models.tenant_scope import get_current_tenant_id
+
+    scoped_tenant = get_current_tenant_id()
+    if scoped_tenant is not None:
+        return scoped_tenant
     try:
         from flask_login import current_user
 
@@ -129,6 +134,16 @@ def _current_tenant_id() -> int | None:
     except Exception:
         pass
     return None
+
+
+def _posting_tenant(tenant_id: int | None) -> int:
+    scoped_tenant = _current_tenant_id()
+    tid = tenant_id if tenant_id is not None else scoped_tenant
+    if type(tid) is not int or tid <= 0:
+        raise ValueError("tenant_id is required to post a GL entry outside a tenant request")
+    if scoped_tenant is not None and scoped_tenant != tid:
+        raise ValueError("The ledger company does not match the active tenant")
+    return tid
 
 
 def _current_user_id() -> int | None:
@@ -149,14 +164,14 @@ def _base_currency() -> str:
         return "ILS"
 
 
-def _assert_period_open(entry_date: datetime | None) -> None:
+def _assert_period_open(entry_date: datetime | None, tenant_id: int) -> None:
     """F10: يمنع الترحيل إلى فترة مغلقة أو إلى تاريخ بلا فترة مالية.
 
     الاستدعاء يتم قبل أي كتابة في قاعدة البيانات حتى لا يُترك أثر جزئي.
     """
     from services.fiscal_period_guard import assert_period_open
 
-    assert_period_open(entry_date)
+    assert_period_open(entry_date, tenant_id=tenant_id)
 
 
 class _NormalizedLine:
@@ -678,11 +693,7 @@ class GLService:
         effective_date = entry_date or datetime.now(timezone.utc)
         # Every GL row must carry a tenant. Outside a request (CLI/script) the
         # ambient context is None — callers must pass tenant_id explicitly.
-        tid = tenant_id if tenant_id is not None else _current_tenant_id()
-        if tid is None:
-            raise ValueError(
-                "tenant_id is required to post a GL entry outside a tenant request"
-            )
+        tid = _posting_tenant(tenant_id)
 
         # Idempotency: when a caller supplies a key, return the existing entry
         # rather than posting a duplicate (e.g. double-submitted payment).
@@ -708,7 +719,7 @@ class GLService:
                     f"GL entry not balanced: debit={total_debit} credit={total_credit}"
                 )
 
-            _assert_period_open(effective_date)
+            _assert_period_open(effective_date, tid)
 
             entry_number = _unique_entry_number()
 
@@ -771,11 +782,12 @@ class GLService:
             return []
         if tenant_id is None or not created_by:
             raise ValueError("A stock import requires a company and a confirming user.")
+        tenant_id = _posting_tenant(tenant_id)
         from bot_core.agent.deadline import check_tool_deadline
         from utils.helpers import allocate_transactional_numbers
 
         effective_date = datetime.now(timezone.utc)
-        _assert_period_open(effective_date)
+        _assert_period_open(effective_date, tenant_id)
         codes = {line["account"] for _, _, lines in entries for line in lines}
         accounts = {account.code: account for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()}
         if codes - accounts.keys():
@@ -848,11 +860,7 @@ class GLService:
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
-        tid = tenant_id if tenant_id is not None else _current_tenant_id()
-        if tid is None:
-            raise ValueError(
-                "tenant_id is required to post a GL entry outside a tenant request"
-            )
+        tid = _posting_tenant(tenant_id)
 
         GLService.ensure_core_accounts()
 
@@ -868,7 +876,7 @@ class GLService:
                     f"Journal entry is not balanced: Debit={total_debit}, Credit={total_credit}"
                 )
 
-            _assert_period_open(effective_date)
+            _assert_period_open(effective_date, tid)
 
             entry_number = _unique_entry_number()
 
@@ -941,11 +949,7 @@ class GLService:
         currency = currency or _base_currency()
         rate = _normalize_rate(exchange_rate)
         effective_date = entry_date or datetime.now(timezone.utc)
-        tid = tenant_id if tenant_id is not None else _current_tenant_id()
-        if tid is None:
-            raise ValueError(
-                "tenant_id is required to post a GL entry outside a tenant request"
-            )
+        tid = _posting_tenant(tenant_id)
 
         try:
             normalized, total_debit, total_credit = _normalize_lines(
@@ -959,7 +963,7 @@ class GLService:
                     f"القيد غير متوازن: مدين={total_debit}, دائن={total_credit}"
                 )
 
-            _assert_period_open(effective_date)
+            _assert_period_open(effective_date, tid)
 
             entry_number = _unique_entry_number()
 

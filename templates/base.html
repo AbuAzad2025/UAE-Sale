@@ -364,12 +364,14 @@
                   <p>{{ t("Partner List") }}</p>
                 </a>
               </li>
+              {% if current_user.has_permission('view_ledger') %}
               <li class="nav-item">
-                <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
+                <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint in ['main.company_partners', 'owner.partners'] %}active{% endif %}">
                   <i class="fas fa-percentage nav-icon text-warning"></i>
                   <p>{{ t("Ratios and Distribution") }}</p>
                 </a>
               </li>
+              {% endif %}
             </ul>
           </li>
           {% endif %}
@@ -617,8 +619,10 @@
           {% endif %}
           
           {% if current_user.has_permission('view_ledger') %}
-          <li class="nav-item has-treeview {% if request.endpoint and request.endpoint.startswith('ledger.') %}menu-open{% endif %}">
-            <a href="#" class="nav-link {% if request.endpoint and request.endpoint.startswith('ledger.') %}active{% endif %}">
+          {% set ledger_active = (request.endpoint and request.endpoint.startswith('ledger.'))
+            or (request.endpoint == 'main.company_partners' and not current_user.has_permission('manage_customers')) %}
+          <li class="nav-item has-treeview {% if ledger_active %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if ledger_active %}active{% endif %}">
               <i class="nav-icon fas fa-book"></i>
               <p>
                 {{ t("Ledger") }}
@@ -638,6 +642,14 @@
                   <p>{{ t("Journal Entries") }}</p>
                 </a>
               </li>
+              {% if not current_user.has_permission('manage_customers') %}
+              <li class="nav-item">
+                <a href="{{ url_for('main.company_partners') }}" class="nav-link {% if request.endpoint == 'main.company_partners' %}active{% endif %}">
+                  <i class="nav-icon fas fa-percentage"></i>
+                  <p>{{ t("Ratios and Distribution") }}</p>
+                </a>
+              </li>
+              {% endif %}
               {% if current_user.is_admin() %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.accounts') }}" class="nav-link">
@@ -1224,7 +1236,7 @@ document.addEventListener('keydown', function(e){
     {% if current_user.has_permission('manage_sales') %}{label:'{{ t("Invoice List") }}', icon:'fa-list', url:"{{ url_for('sales.index') }}", keys:'{{ t("Invoices") }} sales'},{% endif %}
     {% if current_user.has_permission('manage_customers') %}{label:'{{ t("New Customer") }}', icon:'fa-user-plus', url:"{{ url_for('customers.create') }}", keys:'{{ t("Customer") }} customer'},{% endif %}
     {% if current_user.has_permission('manage_customers') %}{label:'{{ t("Customer List") }}', icon:'fa-users', url:"{{ url_for('customers.index') }}", keys:'{{ t("Customers") }} customers'},{% endif %}
-    {% if current_user.has_permission('manage_customers') %}{label:'{{ t("Partners and Shares (Shareholders)") }}', icon:'fa-handshake', url:"{{ url_for('main.company_partners') }}", keys:'{{ t("Partners Shareholders Profit Shares") }}'},{% endif %}
+    {% if current_user.has_permission('view_ledger') %}{label:'{{ t("Partners and Shares (Shareholders)") }}', icon:'fa-handshake', url:"{{ url_for('main.company_partners') }}", keys:'{{ t("Partners Shareholders Profit Shares") }}'},{% endif %}
     {% if current_user.has_permission('manage_products') %}{label:'{{ t("New Product") }}', icon:'fa-box', url:"{{ url_for('products.create') }}", keys:'{{ t("Product") }} product'},{% endif %}
     {% if current_user.has_permission('manage_payments') %}{label:'{{ t("New Receipt") }}', icon:'fa-money-bill-wave', url:"{{ url_for('payments.create_receipt') }}", keys:'{{ t("Receipt") }} payment'},{% endif %}
     {% if current_user.has_permission('view_ledger') %}{label:'{{ t("Account Statement") }}', icon:'fa-book', url:"{{ url_for('ledger.index') }}", keys:'{{ t("Account Statement") }} ledger'},{% endif %}

@@ -51,9 +51,10 @@ def tenant(db):
 
 
 @pytest.fixture(scope="function")
-def candidate_customer(db):
+def candidate_customer(db, tenant):
     c = Customer(
-        name="شريك محتمل", name_ar="شريك محتمل", customer_type="regular", is_active=True
+        name="شريك محتمل", name_ar="شريك محتمل", customer_type="regular", is_active=True,
+        tenant_id=tenant.id,
     )
     _db.session.add(c)
     _db.session.commit()
@@ -133,6 +134,43 @@ class TestOwnerPartnersPage:
         assert "توزيع أرباح الشركاء" in body
         assert "Traceback" not in body
 
+    def test_owner_selected_company_cannot_change_unassigned_customer(self, client, owner, tenant, db):
+        outsider = Customer(name="خارج الشركة", customer_type="regular")
+        db.session.add(outsider)
+        db.session.commit()
+        _login(client, owner)
+        _impersonate(client, tenant)
+        client.post("/owner/partners", data={
+            "action": "set_scope", "customer_id": outsider.id, "scope": "company", "share": "10",
+        })
+        assert db.session.get(Customer, outsider.id).partner_scope == "none"
+
+    @pytest.mark.parametrize("role,permissions,expected", [
+        ("partner-accountant", ("view_ledger", "manage_payments", "manage_ledger"), (200, 403, 302, 302)),
+        ("partner-manager", ("view_ledger", "manage_customers", "manage_payments", "manage_ledger"), (200, 302, 302, 302)),
+        ("partner-seller", ("manage_customers",), (403, 403, 403, 403)),
+    ])
+    def test_financial_actions_follow_the_role(self, client, db, tenant, role, permissions, expected):
+        from models import Permission
+
+        grants = []
+        for code in permissions:
+            grant = Permission.query.filter_by(code=code).first()
+            grants.append(grant or Permission(code=code, name=code))
+        group = Role(name=role, slug=role, tenant_id=tenant.id, permissions=grants)
+        user = User(username=role, email=f"{role}@test.invalid", role=group, tenant_id=tenant.id)
+        user.set_password("Pass123!")
+        db.session.add(user)
+        db.session.commit()
+        _login(client, user)
+        path = "/settings/partners"
+        response = client.get(path)
+        body = response.get_data(as_text=True)
+        assert response.status_code == expected[0]
+        assert ('name="action" value="set_scope"' in body) == ("manage_customers" in permissions and expected[0] == 200)
+        for action, status in zip(("set_scope", "record_draw", "distribute"), expected[1:]):
+            assert client.post(path, data={"action": action}).status_code == status
+
 
 class TestRecordDrawAndDistributeViaPage:
     """مسار كامل: دخول سياق الشركة → تسجيل المسحوبات وتوزيع الأرباح من الصفحة."""
@@ -142,6 +180,7 @@ class TestRecordDrawAndDistributeViaPage:
     ):
         partner = Customer(
             name="شريك المسحوبات",
+            tenant_id=tenant.id,
             name_ar="شريك المسحوبات",
             customer_type="partner",
             partner_scope="company",
@@ -168,18 +207,21 @@ class TestRecordDrawAndDistributeViaPage:
         from models import GLJournalEntry, GLJournalLine
 
         entries = GLJournalEntry.query.filter_by(
-            reference_type="PartnerDraw", reference_id=partner.id
+            reference_type="PartnerDraw", reference_id=partner.id, tenant_id=tenant.id,
         ).all()
         assert entries, "يجب أن تُسجَّل المسحوبات كقيد PartnerDraw"
         lines = GLJournalLine.query.filter_by(party_id=partner.id).all()
         assert any(l.debit == Decimal("120.000") for l in lines)
+        assert all(line.tenant_id == tenant.id for line in lines)
 
     def test_distribute_via_page_posts_tenant_scoped_entry(
         self, client, owner, tenant, db
     ):
+        from models import Sale
         from models.tenant_scope import run_in_tenant_context
         from services.account_resolution import AccountResolver, AccountRole
         from services.gl_service import GLService
+        from services.partner_profit import preview_partner_distributions
 
         def _setup():
             partner = Customer(
@@ -209,10 +251,18 @@ class TestRecordDrawAndDistributeViaPage:
                 reference_type="Test",
                 exchange_rate=Decimal("1"),
             )
+            db.session.add(Sale(
+                sale_number="PARTNER-FX", tenant_id=tenant.id, customer_id=partner.id, seller_id=owner.id,
+                total_amount=100, amount_base=200, balance_due=200, currency="USD", exchange_rate=2,
+                status="confirmed",
+            ))
             db.session.commit()
             return partner
 
         partner = run_in_tenant_context(tenant.id, _setup)
+        rows = preview_partner_distributions(tenant_id=tenant.id)
+        preview = next(row for row in rows if row["partner_id"] == partner.id)
+        assert preview["sales_to_partner_deducted"] == Decimal("200.000")
 
         _login(client, owner)
         _impersonate(client, tenant)
@@ -237,3 +287,30 @@ class TestRecordDrawAndDistributeViaPage:
         assert entry.total_debit == entry.total_credit
         partner_lines = [l for l in entry.lines if l.party_id == partner.id]
         assert partner_lines, "قيد التوزيع يجب أن يسجل party_id للشريك"
+        assert partner_lines[0].credit == Decimal("250.000")
+
+
+def test_reversal_preserves_partner_and_nets_posted_profit(db, tenant, owner_user):
+    from models.tenant_scope import run_in_tenant_context
+    from services.account_resolution import AccountResolver, AccountRole
+    from services.advanced_journal_manager import AdvancedJournalEntryManager
+    from services.gl_service import GLService
+    from services.partner_profit import compute_net_income
+
+    def verify():
+        partner = Customer(name="شريك قيد العكس", tenant_id=tenant.id)
+        db.session.add(partner)
+        db.session.flush()
+        original = GLService.post_entry([
+            {"account": "1110", "debit": Decimal("90")},
+            {"account": AccountResolver.resolve(AccountRole.SALES_REVENUE), "credit": Decimal("90"), "party_id": partner.id},
+        ], currency="USD", exchange_rate=2, created_by=owner_user.id)
+        assert compute_net_income(tenant_id=tenant.id) == Decimal("180.000")
+        reversal = AdvancedJournalEntryManager.reverse_entry_advanced(original.id, owner_user.id, "اختبار العكس")
+        assert reversal.currency == "USD" and reversal.exchange_rate == 2
+        assert any(line.party_id == partner.id and line.amount_base == Decimal("180") for line in reversal.lines)
+        assert compute_net_income(tenant_id=tenant.id) == Decimal("0.000")
+        with pytest.raises(ValueError, match="معكوس"):
+            AdvancedJournalEntryManager.reverse_entry_advanced(reversal.id, owner_user.id, "اختبار العكس المكرر")
+
+    run_in_tenant_context(tenant.id, verify)

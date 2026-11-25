@@ -40,8 +40,8 @@
   </div>
 </div>
 
-<div class="row mb-4">
-  <div class="col-md-3">
+<div class="row mb-4 vat-summary">
+  <div class="col-sm-6 col-xl-3">
     <div class="info-box bg-gradient-danger">
       <span class="info-box-icon"><i class="fas fa-file-invoice"></i></span>
       <div class="info-box-content">
@@ -50,7 +50,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-sm-6 col-xl-3">
     <div class="info-box bg-gradient-success">
       <span class="info-box-icon"><i class="fas fa-receipt"></i></span>
       <div class="info-box-content">
@@ -59,7 +59,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-sm-6 col-xl-3">
     <div class="info-box bg-gradient-warning">
       <span class="info-box-icon"><i class="fas fa-balance-scale"></i></span>
       <div class="info-box-content">
@@ -76,7 +76,7 @@
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-sm-6 col-xl-3">
     <div class="info-box bg-gradient-info">
       <span class="info-box-icon"><i class="fas fa-percent"></i></span>
       <div class="info-box-content">
@@ -88,7 +88,7 @@
     </div>
   </div>
 </div>
-<div class="row mb-4">
+<div class="row mb-4 vat-summary">
   <div class="col-md-4">
     <div class="info-box bg-gradient-secondary">
       <span class="info-box-icon"><i class="fas fa-file-invoice-dollar"></i></span>
@@ -117,7 +117,7 @@
     </div>
   </div>
 </div>
-<div class="row mb-4">
+<div class="row mb-4 vat-summary">
   <div class="col-md-4">
     <div class="info-box bg-gradient-secondary">
       <span class="info-box-icon"><i class="fas fa-ban"></i></span>
@@ -769,4 +769,18 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
+<style>
+  .vat-summary .info-box-text, .vat-summary .info-box-number {
+    color: inherit !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+  .vat-summary .info-box-icon { width: 3rem; font-size: 1.4rem; }
+  .vat-summary .bg-gradient-danger { background: #a61b29 !important; color: #fff !important; }
+  .vat-summary .bg-gradient-success { background: #146c43 !important; color: #fff !important; }
+  .vat-summary .bg-gradient-info { background: #136479 !important; color: #fff !important; }
+  .vat-summary .bg-gradient-secondary { background: #495057 !important; color: #fff !important; }
+  .vat-summary .bg-gradient-warning { color: #1f2937 !important; }
+</style>
 {% endblock %}

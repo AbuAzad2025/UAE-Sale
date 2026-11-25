@@ -604,20 +604,30 @@ BALANCED_LINES = [
 
 
 @pytest.fixture
-def posted_entry(db, gl, owner_user):
+def ledger_company(db):
+    from models import Tenant
+
+    company = Tenant(name="Journal test company", name_ar="شركة اختبار القيود", slug="journal-test")
+    db.session.add(company)
+    db.session.commit()
+    return company
+
+
+@pytest.fixture
+def posted_entry(db, gl, owner_user, ledger_company):
     entry = AdvancedJournalEntryManager.create_entry_with_validation(
-        description="قيد مرحل", lines=BALANCED_LINES, created_by=owner_user.id
+        description="قيد مرحل", lines=BALANCED_LINES, created_by=owner_user.id, tenant_id=ledger_company.id,
     )
     db.session.commit()
     return entry
 
 
 @pytest.fixture
-def draft_entry(db, gl, owner_user):
+def draft_entry(db, gl, owner_user, ledger_company):
     entry = AdvancedJournalEntryManager.create_entry_with_validation(
-        description="قيد مبدئي", lines=BALANCED_LINES, created_by=owner_user.id
+        description="قيد مبدئي", lines=BALANCED_LINES, created_by=owner_user.id,
+        tenant_id=ledger_company.id, is_posted=False,
     )
-    entry.is_posted = False
     db.session.commit()
     return entry
 

@@ -490,7 +490,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         }
         return types.get(self.entry_type, self.entry_type)
 
-    def reverse_entry(self, description=None, entry_date=None, created_by=None):
+    def reverse_entry(self, description=None, entry_date=None, created_by=None, *, notes=None):
         """عكس القيد (إنشاء قيد معاكس).
 
         F2: كان يولّد رقم القيد العكسي يدوياً (max+1) بدون قفل موزّع،
@@ -502,10 +502,16 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         - إجماليات القيد العكسي تُشتق من السطور التي يكتبها (لا من إجماليات
           القيد الأصلي، فقد لا يكون القيد الأصلي متسقاً داخلياً).
         """
-        if self.is_reversed:
+        db.session.refresh(self, ["is_reversed", "reversed_entry_id", "is_posted"], with_for_update=True)
+        if self.is_reversed or self.reversed_entry_id is not None or self.entry_type == "reversing":
             raise ValueError("هذا القيد تم عكسه مسبقاً")
+        if not self.is_posted:
+            raise ValueError("لا يمكن عكس قيد غير مرحل")
 
         entry_date = entry_date or datetime.now(timezone.utc)
+        from services.fiscal_period_guard import assert_period_open
+
+        assert_period_open(entry_date, tenant_id=self.tenant_id)
         entry_number = next_global_entry_number()
 
         source_lines = [
@@ -520,6 +526,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
                     Decimal("0.001"), rounding=ROUND_HALF_UP
                 ),
                 Decimal(str(line.amount_base or 0)),
+                line.party_id,
             )
             for line in self.lines
         ]
@@ -533,6 +540,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             _debit,
             _credit,
             _amount_base,
+            _party_id,
         ) in source_lines:
             total_debit += _credit
             total_credit += _debit
@@ -549,6 +557,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             total_debit=total_debit,
             total_credit=total_credit,
             is_posted=GLJournalEntry.STATE_POSTED,
+            notes=notes,
             reversed_entry_id=self.id,
             created_by=created_by if created_by is not None else self.created_by,
             tenant_id=self.tenant_id,
@@ -562,6 +571,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             debit,
             credit,
             amount_base,
+            party_id,
         ) in source_lines:
             db.session.add(
                 GLJournalLine(
@@ -572,6 +582,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
                     debit=credit,  # عكس
                     credit=debit,  # عكس
                     amount_base=-amount_base,  # عكس
+                    party_id=party_id,
                     tenant_id=getattr(self, "tenant_id", None),
                 )
             )

@@ -531,7 +531,7 @@ def company_settings():
 
 @main_bp.route("/settings/partners", methods=["GET", "POST"])
 @login_required
-@permission_required("manage_customers")
+@permission_required("view_ledger")
 def company_partners():
     """شركاء/مساهمو المستأجر ونسبهم — صفحة محايدة للمدير.
 

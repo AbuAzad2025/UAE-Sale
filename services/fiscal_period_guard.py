@@ -41,7 +41,7 @@ def _to_date(value):
     return None
 
 
-def period_for_date(document_date=None):
+def period_for_date(document_date=None, *, tenant_id=None):
     """Return the FiscalPeriod covering *document_date*, or None.
 
     Deterministic: when several periods overlap the OPENEST one wins, and
@@ -53,7 +53,7 @@ def period_for_date(document_date=None):
     from models.tenant_scope import get_current_tenant_id
 
     target = _to_date(document_date) or datetime.now(timezone.utc).date()
-    tenant_id = get_current_tenant_id()
+    tenant_id = tenant_id if tenant_id is not None else get_current_tenant_id()
 
     query = FiscalPeriod.query.filter(
         FiscalPeriod.start_date <= target,
@@ -191,7 +191,7 @@ def ensure_periods_for_years(years):
     return opened
 
 
-def assert_period_open(document_date=None, document_type="document"):
+def assert_period_open(document_date=None, document_type="document", *, tenant_id=None):
     """Raise ValidationError when the period covering *document_date* is closed.
 
     Importing ValidationError lazily keeps this module importable from
@@ -200,7 +200,7 @@ def assert_period_open(document_date=None, document_type="document"):
     from utils.errors import ValidationError
 
     target = _to_date(document_date) or datetime.now(timezone.utc).date()
-    period = period_for_date(target)
+    period = period_for_date(target, tenant_id=tenant_id)
     if period is None:
         raise ValidationError(
             f"لا توجد فترة مالية معرَّفة لتاريخ {target}. "

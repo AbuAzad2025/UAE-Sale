@@ -4094,7 +4094,7 @@ def _partners_view(imp, post_endpoint="owner.partners"):
     from datetime import date as _date
 
     from models import Customer, Tenant, Product, ProductPartner
-    from models.gl import GLAccount, GLJournalLine
+    from models.gl import GLAccount, GLJournalEntry, GLJournalLine
     from services import partner_profit as pp
     from services.account_resolution import AccountRole
     from services.currency_service import CurrencyService
@@ -4124,10 +4124,15 @@ def _partners_view(imp, post_endpoint="owner.partners"):
             return redirect(url_for("owner.partners"))
 
         action = (request.form.get("action") or "").strip()
+        permission = {"set_scope": "manage_customers", "record_draw": "manage_payments",
+                      "distribute": "manage_ledger"}.get(action)
+        if permission and not current_user.has_permission(permission):
+            abort(403)
         try:
             if action == "set_scope":
                 cid = request.form.get("customer_id", type=int)
-                customer = get_owned_or_404(Customer, cid) if cid else None
+                Tenant.query.filter_by(id=imp.id).with_for_update().one()
+                customer = Customer.query.filter_by(id=cid, tenant_id=imp.id, is_active=True).first()
                 if customer is None:
                     raise ValueError("العميل غير موجود")
                 scope = (request.form.get("scope") or "").strip()
@@ -4136,8 +4141,15 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                 if scope == "company":
                     share_raw = (request.form.get("share") or "").strip()
                     share = Decimal(share_raw)
-                    if share <= 0 or share > 100:
+                    if not share.is_finite() or share <= 0 or share > 100:
                         raise ValueError("النسبة يجب أن تكون بين 0 و 100")
+                    share = share.quantize(Decimal("0.001"))
+                    others = db.session.query(func.coalesce(func.sum(Customer.partner_share), 0)).filter(
+                        Customer.tenant_id == imp.id, Customer.id != customer.id, Customer.is_active.is_(True),
+                        Customer.partner_scope == "company",
+                    ).scalar()
+                    if share <= 0 or others + share > 100:
+                        raise ValueError("مجموع نسب الشركاء يجب ألا يتجاوز 100%، والنسبة المدخلة يجب أن تكون موجبة.")
                     customer.partner_scope = "company"
                     customer.partner_share = share
                     customer.customer_type = "partner"
@@ -4160,30 +4172,31 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                         if not has_links:
                             customer.customer_type = "regular"
                     changes = {"partner_scope": "none", "partner_share": None}
-                db.session.commit()
                 create_audit_log(
-                    "set_partner_scope", "customers", customer.id, changes=changes
+                    "set_partner_scope", "customers", customer.id, changes=changes, commit=False
                 )
+                db.session.commit()
                 flash("✅ تم تحديث إعدادات الشريك", "success")
 
             elif action == "record_draw":
                 pid = request.form.get("partner_id", type=int)
                 amount_raw = (request.form.get("amount") or "").strip()
                 source = (request.form.get("source") or "cash").strip().lower()
-                partner = get_owned_or_404(Customer, pid) if pid else None
+                partner = Customer.query.filter_by(id=pid, tenant_id=imp.id, is_active=True).first()
                 if partner is None or not partner.is_active:
                     raise ValueError("الشريك غير موجود")
                 amount = Decimal(amount_raw)
-                if amount <= 0:
+                if not amount.is_finite() or amount <= 0:
                     raise ValueError("مبلغ المسحوبات يجب أن يكون أكبر من صفر")
-                role = AccountRole.CASH if source != "bank" else AccountRole.BANK
+                if source not in {"cash", "bank"}:
+                    raise ValueError("اختر الصندوق أو البنك لتسجيل المسحوبات.")
+                role = AccountRole.CASH if source == "cash" else AccountRole.BANK
                 entry = pp.post_partner_draw(
                     partner.id,
                     amount,
                     credit_account_role=role,
                     description=f"مسحوبات الشريك {partner.name}",
                 )
-                db.session.commit()
                 create_audit_log(
                     "record_partner_draw",
                     "gl_journal_entries",
@@ -4193,14 +4206,17 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                         "amount": str(amount),
                         "entry_number": entry.entry_number,
                     },
+                    commit=False,
                 )
+                db.session.commit()
                 flash(f"✅ سُجّلت مسحوبات الشريك — قيد {entry.entry_number}", "success")
 
             elif action == "distribute":
-                d_from = _parse_day(request.form.get("from"), period_from)
-                d_to = _parse_day(request.form.get("to"), period_to)
+                d_from = _parse_day(request.form.get("from"))
+                d_to = _parse_day(request.form.get("to"))
+                if d_from is None or d_to is None:
+                    raise ValueError("حدد تاريخ بداية ونهاية صالحين قبل ترحيل التوزيع.")
                 entry = pp.post_partner_distributions(d_from, d_to, tenant_id=imp.id)
-                db.session.commit()
                 if entry is not None:
                     create_audit_log(
                         "post_partner_distribution",
@@ -4211,10 +4227,13 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                             "period_to": str(d_to),
                             "entry_number": entry.entry_number,
                         },
+                        commit=False,
                     )
+                    db.session.commit()
                     flash(f"✅ تم توزيع النتيجة — قيد {entry.entry_number}", "success")
                 else:
-                    flash("ℹ️ لا توجد نتيجة موجبة أو نسب موزَّعة في هذه الفترة.", "info")
+                    db.session.commit()
+                    flash("ℹ️ لا يوجد توزيع جديد لهذه الفترة.", "info")
             else:
                 flash("⛔ إجراء غير معروف", "danger")
         except Exception as exc:
@@ -4239,7 +4258,7 @@ def _partners_view(imp, post_endpoint="owner.partners"):
             .distinct()
             .scalar_subquery()
         )
-        net = pp.compute_net_income(period_from, period_to)
+        net = pp.compute_net_income(period_from, period_to, tenant_id=imp.id)
         preview_rows = pp.preview_partner_distributions(
             period_from, period_to, tenant_id=imp.id
         )
@@ -4263,7 +4282,7 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                 .all()
             ):
                 link_counts[pid] = cnt
-            accrual = pp._product_shares_bulk(ids, period_from, period_to)
+            accrual = pp._product_shares_bulk(ids, period_from, period_to, tenant_id=imp.id)
 
         partner_ids = [p.id for p in company_partners]
         balances = {}
@@ -4272,12 +4291,15 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                 db.session.query(
                     GLJournalLine.party_id,
                     func.coalesce(
-                        func.sum(GLJournalLine.credit - GLJournalLine.debit), 0
+                        func.sum(-GLJournalLine.amount_base), 0
                     ),
                 )
                 .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+                .join(GLJournalEntry, GLJournalEntry.id == GLJournalLine.entry_id)
                 .filter(
-                    GLAccount.code == "3350", GLJournalLine.party_id.in_(partner_ids)
+                    GLAccount.code == "3350", GLJournalLine.party_id.in_(partner_ids),
+                    GLJournalEntry.is_posted.is_(True), GLJournalEntry.tenant_id == imp.id,
+                    GLJournalLine.tenant_id == imp.id,
                 )
                 .group_by(GLJournalLine.party_id)
             )

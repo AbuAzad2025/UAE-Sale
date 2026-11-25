@@ -5,7 +5,11 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
   <div>
     <h1 class="mb-0"><i class="fas fa-robot mr-2"></i>{{ t('AI Assistant') }}</h1>
-    <p class="text-muted mb-0 small">{{ t('Answers from your company data, within your permissions') }}</p>
+    {% if assistant_company %}
+    <p class="text-muted mb-0 small">{{ 'Company' if current_language == 'en' else 'الشركة الحالية' }} · {{ assistant_company.name_en or assistant_company.name if current_language == 'en' else assistant_company.name_ar or assistant_company.name }}</p>
+    {% else %}
+    <p class="text-muted mb-0 small">{{ 'Choose a company to view its data.' if current_language == 'en' else 'اختر شركة من قائمة الشركات لعرض بياناتها.' }}</p>
+    {% endif %}
   </div>
   <div class="d-flex align-items-center gap-2">
     <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm">
@@ -17,11 +21,13 @@
     </a>
     {% endif %}
     <div class="btn-group" role="group">
-      <button type="button" class="btn btn-outline-primary btn-sm" id="ai-mode-local" onclick="switchAIMode('local')">
-        <i class="fas fa-microchip mr-1"></i> {{ t('Local') }}
+      {% if config.BOT_QUEUE_ENABLED %}
+      <button type="button" class="btn btn-outline-primary btn-sm" id="ai-mode-agent" data-ai-mode="agent" aria-pressed="false">
+        <i class="fas fa-robot mr-1"></i> {{ 'Local agent' if current_language == 'en' else 'الوكيل المحلي' }}
       </button>
-      <button type="button" class="btn btn-outline-info btn-sm" id="ai-mode-groq" onclick="switchAIMode('groq')">
-        <i class="fas fa-cloud mr-1"></i> Groq
+      {% endif %}
+      <button type="button" class="btn btn-outline-primary btn-sm" id="ai-mode-local" data-ai-mode="local" aria-pressed="false">
+        <i class="fas fa-microchip mr-1"></i> {{ t('Local') }}
       </button>
     </div>
     <span class="badge badge-success" id="ai-status-badge">
@@ -233,6 +239,8 @@
   background: none;
   -webkit-text-fill-color: currentColor;
 }
+#salesFollowUps[hidden] { display: none !important; }
+.chat-message-text { overflow-wrap: anywhere; white-space: pre-wrap; margin-top: 8px; }
 .ai-feature-card h5 { font-size: .98rem; margin-bottom: 4px; }
 .ai-feature-card p { font-size: .78rem; margin: 0; }
 @media (max-width: 768px) {
@@ -247,6 +255,7 @@
 <div class="row mb-3">
   {% set prompts = [
     ('fa-chart-line', 'Sales Today', 'كم عدد المبيعات اليوم؟'),
+    ('fa-chart-bar', 'Compare Sales', 'قارن مبيعات هذا الشهر والشهر الماضي'),
     ('fa-users', 'Customers Count', 'كم عدد العملاء؟'),
     ('fa-boxes', 'Inventory Status', 'ما حالة المخزون؟'),
     ('fa-receipt', 'Expenses This Month', 'كم عدد المصروفات هذا الشهر؟'),
@@ -254,18 +263,18 @@
     ('fa-calendar-lock', 'Fiscal Periods', 'ما حالة الفترات المالية؟')
   ] %}
   {% for icon, label, question in prompts %}
-  <div class="col-6 col-md-4 col-xl-2 mb-3">
-    <div class="ai-feature-card h-100" onclick="askQuestion('{{ question }}')" role="button" tabindex="0">
-      <div class="ai-feature-icon"><i class="fas {{ icon }}"></i></div>
-      <h5>{{ t(label) }}</h5>
-    </div>
+  <div class="col-6 col-md-4 col-xl mb-3">
+    <button type="button" class="ai-feature-card w-100 h-100" data-chat-question="{{ question }}">
+      <span class="ai-feature-icon d-block"><i class="fas {{ icon }}" aria-hidden="true"></i></span>
+      <span>{{ ('مقارنة المبيعات' if current_language == 'ar' else 'Compare Sales') if label == 'Compare Sales' else t(label) }}</span>
+    </button>
   </div>
   {% endfor %}
 </div>
 
 <div class="super-ai-container">
   <div class="chat-container">
-    <div class="chat-messages" id="chatBox">
+    <div class="chat-messages" id="chatBox" role="log" aria-live="polite" aria-label="{{ t('Chat') }}">
       <div class="bot-message">
         <div class="d-flex align-items-start">
           <div class="mr-3">
@@ -324,13 +333,13 @@
         <div id="excelUploaderModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
           <div style="background: white; padding: 30px; border-radius: 16px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
             <h4 style="color: #667eea; margin-bottom: 20px;">
-              <i class="fas fa-file-excel mr-2"></i>{{ t('Upload Excel File - Super Smart Wizard') }}
+              <i class="fas fa-file-excel mr-2"></i>{{ 'Review stock import' if current_language == 'en' else 'مراجعة استيراد المخزون' }}
             </h4>
             <form id="excelUploadForm" enctype="multipart/form-data" action="">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="form-group">
-                <label>{{ t('Choose an Excel file (.xlsx, .xls)') }}</label>
-                <input type="file" id="excelFile" accept=".xlsx,.xls" class="form-control" required>
+                <label>{{ 'Excel file (.xlsx)' if current_language == 'en' else 'ملف Excel بصيغة XLSX' }}</label>
+                <input type="file" id="excelFile" accept=".xlsx" class="form-control" required>
               </div>
               <div class="form-group">
                 <label>{{ t('Warehouse') }}</label>
@@ -343,10 +352,7 @@
               <div class="form-group">
                 <div class="alert alert-info">
                   <i class="fas fa-lightbulb mr-2"></i>
-                  <strong>{{ t('The smart AI will automatically understand:') }}</strong><br>
-                  - {{ t('Excel columns (Arabic or English)') }}<br>
-                  - {{ t('Creates new products or updates existing ones') }}<br>
-                  - {{ t('100% accuracy - no human errors') }}
+                  {{ 'Review matched products, stock quantities and valuation before confirming.' if current_language == 'en' else 'راجع الأصناف المطابقة وكميات المخزون وقيمته قبل التأكيد.' }}
                 </div>
                 <div class="alert alert-warning">
                   <i class="fas fa-edit mr-2"></i>
@@ -361,7 +367,7 @@
                   <button type="button" class="btn btn-secondary" onclick="hideExcelUploader()">{{ t('Cancel') }}</button>
                 </div>
                 <button type="submit" class="btn btn-success" id="uploadExcelBtn">
-                  <i class="fas fa-upload mr-2"></i>{{ t('Upload and Process') }}
+                  <i class="fas fa-upload mr-2"></i>{{ 'Review import' if current_language == 'en' else 'معاينة الاستيراد' }}
                 </button>
               </div>
               <div id="uploadProgress" class="mt-3" style="display: none;">
@@ -374,9 +380,13 @@
           </div>
         </div>
         
+        <div id="salesFollowUps" class="d-flex flex-wrap mb-2" hidden>
+          <button type="button" class="btn btn-sm btn-outline-primary mr-2" data-chat-question="وأمس؟">{{ "Yesterday?" if current_language == "en" else "وأمس؟" }}</button>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-chat-question="والشهر الماضي؟">{{ "Last month?" if current_language == "en" else "والشهر الماضي؟" }}</button>
+        </div>
         <div class="input-group">
         <input type="text" id="userMessage" class="form-control form-control-lg" 
-               placeholder="{{ t('Ask any question...') }}" autocomplete="off"
+               placeholder="{{ t('Ask any question...') }}" aria-label="{{ t('Ask any question...') }}" autocomplete="off" maxlength="4000" dir="auto"
                style="border-radius: 12px 0 0 12px; border: 2px solid #667eea;">
           <div class="input-group-append">
           <button class="btn btn-lg" id="sendBtn"
@@ -464,7 +474,8 @@ function addMessage(sender, text, isBot = false) {
            <i class="fas fa-user text-white fa-2x"></i>
          </div>`;
     
-    const senderName = isBot ? {{ t('Azad')|tojson }} + ' ' : '{{ current_user.username }}' || {{ t('You')|tojson }};
+    const senderName = isBot ? {{ t('Azad')|tojson }} : {{ current_user.username|tojson }} || {{ t('You')|tojson }};
+    const safeSender = $('<div>').text(senderName).html();
     const safeText = $('<div>').text(String(text == null ? '' : text)).html();
     
     chatBox.append(`
@@ -472,17 +483,19 @@ function addMessage(sender, text, isBot = false) {
         <div class="d-flex align-items-start">
           ${isBot ? avatar : ''}
           <div class="${isBot ? 'mr-3' : 'ml-3'}" style="flex: 1;">
-            <strong style="color: ${isBot ? '#667eea' : '#007A3D'};">${senderName}</strong>
-            <div style="margin-top: 8px; white-space: pre-wrap;">${safeText}</div>
+            <strong style="color: ${isBot ? '#667eea' : '#007A3D'};">${safeSender}</strong>
+            <div class="chat-message-text" dir="auto">${safeText}</div>
           </div>
           ${!isBot ? avatar : ''}
         </div>
       </div>
     `);
     
+    const row = chatBox.children().last();
     setTimeout(() => {
       chatBox.scrollTop(chatBox[0].scrollHeight);
     }, 100);
+    return row;
 }
 
 function showTyping() {
@@ -512,70 +525,305 @@ function hideTyping() {
 
 $(document).ready(function() {
   const chatBox = $('#chatBox');
-  const chatMessages = chatBox;  // نفس المرجع
   const userMessage = $('#userMessage');
   const sendBtn = $('#sendBtn');
+  const salesFollowUps = $('#salesFollowUps');
+  let sending = false;
+  const queueWatches = new Set();
+  let followUpTopic = null;
+  const csrfToken = {{ csrf_token()|tojson }};
+  const requestError = {{ t('Sorry, an error occurred. Try again.')|tojson }};
+
+  function showChatResult(result) {
+    followUpTopic = result.follow_up_topic === 'sales' ? 'sales' : null;
+    salesFollowUps.prop('hidden', !followUpTopic);
+    const body = addMessage('bot', result.response, true).find('.chat-message-text');
+    if (result.formal_url) {
+      $('<a>', {
+        class: 'btn btn-sm btn-outline-primary d-table mt-2',
+        href: result.formal_url,
+        text: {{ ('Open ERP form' if current_language == 'en' else 'افتح نموذج النظام')|tojson }}
+      }).insertAfter(body);
+    }
+    if (result.collect_url) {
+      const form = $('<form>', { class: 'mt-2' }).insertAfter(body);
+      const field = result.multiline ? $('<textarea>', { rows: 4 }) : $('<input>', { type: 'text' });
+      field.attr({
+        class: 'form-control',
+        maxlength: 4000,
+        required: true,
+        'aria-label': {{ ('Purchase order details' if current_language == 'en' else 'بيانات أمر الشراء')|tojson }}
+      }).appendTo(form);
+      const submit = $('<button>', {
+        type: 'submit',
+        class: 'btn btn-sm btn-primary mt-2',
+        text: {{ ('Continue' if current_language == 'en' else 'متابعة')|tojson }}
+      }).appendTo(form);
+      const error = $('<div>', { class: 'text-danger mt-2', role: 'alert' }).appendTo(form);
+      form.on('submit', function(event) {
+        event.preventDefault();
+        const message = field.val().trim();
+        if (!message || submit.prop('disabled')) return;
+        error.empty();
+        field.add(submit).prop('disabled', true);
+        $.ajax({
+          url: result.collect_url,
+          method: 'POST',
+          contentType: 'application/json',
+          headers: { 'X-CSRFToken': csrfToken },
+          data: JSON.stringify({ message: message }),
+          success: function(next) {
+            form.remove();
+            addMessage('user', message, false);
+            showChatResult(next);
+          },
+          error: function(xhr) {
+            error.text(xhr.responseJSON?.response || requestError);
+            field.add(submit).prop('disabled', false);
+            field.focus();
+          }
+        });
+      });
+    }
+    if (result.confirm_url) {
+      const agentMode = {{ config.BOT_QUEUE_ENABLED|tojson }} && localStorage.getItem('ai_mode') === 'agent';
+      const queued = result.queued_confirmation || (agentMode && result.queued_confirm_url);
+      const confirmUrl = agentMode && result.queued_confirm_url ? result.queued_confirm_url : result.confirm_url;
+      const confirmationKey = newIdempotencyKey();
+      const confirm = $('<button>', {
+        type: 'button',
+        class: 'btn btn-sm btn-primary d-block mt-2',
+        text: ['timeout', 'queue_expired'].includes(result.outcome)
+          ? {{ ('Retry confirmation' if current_language == 'en' else 'إعادة محاولة التأكيد')|tojson }}
+          : {{ ('Confirm action' if current_language == 'en' else 'تأكيد العملية')|tojson }}
+      }).insertAfter(body);
+      confirm.on('click', function() {
+        confirm.prop('disabled', true);
+        $.ajax({
+          url: confirmUrl,
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrfToken, 'Idempotency-Key': confirmationKey },
+          success: function(response) {
+            confirm.remove();
+            if (queued) {
+              watchQueuedMessage(response);
+            } else {
+              showChatResult(response);
+            }
+          },
+          error: function(xhr) {
+            addMessage('bot', xhr.responseJSON?.response || requestError, true);
+            confirm.prop('disabled', false);
+          }
+        });
+      });
+    }
+  }
+
+  $(document).on('click', '[data-chat-question]', function() {
+    window.askQuestion(this.dataset.chatQuestion);
+  });
   
   window.askQuestion = function(question) {
     const input = document.getElementById('userMessage');
-    if (!input) return;
+    if (!input || sending) return;
     input.value = question;
     $(input).trigger('input');
     sendMessage();
   };
 
-  function sendMessage() {
-    const message = userMessage.val().trim();
-    if (!message) return;
-    
-    addMessage('user', message, false);
-    userMessage.val('');
+  function newIdempotencyKey() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return [
+      hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16),
+      hex.slice(16, 20), hex.slice(20)
+    ].join('-');
+  }
+
+  function sendMessage(retry) {
+    const message = retry ? retry.body.message : userMessage.val().trim();
+    if (sending || !message) return;
+
+    const request = retry || {
+      key: newIdempotencyKey(),
+      body: {
+        message: message,
+        ai_mode: (localStorage.getItem('ai_mode') === 'agent' && {{ config.BOT_QUEUE_ENABLED|tojson }}) ? 'agent' : 'local',
+        follow_up_topic: followUpTopic,
+        context: { dialect: currentDialect, beginners_mode: beginnersMode }
+      }
+    };
+    const queued = {{ config.BOT_QUEUE_ENABLED|tojson }} && request.body.ai_mode === 'agent';
+
+    sending = true;
+    $('[data-chat-question]').prop('disabled', true);
+    chatBox.attr('aria-busy', 'true');
+    if (!retry) {
+      addMessage('user', message, false);
+      userMessage.val('');
+    }
     sendBtn.prop('disabled', true);
-    
     showTyping();
-    
-    const aiMode = localStorage.getItem('ai_mode') || 'groq';
-    
+
     $.ajax({
-      url: '{{ url_for("ai.chat") }}',
+      url: queued ? '{{ url_for("ai.enqueue_bot_event") }}' : '{{ url_for("ai.chat") }}',
       method: 'POST',
       contentType: 'application/json',
-      headers: {
-        'X-CSRFToken': '{{ csrf_token() }}'
-      },
-      data: JSON.stringify({ 
-        message: message,
-        ai_mode: aiMode,
-        context: {
-          dialect: currentDialect || 'palestinian',
-          beginners_mode: beginnersMode || false
+      headers: { 'X-CSRFToken': csrfToken, 'Idempotency-Key': request.key },
+      data: JSON.stringify(request.body),
+      success: queued ? watchQueuedMessage : showChatResult,
+      error: function(xhr) {
+        const row = addMessage('bot', xhr.responseJSON?.response || requestError, true);
+        if (xhr.status === 0 || xhr.status >= 500) {
+          const retryButton = $('<button>', {
+            type: 'button',
+            class: 'btn btn-sm btn-outline-primary d-block mt-2',
+            text: {{ ('Retry' if current_language == 'en' else 'إعادة المحاولة')|tojson }}
+          }).insertAfter(row.find('.chat-message-text'));
+          retryButton.on('click', function() {
+            if (sending) return;
+            retryButton.remove();
+            sendMessage(request);
+          });
         }
-      }),
-      success: function(response) {
-        hideTyping();
-        addMessage('bot', response.response, true);
-        sendBtn.prop('disabled', false);
-        userMessage.focus();
       },
-      error: function() {
+      complete: function() {
         hideTyping();
-        addMessage('bot', ' ' + {{ t('Sorry, an error occurred. Try again.')|tojson }}, true);
+        sending = false;
         sendBtn.prop('disabled', false);
+        $('[data-chat-question]').prop('disabled', false);
+        chatBox.attr('aria-busy', 'false');
+        userMessage.focus();
       }
     });
   }
-  
-  sendBtn.click(sendMessage);
-  
+
+  function watchQueuedMessage(event) {
+    if (queueWatches.has(event.status_url)) return;
+    queueWatches.add(event.status_url);
+    const queuedText = {{ ('Queued for the local agent' if current_language == 'en' else 'الطلب في قائمة انتظار الوكيل المحلي')|tojson }};
+    const processingText = {{ ('The local agent is processing your request' if current_language == 'en' else 'الوكيل المحلي ينفذ الطلب')|tojson }};
+    const row = addMessage('bot', event.status === 'processing' ? processingText : queuedText, true);
+    const body = row.find('.chat-message-text');
+    let started = Date.now();
+    let consecutiveErrors = 0;
+
+    function poll() {
+      $.ajax({
+        url: event.status_url,
+        method: 'GET',
+        timeout: 2500,
+        success: function(status) {
+          consecutiveErrors = 0;
+          if (status.result) {
+            queueWatches.delete(event.status_url);
+            row.remove();
+            showChatResult({ ...status.result, response: status.result.message });
+          } else {
+            body.text(status.status === 'processing' ? processingText : queuedText);
+            const elapsed = Date.now() - started;
+            if (elapsed < 420000) {
+              setTimeout(poll, elapsed < 5000 ? 500 : 2000);
+            } else {
+              pausePolling();
+            }
+          }
+        },
+        error: function(xhr) {
+          consecutiveErrors += 1;
+          if (consecutiveErrors < 4 && (xhr.status === 0 || xhr.status >= 500)) {
+            setTimeout(poll, consecutiveErrors * 1000);
+          } else {
+            pausePolling();
+          }
+        }
+      });
+    }
+
+    function pausePolling() {
+      const retry = $('<button>', {
+        type: 'button',
+        class: 'btn btn-sm btn-outline-primary d-block mt-2',
+        text: {{ ('Check status' if current_language == 'en' else 'تحقق من حالة الطلب')|tojson }}
+      }).insertAfter(body);
+      retry.one('click', function() {
+        retry.remove();
+        started = Date.now();
+        consecutiveErrors = 0;
+        poll();
+      });
+    }
+
+    poll();
+  }
+
+
+  let uploadKey = null;
+  $('#excelFile, #warehouseSelect').on('change', () => { uploadKey = null; });
+  $('#excelUploadForm').on('reset', () => { uploadKey = null; });
+  $('#excelUploadForm').on('submit', function(event) {
+    event.preventDefault();
+    const file = $('#excelFile')[0].files[0];
+    if (!file) return;
+
+    const data = new FormData();
+    data.append('file', file);
+    data.append('warehouse_id', $('#warehouseSelect').val() || '');
+    if ({{ config.BOT_QUEUE_ENABLED|tojson }} && localStorage.getItem('ai_mode') === 'agent') {
+      data.append('agent_queue', '1');
+    }
+    uploadKey = uploadKey || newIdempotencyKey();
+    $('#uploadExcelBtn, #excelFile, #warehouseSelect').prop('disabled', true);
+    $('#uploadProgress').show();
+
+    $.ajax({
+      url: '{{ url_for("ai.upload_excel") }}',
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken, 'Idempotency-Key': uploadKey },
+      data: data,
+      processData: false,
+      contentType: false,
+      success: function(result) {
+        hideExcelUploader();
+        if (result.status_url) {
+          watchQueuedMessage(result);
+        } else {
+          showChatResult(result);
+        }
+      },
+      error: function(xhr) {
+        addMessage('bot', xhr.responseJSON?.response || requestError, true);
+      },
+      complete: function() {
+        $('#uploadExcelBtn, #excelFile, #warehouseSelect').prop('disabled', false);
+        $('#uploadProgress').hide();
+      }
+    });
+  });
+
+  sendBtn.on('click', () => sendMessage());
+
   userMessage.keypress(function(e) {
-    if (e.which === 13) {
+    if (e.which === 13 && !e.originalEvent?.isComposing) {
       e.preventDefault();
       sendMessage();
     }
   });
   
   userMessage.focus();
-  
+
+  $.getJSON('{{ url_for("ai.pending_assistant_actions") }}', function(result) {
+    result.actions.forEach(showChatResult);
+  });
+  {% if config.BOT_QUEUE_ENABLED %}
+  $.getJSON('{{ url_for("ai.active_bot_events") }}', function(result) {
+    result.events.forEach(watchQueuedMessage);
+  });
+  {% endif %}
   loadBusinessInsights();
   
   let currentDialect = 'palestinian';
@@ -584,7 +832,9 @@ $(document).ready(function() {
   window.chatHistory = window.chatHistory || [];
   
   window.clearChat = function() {
-    if (confirm({{ t('Do you want to clear the chat?')|tojson }})) {
+    if (!sending && confirm({{ t('Do you want to clear the chat?')|tojson }})) {
+      followUpTopic = null;
+      salesFollowUps.prop('hidden', true);
       $('#chatBox').empty();
       window.chatHistory = [];
       addMessage('bot', {{ t('Chat cleared! How can I help you?')|tojson }}, true);
@@ -674,41 +924,31 @@ $(document).ready(function() {
     $('#sendBtn').click();
   };
   
-  window.switchAIMode = function(mode) {
+  function switchAIMode(mode) {
+    if (mode !== 'agent' || !{{ config.BOT_QUEUE_ENABLED|tojson }}) mode = 'local';
     localStorage.setItem('ai_mode', mode);
-    
-    if (mode === 'local') {
-      $('#ai-mode-local').css({
-        'background': '#495057',
-        'box-shadow': '0 0 15px rgba(73,80,87,0.8)',
-        'transform': 'scale(1.05)'
-      });
-      $('#ai-mode-groq').css({
-        'background': '#20c997',
-        'box-shadow': 'none',
-        'opacity': '0.5',
-        'transform': 'scale(1)'
-      });
-      $('#ai-status-badge').removeClass('badge-success').addClass('badge-secondary')
-        .html('<i class="fas fa-microchip mr-2"></i>' + {{ t('Local mode')|tojson }} + ' ');
-    } else {
-      $('#ai-mode-groq').css({
-        'background': '#17a2b8',
-        'box-shadow': '0 0 15px rgba(23,162,184,0.8)',
-        'transform': 'scale(1.05)'
-      });
-      $('#ai-mode-local').css({
-        'background': '#6c757d',
-        'box-shadow': 'none',
-        'opacity': '0.5',
-        'transform': 'scale(1)'
-      });
-      $('#ai-status-badge').removeClass('badge-secondary').addClass('badge-info')
-        .html('<i class="fas fa-cloud mr-2"></i>' + {{ t('Groq mode')|tojson }} + ' ');
+    $('[data-ai-mode]').each(function() {
+      const selected = this.dataset.aiMode === mode;
+      $(this).toggleClass('active', selected).attr('aria-pressed', String(selected));
+    });
+    if (mode === 'agent') {
+      $('#ai-mode-local').removeAttr('style');
+      $('#ai-status-badge').removeClass('badge-info badge-secondary').addClass('badge-success')
+        .text({{ ('Local agent' if current_language == 'en' else 'الوكيل المحلي')|tojson }});
+      return;
     }
-  };
+    $('#ai-mode-local').css({
+      'background': '#495057',
+      'box-shadow': '0 0 15px rgba(73,80,87,0.8)',
+      'transform': 'scale(1.05)'
+    });
+    $('#ai-status-badge').removeClass('badge-info badge-secondary').addClass('badge-secondary')
+      .html('<i class="fas fa-microchip mr-2"></i>' + {{ t('Local mode')|tojson }} + ' ');
+  }
+
+  $('[data-ai-mode]').on('click', function() { switchAIMode(this.dataset.aiMode); });
   
-  const savedMode = localStorage.getItem('ai_mode') || 'groq';
+  const savedMode = localStorage.getItem('ai_mode') || ({{ config.BOT_QUEUE_ENABLED|tojson }} ? 'agent' : 'local');
   switchAIMode(savedMode);
 
 });  // نهاية document.ready
@@ -763,50 +1003,6 @@ function hideExcelUploader() {
   $('#uploadProgress').hide();
 }
 
-$('#excelUploadForm').on('submit', function(e) {
-  e.preventDefault();
-  
-  const fileInput = $('#excelFile')[0];
-  const warehouseId = $('#warehouseSelect').val();
-  
-  if (!fileInput.files || !fileInput.files[0]) {
-    alert({{ t('Please select an Excel file')|tojson }});
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', fileInput.files[0]);
-  formData.append('warehouse_id', warehouseId);
-  formData.append('csrf_token', '{{ csrf_token() }}');
-  
-  $('#uploadExcelBtn').prop('disabled', true);
-  $('#uploadProgress').show();
-  
-  $.ajax({
-    url: '{{ url_for("ai.upload_excel") }}',
-    method: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    success: function(response) {
-      if (response.success) {
-        addMessage('bot', response.message, true);
-        hideExcelUploader();
-      } else {
-        addMessage('bot', ' ' + {{ t('Error:')|tojson }} + ' ' + response.error, true);
-      }
-      $('#uploadExcelBtn').prop('disabled', false);
-      $('#uploadProgress').hide();
-    },
-    error: function(xhr) {
-      const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : {{ t('An unexpected error occurred')|tojson }};
-      addMessage('bot', ' ' + {{ t('Error:')|tojson }} + ' ' + errorMsg, true);
-      $('#uploadExcelBtn').prop('disabled', false);
-      $('#uploadProgress').hide();
-    }
-  });
-});
-
 function openExcelTemplate() {
   const filePath = '/static/template_products.xlsx';
   
@@ -825,7 +1021,7 @@ function openExcelTemplate() {
   2. {{ t('Save the file (Ctrl+S)') }}
   3. {{ t('Come back here and click "Excel" to upload the updated file') }}
   
-   {{ t('Source:') }} GROQ API + {{ t('local analysis') }}`, true);
+   {{ t('Source:') }} {{ ('Local AI analysis' if current_language == 'en' else 'تحليل محلي') }}`, true);
 }
 </script>
 {% endblock %}

@@ -108,13 +108,13 @@ def _normalize_rate(exchange_rate) -> Decimal:
 
 
 def _unique_entry_number() -> str:
-    """Year-scoped JE-YYYY-NNNN with distributed-lock atomicity.
+    """Year-scoped JE-YYYY-NNNN with transaction-scoped database locking.
 
     F4: ``entry_number`` is UNIQUE across the whole table, therefore the
     sequence MUST be global — a tenant-scoped "max existing + 1" makes two
     tenants compute the same number and the second INSERT dies with an
-    IntegrityError. ``next_global_entry_number`` suspends the tenant scope
-    for the locked lookup only.
+    IntegrityError. ``next_global_entry_number`` reads the global sequence
+    under that lock and preserves the caller's tenant scope.
     """
     return next_global_entry_number()
 
@@ -763,6 +763,62 @@ class GLService:
         except Exception:
             db.session.rollback()
             raise
+
+    @staticmethod
+    def post_import_adjustments(entries, *, tenant_id: int, currency: str, created_by: int):
+        """Post one balanced, audited journal per stock movement in one transaction."""
+        if not entries:
+            return []
+        if tenant_id is None or not created_by:
+            raise ValueError("A stock import requires a company and a confirming user.")
+        from bot_core.agent.deadline import check_tool_deadline
+        from utils.helpers import allocate_transactional_numbers
+
+        effective_date = datetime.now(timezone.utc)
+        _assert_period_open(effective_date)
+        codes = {line["account"] for _, _, lines in entries for line in lines}
+        accounts = {account.code: account for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()}
+        if codes - accounts.keys():
+            GLService.ensure_core_accounts()
+            accounts = {account.code: account for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()}
+        if codes - accounts.keys():
+            raise ValueError("Required stock adjustment GL accounts are unavailable.")
+
+        numbers = allocate_transactional_numbers("JE", GLJournalEntry, "entry_number", len(entries))
+        rate = Decimal("1")
+        posted = []
+        for start in range(0, len(entries), 50):
+            check_tool_deadline()
+            batch = []
+            for number, (movement_id, description, lines) in zip(numbers[start:start + 50], entries[start:start + 50]):
+                normalized, debit, credit = _normalize_lines(
+                    [{**line, "account": accounts[line["account"]]} for line in lines], rate,
+                )
+                if debit != credit:
+                    raise ValueError("Stock adjustment GL entry is unbalanced.")
+                entry = GLJournalEntry(
+                    entry_number=number, entry_date=effective_date, description=description,
+                    reference_type="stock_adjustment", reference_id=movement_id, entry_type="auto",
+                    currency=currency, exchange_rate=rate, total_debit=debit, total_credit=credit,
+                    is_posted=True, created_by=created_by, tenant_id=tenant_id,
+                )
+                db.session.add(entry)
+                db.session.add_all(GLJournalLine(
+                    entry=entry, account=item.account, description=item.description or description,
+                    debit=item.debit, credit=item.credit, amount_base=item.amount_base,
+                    tenant_id=tenant_id,
+                ) for item in normalized)
+                batch.append((entry, normalized))
+            db.session.flush()
+            for entry, normalized in batch:
+                audit = JournalEntryAudit.record(
+                    entry.id, JournalEntryAudit.ACTION_CREATE, new_values=_audit_payload(entry, normalized),
+                    reason=f"ترحيل قيد: {entry.description}", performed_by=created_by, fallback_entry=entry,
+                )
+                audit.tenant_id = tenant_id
+                posted.append(entry)
+            db.session.flush()
+        return posted
 
     @staticmethod
     def create_journal_entry(

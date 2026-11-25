@@ -15,13 +15,15 @@ venv/
 ENV/
 
 # Instance data
-instance/*.db
-instance/backups/
-instance/secret_key
+instance/
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
+credentials.txt
+production_db_info.txt
+deploy_dump.sql
 
 # IDE
 .vscode/

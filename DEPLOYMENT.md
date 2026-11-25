@@ -1,37 +1,36 @@
 # دليل النشر — UAE-Sale / Azad ERP
 
-> **الحالة الحالية (مهم):** لم يُنفَّذ أي نشر بعد. المستودع جاهز تقنياً — كل
-> وظائف CI خضراء (8 في `ci.yml` + `e2e.yml` + `alembic_roundtrip.yml`) — لكن
-> لا توجد بيئة إنتاج أو staging حيّة حتى الآن. ما يلي هو المسار المُعدّ
-> للنشر، لا سجلّ لعملية تمّت.
+> نفّذ قائمة التحقق التالية كل مرة تنشر فيها الوكيل على خادم الإنتاج.
 
 ## 0. بيئة التطوير المستقرة (الحالية)
 
 ```
-DATABASE_URL=postgresql://postgres:123@localhost:5433/ERPLite2026   (من .env)
-التطبيق: http://localhost:5000/
-الترحيلات: flask db upgrade head   (الرأس b49_alter_column_widths)
+DATABASE_URL=<رابط PostgreSQL المحلي من .env>
+التطبيق: http://localhost:8001/
+الترحيلات: flask db upgrade head   (الرأس c12_bot_commands)
 ```
 
-## 0.1 الهدف الحالي للنشر: Render
+## 0.1 قائمة نشر الوكيل على خادم الإنتاج
 
-المستودع يحتوي على `render.yaml` (خدمة web + PostgreSQL + قرص دائم 1 GB
-مُركَّب على `/data`) و `Procfile` (gunicorn). النسخ الاحتياطية والملفات
-المرفوعة تُخزَّن على القرص الدائم عبر `DATA_DIR=/data` فتبقى بعد كل إعادة
-نشر (دليل التطبيق على Render مؤقت). خطوات مختصرة:
+1. ضمّن كامل `bot_core/artifacts/v7` في حزمة الإصدار. يحتوي المسار على `model.pt` و`vocab.json` و`SHA256SUMS`. استبعد `.env` و`instance/` والسجلات ونسخ قواعد البيانات.
+2. اضبط `APP_ENV=production` و`DEBUG=false` و`SESSION_COOKIE_SECURE=true`. اضبط رابط PostgreSQL نفسه للويب والعاملين، ومرّر `SECRET_KEY` و`OWNER_PASSWORD` و`CARD_ENCRYPTION_KEY` و`MASTER_KEY_SEED` عبر مخزن أسرار الخادم. استخدم القيم الحالية عند ترقية نظام قائم.
+3. نفّذ الفحوص والترحيل من جذر نسخة الخادم. يوقف الفحص النشر عند العثور على علامات الاختبار المعروفة ويعرض أسماء الجداول المعنية للمراجعة.
 
-1. أنشئ الخدمات من `render.yaml` (أو من لوحة Render).
-2. اضبط المتغيرات ذات `sync: false` يدوياً: `SECRET_KEY`, `OWNER_PASSWORD`,
-   `MASTER_KEY_SEED` (نفس البذرة على كل نسخة من الخدمة).
-3. شغّل `flask db upgrade head` مرة واحدة ضد قاعدة الإنتاج.
-4. مسار الفحص الصحي: `/api/health`.
+   ```shell
+   python -m pip install -r requirements.txt
+   python -m pip install --index-url https://download.pytorch.org/whl/cpu -r requirements-bot-nlu.txt
+   python -m bot_core.neural_nlu.artifacts
+   python -m bot_core.release_check --before-migrate
+   flask --app 'app:create_app(run_startup_tasks=False)' db upgrade head
+   python -m bot_core.release_check
+   python -m bot_core.worker --check --require-model
+   python -m bot_core.worker --check --require-model --interactive-only
+   ```
 
-> `CACHE_TYPE` الافتراضي `SimpleCache` (داخل العملية) ولا يحتاج Redis.
-> عامل Celery اختياري ويتطلب Redis.
+4. شغّل الويب والعاملين بإشراف مدير الخدمات. يشغّل `agent` العامل العام في `Procfile` و`agent_interactive` عامل الاستعلامات. اترك `BOT_NLU_MODEL_DIR` فارغًا ليقرأ العاملان النسخة المرفقة. فعّل `BOT_QUEUE_ENABLED=1` في الويب بعد جاهزية العاملين.
+5. تحقّق من `Local model loaded: True (artifact=v7, …)` في سجل كل عامل ومن `/api/health`. نفّذ استعلامًا داخل الشركة المقصودة. اختبر المعاينة والتأكيد واستيراد XLSX على قاعدة معزولة على الخادم، أو نفّذ عملية عمل حقيقية معتمدة. تحقّق من أثر العملية وسجل التدقيق وغياب بيانات الاختبار من قاعدة الإنتاج.
 
-## 0.2 بديل: PythonAnywhere
-
-القسم أدناه يوضّح النشر على PythonAnywhere كبديل (يُحدَّث عند الحاجة).
+لخطوات الاستضافة الخاصة بـ PythonAnywhere، راجع القسم المرجعي أدناه.
 
 ---
 
@@ -150,12 +149,12 @@ flask db current
 يشغّل رحلة ذهاب وإياب كاملة على **PostgreSQL 15** حقيقي عند كل تغيير في
 `migrations/` أو `models/` — أي أن الترحيلات مُختبرة على Postgres لا على SQLite.
 
-> **الرأس الحالي: `b49_alter_column_widths`** (71 مراجعة). سلسلة الترحيلات
+> **الرأس الحالي: `c12_bot_commands`**. سلسلة الترحيلات
 > الكاملة موثّقة في [docs/MIGRATIONS.md](docs/MIGRATIONS.md). من الترحيلات
 > الحديثة المهمة: `b41_audit_log_soft_delete`, `b42_role_tenant_unique`,
 > `b44_product_return_tenant_id`, `b47_roles_drop_name_unique`,
 > `b48_maint_child_tenant` (أضاف `tenant_id` لجداول الصيانة الفرعية),
-> `b49_alter_column_widths` (الرأس).
+> `b49_alter_column_widths`، `c11_bot_events`، `c12_bot_commands`.
 >
 > **ترتيب الترحيلات الضريبية (مطلوب الالتزام، جزء من السلسلة):**
 > `b5_tax_per_tenant` → `b6_corp_tax` → … → `b21_vat_split_accounts` → … → `b49_alter_column_widths`.
@@ -365,6 +364,78 @@ du -sh instance/backups/
 نسخة Nightly إن كانت مهمة.
 
 ---
+
+### عامل فهم أوامر المساعد
+
+طبّق ترحيلات قاعدة البيانات قبل تشغيل نسخة الويب الجديدة. يُنشئ الترحيل
+`c10_assistant_action` جدول مسودات المساعد ومفاتيح إعادة المحاولة.
+
+شغّل عامل الاستدلال مستقلًا عن عملية الويب. في التطوير المحلي استخدم
+`python -m services.assistant_nlu_worker`. في النشر اربط تطبيق WSGI
+`services.assistant_nlu_worker:create_app()` بعنوان داخلي لا يمكن الوصول
+إليه من الإنترنت. اضبط متغير `AI_NLU_URL` لعملية الويب على المسار
+`/interpret` في العامل. عندما يتعذر الاتصال به، تعالج قواعد المحادثة
+الأوامر الصريحة وتعرض إرشادات النظام محليًا.
+
+يدعم المساعد متابعة أمر الشراء من «أمر شراء» داخل المحادثة. تحفظ قاعدة البيانات
+الخطوات المعلّقة لمدة 15 دقيقة وتعرضها للمستخدم نفسه عند إعادة فتح الصفحة.
+بعد المعاينة والتأكيد يحفظ النظام أمر الشراء كمسودة.
+
+يقبل مستورد المخزون قالب XLSX بعناوين عربية أو إنجليزية. تعرض المعاينة الأصناف
+والكميات وقيمة المخزون. يتطلب استيراد كميات شركةً محددة ومستودعًا نشطًا وعملة
+أساسية مفعّلة. يسجّل التأكيد حركة المخزون وقيدها في معاملة واحدة.
+
+### الوكيل المحلي ذو قائمة الانتظار
+
+مسار الطلب هو `gateway → قاعدة البيانات → العامل المستقل → dialogue / neural_nlu → agent → خدمات ERP`.
+يفحص `security` هوية المستخدم ونطاق الشركة والصلاحيات، وتسجّل `observability` مراحل التنفيذ.
+
+يتطلب وضع الوكيل ترحيلي `c11_bot_events` و`c12_bot_commands` وقاعدة ERP دائمة مشتركة
+بين الويب والعامل. لتشغيل نموذج PyTorch المحلي
+ثبّت حزم `requirements-bot-nlu.txt` في بيئة العامل، ثم درّب إصدارًا جديدًا محليًا:
+
+```shell
+python -m bot_core.neural_nlu.train_nlu --output instance/bot_nlu/v7
+python -m bot_core.worker --check
+python -m bot_core.worker
+```
+
+شغّل `python -m bot_core.worker --interactive-only` في عملية مستقلة إضافية على PostgreSQL
+لحجز عامل للرسائل النصية وتقارير المبيعات أثناء رفع ملفات Excel وترحيلها. تبقى طلبات
+المستخدم الواحد مرتّبة ضمن شركته. الحد الحالي للملف 1000 صف بيانات و5 ميغابايت، مع
+مهلة 60 ثانية للمعاينة و85 ثانية للتأكيد. قيّم التأخير الحالي والمئين 95 لزمن الطابور
+والتنفيذ، وعدد طلبات التوضيح والمهلات، من دون قراءة نص الرسائل:
+
+```shell
+python -m bot_core.observability.queue_metrics --minutes 60
+```
+
+في الإنتاج، نفّذ الترحيلات مرة واحدة، واستخدم `APP_ENV=production` و`DEBUG=false`.
+وجّه الويب والعاملين إلى قاعدة الإنتاج نفسها، واختبر ملفات النموذج على بيئة كل عامل عبر
+`--check` قبل ضبط `BOT_QUEUE_ENABLED=1` في الويب. يشغّل `Procfile` العاملين عبر
+`agent` و`agent_interactive`. في PythonAnywhere استخدم مهمتي **Always-on** بالأمرين
+المذكورين، مع متغيرات البيئة نفسها. ترحيل البيانات التجريبية واختبار الضغط يجريان على
+قاعدة اختبار معزولة. لتعطيل الوكيل بعد بدء طرحه، أوقف قبول الطلبات الجديدة في الويب
+واترك العامل العام يكمل الطابور قبل إيقافه.
+
+أضف أمثلة موظفين مصنّفة ومجهولة الهوية باستخدام `--employee-corpus` عند التدريب.
+يقبل الملف JSONL بحقول `text` و`intent` و`split`، مع `entity` اختياري يحتوي على
+نص الكيان كما ظهر في المثال. استخدم القيم `train` و`calibration` و`evaluation` للتقسيم.
+استبدل الأسماء والمعرّفات الحقيقية بأسماء ومعرّفات اصطناعية، وضع صيغ الطلب المتشابهة
+في المجموعة نفسها. يحسب التدريب دقة مجموعة الموظفين منفصلة عن التقييم الاصطناعي.
+يعرض الأمر التالي التباسات النوايا وعدد التصنيفات الخاطئة فوق حد الثقة لكل إصدار:
+
+```shell
+python -m bot_core.neural_nlu.evaluate_nlu instance/bot_nlu/v4 instance/bot_nlu/v7 --challenge tests/fixtures/bot_nlu_challenge.jsonl --threshold 0.85
+```
+
+اضبط `BOT_QUEUE_ENABLED=1` في عملية الويب لإظهار وضع الوكيل المحلي في المحادثة.
+أرسل طلبات API إلى `POST /ai/chat/events` مع `Idempotency-Key` من نوع UUID v4،
+واستخدم `status_url` لقراءة النتيجة. يضبط `BOT_NLU_CONFIDENCE` حد الثقة ويحدد
+`BOT_NLU_MODEL_DIR` مجلد الإصدار إذا اختلف عن المسار الافتراضي.
+في وضع الوكيل تُستأنف خطوات «أمر شراء» من قاعدة البيانات. يمر رفع XLSX والتأكيد
+من الصفحة عبر قائمة الانتظار. يضيف الأمر «ملاحظة عميل #123: نص الملاحظة» ملاحظة
+غير مالية إلى سجل العميل ضمن نطاق الشركة.
 
 ## 10. استكشاف الأخطاء
 

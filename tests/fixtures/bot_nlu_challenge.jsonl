@@ -1,0 +1,36 @@
+{"intent":"get_customer_balance","text":"الزبون شركة الليمون قديش عليه لليوم"}
+{"intent":"get_customer_balance","text":"اعطيني مديونية مكتبة المرج"}
+{"intent":"get_customer_balance","text":"is there still a balance on Falcon Auto's account"}
+{"intent":"get_customer_balance","text":"pull the amount Cedar Office owes us"}
+{"intent":"draft_quote","text":"بدي تسعيرة للمؤسسة الخضراء لو سمحت"}
+{"intent":"draft_quote","text":"عرض سعر مبدئي للزبون ورشة الصفا"}
+{"intent":"draft_quote","text":"can you put a quotation together for Violet Auto"}
+{"intent":"draft_quote","text":"price quote on behalf of Ridge Garage please"}
+{"intent":"purchase_order","text":"افتح مسودة مشتريات عند المورد"}
+{"intent":"purchase_order","text":"لازم نعمل أمر جديد للشراء من المورد"}
+{"intent":"purchase_order","text":"I'd like to open a new PO with our supplier"}
+{"intent":"purchase_order","text":"initiate an order for purchasing stock from a vendor"}
+{"intent":"stock_transfer","text":"بدي أحول SKU-991 للمخزن الثاني"}
+{"intent":"stock_transfer","text":"تنقيل SKU-119 بين مخازن الشركة"}
+{"intent":"stock_transfer","text":"relocate SKU-775 to our north warehouse"}
+{"intent":"stock_transfer","text":"send SKU-811 from this warehouse to the other one"}
+{"intent":"check_stock","text":"ضل اشي بالمخزن من SKU-996"}
+{"intent":"check_stock","text":"إيش الكمية المتوفرة حاليًا للقطعة SKU-118"}
+{"intent":"check_stock","text":"is SKU-779 currently available to sell"}
+{"intent":"check_stock","text":"units on hand for SKU-818 please"}
+{"intent":"get_invoice_status","text":"فاتورة INV-292 سددوها ولا بعد"}
+{"intent":"get_invoice_status","text":"بدي اعرف إذا قبضنا قيمة INV-193"}
+{"intent":"get_invoice_status","text":"does invoice INV-433 still need to be paid"}
+{"intent":"get_invoice_status","text":"verify settlement of INV-391"}
+{"intent":"draft_customer","text":"جهز ملف للزبون الجديد ورشة الياسمين"}
+{"intent":"draft_customer","text":"قيد عميل أول مرة شركة السهل"}
+{"intent":"draft_customer","text":"begin registration for North Bay Logistics as a customer"}
+{"intent":"draft_customer","text":"please open a new customer profile for Maple Fleet"}
+{"intent":"sales_report","text":"كم بلغ إجمالي البيع بالأسبوع اللي فات"}
+{"intent":"sales_report","text":"بدي ملخص قيمة فواتير المبيعات المؤكدة خلال الشهر"}
+{"intent":"sales_report","text":"total confirmed sales revenue for the prior week"}
+{"intent":"sales_report","text":"how do this month's sales compare with last month's"}
+{"intent":"guide","text":"وين بلاقي طريقة استخدام اللوحة"}
+{"intent":"guide","text":"دلني وين موجود دليل النظام"}
+{"intent":"guide","text":"point me to the dashboard navigation instructions"}
+{"intent":"guide","text":"show me where the main menu is in the ERP"}

@@ -472,7 +472,7 @@ def _ensure_operational_roles():
 
 
 def _ensure_operational_roles_for_tenant(tenant_id):
-    """Create operational roles and default users for a new tenant.
+    """Create operational roles and development users for a new tenant.
 
     Roles are created based on the tenant's enabled features:
     - Core roles (manager, seller, accountant, cashier, hr, inventory, viewer)
@@ -513,6 +513,8 @@ def _ensure_operational_roles_for_tenant(tenant_id):
             db.session.add(role)
             db.session.flush()  # Get role.id
 
+        if current_app.config.get("APP_ENV", "production").lower() == "production":
+            continue
         username = f"{tenant_slug}_{slug}"
         email = f"{username}@{tenant.slug}.local"
 

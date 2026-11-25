@@ -998,7 +998,8 @@ class AIService:
             else None
         )
 
-        local_result = intelligent_assistant.process(message, user_id, context)
+        guidance_only = (context or {}).get("guidance_only", False)
+        local_result = {} if guidance_only else intelligent_assistant.process(message, user_id, context)
         local_response = local_result.get("response", "")
 
         _guide_fallback = ""
@@ -1024,7 +1025,7 @@ class AIService:
         except Exception:
             pass
         force_local = context.get("force_local", False) if context else False
-        if force_local:
+        if force_local or guidance_only:
             _db_context = ""
         else:
             try:
@@ -1042,20 +1043,21 @@ class AIService:
                     message, local_result
                 )
         _plan_hint = ""
-        try:
-            from services.ai_planner import plan as _plan_fn
+        if not guidance_only:
+            try:
+                from services.ai_planner import plan as _plan_fn
 
-            _p = _plan_fn(
-                message or "", (context or {}).get("current_user") if context else None
-            )
-            if _p and _p.tool:
-                _plan_hint = (
-                    f"🎯 **نية منظمة:** {_p.intent} | أداة: {_p.tool} | ثقة: {_p.confidence:.2f} "
-                    f"| ناقص: {', '.join(_p.missing_fields) if _p.missing_fields else 'لا شيء'} "
-                    f"| تأكيد مطلوب: {'نعم' if _p.needs_confirm else 'لا'}"
+                _p = _plan_fn(
+                    message or "", (context or {}).get("current_user") if context else None
                 )
-        except Exception:
-            pass
+                if _p and _p.tool:
+                    _plan_hint = (
+                        f"🎯 **نية منظمة:** {_p.intent} | أداة: {_p.tool} | ثقة: {_p.confidence:.2f} "
+                        f"| ناقص: {', '.join(_p.missing_fields) if _p.missing_fields else 'لا شيء'} "
+                        f"| تأكيد مطلوب: {'نعم' if _p.needs_confirm else 'لا'}"
+                    )
+            except Exception:
+                pass
         knowledge_context = (
             (
                 _guide_fallback
@@ -1067,30 +1069,31 @@ class AIService:
             else ""
         )
 
-        try:
-            from services.ai_planner import plan as _plan_fn2
-            from services.ai_handlers import dispatch as _exec_plan
+        if not guidance_only:
+            try:
+                from services.ai_planner import plan as _plan_fn2
+                from services.ai_handlers import dispatch as _exec_plan
 
-            _current_user = (context or {}).get("current_user") if context else None
-            _confirmed = bool((context or {}).get("confirmed_action"))
-            _p2 = _plan_fn2(message or "", _current_user)
-            if _p2 and _p2.tool:
-                _read_tools = (
-                    "get_customer_balance",
-                    "inventory_status",
-                    "sales_summary",
-                    "search_customers",
-                )
-                if _p2.missing_fields or (_p2.needs_confirm and not _confirmed):
-                    _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
-                    if _res and _res.get("needs_clarification"):
-                        return _res["response"]
-                elif _p2.tool in _read_tools or (_p2.needs_confirm is False):
-                    _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
-                    if _res and _res.get("executed"):
-                        return _res["response"]
-        except Exception:
-            pass
+                _current_user = (context or {}).get("current_user") if context else None
+                _confirmed = bool((context or {}).get("confirmed_action"))
+                _p2 = _plan_fn2(message or "", _current_user)
+                if _p2 and _p2.tool:
+                    _read_tools = (
+                        "get_customer_balance",
+                        "inventory_status",
+                        "sales_summary",
+                        "search_customers",
+                    )
+                    if _p2.missing_fields or (_p2.needs_confirm and not _confirmed):
+                        _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
+                        if _res and _res.get("needs_clarification"):
+                            return _res["response"]
+                    elif _p2.tool in _read_tools or (_p2.needs_confirm is False):
+                        _res = _exec_plan(_p2, _current_user, confirmed=_confirmed)
+                        if _res and _res.get("executed"):
+                            return _res["response"]
+            except Exception:
+                pass
 
         api_key = AIService.get_api_key()
         use_groq = api_key and not force_local
@@ -1114,7 +1117,7 @@ class AIService:
                 try:
                     from services import ai_cache as _ai_cache_mod
 
-                    _cache_on = _ai_cache_mod.enabled()
+                    _cache_on = not guidance_only and _ai_cache_mod.enabled()
                 except Exception:
                     _ai_cache_mod = None
                     _cache_on = False
@@ -1188,6 +1191,15 @@ class AIService:
                     tools=_tools_desc,
                 )
 
+                if guidance_only:
+                    expert_prompt = (
+                        "أنت مساعد إرشادي لنظام إدارة الأعمال. اشرح الخطوات العامة فقط "
+                        "واستخدم مقتطفات دليل النظام عند توفرها. "
+                        "للبيانات الفعلية أو لإجراء تعديل، وجّه المستخدم إلى صفحة النظام المختصة. "
+                        "لا تدّعِ الوصول إلى السجلات أو تنفيذ الإجراءات.\n\n"
+                        + _guide_fallback
+                    )
+
                 response = requests.post(
                     url,
                     headers={
@@ -1203,21 +1215,22 @@ class AIService:
                         "temperature": 0.7,
                         "max_tokens": 2000,
                     },
-                    timeout=20,
+                    timeout=(1, 2) if guidance_only else 20,
                 )
 
                 if response.status_code == 200:
                     result = response.json()
                     groq_response = result["choices"][0]["message"]["content"]
 
-                    action_result = AIService._execute_ai_action(groq_response, user_id)
+                    action_result = None if guidance_only else AIService._execute_ai_action(groq_response, user_id)
                     if action_result:
                         groq_response = action_result
 
                     try:
-                        AIService._train_local_from_groq(
-                            message, str(local_response), str(groq_response), user_id
-                        )
+                        if not guidance_only:
+                            AIService._train_local_from_groq(
+                                message, str(local_response), str(groq_response), user_id
+                            )
                     except Exception as e:
                         print(f"Training skipped: {e}")
 
@@ -1241,6 +1254,8 @@ class AIService:
             except Exception as e:
                 print(f"Groq collaboration failed: {str(e)}")
 
+        if guidance_only and not local_response:
+            return "اسأل عن المبيعات أو المخزون أو رصيد عميل، أو افتح دليل النظام من أعلى الصفحة."
         return f"{local_response}\n\n<sub>💻 المصدر: النظام المحلي الذكي</sub>"
 
     @staticmethod

@@ -8,12 +8,11 @@ import re
 import threading
 import time
 from decimal import Decimal, InvalidOperation
-from flask import Blueprint, request, jsonify, render_template, current_app, abort
+from flask import Blueprint, request, jsonify, render_template, current_app, abort, url_for
 from flask_login import login_required, current_user
 from extensions import csrf, db
 from flask_wtf.csrf import validate_csrf as validate_csrf_token
 from services.ai_service import AIService, AIServiceError
-import pandas as pd
 from ai_knowledge.learning_system import learning_system
 from ai_knowledge.global_knowledge import global_connector, expertise_updater
 from ai_knowledge.self_improvement import self_improvement
@@ -595,7 +594,7 @@ def apply_smart_listeners(message, context, action_name):
 💡 **يمكنك البدء من جديد:**
 • اكتب "عميل" أو "منتج" أو "فاتورة" أو "مصروف"
 
-🤖 المصدر: GROQ API + التحليل المحلي""",
+🤖 المصدر: النظام المحلي الذكي""",
         )
 
     if listener_response == "help":
@@ -608,7 +607,7 @@ def apply_smart_listeners(message, context, action_name):
 • اكتب البيانات المطلوبة فقط
 • اكتب "عودة" للعودة للقائمة الرئيسية
 
-🤖 المصدر: GROQ API + التحليل المحلي""",
+🤖 المصدر: النظام المحلي الذكي""",
         )
 
     return "continue", None
@@ -759,60 +758,90 @@ def find_compatible(product_id):
 
 
 @ai_bp.route("/chat", methods=["POST"])
-@csrf.exempt
 @login_required
 def chat():
     """API: الدردشة مع المساعد الذكي"""
     start_time = time.time()
 
-    data = request.get_json() or {}
-    message = data.get("message", "").strip()
-    ai_mode = data.get("ai_mode", "groq")
-    context = data.get("context", {})
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid chat request"}), 400
+    message = data.get("message")
+    if not isinstance(message, str) or not message.strip():
+        return jsonify({"error": "Message required"}), 400
+    message = message.strip()
+    if len(message) > 4000:
+        return jsonify({"error": "Message exceeds 4000 characters"}), 400
+
+    # The assistant is local-only: ignore any client-supplied external mode.
+    ai_mode = "local"
+    preferences = data.get("context")
+    if not isinstance(preferences, dict):
+        preferences = {}
+    dialect = preferences.get("dialect")
+    context = {
+        "dialect": dialect if dialect in ("formal", "palestinian", "gulf") else "palestinian",
+        "beginners_mode": preferences.get("beginners_mode") is True,
+    }
 
     request.ai_operation = _detect_ai_operation(message)
     csrf_check = _require_csrf_for_sensitive_ops()
     if csrf_check:
         return csrf_check
 
-    if "dialect" not in context:
-        context["dialect"] = "palestinian"
-    if "beginners_mode" not in context:
-        context["beginners_mode"] = False
-
     context["current_user"] = current_user
-    context["is_owner"] = current_user.is_owner if current_user else False
+    context["is_owner"] = current_user.is_owner
     context["force_local"] = ai_mode == "local"
 
-    if not message:
-        return jsonify({"error": "Message required"}), 400
+    from services import assistant_actions
+    from services.ai_questions import COMPANY_SELECTION_REQUIRED, answer as grounded_answer, is_sales_question
 
-    # Factual questions are answered from the live tenant database first.
-    # This must precede the old keyword/menu matcher, which otherwise turns
-    # "كم عدد المبيعات اليوم؟" into a "create invoice" menu.
-    try:
-        from services.ai_questions import answer as _grounded_answer
+    structured = assistant_actions.interpret(message, current_user, request.headers.get("Idempotency-Key"))
+    if structured is not None:
+        return _assistant_response(structured)
 
-        grounded = _grounded_answer(message, current_user)
-    except Exception:
-        grounded = None
+    follow_up_topic = data.get("follow_up_topic")
+    grounded = grounded_answer(message, current_user, follow_up_topic=follow_up_topic, enforce_company_scope=True)
     if grounded:
-        return jsonify(
-            {
-                "response": grounded,
-                "ai_enabled": True,
-                "grounded": True,
-                "ai_mode": "local",
-            }
-        )
+        sales_question = is_sales_question(message, follow_up_topic)
+        tool = "sales_summary" if sales_question else "business_data_read"
+        assistant_actions.audit_grounded_read(message, current_user, tool, grounded)
+        result = {
+            "response": grounded,
+            "ai_enabled": True,
+            "grounded": True,
+            "ai_mode": "local",
+        }
+        if sales_question and grounded != COMPANY_SELECTION_REQUIRED:
+            result["follow_up_topic"] = "sales"
+        return jsonify(result)
 
-    action_result = _process_user_action(message, current_user)
-    if action_result:
-        return jsonify(
-            {"response": action_result, "ai_enabled": True, "action_executed": True}
-        )
+    formal = assistant_actions.formal_action(message, current_user)
+    if formal is not None:
+        return jsonify(formal)
 
-    response = AIService.chat_response(message, context)
+    from services.assistant_nlu import classify
+
+    prediction = classify(message)
+    suggested = assistant_actions.interpret_prediction(
+        message, current_user, prediction, request.headers.get("Idempotency-Key")
+    )
+    if suggested is not None:
+        return _assistant_response(suggested)
+
+    context["guidance_only"] = True
+    if current_app.config.get("AI_NLU_URL") and prediction is None:
+        context["force_local"] = True
+    from bot_core.neural_nlu.providers import OptionalExternalProvider
+
+    provider = OptionalExternalProvider(
+        AIService.get_api_key,
+        lambda prompt: AIService.chat_response(prompt, context),
+    )
+    response = provider.answer(message, selected=not context["force_local"])
+    if response is None:
+        context["force_local"] = True
+        response = AIService.chat_response(message, context)
 
     try:
         from utils.monitoring import AIMetricsCollector
@@ -837,6 +866,120 @@ def chat():
             "ai_mode": ai_mode,
             "user_role": "owner" if current_user.is_owner else "user",
         }
+    )
+
+
+def _assistant_response(result):
+    if isinstance(result, tuple):
+        payload, status = result
+        return jsonify(payload), status
+    return jsonify(result)
+
+
+@ai_bp.route("/chat/events", methods=["POST"])
+@login_required
+def enqueue_bot_event():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid chat request"), 400
+    return _enqueue_bot_message(data.get("message"))
+
+
+def _enqueue_bot_message(message, *, command=None):
+    from bot_core.gateway import MessageEvent
+    from bot_core.gateway.store import IdempotencyConflict, submit
+    from bot_core.security import Actor
+    from services.assistant_actions import _scope
+
+    if not current_app.config.get("BOT_QUEUE_ENABLED"):
+        return jsonify(error="The queued ERP agent is currently disabled."), 503
+    actor = Actor.authenticated(current_user, _scope(current_user))
+    try:
+        event = MessageEvent.receive(request.headers.get("Idempotency-Key"), message, actor, command=command)
+        row = submit(event)
+    except IdempotencyConflict as error:
+        return jsonify(error=str(error)), 409
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    location = url_for("ai.get_bot_event", event_id=row.id)
+    return jsonify(id=row.id, status=row.status, status_url=location), 202, {"Location": location}
+
+
+@ai_bp.route("/chat/events/<uuid:event_id>", methods=["GET"])
+@login_required
+def get_bot_event(event_id):
+    from bot_core.gateway.store import read
+    from bot_core.security import Actor
+    from services.assistant_actions import _scope
+
+    actor = Actor.authenticated(current_user, _scope(current_user))
+    row = read(str(event_id), actor)
+    if row is None:
+        return jsonify(error="Message not found."), 404
+    result = dict(row.result) if row.result else None
+    action_id = (result.get("data") or {}).get("action_id") if result else None
+    if action_id and result.get("outcome") in {"proposed", "timeout", "queue_expired"}:
+        result["confirm_url"] = url_for("ai.enqueue_assistant_confirmation", action_id=action_id)
+        result["queued_confirmation"] = True
+    if result and (result.get("data") or {}).get("follow_up_topic") == "sales":
+        result["follow_up_topic"] = "sales"
+    response = jsonify(id=row.id, status=row.status, result=result)
+    response.cache_control.no_store = True
+    return response
+
+
+@ai_bp.route("/chat/events", methods=["GET"])
+@login_required
+def active_bot_events():
+    from bot_core.gateway.store import active
+    from bot_core.security import Actor
+    from services.assistant_actions import _scope
+
+    actor = Actor.authenticated(current_user, _scope(current_user))
+    response = jsonify(events=[
+        {"id": event_id, "status": status, "status_url": url_for("ai.get_bot_event", event_id=event_id)}
+        for event_id, status in active(actor)
+    ])
+    response.cache_control.no_store = True
+    return response
+
+
+@ai_bp.route("/chat/actions/pending", methods=["GET"])
+@login_required
+def pending_assistant_actions():
+    from services import assistant_actions
+
+    response = jsonify({"actions": assistant_actions.pending(current_user)})
+    response.cache_control.no_store = True
+    return response
+
+
+@ai_bp.route("/chat/actions/<uuid:action_id>/details/<step>", methods=["POST"])
+@login_required
+def collect_assistant_details(action_id, step):
+    from services.assistant_actions import collect
+
+    data = request.get_json(silent=True)
+    message = data.get("message") if isinstance(data, dict) else None
+    if not isinstance(message, str) or not message.strip() or len(message) > 4000:
+        return jsonify({"response": "أدخل بيانات خطوة أمر الشراء في نص لا يتجاوز 4000 حرف."}), 400
+    return _assistant_response(collect(action_id, step, message.strip(), current_user))
+
+
+@ai_bp.route("/chat/actions/<uuid:action_id>/confirm", methods=["POST"])
+@login_required
+def confirm_assistant_action(action_id):
+    from services import assistant_actions
+
+    return _assistant_response(assistant_actions.confirm(action_id, current_user))
+
+
+@ai_bp.route("/chat/actions/<uuid:action_id>/queue-confirmation", methods=["POST"])
+@login_required
+def enqueue_assistant_confirmation(action_id):
+    return _enqueue_bot_message(
+        f"ERP confirmation {action_id}",
+        command={"tool": "confirm_action", "arguments": {"action_id": str(action_id)}},
     )
 
 
@@ -911,7 +1054,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 اكتب "1" للمتابعة أو "عودة" للرجوع
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "3"
@@ -923,7 +1066,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 اكتب "1" للمتابعة أو "عودة" للرجوع
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "4"
@@ -945,11 +1088,11 @@ def _process_user_action(message, user):  # noqa: C901
 💡 **للبحث عن عميل محدد:**
 اكتب: رصيد: اسم العميل
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد عملاء في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1025,7 +1168,7 @@ def _process_user_action(message, user):  # noqa: C901
 - الرصيد الجديد: {new_balance} درهم
 
 💡 اكتب "نعم" للتأكيد أو "لا" للإلغاء
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception:
                     return """❌ **خطأ في إدخال الرصيد!**
@@ -1044,12 +1187,12 @@ def _process_user_action(message, user):  # noqa: C901
                     del conversation_context[user_id]
                     return """❌ **تم الإلغاء — لم يتغيّر الرصيد**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
                 if listener != "confirm":
                     return """⚠️ **يرجى التأكيد صراحة:**
 اكتب "نعم" للتأكيد أو "لا" للإلغاء
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
                 try:
                     pending = data.get("pending_balance")
                     from models.customer import Customer
@@ -1085,14 +1228,14 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception:
                     return """❌ **لا يمكن تعديل الرصيد!**
 
 💡 **جرّب مرة أخرى أو اكتب "عودة"**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1131,7 +1274,7 @@ def _process_user_action(message, user):  # noqa: C901
 • اكتب "فاتورة" لإنشاء فاتورة
 • اكتب "مصروف" لإضافة مصروف
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
             if listener_response == "help":
                 current_step_text = ""
@@ -1151,7 +1294,7 @@ def _process_user_action(message, user):  # noqa: C901
 • اكتب "عودة" للعودة للقائمة الرئيسية
 • اكتب "إلغاء" لإلغاء العملية
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
             if step == 1:
                 data["name"] = message.strip()
@@ -1229,7 +1372,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة" للقائمة الرئيسية
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -1246,7 +1389,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "عميل" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1284,7 +1427,7 @@ def _process_user_action(message, user):  # noqa: C901
 • اكتب "عميل" لإدارة العملاء
 • اكتب "فاتورة" لإنشاء فاتورة
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
             if listener_response == "help":
                 steps_text = {1: "اسم المنتج", 2: "رقم القطعة", 3: "السعر", 4: "الكمية"}
@@ -1296,7 +1439,7 @@ def _process_user_action(message, user):  # noqa: C901
 • اكتب البيانات المطلوبة فقط
 • اكتب "عودة" للعودة للقائمة الرئيسية
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
             if step == 1:
                 data["name"] = message.strip()
@@ -1391,7 +1534,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
                     except Exception as e:
                         train_local_ai(
                             "create_product",
@@ -1407,7 +1550,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "منتج" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
                 except Exception as e:
                     train_local_ai(
                         "create_product",
@@ -1423,7 +1566,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "منتج" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1487,7 +1630,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **اكتب "عميل" لإضافة عميل جديد**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 from models.customer import Customer
 
@@ -1547,7 +1690,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **اكتب "منتج" لإضافة منتج جديد**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 from models.product import Product
 
@@ -1627,7 +1770,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except ValidationError as ve:
                     db.session.rollback()
@@ -1656,7 +1799,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "فاتورة" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1789,7 +1932,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -1806,7 +1949,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "استلام" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -1938,7 +2081,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -1955,7 +2098,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "إعطاء" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2065,7 +2208,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -2082,7 +2225,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "مصروف" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2231,7 +2374,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "مورد" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2384,7 +2527,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -2398,7 +2541,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "مشتريات" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2530,7 +2673,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -2544,7 +2687,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "شيك" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2579,13 +2722,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد قيود في دفتر الأستاذ**
 
 💡 **القيود تُنشأ تلقائياً من العمليات (فواتير، مصروفات، دفعات)**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2613,11 +2756,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد مستودعات في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "1"
@@ -2764,7 +2907,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                 except Exception as e:
                     train_local_ai(
@@ -2778,7 +2921,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 💡 **حاول مرة أخرى:** اكتب "مستخدم" ثم "1"
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2806,13 +2949,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 **للبحث عن عميل معين، اكتب اسمه أو رقم هاتفه**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد عملاء في النظام**
 
 🤖 **لإضافة عميل جديد، اكتب "عميل" ثم اختر "1"**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2840,13 +2983,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 **للبحث عن منتج معين، اكتب اسمه أو رقم القطعة**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد منتجات في النظام**
 
 🤖 **لإضافة منتج جديد، اكتب "منتج" ثم اختر "1"**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2874,13 +3017,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 **للبحث عن فاتورة معينة، اكتب رقم الفاتورة أو اسم العميل**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد فواتير في النظام**
 
 🤖 **لإنشاء فاتورة جديدة، اكتب "فاتورة" ثم اختر "1"**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2908,13 +3051,13 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 **للبحث عن مصروف معين، اكتب وصفه أو فئته**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد مصروفات في النظام**
 
 🤖 **لإضافة مصروف جديد، اكتب "مصروف" ثم اختر "1"**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2941,11 +3084,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {suppliers_list}{more_text}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد موردين في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -2972,11 +3115,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {purchases_list}{more_text}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد مشتريات في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -3003,11 +3146,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {cheques_list}{more_text}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد شيكات في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -3029,11 +3172,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {users_list}{more_text}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد مستخدمين في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -3060,11 +3203,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {gl_list}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد قيود في النظام**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "2"
@@ -3088,11 +3231,11 @@ def _process_user_action(message, user):  # noqa: C901
 
 {stock_list}{more_text}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
             else:
                 return """❌ **لا يوجد منتجات في المخزون**
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             msg_lower.strip() == "3"
@@ -3306,7 +3449,7 @@ def _process_user_action(message, user):  # noqa: C901
 💡 **أو اذهب مباشرة إلى:**
 http://localhost:5000/ai/assistant
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if "عميل" in msg_lower and ":" in message:
             _denial = _ai_action_denied(user, "manage_customers")
@@ -3337,7 +3480,7 @@ http://localhost:5000/ai/assistant
 
 💡 يمكنك الآن إنشاء فاتورة لهذا العميل!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if "منتج" in msg_lower and ":" in message:
             _denial = _ai_action_denied(user, "manage_products")
@@ -3376,7 +3519,7 @@ http://localhost:5000/ai/assistant
 
 💡 الآن يمكنك بيع هذا المنتج!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if "مورد" in msg_lower and ":" in message:
             _denial = _ai_action_denied(user, "manage_suppliers")
@@ -3415,7 +3558,7 @@ http://localhost:5000/ai/assistant
 
 💡 يمكنك الآن شراء من هذا المورد!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             any(word in msg_lower for word in ["فاتورة", "بيع", "مبيعات"])
@@ -3472,7 +3615,7 @@ http://localhost:5000/ai/assistant
 
 💡 تم خصم {quantity} قطعة من المخزون!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if "مصروف" in msg_lower and ":" in message:
             _denial = _ai_action_denied(user, "manage_expenses")
@@ -3504,7 +3647,7 @@ http://localhost:5000/ai/assistant
 - التاريخ: {expense.expense_date.strftime("%Y-%m-%d %H:%M")}
 - الرقم: #{expense.id}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if "دفعة" in msg_lower and ":" in message:
             _denial = _ai_action_denied(user, "manage_payments")
@@ -3544,7 +3687,7 @@ http://localhost:5000/ai/assistant
 - الرصيد الجديد: {customer.balance} درهم
 - الرقم: #{receipt.id}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             any(word in msg_lower for word in ["رصيد", "تعديل رصيد", "تغيير رصيد"])
@@ -3589,7 +3732,7 @@ http://localhost:5000/ai/assistant
 - الرصيد الجديد: {new_balance} درهم
 
 اكتب "نعم" للتأكيد أو "لا" للإلغاء
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
                     old_balance = customer.balance
                     _ai_set_customer_balance(
@@ -3607,7 +3750,7 @@ http://localhost:5000/ai/assistant
 - الرصيد الجديد: {new_balance} درهم
 - الفرق: {new_balance - old_balance} درهم
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             any(word in msg_lower for word in ["استلام", "استلم", "دفعة من"])
@@ -3652,7 +3795,7 @@ http://localhost:5000/ai/assistant
 
 💡 تم خصم المبلغ من رصيد العميل!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             any(word in msg_lower for word in ["عرض رصيد", "رصيد العميل", "رصيد عميل"])
@@ -3689,7 +3832,7 @@ http://localhost:5000/ai/assistant
 - الهاتف: {customer.phone or "غير محدد"}
 - العنوان: {customer.address or "غير محدد"}{payments_info}
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         if (
             any(word in msg_lower for word in ["إعطاء", "أعطى", "دفعة لل", "دفعة ل"])
@@ -3733,7 +3876,7 @@ http://localhost:5000/ai/assistant
 
 💡 تم إضافة المبلغ لرصيد العميل!
 
-🤖 المصدر: GROQ API + التحليل المحلي"""
+🤖 المصدر: النظام المحلي الذكي"""
 
         return None
 
@@ -3789,13 +3932,16 @@ def assistant_page():
     لأن مفاتيح Groq/OpenAI سرّ المنصة.
     """
     try:
-        from models import Warehouse
+        from models import Tenant
+        from services.assistant_actions import _scope, available_warehouses
 
-        warehouses = Warehouse.query.all()
+        tenant_id = _scope(current_user)
+        warehouses = available_warehouses(current_user)
         return render_template(
             "ai/assistant.html",
             ai_enabled=AIService.is_enabled(),
             warehouses=warehouses,
+            assistant_company=db.session.get(Tenant, tenant_id) if tenant_id is not None else None,
             current_user=current_user,
         )
     except Exception as e:
@@ -3892,402 +4038,41 @@ def config():  # noqa: C901
 @login_required
 @permission_required("manage_products")
 def upload_excel():
-    """رفع ومعالجة ملف Excel للمنتجات - المعالج الذكي الخارق"""
-    try:
-        if "file" not in request.files:
-            return jsonify({"success": False, "error": "لم يتم رفع ملف"}), 400
+    """Stage a spreadsheet import for a scoped, idempotent confirmation."""
+    from services.assistant_actions import propose_import
+    from services.assistant_imports import MAX_FILE_BYTES
 
-        file = request.files["file"]
-        warehouse_id = request.form.get("warehouse_id", type=int)
-        if not warehouse_id:
-            from models import Warehouse
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return jsonify(success=False, response="اختر ملف Excel أولًا.", error="اختر ملف Excel أولًا."), 400
+    if not file.filename.lower().endswith(".xlsx"):
+        return jsonify(success=False, response="احفظ الملف بصيغة XLSX للاستيراد.", error="احفظ الملف بصيغة XLSX للاستيراد."), 400
 
-            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
-            if not warehouse:
-                warehouse = Warehouse.query.filter_by(is_active=True).first()
-            if warehouse:
-                warehouse_id = warehouse.id
+    raw_warehouse = request.form.get("warehouse_id")
+    warehouse_id = request.form.get("warehouse_id", type=int)
+    if raw_warehouse and (warehouse_id is None or not 0 < warehouse_id <= 2147483647):
+        return jsonify(success=False, response="رقم المستودع غير صالح.", error="رقم المستودع غير صالح."), 400
+    content = file.stream.read(MAX_FILE_BYTES + 1)
+    if len(content) > MAX_FILE_BYTES:
+        return jsonify(success=False, response="حجم الملف يتجاوز 5 ميغابايت.", error="حجم الملف يتجاوز 5 ميغابايت."), 413
 
-        if file.filename == "":
-            return jsonify({"success": False, "error": "لم يتم اختيار ملف"}), 400
+    if request.form.get("agent_queue") == "1":
+        from base64 import b64encode
+        from hashlib import sha256
 
-        if not file.filename.endswith((".xlsx", ".xls")):
-            return jsonify({"success": False, "error": "الملف يجب أن يكون Excel"}), 400
-
-        result = _process_excel_intelligently(file, warehouse_id, current_user)
-
-        return jsonify(result)
-
-    except Exception as e:
-        current_app.logger.exception("AI handler failed")
-        return jsonify(
-            {"success": False, "error": "خطأ في معالجة الملف: حدث خطأ غير متوقع"}
-        ), 500
-
-
-def _process_excel_intelligently(file, warehouse_id, user):  # noqa: C901
-    """معالج Excel ذكي خارق - أفضل من البشر"""
-    try:
-        from models import Product, Warehouse
-        from services.stock_service import StockService
-
-        df = pd.read_excel(file, engine="openpyxl")
-
-        column_mapping = _intelligent_column_detector(df)
-
-        if not column_mapping:
-            return {
-                "success": False,
-                "error": "لم أستطع فهم هيكل الملف. تأكد من وجود أعمدة: الاسم، رقم القطعة، السعر",
-            }
-
-        if not warehouse_id:
-            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
-            if not warehouse:
-                warehouse = Warehouse.query.filter_by(is_active=True).first()
-            if not warehouse:
-                warehouse = Warehouse(
-                    name="Main Warehouse",
-                    name_ar="المستودع الرئيسي",
-                    is_active=True,
-                    is_main=True,
-                )
-                db.session.add(warehouse)
-                db.session.flush()
-            warehouse_id = warehouse.id
-        else:
-            warehouse = get_owned_or_404(Warehouse, warehouse_id, code=404)
-            if not warehouse.is_active:
-                return {"success": False, "error": f"المستودع #{warehouse_id} غير نشط"}
-
-        products_created = 0
-        products_updated = 0
-        errors = []
-        no_cost_warning = False
-
-        def _cell(key, default=None):
-            col = column_mapping.get(key)
-            if col is None or col not in row:
-                return default
-            val = row[col]
-            if pd.isna(val):
-                return default
-            if isinstance(val, str):
-                val = val.strip()
-                if val == "" or val.lower() == "nan":
-                    return default
-            return val
-
-        def _flt(val, default=0.0):
-            if val is None:
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
-
-        def _int(val, default=0):
-            if val is None:
-                return default
-            try:
-                return int(float(val))
-            except (ValueError, TypeError):
-                return default
-
-        for index, row in df.iterrows():
-            try:
-                name = str(_cell("name", "") or "").strip()
-                part_number_raw = _cell("part_number", None)
-                part_number = (
-                    str(part_number_raw).strip() if part_number_raw is not None else ""
-                )
-                if not name or name.lower() == "nan" or name.lower() == "none":
-                    continue
-                if not part_number or part_number.lower() in ("nan", "none", ""):
-                    if (
-                        name[:2].rstrip(".").isdigit()
-                        or "ملاحظ" in name
-                        or "note" in name.lower()
-                    ):
-                        continue
-                    part_number = None
-
-                price = _flt(_cell("price"), 0.0)
-                cost_price = _flt(_cell("cost_price"), None)
-                if cost_price is None:
-                    cost_price = 0.0
-                quantity = _int(_cell("quantity"), 0)
-                min_stock_alert = _flt(_cell("min_stock_alert"), 0.0)
-                name_ar = _cell("name_ar")
-                barcode = _cell("barcode")
-                unit = _cell("unit")
-                location = _cell("location")
-                description = _cell("description")
-                tax_treatment = _cell("tax_treatment")
-                if tax_treatment is not None:
-                    tax_treatment = str(tax_treatment).strip().lower()
-                    if tax_treatment not in ("standard", "zero", "exempt"):
-                        tax_treatment = "standard"
-                else:
-                    tax_treatment = "standard"
-                merchant_price = _flt(_cell("merchant_price"), None)
-                partner_price = _flt(_cell("partner_price"), None)
-
-                category_name = _cell("category")
-                category_id = None
-                if category_name:
-                    category_name = str(category_name).strip()
-                    from models import ProductCategory
-
-                    cat = ProductCategory.query.filter(
-                        db.func.lower(ProductCategory.name) == category_name.lower()
-                    ).first()
-                    if cat is None:
-                        cat = ProductCategory(
-                            name=category_name, name_ar=category_name, is_active=True
-                        )
-                        db.session.add(cat)
-                        db.session.flush()
-                    category_id = cat.id
-
-                existing_product = None
-                if part_number:
-                    existing_product = Product.query.filter_by(
-                        part_number=part_number
-                    ).first()
-                if existing_product is None and barcode:
-                    existing_product = Product.query.filter_by(barcode=barcode).first()
-
-                if existing_product:
-                    existing_product.regular_price = price
-                    if cost_price and cost_price > 0:
-                        existing_product.cost_price = cost_price
-                    if name_ar:
-                        existing_product.name_ar = name_ar
-                    if barcode:
-                        existing_product.barcode = barcode
-                    if unit:
-                        existing_product.unit = str(unit).strip()
-                    if location:
-                        existing_product.location = str(location).strip()
-                    if description:
-                        existing_product.description = str(description).strip()
-                    if tax_treatment:
-                        existing_product.tax_treatment = tax_treatment
-                    if min_stock_alert is not None:
-                        existing_product.min_stock_alert = min_stock_alert
-                    if merchant_price is not None:
-                        existing_product.merchant_price = merchant_price
-                    if partner_price is not None:
-                        existing_product.partner_price = partner_price
-                    if category_id is not None:
-                        existing_product.category_id = category_id
-                    products_updated += 1
-                    product = existing_product
-                else:
-                    product = Product(
-                        name=name,
-                        name_ar=name_ar,
-                        part_number=part_number,
-                        barcode=barcode or None,
-                        regular_price=price,
-                        cost_price=cost_price,
-                        current_stock=0,
-                        min_stock_alert=min_stock_alert,
-                        unit=str(unit).strip() if unit else None,
-                        location=str(location).strip() if location else None,
-                        description=str(description).strip() if description else None,
-                        tax_treatment=tax_treatment,
-                        merchant_price=merchant_price,
-                        partner_price=partner_price,
-                        category_id=category_id,
-                        is_active=True,
-                    )
-                    db.session.add(product)
-                    db.session.flush()
-                    products_created += 1
-
-                if quantity and quantity > 0:
-                    try:
-                        StockService.create_movement(
-                            product_id=product.id,
-                            quantity=quantity,
-                            movement_type="adjustment",
-                            reference_type="Excel Import",
-                            reference_id=product.id,
-                            notes=f"استيراد Excel — {name}",
-                            warehouse_id=warehouse_id,
-                            unit_cost_base=cost_price
-                            if cost_price and cost_price > 0
-                            else None,
-                        )
-                    except Exception as _mv_err:
-                        current_app.logger.warning(
-                            f"Excel import stock movement failed for {name}: {_mv_err}"
-                        )
-                        product.current_stock = (product.current_stock or 0) + quantity
-
-                if not product.cost_price:
-                    no_cost_warning = True
-
-            except Exception as e:
-                errors.append(f"السطر {index + 2}: حدث خطأ غير متوقع")
-
-        db.session.commit()
-
-        _ai_audit(
-            "products",
-            None,
-            {
-                "method": "excel_import",
-                "created": products_created,
-                "updated": products_updated,
+        return _enqueue_bot_message(
+            f"Excel: {file.filename} | SHA-256: {sha256(content).hexdigest()} | warehouse: {warehouse_id}",
+            command={
+                "tool": "prepare_stock_import",
+                "arguments": {"content": b64encode(content).decode("ascii"), "warehouse_id": warehouse_id},
             },
         )
-        _train_ai_from_excel(df, products_created, products_updated, user.id)
 
-        error_details = "\n".join(errors) if errors else ""
-
-        message = f"""✅ تمت المعالجة بنجاح!
-
-📊 النتائج:
-- تم إنشاء: {products_created} منتج جديد
-- تم تحديث: {products_updated} منتج موجود
-- المستودع: {warehouse.name}
-- الأخطاء: {len(errors)}
-
-🤖 تم تدريب AI على البيانات الجديدة!
-🧠 المصدر: GROQ + المحلي - معالج ذكي خارق"""
-
-        if no_cost_warning:
-            message += """
-
-⚠️ بعض المنتجات بدون تكلفة مسجّلة — لا يمكن بيعها قبل ضبط التكلفة (عدّل المنتج وأضف سعر التكلفة)."""
-
-        if errors and len(errors) > 0:
-            message += f"\n\n⚠️ تفاصيل الأخطاء:\n{error_details}"
-
-        return {
-            "success": True,
-            "message": message,
-            "details": {
-                "created": products_created,
-                "updated": products_updated,
-                "errors": errors,
-                "warehouse": warehouse.name,
-            },
-        }
-
-    except Exception as e:
-        current_app.logger.exception("AI handler failed")
-        return {"success": False, "error": "خطأ في المعالجة: حدث خطأ غير متوقع"}
-
-
-def _intelligent_column_detector(df):
-    """كاشف ذكي لأعمدة Excel - يفهم أي تسمية (عربي/إنجليزي)"""
-    column_mapping = {}
-
-    name_ar_keywords = ["اسم_ar", "name_ar", "arabic", "عربي", "اسم عربي"]
-    name_keywords = ["اسم", "name", "product", "منتج", "item", "description", "وصف"]
-    part_keywords = ["رقم", "part", "code", "كود", "sku", "reference", "مرجع"]
-    barcode_keywords = ["باركود", "barcode", "bar_code"]
-    price_keywords = ["سعر", "price", "value", "قيمة", "amount", "مبلغ"]
-    cost_keywords = ["تكلفة", "cost", "cost_price"]
-    merchant_price_keywords = [
-        "تاجر",
-        "merchant",
-        "merchant_price",
-        "سعر تاجر",
-        "سعر التاجر",
-    ]
-    partner_price_keywords = [
-        "شريك",
-        "partner",
-        "partner_price",
-        "سعر شريك",
-        "سعر الشريك",
-    ]
-    quantity_keywords = ["كمية", "qty", "quantity", "stock", "مخزون", "عدد", "count"]
-    min_stock_keywords = [
-        "حد أدنى",
-        "min_stock",
-        "alert",
-        "تنبيه",
-        "أدنى",
-        "minimum",
-        "min_",
-    ]
-    unit_keywords = ["وحدة", "unit"]
-    category_keywords = ["تصنيف", "category", "فئة", "class"]
-    tax_keywords = ["ضريبة", "tax", "treatment", "معاملة"]
-    location_keywords = ["موقع", "location", "مكان", "مستودع"]
-    description_keywords = ["وصف", "description", "notes", "ملاحظات", "note"]
-
-    columns_lower = [str(col).lower().strip() for col in df.columns]
-
-    for idx, col in enumerate(columns_lower):
-        if any(k in col for k in name_ar_keywords):
-            column_mapping["name_ar"] = df.columns[idx]
-        elif any(k in col for k in barcode_keywords):
-            column_mapping["barcode"] = df.columns[idx]
-        elif any(k in col for k in cost_keywords):
-            column_mapping["cost_price"] = df.columns[idx]
-        elif any(k in col for k in merchant_price_keywords):
-            column_mapping["merchant_price"] = df.columns[idx]
-        elif any(k in col for k in partner_price_keywords):
-            column_mapping["partner_price"] = df.columns[idx]
-        elif any(k in col for k in tax_keywords):
-            column_mapping["tax_treatment"] = df.columns[idx]
-        elif any(k in col for k in location_keywords):
-            column_mapping["location"] = df.columns[idx]
-        elif any(k in col for k in unit_keywords):
-            column_mapping["unit"] = df.columns[idx]
-        elif any(k in col for k in min_stock_keywords):
-            column_mapping["min_stock_alert"] = df.columns[idx]
-        elif any(k in col for k in category_keywords):
-            column_mapping["category"] = df.columns[idx]
-        elif any(k in col for k in description_keywords):
-            column_mapping["description"] = df.columns[idx]
-        elif any(k in col for k in name_keywords):
-            column_mapping["name"] = df.columns[idx]
-        elif any(k in col for k in part_keywords):
-            column_mapping["part_number"] = df.columns[idx]
-        elif any(k in col for k in price_keywords):
-            column_mapping["price"] = df.columns[idx]
-        elif any(k in col for k in quantity_keywords):
-            column_mapping["quantity"] = df.columns[idx]
-
-    if "name" not in column_mapping and len(df.columns) > 0:
-        column_mapping["name"] = df.columns[0]
-    if "part_number" not in column_mapping and len(df.columns) > 1:
-        column_mapping["part_number"] = df.columns[1]
-    if "price" not in column_mapping and len(df.columns) > 2:
-        column_mapping["price"] = df.columns[2]
-    if "quantity" not in column_mapping and len(df.columns) > 3:
-        column_mapping["quantity"] = df.columns[3]
-
-    required = {"name", "part_number", "price"}
-    if not required.issubset(column_mapping.keys()):
-        return None
-    return column_mapping
-
-
-def _train_ai_from_excel(df, created, updated, user_id):
-    """تدريب AI من بيانات Excel"""
-    try:
-        _ = {
-            "source": "excel_upload",
-            "timestamp": datetime.now().isoformat(),
-            "user_id": user_id,
-            "products_created": created,
-            "products_updated": updated,
-            "total_rows": len(df),
-            "columns": list(df.columns),
-            "sample_data": df.head(5).to_dict(),
-        }
-
-    except Exception as e:
-        current_app.logger.warning(f"AI training from Excel failed: {e}")
+    return _assistant_response(
+        propose_import(
+            file.filename, content, warehouse_id, request.headers.get("Idempotency-Key"), current_user
+        )
+    )
 
 
 @ai_bp.route("/predict-sales", methods=["GET"])
@@ -4662,14 +4447,21 @@ def search_system_data(search_term):
 @login_required
 @permission_required("manage_customers")
 def add_customer():
-    """إضافة عميل جديد"""
-    try:
-        data = request.get_json()
-        result = system_integrator.add_customer(data)
-        return jsonify(result)
-    except Exception as e:
-        current_app.logger.exception("AI handler failed")
-        return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
+    """Stage the structured customer request using the chat confirmation gate."""
+    import json
+    from services.assistant_actions import propose_customer
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid customer request"}), 400
+    customer = {key: data.get(key) for key in ("name", "phone", "address")}
+    source = json.dumps(customer, ensure_ascii=False, sort_keys=True)
+    if len(source) > 4000:
+        return jsonify({"error": "Customer request exceeds 4000 characters"}), 400
+    result = propose_customer(
+        source, **customer, key=request.headers.get("Idempotency-Key"), user=current_user
+    )
+    return _assistant_response(result)
 
 
 @ai_bp.route("/data/analyze-sales")

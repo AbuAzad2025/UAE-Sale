@@ -5,6 +5,7 @@ from logging.config import fileConfig
 from flask import current_app
 
 from alembic import context
+from sqlalchemy import text
 
 # Mark that we're inside an alembic run so application init code
 # (specifically utils.system_init.ensure_system_integrity) can
@@ -125,6 +126,27 @@ def run_migrations_online():
         )
 
         with context.begin_transaction():
+            if connection.dialect.name == "postgresql":
+                # Alembic 1.13 still creates its version table as VARCHAR(32).
+                # Apply this before the first revision write on fresh databases.
+                connection.execute(text("""
+                    CREATE TABLE IF NOT EXISTS alembic_version (
+                        version_num VARCHAR(64) NOT NULL PRIMARY KEY
+                    )
+                """))
+                connection.execute(text("""
+                    DO $$ BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = current_schema()
+                              AND table_name = 'alembic_version'
+                              AND column_name = 'version_num'
+                              AND character_maximum_length < 64
+                        ) THEN
+                            ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64);
+                        END IF;
+                    END $$
+                """))
             context.run_migrations()
 
 

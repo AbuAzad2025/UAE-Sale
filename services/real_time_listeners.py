@@ -67,7 +67,8 @@ class RealTimeAccountingListeners:
                 "قيد جديد", f"تم إنشاء قيد جديد رقم {entry.entry_number}", "success"
             )
 
-            RealTimeAccountingListeners._update_statistics()
+            if not db.session.info.get("assistant_bulk_stock_import"):
+                RealTimeAccountingListeners._update_statistics()
 
         except Exception as e:
             print(f"خطأ في مستمع إنشاء القيد: {e}")
@@ -118,7 +119,8 @@ class RealTimeAccountingListeners:
                 },
             )
 
-            RealTimeAccountingListeners._update_account_balance(line.account_id)
+            if not db.session.info.get("assistant_bulk_stock_import"):
+                RealTimeAccountingListeners._update_account_balance(line.account_id)
 
         except Exception as e:
             print(f"خطأ في مستمع إنشاء سطر القيد: {e}")

@@ -145,6 +145,44 @@ def get_next_number(prefix, model_class, number_field="number"):
     return f"{prefix}-{year}-0001"
 
 
+def generate_transactional_number(prefix, model, field_name):
+    """Allocate a global document number under the caller's database transaction."""
+    return allocate_transactional_numbers(prefix, model, field_name, 1)[0]
+
+
+def allocate_transactional_numbers(prefix, model, field_name, count):
+    """Allocate a range to be inserted together in the caller's transaction."""
+    from hashlib import blake2b
+
+    from sqlalchemy import BigInteger, cast, func, select
+
+    stem = f"{prefix}-{datetime.now():%Y}-"
+    connection = db.session.connection()
+    dialect = connection.dialect.name
+    column = getattr(model, field_name)
+    suffix = func.substr(column, len(stem) + 1)
+    if dialect == "postgresql":
+        key = int.from_bytes(
+            blake2b(f"{model.__tablename__}:{field_name}:{stem}".encode(), digest_size=8).digest(),
+            "big", signed=True,
+        )
+        db.session.execute(select(func.pg_advisory_xact_lock(key)))
+        numeric = suffix.op("~")(r"^[0-9]{1,12}$")
+    elif dialect == "sqlite":
+        if not connection.connection.driver_connection.in_transaction:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
+        numeric = suffix.op("GLOB")("[0-9]*") & ~suffix.op("GLOB")("*[^0-9]*")
+    else:
+        raise RuntimeError("Transactional document numbering requires PostgreSQL or SQLite.")
+    number = db.session.scalar(
+        select(func.max(cast(suffix, BigInteger)))
+        .where(column.startswith(stem), numeric, func.length(suffix) <= 12)
+        .execution_options(skip_tenant_filter=True)
+    )
+    first = (number or 0) + 1
+    return [f"{stem}{value:04d}" for value in range(first, first + count)]
+
+
 def calculate_discount(amount, discount_percent):
     """Calculate discount amount from percentage"""
     amount = Decimal(str(amount))
@@ -239,7 +277,7 @@ def _json_safe_changes(value):
 
 
 def create_audit_log(
-    action, table_name=None, record_id=None, changes=None, commit=None
+    action, table_name=None, record_id=None, changes=None, commit=None, *, actor_id=None
 ):
     """تسجيل عملية في سجل التدقيق ضمن معاملة المستدعي (لا تلتزم بشكل مستقل).
 
@@ -266,9 +304,9 @@ def create_audit_log(
 
     try:
         log = AuditLog(
-            user_id=current_user.id
-            if (getattr(current_user, "is_authenticated", False))
-            else None,
+            user_id=actor_id if actor_id is not None else (
+                current_user.id if getattr(current_user, "is_authenticated", False) else None
+            ),
             action=action,
             table_name=table_name,
             record_id=record_id,

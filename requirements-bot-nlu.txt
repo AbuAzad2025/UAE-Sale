@@ -1,0 +1,2 @@
+# Install on the local agent/training host. CPU wheels are sufficient.
+torch>=2.4,<3

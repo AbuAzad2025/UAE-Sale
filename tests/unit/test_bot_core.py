@@ -258,6 +258,80 @@ def test_sales_question_and_relative_period_in_agent_mode(app, db, client, login
         assert result["outcome"] == outcome and expected in result["message"], (question, result)
 
 
+def test_customer_invoice_and_stock_follow_ups_use_scoped_live_records(app, db, client, login_owner, owner_user):
+    from models import Product, Sale, SaleLine
+
+    company = _tenant_context(db, client)
+    other_company = Tenant(name="Outside context", name_ar="شركة أخرى", slug="agent-outside")
+    db.session.add(other_company)
+    db.session.flush()
+    customer = Customer(name="عميل السياق", tenant_id=company.id, balance=37)
+    product = Product(name="صنف السياق", sku="CXT-ONE", tenant_id=company.id, current_stock=8, regular_price=10)
+    extra = Product(name="صنف إضافي", sku="CXT-TWO", tenant_id=company.id, current_stock=0, regular_price=10)
+    foreign = Product(name="صنف محجوب", sku="CXT-FOREIGN", tenant_id=other_company.id, current_stock=99, regular_price=10)
+    db.session.add_all([customer, product, extra, foreign])
+    db.session.flush()
+    sale = Sale(
+        tenant_id=company.id, sale_number="CTX-INV", seller_id=owner_user.id, customer_id=customer.id,
+        total_amount=50, amount_base=100, paid_amount_base=60, balance_due=40,
+        currency="USD", exchange_rate=2, payment_status="partial", status="confirmed",
+    )
+    db.session.add(sale)
+    db.session.flush()
+    db.session.add_all([
+        SaleLine(tenant_id=company.id, sale_id=sale.id, product_id=item.id, quantity=1, unit_price=10, line_total=10)
+        for item in (product, foreign)
+    ])
+    db.session.commit()
+    customer_id, sale_id, product_id, extra_id, foreign_id = customer.id, sale.id, product.id, extra.id, foreign.id
+
+    def reply(message, expected, outcome="read"):
+        result = _process(app, db, client, _enqueue(client, message))
+        assert result["outcome"] == outcome and expected in result["message"], (message, result)
+        return result["message"]
+
+    reply(f"كم رصيد العميل #{customer_id}؟", "رصيد عميل السياق")
+    reply("ما آخر فاتورة له؟", "CTX-INV")
+    reply("قديش ضل عليها؟", "40.00 AED")
+    reply("كم بقي عليها من الضريبة؟", "حدّد المطلوب", "clarification")
+    reply("ما آخر فاتورة لأحمد؟", "حدّد المطلوب", "clarification")
+    reply("كم رصيد عميلها؟", "رصيد عميل السياق")
+    reply(f"حالة فاتورة #{sale_id}", "مدفوعة جزئيًا")
+    reply("هل الصنف الموجود فيها متوفر؟", "صنف السياق متوفر")
+    db.session.execute(update(Product).where(Product.id == product_id).values(current_stock=0))
+    db.session.commit()
+    reply("هل هو متوفر؟", "صنف السياق غير متوفر")
+    reply(f"حالة فاتورة #{sale_id}", "CTX-INV")
+    db.session.add(SaleLine(
+        tenant_id=company.id, sale_id=sale_id, product_id=extra_id, quantity=1, unit_price=10, line_total=10,
+    ))
+    db.session.commit()
+    options = reply("مخزون الأصناف اللي فيها؟", "صنف إضافي", "ambiguous")
+    assert "صنف محجوب" not in options
+    reply(f"#{foreign_id}", "أرسل رقم السجل من القائمة السابقة", "clarification")
+    reply(str(extra_id), "صنف إضافي غير متوفر")
+    with client.session_transaction() as session:
+        session["impersonate_tenant_id"] = other_company.id
+    reply("هل هو متوفر؟", "حدّد المطلوب", "clarification")
+    with client.session_transaction() as session:
+        session["impersonate_tenant_id"] = company.id
+    reply("إلغاء", "ألغيت", "reset")
+    reply("هل هو متوفر؟", "حدّد المطلوب", "clarification")
+
+
+def test_related_customer_invoice_read_requires_both_permissions():
+    class Principal:
+        id = 1
+        is_authenticated = True
+
+        def has_permission(self, code):
+            return code == "view_reports"
+
+    tool = build_registry().get("get_latest_customer_invoice")
+    with pytest.raises(PermissionError):
+        tool.authorize(Actor(1, 2), Principal())
+
+
 def test_sales_prediction_needs_a_sales_subject():
     message = "ما حالة الحساب؟"
     event = MessageEvent.receive(str(uuid4()), message, Actor(1, 2))

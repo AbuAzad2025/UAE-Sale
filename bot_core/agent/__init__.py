@@ -36,6 +36,12 @@ class Tool:
     effect: Effect
     handler: Callable[[BaseModel, Actor, str], ToolResult]
     timeout_ms: int = 1500
+    related_permissions: tuple[str, ...] = ()
+
+    def authorize(self, actor: Actor, principal: Principal) -> None:
+        authorize(actor, principal, self.permissions)
+        if self.related_permissions:
+            authorize(actor, principal, self.related_permissions)
 
 
 class ToolRegistry:
@@ -99,7 +105,7 @@ class AgentRunner:
                 raise PermissionError("This tool requires a separate confirmation request.")
             if tool.effect is Effect.MUTATION and not direct_mutation:
                 raise PermissionError("This tool requires an explicit mutation command.")
-            authorize(actor, principal, tool.permissions)
+            tool.authorize(actor, principal)
             arguments = tool.inputs.model_validate(call.arguments, strict=True, extra="forbid")
             started = monotonic()
             count, until = self._timeouts.get(tool.name, (0, 0.0))

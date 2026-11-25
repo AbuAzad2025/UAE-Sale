@@ -20,7 +20,7 @@ from bot_core.neural_nlu.budget import BoundedInference, Interpreter
 from bot_core.neural_nlu.artifacts import RELEASE_MODEL, verify_release_model
 from bot_core.neural_nlu.retrieval import guide
 from bot_core.observability import utcnow
-from bot_core.security import Actor, Effect, authorize
+from bot_core.security import Actor, Effect
 from extensions import db
 from models import Tenant, User
 from models.tenant_scope import clear_current_tenant_id, set_current_tenant_id
@@ -65,12 +65,13 @@ def process(
                 raise ValueError("Unsupported authenticated command.")
             decision = Decision(name, ToolCall(name, command["arguments"]), "")
         else:
-            decision = decide(claim.event, prior)
+            decision = decide(claim.event, prior, context=context)
         threshold = current_app.config.get("BOT_NLU_CONFIDENCE", 0.85)
         if not 0 < threshold <= 1:
             threshold = 0.85
         wants_guide = claim.event.normalized.startswith(("كيف ", "how ", "help ", "دليل "))
-        if decision.tool is None and not decision.reset and decision.dialogue is None and nlu is not None:
+        unrouted = decision.tool is None and not decision.reset and decision.dialogue is None and not decision.confidence
+        if unrouted and nlu is not None:
             try:
                 prediction = nlu.predict(claim.event.raw_input)
                 trace["predicted_intent"] = prediction.intent
@@ -84,7 +85,7 @@ def process(
         trace["intent"] = decision.tool or ("reset" if decision.reset else "clarification")
         trace["confidence"] = decision.confidence
         if decision.tool:
-            authorize(actor, user, runner.registry.get(decision.tool).permissions)
+            runner.registry.get(decision.tool).authorize(actor, user)
         if decision.call is not None:
             trace["tools"] = [decision.call.name]
             result = runner.run(
@@ -93,8 +94,8 @@ def process(
                 direct_mutation=decision.direct_mutation,
             )[0]
             trace["entities"] = dict(result.entities)
-            if result.outcome in {"read", "confirmed", "proposed", "updated", "ambiguous"}:
-                remember(context, decision.call.name, result.entities, ambiguous=result.outcome == "ambiguous")
+            if result.outcome in {"read", "confirmed", "proposed", "updated", "ambiguous", "not_found"}:
+                remember(context, decision.call.name, result.entities)
             if decision.call.name == "confirm_action":
                 if prior and prior.topic == "confirmation" and prior.slots["action_id"] == command["arguments"]["action_id"]:
                     states.reset(actor)
@@ -124,7 +125,7 @@ def process(
             elif decision.tool and (prior is None or prior.topic not in {"purchase_order", "stock_transfer", "confirmation"}):
                 states.save(actor, Dialogue(decision.tool, {}))
             payload = {"message": message, "outcome": "reset" if decision.reset else "clarification"}
-            if decision.tool is None and wants_guide and not decision.reset and decision.dialogue is None:
+            if unrouted and decision.tool is None and wants_guide:
                 guidance = guide(claim.event.raw_input, is_owner=user.is_owner)
                 if guidance:
                     payload = {"message": guidance, "outcome": "guide"}

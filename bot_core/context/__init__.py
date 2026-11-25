@@ -142,7 +142,7 @@ def capture(actor: Actor, principal: Principal, dialogue: Dialogue | None) -> In
                               FinancialContext(periods, budgets))
 
 
-def remember(context: InteractionContext, tool: str, entities: Mapping, *, ambiguous: bool = False) -> None:
+def remember(context: InteractionContext, tool: str, entities: Mapping) -> None:
     actor = context.actor
     if actor.tenant_id is None:
         return
@@ -154,9 +154,7 @@ def remember(context: InteractionContext, tool: str, entities: Mapping, *, ambig
         if kind is None:
             continue
         ids = value if isinstance(value, list) else [value]
-        valid_ids = list(dict.fromkeys(item for item in ids if type(item) is int and item > 0))[:5]
-        if valid_ids or ambiguous:
-            refs[kind] = valid_ids
+        refs[kind] = list(dict.fromkeys(item for item in ids if type(item) is int and item > 0))[:10]
     db.session.merge(BotContextMemory(user_id=actor.user_id, tenant_id=actor.tenant_id,
                                      references=refs, last_tool=tool, expires_at=utcnow() + timedelta(minutes=15)))
 

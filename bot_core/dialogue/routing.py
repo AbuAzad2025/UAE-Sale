@@ -4,18 +4,22 @@ import re
 from dataclasses import dataclass
 
 from bot_core.agent import ToolCall
+from bot_core.context import InteractionContext
 from bot_core.dialogue import Dialogue
 from bot_core.gateway import MessageEvent, normalize
 from bot_core.neural_nlu import Prediction, feature, tokenize
+from bot_core.neural_nlu.follow_up import resolve_follow_up
 from services.ai_questions import (
-    has_sales_subject, is_preceding_sales_period, is_sales_question, preceding_sales_period, summary_kind,
+    COMPANY_SELECTION_REQUIRED, has_sales_subject, is_preceding_sales_period, is_sales_question,
+    preceding_sales_period, summary_kind,
 )
 
 _PATTERNS = (
-    ("get_customer_balance", re.compile(r"^(?:رصيد(?: العميل)?|customer balance)(?=$|[ :])")),
-    ("check_stock", re.compile(r"^(?:مخزون(?: الصنف| المنتج)?|(?:check )?stock)(?=$|[ :])")),
+    ("get_customer_balance", re.compile(r"^(?:(?:كم )?رصيد(?: العميل)?|customer balance)(?=$|[ :؟?])")),
+    ("check_stock", re.compile(r"^(?:(?:كم )?مخزون(?: الصنف| المنتج)?|(?:check )?stock)(?=$|[ :؟?])")),
     ("get_invoice_status", re.compile(
-        r"^(?:حالة فاتورة|invoice status|(?:look up|check|show) (?:the )?(?:payment|status) (?:for|of) invoice)(?=$|[ :])"
+        r"^(?:(?:(?:ما|شو) )?حال[ةه] (?:ال)?فاتور[ةه]|invoice status|"
+        r"(?:look up|check|show) (?:the )?(?:payment|status) (?:for|of) invoice)(?=$|[ :؟?])"
     )),
     ("draft_customer", re.compile(r"^(?:اضف عميل|انشئ عميل|add customer)(?=$|[ :])")),
 )
@@ -40,6 +44,9 @@ _PROMPTS = {
     "get_customer_balance": "أرسل اسم العميل أو رقمه مسبوقًا بـ #.",
     "check_stock": "أرسل اسم الصنف أو رمزه.",
     "get_invoice_status": "أرسل رقم الفاتورة.",
+    "get_latest_customer_invoice": "أرسل اسم العميل أو رقمه مسبوقًا بـ # لعرض آخر فاتورة مؤكدة له.",
+    "check_invoice_stock": "أرسل رقم الفاتورة التي تريد التحقق من مخزون أصنافها.",
+    "get_invoice_customer_balance": "أرسل رقم الفاتورة التي تريد معرفة رصيد العميل المرتبط بها.",
     "draft_customer": "أرسل اسم العميل الذي تريد إضافته.",
 }
 
@@ -73,7 +80,30 @@ def _transfer_turn(text: str, prior: Dialogue | None) -> Decision:
     return Decision("stock_transfer", None, _TRANSFER_PROMPTS[len(values)], dialogue=Dialogue("stock_transfer", values))
 
 
-def decide(event: MessageEvent, prior: Dialogue | None) -> Decision:
+def _contextual_read(message: str, context: InteractionContext) -> Decision | None:
+    follow_up = resolve_follow_up(message, context)
+    if follow_up is None:
+        return None
+    tool, references = follow_up.tool, follow_up.references
+    if context.actor.tenant_id is None:
+        return Decision(None, None, COMPANY_SELECTION_REQUIRED, confidence=follow_up.confidence)
+    if len(references) == 1:
+        return Decision(tool, ToolCall(tool, {"reference": f"#{references[0].id}"}), "",
+                        confidence=follow_up.confidence)
+    prompt = _PROMPTS[tool]
+    slots = {}
+    if references:
+        options = "، ".join(f"{reference.label} (#{reference.id})" for reference in references)
+        prompt = f"أي سجل تقصد؟ {options}"
+        slots["candidate_ids"] = [reference.id for reference in references]
+    prior = context.conversation.dialogue
+    if prior is None or prior.topic not in {"confirmation", "purchase_order", "stock_transfer"}:
+        prior = Dialogue(tool, slots)
+    return Decision(tool, None, prompt, confidence=follow_up.confidence,
+                    dialogue=prior)
+
+
+def decide(event: MessageEvent, prior: Dialogue | None, *, context: InteractionContext | None = None) -> Decision:
     if event.normalized in _RESET:
         return Decision(None, None, "ألغيت خطوة المحادثة الحالية.", reset=True)
     note_parts = re.split(r"[:：]", event.raw_input, maxsplit=1)
@@ -107,7 +137,11 @@ def decide(event: MessageEvent, prior: Dialogue | None) -> Decision:
                 value = " ".join(raw_words[-len(words):]).lstrip(" :") if words else ""
             if value and normalize(value) != normalized_argument:
                 value = normalized_argument
-            return _decision(tool, value)
+            if context is not None and tool != "draft_customer" and not colon:
+                follow_up = _contextual_read(event.raw_input, context)
+                if follow_up is not None:
+                    return follow_up
+            return _decision(tool, value.rstrip("؟?").rstrip() if tool != "draft_customer" else value)
     sales_context = prior is not None and prior.topic == "sales_report"
     if sales_context and is_preceding_sales_period(event.raw_input):
         periods = prior.slots.get("periods", [])
@@ -137,8 +171,17 @@ def decide(event: MessageEvent, prior: Dialogue | None) -> Decision:
         return Decision("purchase_order", ToolCall("purchase_order", {"answer": event.raw_input.strip()}), "")
     if prior and prior.topic == "stock_transfer":
         return _transfer_turn(event.raw_input, prior)
+    if context is not None and (follow_up := _contextual_read(event.raw_input, context)) is not None:
+        return follow_up
     if prior and prior.topic in _PROMPTS:
-        return _decision(prior.topic, event.raw_input.strip())
+        reference = event.raw_input.strip()
+        candidate_ids = prior.slots.get("candidate_ids")
+        if candidate_ids:
+            value = event.normalized.removeprefix("#")
+            if not value.isascii() or not value.isdecimal() or len(value) > 10 or int(value) not in candidate_ids:
+                return Decision(prior.topic, None, "أرسل رقم السجل من القائمة السابقة.", dialogue=prior)
+            reference = f"#{value}"
+        return _decision(prior.topic, reference)
     return Decision(None, None, "حدّد المطلوب: رصيد عميل، مخزون صنف، حالة فاتورة، إضافة عميل، أو أمر شراء.", confidence=0.0)
 
 

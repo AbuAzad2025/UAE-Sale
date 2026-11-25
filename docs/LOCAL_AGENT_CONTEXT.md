@@ -17,12 +17,14 @@ memory intact. Reset deletes memory for the current user and tenant. Model input
 are immutable snapshots assembled before inference. Inference threads have no
 database access. Tenant records and embeddings stay out of shared model artifacts.
 
-Candidate intent ranking combines the local utterance representation and
-structured context features. A tool contract determines eligible record types,
-required arguments and permissions. Low confidence or multiple viable candidates
-produce a targeted question. A contextual reference can select a record for a
-read or preview. Confirmed writes continue to use the authenticated confirmation
-endpoint, with locked revalidation of the original preview.
+For customer, invoice and stock follow-ups, local character similarity ranks
+short utterances against examples for read-only actions. Recent record type and
+explicit record nouns constrain the candidates. An unfamiliar substantive word
+or competing interpretation stops automatic record reuse. Related reads check
+both permissions and resolve each side of the relationship inside the company.
+An invoice with multiple matching products asks the user to select an item.
+Confirmed writes use the authenticated confirmation endpoint, with locked
+revalidation of the original preview.
 
 Phase 1 uses existing ERP services for commercial actions and introduces
 context-conditioned reading, entity search and preview flows. Phase 2 adds

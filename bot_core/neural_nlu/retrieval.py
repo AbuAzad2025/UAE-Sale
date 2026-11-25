@@ -26,6 +26,10 @@ def _norm(vector: Counter[str]) -> float:
 
 
 def rank(query: str, candidates: Iterable[tuple[T, str]], *, threshold: float = 0.30, limit: int = 5) -> list[T]:
+    return [candidate for _, candidate in scored_matches(query, candidates, threshold=threshold)[:limit]]
+
+
+def scored_matches(query: str, candidates: Iterable[tuple[T, str]], *, threshold: float) -> list[tuple[float, T]]:
     source = _embedding(query)
     source_norm = _norm(source)
     if not source_norm:
@@ -39,7 +43,7 @@ def rank(query: str, candidates: Iterable[tuple[T, str]], *, threshold: float = 
         score = sum(count * vector[key] for key, count in source.items()) / (source_norm * norm)
         if score >= threshold:
             ranked.append((score, candidate))
-    return [candidate for _, candidate in sorted(ranked, key=lambda entry: entry[0], reverse=True)[:limit]]
+    return sorted(ranked, key=lambda entry: entry[0], reverse=True)
 
 
 def guide(query: str, *, is_owner: bool) -> str | None:

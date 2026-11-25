@@ -10,14 +10,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 
 from bot_core.agent import Tool, ToolRegistry, ToolResult
+from bot_core.context import REFERENCE_PERMISSIONS
 from bot_core.dialogue import Dialogue, StateManager
 from bot_core.gateway import normalize
 from bot_core.neural_nlu.retrieval import rank
 from bot_core.observability import utcnow
 from bot_core.security import Actor, Effect
 from extensions import db
-from models import AssistantAction, Customer, Product, Sale
+from models import AssistantAction, Customer, Product, Sale, SaleLine, Tenant
 from services.ai_questions import COMPANY_SELECTION_REQUIRED, SUMMARY_PERMISSIONS, business_summary
+from utils.constants import SALE_STATUSES
 
 
 class Reference(BaseModel):
@@ -69,7 +71,7 @@ def _query(model, actor: Actor):
 
 def _reference(query, model, value: str, *columns):
     key = normalize(value)
-    if key.startswith("#") and key[1:].isascii() and key[1:].isdigit() and len(key) <= 10:
+    if key.startswith("#") and len(key) <= 11 and key[1:].isascii() and key[1:].isdigit() and int(key[1:]) <= 2147483647:
         return query.where(model.id == int(key[1:]))
     return query.where(or_(*(func.lower(column) == value.lower() for column in columns)))
 
@@ -108,6 +110,14 @@ def customer_balance(args: BaseModel, actor: Actor, request_id: str) -> ToolResu
     )
 
 
+def _stock_message(name, quantity) -> str:
+    if quantity is None:
+        return f"كمية المخزون غير مسجلة للصنف {name}."
+    formatted = f"{quantity:,.3f}".rstrip("0").rstrip(".")
+    availability = "متوفر" if quantity > 0 else "غير متوفر"
+    return f"{name} {availability}. المخزون الإجمالي المسجل: {formatted}."
+
+
 def stock(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
     value = cast(Reference, args).reference
     query = _query(Product, actor).where(Product.is_active.is_(True))
@@ -126,18 +136,91 @@ def stock(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
     if not matches:
         return ToolResult("لم أجد صنفًا مطابقًا في الشركة الحالية.", "not_found", entities)
     product = matches[0]
-    return ToolResult(f"المخزون الإجمالي للصنف {product.name}: {product.current_stock:g}.", "read", entities)
+    return ToolResult(_stock_message(product.name, product.current_stock), "read", entities)
+
+
+_SALE_LABEL = {key: labels["ar"] for key, labels in SALE_STATUSES}
+_PAYMENT_LABEL = {"paid": "مدفوعة", "partial": "مدفوعة جزئيًا", "unpaid": "غير مدفوعة"}
+
+
+def _invoice_rows(actor: Actor):
+    return select(Sale.id, Sale.sale_number, Sale.status, Sale.payment_status, Sale.balance_due, Sale.customer_id).where(
+        Sale.tenant_id == actor.tenant_id, Sale.is_active.is_(True),
+    )
+
+
+def _invoice_by_reference(actor: Actor, value: str):
+    query = _reference(_invoice_rows(actor), Sale, value, Sale.sale_number)
+    return db.session.execute(query.limit(1)).first()
+
+
+def _invoice_result(match, actor: Actor, *, prefix: str = "") -> ToolResult:
+    if match is None:
+        return ToolResult("لم أجد فاتورة مطابقة في الشركة الحالية.", "not_found", {"sale_id": None})
+    status = _SALE_LABEL.get(match.status, "غير محددة")
+    payment = _PAYMENT_LABEL.get(match.payment_status, "غير محددة")
+    detail = f"الفاتورة {match.sale_number} {status} وحالة السداد {payment}."
+    if match.status == "confirmed" and match.balance_due is not None:
+        base = db.session.scalar(select(Tenant.default_currency).where(Tenant.id == actor.tenant_id))
+        currency = base or "بالعملة الأساسية"
+        detail += f" المتبقي للسداد: {match.balance_due:,.2f} {currency}."
+    return ToolResult(prefix + detail, "read", {"sale_id": match.id})
 
 
 def invoice_status(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
+    return _invoice_result(_invoice_by_reference(actor, cast(Reference, args).reference), actor)
+
+
+def latest_customer_invoice(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
     value = cast(Reference, args).reference
-    match = db.session.scalar(_reference(_query(Sale, actor), Sale, value, Sale.sale_number).limit(1))
+    query = select(Customer.id, Customer.name).where(Customer.tenant_id == actor.tenant_id, Customer.is_active.is_(True))
+    customers = db.session.execute(_reference(query, Customer, value, Customer.name).order_by(Customer.id).limit(10)).all()
+    if not customers:
+        return ToolResult("لم أجد العميل في الشركة الحالية.", "not_found", {"customer_id": None, "sale_id": None})
+    if len(customers) > 1:
+        options = "، ".join(f"{customer.name} (#{customer.id})" for customer in customers)
+        return ToolResult(f"أي عميل تقصد؟ {options}", "ambiguous",
+                          {"customer_ids": [customer.id for customer in customers], "sale_id": None})
+    customer = customers[0]
+    match = db.session.execute(_invoice_rows(actor).where(
+        Sale.customer_id == customer.id, Sale.status == "confirmed",
+    ).order_by(Sale.sale_date.desc(), Sale.id.desc()).limit(1)).first()
     if match is None:
-        return ToolResult("لم أجد فاتورة مطابقة في الشركة الحالية.", "not_found", {})
-    return ToolResult(
-        f"الفاتورة {match.sale_number}، الحالة {match.status}، الدفع {match.payment_status}.",
-        "read", {"sale_id": match.id},
-    )
+        return ToolResult(f"لا توجد فواتير مؤكدة للعميل {customer.name}.", "not_found",
+                          {"customer_id": customer.id, "sale_id": None})
+    result = _invoice_result(match, actor, prefix=f"آخر فاتورة مؤكدة للعميل {customer.name}. ")
+    return ToolResult(result.message, result.outcome, {"customer_id": customer.id, **result.entities})
+
+
+def invoice_stock(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
+    match = _invoice_by_reference(actor, cast(Reference, args).reference)
+    if match is None:
+        return ToolResult("لم أجد الفاتورة في الشركة الحالية.", "not_found", {"sale_id": None})
+    products = db.session.execute(
+        select(Product.id, Product.name, Product.current_stock)
+        .join(SaleLine, SaleLine.product_id == Product.id)
+        .where(SaleLine.tenant_id == actor.tenant_id, SaleLine.sale_id == match.id,
+               Product.tenant_id == actor.tenant_id, Product.is_active.is_(True))
+        .distinct().order_by(Product.id).limit(10)
+    ).all()
+    if not products:
+        return ToolResult("لا توجد أصناف نشطة مرتبطة بهذه الفاتورة.", "not_found", {"product_ids": []})
+    entities = {"sale_id": match.id, "product_ids": [product.id for product in products]}
+    if len(products) > 1:
+        options = "، ".join(f"{product.name} (#{product.id})" for product in products)
+        return ToolResult(f"أي صنف من الفاتورة {match.sale_number} تقصد؟ {options}", "ambiguous", entities,
+                          dialogue=Dialogue("check_stock", {"candidate_ids": entities["product_ids"]}))
+    product = products[0]
+    return ToolResult(f"الصنف في الفاتورة {match.sale_number}. " + _stock_message(product.name, product.current_stock),
+                      "read", entities)
+
+
+def invoice_customer_balance(args: BaseModel, actor: Actor, request_id: str) -> ToolResult:
+    match = _invoice_by_reference(actor, cast(Reference, args).reference)
+    if match is None:
+        return ToolResult("لم أجد الفاتورة في الشركة الحالية.", "not_found", {"sale_id": None, "customer_id": None})
+    result = customer_balance(Reference(reference=f"#{match.customer_id}"), actor, request_id)
+    return ToolResult(result.message, result.outcome, {"sale_id": match.id, **result.entities})
 
 
 def stage_action(actor: Actor, request_id: str, tool: str, payload: dict, preview: str) -> AssistantAction:
@@ -219,6 +302,15 @@ def build_registry() -> ToolRegistry:
              ("view_products", "manage_products", "view_reports"), Effect.READ, stock),
         Tool("get_invoice_status", "Look up a sales invoice by number.", Reference,
              ("manage_sales", "view_reports"), Effect.READ, invoice_status),
+        Tool("get_latest_customer_invoice", "Read the newest confirmed invoice for a scoped customer.", Reference,
+             REFERENCE_PERMISSIONS["invoice"], Effect.READ, latest_customer_invoice,
+             related_permissions=REFERENCE_PERMISSIONS["customer"]),
+        Tool("check_invoice_stock", "Read live stock for an item of a scoped invoice.", Reference,
+             REFERENCE_PERMISSIONS["product"], Effect.READ, invoice_stock,
+             related_permissions=REFERENCE_PERMISSIONS["invoice"]),
+        Tool("get_invoice_customer_balance", "Read the live balance of the customer on a scoped invoice.", Reference,
+             REFERENCE_PERMISSIONS["customer"], Effect.READ, invoice_customer_balance,
+             related_permissions=REFERENCE_PERMISSIONS["invoice"]),
         Tool("sales_report", "Summarize and compare confirmed sales by period and currency.", SalesReport,
              ("view_reports", "manage_sales"), Effect.READ, sales_report),
         *(Tool(f"summary_{kind}", f"Read the {kind} summary.", SummaryRequest, permissions, Effect.READ,

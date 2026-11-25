@@ -419,10 +419,9 @@ OPERATIONAL_ROLES = {
         ],
     ),
     "viewer": ("Viewer", "مشاهد", ["view_reports", "view_ledger", "view_products"]),
-    # Maintenance has only two operational roles. Both cover the full workflow
-    # so no extra roles (cashier/closer/discount/settings) are needed.
-    # The Manager role already holds every maintenance permission and can
-    # perform all of these functions as well.
+    # Maintenance has exactly three operational roles: reception, engineer and
+    # cashier. All three cover the complete maintenance workflow (full
+    # permissions); the Manager role holds every maintenance permission too.
     "maintenance_reception": (
         "Maintenance Reception",
         "استقبال صيانة",
@@ -435,6 +434,15 @@ OPERATIONAL_ROLES = {
     "maintenance_engineer": (
         "Maintenance Engineer",
         "مهندس صيانة",
+        [
+            "maintenance_view", "maintenance_receive", "maintenance_work",
+            "maintenance_cashier", "maintenance_close", "maintenance_discount",
+            "maintenance_settings", "maintenance_purchase",
+        ],
+    ),
+    "maintenance_cashier": (
+        "Maintenance Cashier",
+        "محاسب صيانة",
         [
             "maintenance_view", "maintenance_receive", "maintenance_work",
             "maintenance_cashier", "maintenance_close", "maintenance_discount",

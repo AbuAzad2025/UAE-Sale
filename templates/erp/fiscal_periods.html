@@ -5,18 +5,22 @@
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_fiscal_period') }}" class="d-inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="input-group" style="width:250px"><input type="number" name="year" class="form-control" placeholder="{{ t('Year') }}" value="{{ now.year }}" required><div class="input-group-append"><button type="submit" class="btn btn-primary">{{ t('Create') }}</button></div></div>
+    <div class="input-group" style="max-width: 320px;">
+      <input type="number" name="year" class="form-control" placeholder="{{ t('Year') }}" value="{{ now.year }}" required>
+      <div class="input-group-append"><button type="submit" class="btn btn-primary">{{ t('Create') }}</button></div>
+    </div>
   </form>
 </div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>{{ t('Year') }}</th><th>{{ t('Name') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Status') }}</th><th>{{ t('Close it') }}</th></tr></thead>
+    <thead><tr><th>{{ t('Year') }}</th><th>{{ t('Name') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for p in periods %}
     <tr>
-      <td><strong>{{ p.year }}</strong></td><td>{{ p.name }}</td>
+      <td><strong>{{ p.year }}</strong></td><td>{% if p.name == 'السنة المالية ' ~ p.year %}{{ t('Fiscal Year') }} {{ p.year }}{% else %}{{ p.name }}{% endif %}</td>
       <td>{{ p.start_date.strftime('%Y-%m-%d') }}</td><td>{{ p.end_date.strftime('%Y-%m-%d') }}</td>
-      <td><span class="badge badge-{{ 'danger' if p.is_closed else 'success' }}">{{ p.status|status_label }}</span></td>
+      <td><span class="badge badge-{{ 'danger' if p.is_closed else 'success' }}">{{ ('closed' if p.is_closed else 'open')|status_label }}</span></td>
       <td>
         {% if p.is_closed %}
         <form method="POST" action="{{ url_for('erp_modules.reopen_fiscal_period', id=p.id) }}" style="display:inline">
@@ -30,5 +34,6 @@
     {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No fiscal periods') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

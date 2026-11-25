@@ -167,6 +167,47 @@ def extract_entities(message: str) -> dict:
     return ents
 
 
+def _question_plan(msg: str, ents: dict):
+    """Questions must never be planned as creation actions.
+
+    "كم عدد المبيعات اليوم؟" used to become create_sale because the word
+    "مبيعات" alone triggered the sale flow. Detect the question form first and
+    route it to a read-only tool.
+    """
+    from services.ai_questions import is_question
+
+    if not is_question(msg):
+        return None
+    text = (msg or "").lower()
+    tool = None
+    intent = "chat"
+    params: dict = {}
+    if any(w in text for w in ("مبيع", "مبيعات", "فاتورة", "sales", "invoice")):
+        tool, intent = "sales_summary", "sales_analysis"
+        if "اليوم" in text or "today" in text:
+            params["days"] = 1
+        elif "أسبوع" in text or "week" in text:
+            params["days"] = 7
+        elif "شهر" in text or "month" in text:
+            params["days"] = 30
+    elif any(w in text for w in ("مخزون", "منتج", "قطعة", "inventory", "stock")):
+        tool, intent = "inventory_status", "inventory_check"
+    elif "رصيد" in text and ents.get("names"):
+        tool, intent = "get_customer_balance", "customer_balance"
+        params["customer_name"] = ents["names"][0]
+    if not tool:
+        return None
+    return Plan(
+        intent=intent,
+        tool=tool,
+        params=params,
+        missing_fields=[f for f in _REQUIRED.get(tool, []) if f not in params],
+        needs_confirm=False,
+        confidence=0.85,
+        source="question",
+    )
+
+
 def plan(message: str, user=None) -> Plan:
     """إنتاج خطة منظمة من رسالة حرة."""
     from services.ai_flows import find_flow
@@ -175,6 +216,10 @@ def plan(message: str, user=None) -> Plan:
     msg = message or ""
     norm = _norm(msg)
     ents = extract_entities(msg)
+
+    question = _question_plan(msg, ents)
+    if question is not None:
+        return question
 
     flow = find_flow(norm)
     if flow:

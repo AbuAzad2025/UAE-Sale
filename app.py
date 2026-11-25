@@ -135,7 +135,10 @@ def _translate_flash(message):
             return out
 
         text_norm = _re.sub(r"\\n", " ", text)
-        for ar, en in _map.items():
+        # Prefer the most specific key: a generic "... أضيف {x} بنجاح" must not
+        # swallow a cheque message whose placeholder also contains the word
+        # "الشيك" (the capture would then include the noun and translate wrong).
+        for ar, en in sorted(_map.items(), key=lambda kv: len(kv[0]), reverse=True):
             pattern = _to_regex(ar)
             if not pattern:
                 continue
@@ -190,6 +193,14 @@ _STATUS_EN = {
     "inactive": "Inactive", "completed": "Completed", "confirmed": "Confirmed",
     "low": "Low", "normal": "Normal", "high": "High", "urgent": "Urgent",
     "final": "Final", "draft": "Draft", "posted": "Posted",
+    "received": "Received", "in_transit": "In Transit",
+    "partially_received": "Partially Received", "submitted": "Submitted",
+    "arrived": "Arrived", "inspected": "Inspected", "put_away": "Put Away",
+    "selling": "Selling", "closed": "Closed", "escalated": "Escalated",
+    "disposed": "Disposed", "sold": "Sold", "failed": "Failed",
+    "archived": "Archived", "under_collection": "Under Collection",
+    "asset": "Asset", "liability": "Liability", "equity": "Equity",
+    "revenue": "Revenue", "expense": "Expense",
 }
 
 # Status codes -> Arabic UI labels (raw codes must never appear in AR either)
@@ -203,6 +214,14 @@ _STATUS_AR = {
     "partial": "جزئي", "void": "ملغى", "active": "نشط", "inactive": "غير نشط",
     "completed": "مكتمل", "confirmed": "مؤكد", "posted": "مرحّل",
     "under_collection": "تحت التحصيل", "archived": "مؤرشف",
+    "received": "مستلم", "in_transit": "في الطريق",
+    "partially_received": "مستلم جزئياً", "submitted": "مقدم",
+    "arrived": "وصل", "inspected": "تمت المعاينة", "put_away": "أُدخل المخزون",
+    "selling": "للبيع", "closed": "مغلق", "escalated": "مُصعَّد",
+    "disposed": "مستبعد", "sold": "مباع", "failed": "فشل",
+    "monitoring": "تحت المتابعة", "breached": "مخالف",
+    "asset": "أصل", "liability": "خصم", "equity": "حقوق الملكية",
+    "revenue": "إيراد", "expense": "مصروف",
 }
 
 # Payment method codes -> UI labels (raw codes must never appear in either language)
@@ -257,6 +276,48 @@ def _tax_treatment_label(value):
     s = str(value or "standard").lower()
     entry = _TAX_TREATMENT.get(s, _TAX_TREATMENT["standard"])
     return entry[get_current_language() if get_current_language() in ("ar", "en") else "ar"]
+
+
+_FREQUENCY_LABELS = {
+    "daily": {"ar": "يومي", "en": "Daily"},
+    "weekly": {"ar": "أسبوعي", "en": "Weekly"},
+    "monthly": {"ar": "شهري", "en": "Monthly"},
+    "quarterly": {"ar": "ربع سنوي", "en": "Quarterly"},
+    "yearly": {"ar": "سنوي", "en": "Yearly"},
+    "annual": {"ar": "سنوي", "en": "Yearly"},
+}
+
+_EXPENSE_CATEGORY_LABELS = {
+    "rent": {"ar": "إيجار", "en": "Rent"},
+    "utilities": {"ar": "مرافق", "en": "Utilities"},
+    "salaries": {"ar": "رواتب", "en": "Salaries"},
+    "transport": {"ar": "نقل", "en": "Transport"},
+    "marketing": {"ar": "تسويق", "en": "Marketing"},
+    "maintenance": {"ar": "صيانة", "en": "Maintenance"},
+    "office": {"ar": "مكتب", "en": "Office"},
+    "other": {"ar": "أخرى", "en": "Other"},
+    "مصروفات": {"ar": "مصروفات", "en": "Expenses"},
+}
+
+
+def _code_label(value, labels):
+    """Localise a stored code/frequency into the active UI language."""
+    from utils.i18n import get_current_language
+
+    key = str(value or "").strip().lower()
+    entry = labels.get(key)
+    if not entry:
+        return str(value or "")
+    lang = get_current_language()
+    return entry[lang if lang in ("ar", "en") else "ar"]
+
+
+def _frequency_label(value):
+    return _code_label(value, _FREQUENCY_LABELS)
+
+
+def _expense_category_label(value):
+    return _code_label(value, _EXPENSE_CATEGORY_LABELS)
 
 
 def _page_title_text(value):
@@ -821,6 +882,8 @@ def create_app(config_class=Config):  # noqa: C901
     app.template_filter("status_badge")(_status_badge)
     app.template_filter("status_label")(_status_label)
     app.template_filter("tax_treatment_label")(_tax_treatment_label)
+    app.template_filter("frequency_label")(_frequency_label)
+    app.template_filter("expense_category_label")(_expense_category_label)
     app.template_filter("page_title_text")(_page_title_text)
 
     # Tenant isolation is a hard security requirement: if any hook fails to
@@ -912,18 +975,18 @@ def create_app(config_class=Config):  # noqa: C901
 
     try:
         with app.app_context():
-            from services.fiscal_period_guard import ensure_current_period
+            from services.fiscal_period_guard import ensure_periods_for_active_tenants
 
             try:
-                ensure_current_period()
-                # ensure_current_period() only FLUSHES the new period - the
-                # service stays flush-only and the transaction belongs to the
-                # caller. Without this commit the write is still open when
-                # this app context pops, the session is removed with a
-                # ROLLBACK, and the period the boot just "provisioned" never
-                # reaches the database: a freshly deployed tenant would have
-                # no open fiscal period at all and every posting would be
-                # refused with "no fiscal period for this date".
+                ensure_periods_for_active_tenants()
+                # The guard only FLUSHES the new period - the service stays
+                # flush-only and the transaction belongs to the caller.
+                # Without this commit the write is still open when this app
+                # context pops, the session is removed with a ROLLBACK, and
+                # the period the boot just "provisioned" never reaches the
+                # database: a freshly deployed tenant would have no open
+                # fiscal period at all and every posting would be refused
+                # with "no fiscal period for this date".
                 db.session.commit()
             except Exception:
                 db.session.rollback()

@@ -652,12 +652,14 @@
                   <p>{{ t("Chart of Accounts") }}</p>
                 </a>
               </li>
+              {% if current_user.has_permission('manage_ledger') %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.manual_entry') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>{{ t("Manual Entry") }}</p>
                 </a>
               </li>
+              {% endif %}
               <li class="nav-item">
                 <a href="{{ url_for('ledger.trial_balance') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -789,7 +791,9 @@
               {% endif %}
               {% if current_user.has_permission('manage_payments') %}
               <li class="nav-item"><a href="{{ url_for('erp_modules.dunning') }}" class="nav-link"><i class="fas fa-exclamation-triangle nav-icon"></i><p>{{ t("Dunning Alerts") }}</p></a></li>
+              {% if current_user.has_permission('manage_payments') and current_user.has_permission('manage_expenses') %}
               <li class="nav-item"><a href="{{ url_for('erp_modules.recurring_expenses') }}" class="nav-link"><i class="fas fa-redo nav-icon"></i><p>{{ t("Recurring Expenses") }}</p></a></li>
+              {% endif %}
               {% endif %}
               {% if current_user.has_permission('manage_ledger') %}
               <li class="nav-item"><a href="{{ url_for('erp_modules.fiscal_periods') }}" class="nav-link"><i class="fas fa-lock nav-icon"></i><p>{{ t("Fiscal Periods") }}</p></a></li>
@@ -894,12 +898,14 @@
                   <p>{{ t("Partner and Trader Report") }}</p>
                 </a>
               </li>
+              {% if current_user.can_see_costs() %}
               <li class="nav-item">
                 <a href="{{ url_for('reports.inventory_valuation') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
                   <p>{{ t("Inventory Valuation") }}</p>
                 </a>
               </li>
+              {% endif %}
               <li class="nav-item">
                 <a href="{{ url_for('reports.ap_aging') }}" class="nav-link">
                   <i class="far fa-circle nav-icon"></i>
@@ -1132,7 +1138,10 @@
           <div class="footer-col-body">
             <span class="footer-brand-name">{{ current_tenant.name_ar if current_language == 'ar' and current_tenant.name_ar else (current_tenant.name_en or current_tenant.name or '') }}</span>
             {% if current_tenant.phone_1 %}<span class="footer-contact" dir="ltr"><i class="fas fa-phone"></i> {{ current_tenant.phone_1 }}</span>{% endif %}
-            {% if current_tenant.address_ar or current_tenant.city %}<span class="footer-contact">{{ current_tenant.address_ar or '' }} {{ current_tenant.city or '' }}</span>{% endif %}
+            {% set _footer_addr = current_tenant.address_en if current_language == 'en' else (current_tenant.address_ar or current_tenant.address_en) %}
+            {% if _footer_addr or (current_tenant.city and current_language != 'en') %}
+            <span class="footer-contact">{{ _footer_addr or '' }}{% if current_tenant.city and current_language != 'en' %} {{ current_tenant.city }}{% endif %}{% if current_language == 'en' and not _footer_addr and current_tenant.country %} {{ current_tenant.country }}{% endif %}</span>
+            {% endif %}
           </div>
         </div>
         <span class="footer-divider" aria-hidden="true"></span>

@@ -4,14 +4,15 @@
 {% block content %}
 <div class="mb-3"><a href="{{ url_for('erp_modules.create_lot') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('Add Lot') }}</a></div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Lot Number') }}</th><th>{{ t('Product') }}</th><th>{{ t('Warehouse') }}</th><th>{{ t('Quantity') }}</th>{% if current_user.can_see_costs() %}<th>{{ t('Cost') }}</th>{% endif %}<th>{{ t('Production') }}</th><th>{{ t('Expiry') }}</th><th>{{ t('Status') }}</th></tr></thead>
     <tbody>
     {% for l in lots %}
     <tr>
       <td><strong>{{ l.lot_number }}</strong></td>
-      <td>{{ l.product.name if l.product else '-' }}</td>
-      <td>{{ l.warehouse.name if l.warehouse else '-' }}</td>
+      <td>{{ (l.product.name_ar if current_language == 'ar' and l.product.name_ar else l.product.name) if l.product else '-' }}</td>
+      <td>{{ (l.warehouse.name_ar if current_language == 'ar' and l.warehouse.name_ar else l.warehouse.name) if l.warehouse else '-' }}</td>
       <td>{{ l.quantity }}</td>
       {% if current_user.can_see_costs() %}<td>{{ "{:,.2f}".format(l.cost_price|float) }}</td>{% endif %}
       <td>{{ l.manufacture_date.strftime('%Y-%m-%d') if l.manufacture_date else '-' }}</td>
@@ -21,5 +22,6 @@
     {% else %}<tr><td colspan="{{ 8 if current_user.can_see_costs() else 7 }}" class="text-center text-muted">{{ t('No lots') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

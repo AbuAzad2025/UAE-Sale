@@ -246,7 +246,7 @@
   "✅ تم إنشاء الإرسالية {s.shipment_number}": "✅ Consignment {s.shipment_number} created",
   "✅ تم إنشاء الحساب {account.full_name} بنجاح": "✅ Account {account.full_name} created successfully",
   "✅ تم إنشاء الخزينة السرية بنجاح!": "✅ Petty cash vault created successfully!",
-  "✅ تم إنشاء الدفعة": "✅ Payment created",
+  "✅ تم إنشاء الدفعة": "✅ Lot created",
   "✅ تم إنشاء الفاتورة الإلكترونية {einv.invoice_number}": "✅ E-invoice {einv.invoice_number} created",
   "✅ تم إنشاء الفاتورة بنجاح!": "✅ Invoice created successfully!",
   "✅ تم إنشاء الفترة المالية {year}": "✅ Financial period {year} created",

@@ -1583,9 +1583,6 @@ def _tenant_form_values(tenant=None):
             "logo_dark_url": "",
             "brand_color_primary": "#007A3D",
             "brand_color_secondary": "#D4AF37",
-            "max_users": 5,
-            "max_products": 1000,
-            "max_customers": 500,
             "is_active": True,
             "is_suspended": False,
             "suspension_reason": "",
@@ -1631,13 +1628,6 @@ def _tenant_form_values(tenant=None):
             "brand_color_primary": tenant.brand_color_primary or "#007A3D",
             "brand_color_secondary": tenant.brand_color_secondary or "#D4AF37",
             "is_trial": bool(tenant.is_trial),
-            "max_users": tenant.max_users if tenant.max_users is not None else 5,
-            "max_products": tenant.max_products
-            if tenant.max_products is not None
-            else 1000,
-            "max_customers": tenant.max_customers
-            if tenant.max_customers is not None
-            else 500,
             "is_active": bool(tenant.is_active),
             "is_suspended": bool(tenant.is_suspended),
             "suspension_reason": tenant.suspension_reason or "",
@@ -1734,9 +1724,6 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         "footer_text_ar": (form.get("footer_text_ar") or "").strip() or None,
         "active_template": (form.get("active_template") or "modern").strip()
         or "modern",
-        "max_users": _tenant_to_int(form.get("max_users"), 5),
-        "max_products": _tenant_to_int(form.get("max_products"), 1000),
-        "max_customers": _tenant_to_int(form.get("max_customers"), 500),
     }
     return cleaned, errors
 

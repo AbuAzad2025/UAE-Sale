@@ -16,6 +16,7 @@ from services.user_service import UserService
 from utils.decorators import (
     permission_required,
     _role_level,
+    _ROLE_LEVELS,
     _current_user_level,
     get_owned_or_404,
 )
@@ -48,12 +49,22 @@ def _assignable_roles():
     """Roles a user may grant. Platform roles are never offered to tenants."""
     roles = Role.query.filter_by(is_active=True).all()
     if not _is_platform_owner():
+        # A tenant manager staffs their own company: only their tenant's
+        # roles may be granted (global roles would duplicate every label).
+        tenant_id = getattr(current_user, "tenant_id", None)
         roles = [
             r for r in roles
-            if (r.slug or "").lower() not in _PLATFORM_ROLE_SLUGS
+            if r.tenant_id == tenant_id
+            and (r.slug or "").lower() not in _PLATFORM_ROLE_SLUGS
         ]
     level = _current_user_level()
-    return [r for r in roles if _role_level(r) <= level]
+    roles = [r for r in roles if _role_level(r) <= level]
+    # Stable, organised order: highest privilege first, then by role name.
+    # Maintenance roles now carry explicit levels and sort with the rest.
+    return sorted(
+        roles,
+        key=lambda r: (-_ROLE_LEVELS.get((r.slug or "").lower(), 0), (r.name_ar or r.name or r.slug or "")),
+    )
 
 
 @users_bp.route("/")

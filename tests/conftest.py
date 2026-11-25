@@ -211,6 +211,8 @@ def owner_user(db):
         Permission(code="view_reports", name="View Reports", category="reports"),
         Permission(code="manage_backups", name="Manage Backups", category="backups"),
         Permission(code="view_costs", name="View Costs", category="finance"),
+        Permission(code="manage_ledger", name="Manage Ledger", category="ledger"),
+        Permission(code="manage_hr", name="Manage HR", category="hr"),
     ]
     db.session.add_all(perms)
     db.session.flush()
@@ -273,6 +275,9 @@ def manager_user(db, owner_user):
         Permission.query.filter_by(code="manage_purchases").first(),
         Permission.query.filter_by(code="manage_payments").first(),
         Permission.query.filter_by(code="view_reports").first(),
+        # Production managers own the tenant: ledger + HR are theirs too.
+        Permission.query.filter_by(code="manage_ledger").first(),
+        Permission.query.filter_by(code="manage_hr").first(),
         # Cost visibility is permission-driven now (migration 14 backfills
         # production manager roles; fixtures must mirror that grant).
         Permission.query.filter_by(code="view_costs").first(),

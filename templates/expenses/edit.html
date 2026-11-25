@@ -38,7 +38,7 @@
                 <option value="">{{ t('None') }}</option>
                 {% for category in categories %}
                 <option value="{{ category.id }}" {% if expense.category_id == category.id %}selected{% endif %}>
-                  {{ category.name_ar }} - {{ category.name }}
+                  {% if current_language == 'ar' %}{{ category.name_ar or (category.name|expense_category_label) }}{% else %}{{ category.name|expense_category_label }}{% endif %}
                 </option>
                 {% endfor %}
               </select>
@@ -246,9 +246,10 @@ $(function () {
       }),
       success: function(response) {
         if (response.success) {
-          const displayName = response.category.name_ar ? 
-            response.category.name_ar + ' - ' + response.category.name : 
-            response.category.name;
+          const lang = {{ current_language|tojson }};
+          const displayName = lang === 'ar'
+            ? (response.category.name_ar || response.category.name)
+            : response.category.name;
           const newOption = new Option(displayName, response.category.id, true, true);
           $('#expense_category').append(newOption).trigger('change');
           

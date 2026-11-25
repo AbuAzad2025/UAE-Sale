@@ -16,7 +16,7 @@
   <div class="card-header bg-gradient-primary">
     <h3 class="card-title text-white">{{ account.code }} - {{ display_name(account) }}</h3>
     <div class="card-tools">
-      <span class="badge badge-light">{{ account.type }}</span>
+      <span class="badge badge-light">{{ account.type|status_label }}</span>
     </div>
   </div>
   <div class="card-body p-0">

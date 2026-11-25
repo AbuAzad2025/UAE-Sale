@@ -293,33 +293,6 @@
         </div>
         <div class="col-md-3">
         </div>
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>{{ t('User Limit') }}</label>
-            <input type="number" name="max_users" value="{{ form.max_users }}" class="form-control" min="0" dir="ltr">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>{{ t('Product Limit') }}</label>
-            <input type="number" name="max_products" value="{{ form.max_products }}" class="form-control" min="0" dir="ltr">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>{{ t('Customer Limit') }}</label>
-            <input type="number" name="max_customers" value="{{ form.max_customers }}" class="form-control" min="0" dir="ltr">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="form-group">
-            <label>&nbsp;</label>
-            <div class="custom-control custom-checkbox">
-              <input type="checkbox" class="custom-control-input" id="is_trial" name="is_trial" {% if form.is_trial %}checked{% endif %}>
-              <label class="custom-control-label" for="is_trial">{{ t('Trial Period') }}</label>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>

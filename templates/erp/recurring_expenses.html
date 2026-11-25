@@ -4,15 +4,16 @@
 {% block content %}
 <div class="mb-3"><a href="{{ url_for('erp_modules.create_recurring_expense') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('New Recurring Expense') }}</a></div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Name') }}</th><th>{{ t('Category') }}</th><th>{{ t('Amount') }}</th><th>{{ t('Frequency') }}</th><th>{{ t('Next') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for re in recurring_expenses %}
     <tr>
       <td><strong>{{ re.name }}</strong></td>
-      <td>{{ re.category.name if re.category else '-' }}</td>
+      <td>{{ (re.category.name_ar if current_language == 'ar' and re.category.name_ar else re.category.name)|expense_category_label if re.category else '-' }}</td>
       <td>{{ "{:,.2f}".format(re.amount|float) }} {{ re.currency }}</td>
-      <td>{{ re.frequency }}</td>
+      <td>{{ re.frequency|frequency_label }}</td>
       <td>{{ re.next_due_date.strftime('%Y-%m-%d') if re.next_due_date else '-' }}</td>
       <td><span class="badge badge-{{ 'success' if re.is_active else 'secondary' }}">{{ t('Active') if re.is_active else t('Paused') }}</span></td>
       <td>
@@ -25,5 +26,6 @@
     {% else %}<tr><td colspan="7" class="text-center text-muted">{{ t('No recurring expenses') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

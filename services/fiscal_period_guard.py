@@ -92,8 +92,24 @@ def is_open(document_date=None):
     return not bool(getattr(period, "is_closed", False))
 
 
-def ensure_current_period(year=None):
+def _resolve_tenant_id(tenant_id=None):
+    """Resolve the tenant for period provisioning (None = platform scope).
+
+    ``TENANT_LESS_SCOPE`` (-1) means "rows with no tenant", not a tenant id,
+    so it is normalised to None instead of being stamped on the row.
+    """
+    from models.tenant_scope import TENANT_LESS_SCOPE, get_current_tenant_id
+
+    resolved = tenant_id if tenant_id is not None else get_current_tenant_id()
+    return None if resolved == TENANT_LESS_SCOPE else resolved
+
+
+def ensure_current_period(year=None, tenant_id=None):
     """Create an open annual period for *year* if none exists. Idempotent.
+
+    The period belongs to *tenant_id* (or the current tenant). A platform
+    scope (no tenant) provisions a global period, which applies to every
+    tenant but is owned by the platform — a tenant cannot close it.
 
     Used by the application factory (a deployment must be able to post
     documents the moment it starts) and by the test fixtures, which rebuild
@@ -106,11 +122,17 @@ def ensure_current_period(year=None):
     from models.erp_modules import FiscalPeriod
 
     target_year = year or _date.today().year
+    tenant_id = _resolve_tenant_id(tenant_id)
 
-    existing = FiscalPeriod.query.filter(
+    query = FiscalPeriod.query.filter(
         FiscalPeriod.year == target_year,
         FiscalPeriod.period_type == "annual",
-    ).first()
+    )
+    if tenant_id is None:
+        query = query.filter(FiscalPeriod.tenant_id.is_(None))
+    else:
+        query = query.filter(FiscalPeriod.tenant_id == tenant_id)
+    existing = query.first()
     if existing is not None:
         return existing
 
@@ -121,10 +143,32 @@ def ensure_current_period(year=None):
         start_date=_date(target_year, 1, 1),
         end_date=_date(target_year, 12, 31),
         is_closed=False,
+        tenant_id=tenant_id,
     )
     db.session.add(period)
     db.session.flush()
     return period
+
+
+def ensure_periods_for_active_tenants(year=None):
+    """Provision *year* for every active tenant (platform scope if none).
+
+    Booting with a single global period meant one tenant closing the year
+    froze every other tenant, and a tenant manager could never close their
+    own year because the period belonged to the platform. Each tenant now
+    gets its own period.
+    """
+    from models import Tenant
+
+    try:
+        tenant_ids = [
+            row.id for row in Tenant.query.filter_by(is_active=True).all()
+        ]
+    except Exception:
+        tenant_ids = []
+    if not tenant_ids:
+        return [ensure_current_period(year)]
+    return [ensure_current_period(year, tenant_id=tid) for tid in tenant_ids]
 
 
 def ensure_periods_for_years(years):

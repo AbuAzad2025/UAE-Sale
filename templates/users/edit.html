@@ -58,7 +58,7 @@
                   <select name="role_id" class="form-control select2">
                     {% for r in roles %}
                       <option value="{{ r.id }}" {% if user.role_id == r.id %}selected{% endif %}>
-                        {{ r.name_ar or r.name }}
+                        {{ r.name if current_language == 'en' else (r.name_ar or r.name) }}
                       </option>
                     {% endfor %}
                   </select>

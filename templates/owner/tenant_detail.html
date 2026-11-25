@@ -74,13 +74,12 @@
   </div>
   <div class="col-md-6">
     <div class="card shadow-sm mb-3">
-      <div class="card-header"><h5 class="mb-0">{{ t('Contact and Subscription') }}</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ t('Contact and Settings') }}</h5></div>
       <div class="card-body">
         <table class="table table-bordered mb-0">
           <tr><th style="width:35%;">{{ t('Phones') }}</th><td dir="ltr" class="text-left">{{ tenant.phone_1 or '' }} {{ tenant.phone_2 or '' }} {{ tenant.mobile or '' }}</td></tr>
           <tr><th>{{ t('Mail') }}</th><td dir="ltr" class="text-left">{{ tenant.email or '---' }}</td></tr>
           <tr><th>{{ t('Tax Number') }}</th><td>{{ tenant.tax_number or '---' }}</td></tr>
-          <tr><th>{{ t('Limits (users/products/customers)') }}</th><td>{{ tenant.max_users }} / {{ tenant.max_products }} / {{ tenant.max_customers }}</td></tr>
         </table>
       </div>
     </div>

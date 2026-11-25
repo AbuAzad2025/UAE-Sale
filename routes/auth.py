@@ -176,18 +176,8 @@ def login():
                             "danger",
                         )
                         return render_template("auth/login.html")
-                    # Fail closed: if subscription status cannot be positively
-                    # verified, deny access (don't rely on a swallowed error).
-                    try:
-                        _sub_ok = _tenant.is_subscription_active()
-                    except Exception:
-                        _sub_ok = False
-                    if not _sub_ok:
-                        flash(
-                            "⚠️ انتهى اشتراك شركتك. تواصل مع مالك المنصة للتجديد.",
-                            "danger",
-                        )
-                        return render_template("auth/login.html")
+                    # Unified platform: no subscription/plan gate. Only the
+                    # tenant's active/suspended state controls access.
         except Exception:
             current_app.logger.exception("Tenant status check failed at login")
             flash("\u062a\u0639\u0630\u0631 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0624\u0633\u0633\u0629. \u062d\u0627\u0648\u0644 \u0644\u0627\u062d\u0642\u0627\u064b.", "danger")

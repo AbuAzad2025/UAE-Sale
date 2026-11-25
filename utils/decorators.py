@@ -187,6 +187,11 @@ _ROLE_LEVELS = {
     "hr": 60,
     "inventory": 30,
     "viewer": 10,
+    # Maintenance operational roles — leveled so a low-privilege account
+    # cannot mint a maintenance role that carries maintenance write rights.
+    "maintenance_reception": 40,
+    "maintenance_engineer": 45,
+    "maintenance_cashier": 50,
 }
 
 

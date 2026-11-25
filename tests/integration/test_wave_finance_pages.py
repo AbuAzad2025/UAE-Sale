@@ -1035,6 +1035,95 @@ class TestErpModules:
         db.session.refresh(f31)
         assert f31.is_closed is False
 
+    def test_fiscal_period_create_commits_and_manager_can_close(
+        self, client, db, manager_user
+    ):
+        """Regression: period creation must be committed, and a manager
+        (non-owner) with manage_ledger must be able to close/reopen it."""
+        from models import Permission
+
+        ledger_perm = Permission.query.filter_by(code="manage_ledger").first()
+        assert ledger_perm is not None, "manage_ledger permission must exist"
+        if ledger_perm not in manager_user.role.permissions:
+            manager_user.role.permissions.append(ledger_perm)
+            db.session.commit()
+
+        login = client.post(
+            "/auth/login",
+            data={"username": "testmanager", "password": "ManagerPass123!"},
+            follow_redirects=True,
+        )
+        assert login.status_code == 200
+
+        created = client.post(
+            "/erp/fiscal-periods/create",
+            data={"year": "2032"},
+            follow_redirects=True,
+        )
+        assert created.status_code == 200
+        assert "تم إنشاء" in created.data.decode("utf-8", "replace")
+
+        def _row(year):
+            return db.session.execute(
+                db.text("SELECT id, is_closed FROM fiscal_periods WHERE year = :y"),
+                {"y": year},
+            ).first()
+
+        # The row must survive a rollback: without an explicit commit the
+        # pending insert is discarded here and the bug resurfaces.
+        db.session.rollback()
+        row = _row(2032)
+        assert row is not None, "created fiscal period was never committed"
+
+        closed = client.post(
+            f"/erp/fiscal-periods/{row.id}/close", data={}, follow_redirects=True
+        )
+        assert closed.status_code == 200
+        assert "تم إغلاق" in closed.data.decode("utf-8", "replace")
+        assert bool(_row(2032).is_closed) is True
+
+        reopened = client.post(
+            f"/erp/fiscal-periods/{row.id}/reopen", data={}, follow_redirects=True
+        )
+        assert reopened.status_code == 200
+        assert "تم إعادة فتح" in reopened.data.decode("utf-8", "replace")
+        assert bool(_row(2032).is_closed) is False
+
+        # Empty year must be rejected with a flash, never crash or create.
+        before = db.session.execute(
+            db.text("SELECT COUNT(*) FROM fiscal_periods")
+        ).scalar()
+        empty = client.post(
+            "/erp/fiscal-periods/create", data={"year": ""}, follow_redirects=True
+        )
+        assert empty.status_code == 200
+        assert "السنة مطلوبة" in empty.data.decode("utf-8", "replace")
+        after = db.session.execute(
+            db.text("SELECT COUNT(*) FROM fiscal_periods")
+        ).scalar()
+        assert after == before
+
+    def test_fiscal_periods_page_is_fully_localised(self, client, db, login_owner):
+        """No raw Arabic UI strings or blank status badges on the EN page."""
+        from services.fiscal_period_guard import ensure_current_period
+
+        ensure_current_period(2033)
+        db.session.commit()
+
+        client.get("/language/set/en", follow_redirects=True)
+        resp = client.get("/erp/fiscal-periods")
+        body = resp.data.decode("utf-8", "replace")
+        assert resp.status_code == 200
+        assert "Fiscal Year 2033" in body
+        assert "السنة المالية" not in body
+        assert "Actions" in body
+        assert ">Open<" in body
+
+        client.get("/language/set/ar", follow_redirects=True)
+        ar = client.get("/erp/fiscal-periods").data.decode("utf-8", "replace")
+        assert "السنة المالية 2033" in ar
+        assert "مفتوح" in ar
+
     def test_po_lifecycle_partial_receive_guards(
         self, client, login_owner, owner_user, supplier_row, test_product, main_wh
     ):

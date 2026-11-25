@@ -124,26 +124,20 @@ class TestProvision:
                 actor=seller_user,
             )
 
-    def test_quota(self, db, owner_user, mgr_role, tenant_a):
+    def test_no_artificial_user_quota(self, db, owner_user, mgr_role, tenant_a):
+        """The unified platform has no package/plan user limits."""
         tenant_a.max_users = 1
         _db.session.commit()
-        UserService.provision_user(
-            username="uni_q1",
-            email="q1@u.co",
-            password="Str0ng!Pass#9z",
-            role_id=mgr_role.id,
-            tenant_id=tenant_a.id,
-            actor=owner_user,
-        )
-        with pytest.raises(ValueError, match="الحد الأقصى"):
+        for username in ("uni_q1", "uni_q2"):
             UserService.provision_user(
-                username="uni_q2",
-                email="q2@u.co",
+                username=username,
+                email=f"{username}@u.co",
                 password="Str0ng!Pass#9z",
                 role_id=mgr_role.id,
                 tenant_id=tenant_a.id,
                 actor=owner_user,
             )
+        assert User.query.filter_by(username="uni_q2").first() is not None
 
 
 class TestUpdateDelete:
@@ -169,10 +163,12 @@ class TestUpdateDelete:
         with pytest.raises(ValueError, match="حسابك الخاص"):
             UserService.delete_user(seller_user, seller_user)
 
-    def test_delete_without_sales_hard(self, db, owner_user, mgr_role):
+    def test_delete_is_soft(self, db, owner_user, mgr_role):
+        """User removal is always a soft deactivation: audit logs and other
+        records keep foreign keys to the user row."""
         u = _mk_user("uni_del", mgr_role)
-        assert UserService.delete_user(u, owner_user) == "deleted"
-        assert _db.session.get(User, u.id) is None
+        assert UserService.delete_user(u, owner_user) == "deactivated"
+        assert _db.session.get(User, u.id).is_active is False
 
 
 class TestUnifiedRoutes:

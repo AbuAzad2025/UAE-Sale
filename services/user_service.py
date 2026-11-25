@@ -89,6 +89,10 @@ def _resolve_role(role_id, actor):
     if (role.slug or "").lower() in ("owner", "super_admin", "developer") \
             and not getattr(actor, "is_owner", False):
         raise ValidationError("لا يمكن منح أدوار المنصة (مالك / مطور / سوبر أدمن).")
+    if not getattr(actor, "is_owner", False):
+        actor_tenant = getattr(actor, "tenant_id", None)
+        if role.tenant_id is not None and role.tenant_id != actor_tenant:
+            raise ValidationError("الدور المختار لا يخص شركتك.")
     actor_level = _actor_level(actor)
     if _role_level_of(role) > actor_level:
         raise ValidationError("لا يمكنك منح دور أعلى من دورك.")
@@ -104,6 +108,13 @@ def _check_password(password):
 
 
 def _check_tenant_quota(tenant_id):
+    """Validate the target tenant only.
+
+    The unified platform has no package/plan user quota. The legacy
+    ``max_users`` column is ignored everywhere in the UI and in writes;
+    keeping a quota here would block managers from staffing their own
+    company once they pass an old seeded number.
+    """
     if tenant_id is None:
         return
     tenant = db.session.get(Tenant, tenant_id)
@@ -111,14 +122,6 @@ def _check_tenant_quota(tenant_id):
         raise ValidationError("المستأجر المحدد غير موجود.")
     if not tenant.is_active or tenant.is_suspended:
         raise ValidationError("لا يمكن إضافة مستخدمين لمستأجر موقوف أو غير نشط.")
-    if tenant.max_users is not None:
-        current = User.query.filter_by(
-            tenant_id=tenant.id, is_owner=False, is_active=True
-        ).count()
-        if current >= tenant.max_users:
-            raise ValidationError(
-                f"بلغ المستأجر الحد الأقصى للمستخدمين ({tenant.max_users})."
-            )
 
 
 class UserService:
@@ -265,24 +268,19 @@ class UserService:
 
     @staticmethod
     def delete_user(user, actor):
-        """Delete a user: soft when they own sales, hard otherwise.
+        """Deactivate a user — never hard-delete.
 
-        Returns 'deactivated' | 'deleted'.
+        Audit logs, GL entries, documents and sessions keep foreign keys to
+        users, so a hard delete breaks with FK violations and destroys the
+        audit trail. The UI already describes this as a deactivation.
         """
         if user.is_owner:
             raise ValidationError("لا يمكن حذف حساب مالك.")
         if user.id == getattr(actor, "id", None):
             raise ValidationError("لا يمكنك حذف حسابك الخاص.")
-        from models import Sale
-
-        has_sales = Sale.query.filter_by(seller_id=user.id).count() > 0
-        if has_sales:
-            user.is_active = False
-            db.session.flush()
-            return "deactivated"
-        db.session.delete(user)
+        user.is_active = False
         db.session.flush()
-        return "deleted"
+        return "deactivated"
 
     @staticmethod
     def change_own_password(user, current_password, new_password, confirm_password):

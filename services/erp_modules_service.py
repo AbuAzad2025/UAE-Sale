@@ -498,15 +498,26 @@ class FiscalPeriodService:
 
     @staticmethod
     def _tenant_id(tenant_id=None):
-        """معرّف المستأجر الحالي (None = نطاق عام/المالك)."""
-        if tenant_id is not None:
-            return tenant_id
-        try:
-            from models.tenant_scope import get_current_tenant_id
+        """معرّف المستأجر الحالي (None = نطاق عام/المالك).
 
-            return get_current_tenant_id()
+        ``TENANT_LESS_SCOPE`` (-1) هو نطاق «بلا مستأجر» وليس مستأجراً؛
+        يجب تحويله إلى NULL وإلا حُفظت الفترة بـ tenant_id=-1 فتصبح
+        غير مرئية لأي مستأجر (ولا حتى لنطاق بلا مستأجر الذي يقرأ NULL).
+        """
+        if tenant_id is not None:
+            resolved = tenant_id
+        else:
+            try:
+                from models.tenant_scope import get_current_tenant_id
+
+                resolved = get_current_tenant_id()
+            except Exception:
+                return None
+        try:
+            from models.tenant_scope import TENANT_LESS_SCOPE
         except Exception:
-            return None
+            return resolved
+        return None if resolved == TENANT_LESS_SCOPE else resolved
 
     @staticmethod
     def _scope_query(query, tenant_id=None):
@@ -570,9 +581,27 @@ class FiscalPeriodService:
 
     @staticmethod
     def visible_periods(tenant_id=None):
-        """الفترات المرئية للمستأجر الحالي (فتراته + الفترات العامة)."""
-        query = FiscalPeriodService._scope_query(FiscalPeriod.query, tenant_id)
-        return query.order_by(FiscalPeriod.year.desc()).all()
+        """الفترات المرئية للمستأجر الحالي.
+
+        فترات المستأجر الخاصة أولاً؛ وتُعرض الفترات العامة (NULL) فقط
+        للسنوات التي لا يملك فيها المستأجر فترة خاصة به — حتى لا تظهر
+        سنتان لنفس العام بعد ترحيل التهيئة إلى فترات لكل مستأجر.
+        """
+        tenant_id = FiscalPeriodService._tenant_id(tenant_id)
+        if tenant_id is None:
+            return FiscalPeriod.query.order_by(FiscalPeriod.year.desc()).all()
+
+        own = (
+            FiscalPeriod.query.filter(FiscalPeriod.tenant_id == tenant_id)
+            .order_by(FiscalPeriod.year.desc())
+            .all()
+        )
+        own_years = {p.year for p in own}
+        global_rows = FiscalPeriod.query.filter(
+            FiscalPeriod.tenant_id.is_(None)
+        ).all()
+        rows = own + [g for g in global_rows if g.year not in own_years]
+        return sorted(rows, key=lambda p: p.year, reverse=True)
 
     @staticmethod
     def get_owned_period(period_id, tenant_id=None):

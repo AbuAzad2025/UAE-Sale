@@ -525,7 +525,10 @@ def fiscal_periods():
 def create_fiscal_period():
     try:
         year = request.form.get("year", type=int)
-        _ = FiscalPeriodService.create_annual_period(year)
+        if not year:
+            raise ValueError("السنة مطلوبة")
+        FiscalPeriodService.create_annual_period(year)
+        db.session.commit()
         flash(f"✅ تم إنشاء الفترة المالية {year}", "success")
     except ValueError as e:
         current_app.logger.warning("fiscal period creation failed: %s", e)
@@ -535,25 +538,25 @@ def create_fiscal_period():
 
 @erp_bp.route("/fiscal-periods/<int:id>/close", methods=["POST"])
 @login_required
-@admin_required
+@permission_required("manage_ledger")
 def close_fiscal_period(id):
-    """Close fiscal period — admin only (owner/super_admin)"""
+    """Close a fiscal period — requires manage_ledger (manager/accountant)."""
     try:
         fp = FiscalPeriodService.get_owned_period(id)
         FiscalPeriodService.close_period(fp.id, current_user.id)
         create_audit_log("close", "fiscal_periods", id)
         flash("✅ تم إغلاق الفترة المالية", "success")
     except ValueError as e:
-        current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
+        db.session.rollback()
+        flash(f"⚠️ {e}", "danger")
     return redirect(url_for("erp_modules.fiscal_periods"))
 
 
 @erp_bp.route("/fiscal-periods/<int:id>/reopen", methods=["POST"])
 @login_required
-@admin_required
+@permission_required("manage_ledger")
 def reopen_fiscal_period(id):
-    """Reopen fiscal period — admin only (owner/super_admin)"""
+    """Reopen a fiscal period — requires manage_ledger (manager/accountant)."""
     try:
         fp = FiscalPeriodService.get_owned_period(id)
         fp.reopen()

@@ -2,39 +2,30 @@
 
 {% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced AI Assistant') }}{% endblock %}
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
   <div>
-    <h1 class="text-gradient mb-0">
-      <i class="fas fa-robot mr-3"></i>{{ t('Super Smart Assistant') }}
-    </h1>
-    <p class="text-muted">{{ t('A super AI that surpasses any assistant in the world - unlimited capabilities') }}</p>
+    <h1 class="mb-0"><i class="fas fa-robot mr-2"></i>{{ t('AI Assistant') }}</h1>
+    <p class="text-muted mb-0 small">{{ t('Answers from your company data, within your permissions') }}</p>
   </div>
-  <div class="d-flex align-items-center">
-    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm mr-2" title="{{ t('General User Guide') }}">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-secondary btn-sm">
       <i class="fas fa-book mr-1"></i> {{ t('Guide') }}
     </a>
     {% if current_user.is_owner %}
-    <a href="{{ url_for('owner.owner_guide') }}" class="btn btn-outline-warning btn-sm mr-2" title="{{ t('Owner Guide (private)') }}">
+    <a href="{{ url_for('owner.owner_guide') }}" class="btn btn-outline-warning btn-sm">
       <i class="fas fa-crown mr-1"></i> {{ t('Owner Guide') }}
     </a>
     {% endif %}
-    <a href="{{ url_for('public.user_guide') }}" class="btn btn-outline-info btn-sm mr-2" title="{{ t('Search the Guide') }}">
-      <i class="fas fa-search mr-1"></i> {{ t('Search the Guide') }}
-    </a>
-    <div class="btn-group mr-3" role="group">
-      <button type="button" class="btn btn-secondary" id="ai-mode-local" onclick="switchAIMode('local')">
-        <i class="fas fa-microchip ml-1"></i> {{ t('Local') }}
+    <div class="btn-group" role="group">
+      <button type="button" class="btn btn-outline-primary btn-sm" id="ai-mode-local" onclick="switchAIMode('local')">
+        <i class="fas fa-microchip mr-1"></i> {{ t('Local') }}
       </button>
-      <button type="button" class="btn btn-info" id="ai-mode-groq" onclick="switchAIMode('groq')">
-        <i class="fas fa-cloud ml-1"></i> Groq
+      <button type="button" class="btn btn-outline-info btn-sm" id="ai-mode-groq" onclick="switchAIMode('groq')">
+        <i class="fas fa-cloud mr-1"></i> Groq
       </button>
     </div>
-    <span class="badge {% if ai_enabled %}badge-success{% else %}badge-primary{% endif %} badge-lg px-4 py-2" style="font-size: 1.1rem;" id="ai-status-badge">
-      {% if ai_enabled %}
-        <i class="fas fa-brain mr-2"></i>{{ t('Full AI active') }}
-      {% else %}
-        <i class="fas fa-microchip mr-2"></i>{{ t('Super local AI') }}
-      {% endif %}
+    <span class="badge badge-success" id="ai-status-badge">
+      <i class="fas fa-shield-check mr-1"></i>{{ 'Tenant data only' if current_language == 'en' else 'بيانات شركتك فقط' }} · {{ t('Local mode') }}
     </span>
   </div>
 </div>
@@ -190,84 +181,86 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* Clean ERP look: tenant colours, calm surfaces, logical spacing. */
+.super-ai-container {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.super-ai-container::before { display: none; }
+.chat-container {
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.06);
+  min-height: 520px;
+  height: 62vh;
+  max-height: 720px;
+}
+.chat-messages { background: #fbfcfd; padding: 18px; }
+.chat-input-area { border-top: 1px solid rgba(0,0,0,.08); padding: 14px 18px; }
+.bot-message {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.07);
+  border-inline-start: 3px solid var(--tenant-primary, #007A3D);
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.user-message {
+  background: var(--tenant-primary, #007A3D);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+}
+.user-message strong, .user-message a { color: #fff !important; }
+.ai-feature-card {
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  padding: 14px 12px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.04);
+}
+.ai-feature-card:hover {
+  border-color: var(--tenant-primary, #007A3D);
+  box-shadow: 0 8px 20px rgba(0,0,0,.10);
+  transform: translateY(-3px);
+}
+.ai-feature-icon {
+  font-size: 1.7rem;
+  margin-bottom: 8px;
+  color: var(--tenant-primary, #007A3D);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+.ai-feature-card h5 { font-size: .98rem; margin-bottom: 4px; }
+.ai-feature-card p { font-size: .78rem; margin: 0; }
+@media (max-width: 768px) {
+  .chat-container { height: 70vh; }
+  .chat-input-area .btn-group { flex-wrap: wrap; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 
-<div class="row mb-4">
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="quickAnalysis('sales')">
-      <div class="ai-feature-icon">
-        <i class="fas fa-chart-line"></i>
-      </div>
-      <h5>{{ t('Sales Forecast') }}</h5>
-      <p class="text-muted">{{ t('Smart forecast of upcoming sales') }}</p>
+<div class="row mb-3">
+  {% set prompts = [
+    ('fa-chart-line', 'Sales Today', 'كم عدد المبيعات اليوم؟'),
+    ('fa-users', 'Customers Count', 'كم عدد العملاء؟'),
+    ('fa-boxes', 'Inventory Status', 'ما حالة المخزون؟'),
+    ('fa-receipt', 'Expenses This Month', 'كم عدد المصروفات هذا الشهر؟'),
+    ('fa-money-check', 'Cheques Count', 'كم عدد الشيكات؟'),
+    ('fa-calendar-lock', 'Fiscal Periods', 'ما حالة الفترات المالية؟')
+  ] %}
+  {% for icon, label, question in prompts %}
+  <div class="col-6 col-md-4 col-xl-2 mb-3">
+    <div class="ai-feature-card h-100" onclick="askQuestion('{{ question }}')" role="button" tabindex="0">
+      <div class="ai-feature-icon"><i class="fas {{ icon }}"></i></div>
+      <h5>{{ t(label) }}</h5>
     </div>
   </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="quickAnalysis('margins')">
-      <div class="ai-feature-icon">
-        <i class="fas fa-percentage"></i>
-      </div>
-      <h5>{{ t('Profit Margins') }}</h5>
-      <p class="text-muted">{{ t('Detailed profitability analysis') }}</p>
-    </div>
-  </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="quickAnalysis('inventory')">
-      <div class="ai-feature-icon">
-        <i class="fas fa-boxes"></i>
-      </div>
-      <h5>{{ t('Inventory Health') }}</h5>
-      <p class="text-muted">{{ t('Smart inventory assessment') }}</p>
-    </div>
-  </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="quickAnalysis('patterns')">
-      <div class="ai-feature-icon">
-        <i class="fas fa-brain"></i>
-      </div>
-      <h5>{{ t('Pattern Detection') }}</h5>
-      <p class="text-muted">{{ t('Hidden patterns and behaviors') }}</p>
-    </div>
-  </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="showSelfImprovement()">
-      <div class="ai-feature-icon">
-        <i class="fas fa-rocket"></i>
-      </div>
-      <h5>{{ t('Self Improvement') }}</h5>
-      <p class="text-muted">{{ t('Azad evolves by itself') }}</p>
-    </div>
-        </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="showLearningStatus()">
-      <div class="ai-feature-icon">
-        <i class="fas fa-graduation-cap"></i>
-      </div>
-      <h5>{{ t('Learning Status') }}</h5>
-      <p class="text-muted">{{ t('Track Azad progress') }}</p>
-    </div>
-  </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="showNeuralStatus()">
-      <div class="ai-feature-icon">
-        <i class="fas fa-network-wired"></i>
-      </div>
-      <h5>{{ t('Neural Networks') }}</h5>
-      <p class="text-muted">11 {{ t('neural models') }}</p>
-    </div>
-  </div>
-  <div class="col-md-3 mb-3">
-    <div class="ai-feature-card" onclick="showAutomotiveKnowledge()">
-      <div class="ai-feature-icon">
-        <i class="fas fa-car"></i>
-      </div>
-      <h5>{{ t('Car Computers') }}</h5>
-      <p class="text-muted">{{ t('ECU/OBD-II expert') }}</p>
-    </div>
-  </div>
+  {% endfor %}
 </div>
 
 <div class="super-ai-container">
@@ -281,46 +274,13 @@
             </div>
           </div>
           <div style="flex: 1;">
-            <strong style="color: #667eea; font-size: 1.1rem;">{{ t('Super Smart Assistant') }}</strong>
-            <p class="mt-2 mb-0">{{ t('Hello! I am the smartest accounting assistant in the world ') }}</p>
-            
-            <div class="mt-3">
-              <h6 style="color: #667eea;"> {{ t('My super capabilities:') }}</h6>
-              <ul class="mb-0">
-                <li> <strong>{{ t('Sales Forecast') }}</strong> - {{ t('Accurate prediction of upcoming revenue') }}</li>
-                <li> <strong>{{ t('Profitability Analysis') }}</strong> - {{ t('Deep understanding of profit margins') }}</li>
-                <li> <strong>{{ t('Pattern Detection') }}</strong> - {{ t('Hidden patterns in data') }}</li>
-                <li> <strong>{{ t('Cash Flow Forecast') }}</strong> - {{ t('Proactive financial planning') }}</li>
-                <li> <strong>{{ t('Smart Pricing') }}</strong> - {{ t('Ideal prices for every customer') }}</li>
-                <li> <strong>{{ t('Customer Churn Prediction') }}</strong> - {{ t('Keep your customers') }}</li>
-                <li> <strong>{{ t('Inventory Optimization') }}</strong> - {{ t('Optimal levels') }}</li>
-                <li> <strong>{{ t('Instant Business Insights') }}</strong> - {{ t('Smart decisions') }}</li>
-            </ul>
-            </div>
-            
-            <div class="alert alert-info mt-3 mb-0">
-              <strong>{{ t('Try questions like:') }}</strong>
-              <br>• "{{ t('Analyze sales') }}"
-              <br>• "{{ t('Forecast next week') }}"
-              <br>• "{{ t('Inventory Health') }}"
-              <br>• "{{ t('Best customers') }}"
-              <br>• "{{ t('Low-profit products') }}"
-            </div>
-            
-            <div class="alert alert-success mt-3 mb-0">
-              <strong> {{ t('Quick commands:') }}</strong>
-              <br>• <strong>{{ t('Adjust balance:') }}</strong> "{{ t('Balance: Ahmed Mohammed, 500 AED') }}"
-              <br>• <strong>{{ t('Receive payment:') }}</strong> "{{ t('Receive: Ahmed Mohammed, 200 AED, cash') }}"
-              <br>• <strong>{{ t('Give payment:') }}</strong> "{{ t('Give: Ahmed Mohammed, 100 AED, refund') }}"
-              <br>• <strong>{{ t('Create customer:') }}</strong> "{{ t('Customer: Ahmed Mohammed, 0561234567, Dubai') }}"
-              <br>• <strong>{{ t('Create product:') }}</strong> "{{ t('Product: oil filter, 12345, 50 AED, 100 pcs') }}"
-            </div>
-            
-            <div class="alert alert-warning mt-3 mb-0">
-              <strong> {{ t('Smart tip:') }}</strong>
-              <br>• {{ t('Type a single word like "balance" or "customer" and I will give you options!') }}
-              <br>• {{ t('Or write the full request and I will execute it immediately!') }}
-              <br>• {{ t('I understand any way you write!') }} 
+            <strong class="text-primary">{{ t('AI Assistant') }}</strong>
+            <p class="mt-2 mb-0">{{ t('I answer from your company live data and only within your permissions. Ask about sales, customers, inventory, expenses or cheques.') }}</p>
+            <div class="alert alert-light border mt-3 mb-0">
+              <strong>{{ t('Try:') }}</strong>
+              <span class="d-block mt-1">«كم عدد المبيعات اليوم؟»</span>
+              <span class="d-block">«كم عدد العملاء؟»</span>
+              <span class="d-block">«ما حالة المخزون؟»</span>
             </div>
           </div>
         </div>
@@ -367,6 +327,7 @@
               <i class="fas fa-file-excel mr-2"></i>{{ t('Upload Excel File - Super Smart Wizard') }}
             </h4>
             <form id="excelUploadForm" enctype="multipart/form-data" action="">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="form-group">
                 <label>{{ t('Choose an Excel file (.xlsx, .xls)') }}</label>
                 <input type="file" id="excelFile" accept=".xlsx,.xls" class="form-control" required>
@@ -483,6 +444,7 @@
 
 {% block extra_js %}
 <script>
+window.chatHistory = [];
 function addMessage(sender, text, isBot = false) {
   if (typeof chatHistory !== 'undefined') {
     chatHistory.push({
@@ -503,6 +465,7 @@ function addMessage(sender, text, isBot = false) {
          </div>`;
     
     const senderName = isBot ? {{ t('Azad')|tojson }} + ' ' : '{{ current_user.username }}' || {{ t('You')|tojson }};
+    const safeText = $('<div>').text(String(text == null ? '' : text)).html();
     
     chatBox.append(`
       <div class="${messageClass}">
@@ -510,7 +473,7 @@ function addMessage(sender, text, isBot = false) {
           ${isBot ? avatar : ''}
           <div class="${isBot ? 'mr-3' : 'ml-3'}" style="flex: 1;">
             <strong style="color: ${isBot ? '#667eea' : '#007A3D'};">${senderName}</strong>
-            <div style="margin-top: 8px; white-space: pre-wrap;">${text}</div>
+            <div style="margin-top: 8px; white-space: pre-wrap;">${safeText}</div>
           </div>
           ${!isBot ? avatar : ''}
         </div>
@@ -553,6 +516,14 @@ $(document).ready(function() {
   const userMessage = $('#userMessage');
   const sendBtn = $('#sendBtn');
   
+  window.askQuestion = function(question) {
+    const input = document.getElementById('userMessage');
+    if (!input) return;
+    input.value = question;
+    $(input).trigger('input');
+    sendMessage();
+  };
+
   function sendMessage() {
     const message = userMessage.val().trim();
     if (!message) return;
@@ -609,26 +580,26 @@ $(document).ready(function() {
   
   let currentDialect = 'palestinian';
   let beginnersMode = false;
-  let chatHistory = [];
+  // chatHistory lives on window so addMessage / getSummary share one array.
+  window.chatHistory = window.chatHistory || [];
   
   window.clearChat = function() {
     if (confirm({{ t('Do you want to clear the chat?')|tojson }})) {
       $('#chatBox').empty();
-      if (typeof chatHistory !== 'undefined') {
-        chatHistory = [];
-      }
+      window.chatHistory = [];
       addMessage('bot', {{ t('Chat cleared! How can I help you?')|tojson }}, true);
     }
   };
   
   window.getSummary = function() {
-    if (chatHistory.length === 0) {
+    const history = window.chatHistory || [];
+    if (history.length === 0) {
       addMessage('bot', ' ' + {{ t('No conversation to summarize yet!')|tojson }}, true);
       return;
     }
     
-    const questions = chatHistory.filter(m => m.role === 'user').length;
-    const summary = ' ' + {{ t('**Chat summary:**')|tojson }} + '\n\n• ' + {{ t('Questions:')|tojson }} + ' ' + questions + '\n• ' + {{ t('Replies:')|tojson }} + ' ' + chatHistory.filter(m => m.role === 'bot').length + '\n\n ' + {{ t('**Topics:**')|tojson }} + '\n' + chatHistory.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n');
+    const questions = history.filter(m => m.role === 'user').length;
+    const summary = ' ' + {{ t('**Chat summary:**')|tojson }} + '\n\n• ' + {{ t('Questions:')|tojson }} + ' ' + questions + '\n• ' + {{ t('Replies:')|tojson }} + ' ' + history.filter(m => m.role === 'bot').length + '\n\n ' + {{ t('**Topics:**')|tojson }} + '\n' + history.filter(m => m.role === 'user').map((m, i) => `${i + 1}. ${m.content.substring(0, 50)}...`).join('\n');
     
     addMessage('bot', summary, true);
   };
@@ -719,7 +690,7 @@ $(document).ready(function() {
         'transform': 'scale(1)'
       });
       $('#ai-status-badge').removeClass('badge-success').addClass('badge-secondary')
-        .html('<i class="fas fa-microchip mr-2"></i>' + {{ t('Local')|tojson }} + ' ');
+        .html('<i class="fas fa-microchip mr-2"></i>' + {{ t('Local mode')|tojson }} + ' ');
     } else {
       $('#ai-mode-groq').css({
         'background': '#17a2b8',
@@ -733,7 +704,7 @@ $(document).ready(function() {
         'transform': 'scale(1)'
       });
       $('#ai-status-badge').removeClass('badge-secondary').addClass('badge-info')
-        .html('<i class="fas fa-cloud mr-2"></i>Groq ');
+        .html('<i class="fas fa-cloud mr-2"></i>' + {{ t('Groq mode')|tojson }} + ' ');
     }
   };
   
@@ -806,6 +777,7 @@ $('#excelUploadForm').on('submit', function(e) {
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
   formData.append('warehouse_id', warehouseId);
+  formData.append('csrf_token', '{{ csrf_token() }}');
   
   $('#uploadExcelBtn').prop('disabled', true);
   $('#uploadProgress').show();

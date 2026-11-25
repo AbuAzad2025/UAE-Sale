@@ -4,6 +4,7 @@
 """
 
 import os
+import re
 import threading
 import time
 from decimal import Decimal, InvalidOperation
@@ -785,6 +786,25 @@ def chat():
 
     if not message:
         return jsonify({"error": "Message required"}), 400
+
+    # Factual questions are answered from the live tenant database first.
+    # This must precede the old keyword/menu matcher, which otherwise turns
+    # "كم عدد المبيعات اليوم؟" into a "create invoice" menu.
+    try:
+        from services.ai_questions import answer as _grounded_answer
+
+        grounded = _grounded_answer(message, current_user)
+    except Exception:
+        grounded = None
+    if grounded:
+        return jsonify(
+            {
+                "response": grounded,
+                "ai_enabled": True,
+                "grounded": True,
+                "ai_mode": "local",
+            }
+        )
 
     action_result = _process_user_action(message, current_user)
     if action_result:
@@ -4370,18 +4390,45 @@ def optimize_inventory():
 
 @ai_bp.route("/business-insights", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def business_insights():
     """💡 API: رؤى الأعمال التلقائية"""
+    from utils.i18n import get_current_language
+
     insights = AIService.generate_business_insights()
+
+    _en = {
+        "تنبيه المخزون": "Inventory alert",
+        "متابعة المدفوعات": "Payment follow-up",
+        "مبيعات اليوم": "Today's sales",
+        "خطأ": "Error",
+        "تحقق من المستودع": "Check the warehouse",
+        "تواصل مع العملاء": "Contact customers",
+        "تحفيز المبيعات": "Boost sales",
+        "لا توجد مبيعات اليوم": "No sales recorded today",
+    }
+    lang = get_current_language()
 
     formatted_insights = []
     for insight in insights:
+        title, message, action = insight["title"], insight["message"], insight["action"]
+        if lang == "en":
+            title = _en.get(title, title)
+            action = _en.get(action, action)
+            if message == "لا توجد مبيعات اليوم":
+                message = _en[message]
+            elif "منتج بمخزون منخفض" in message:
+                prefix = re.search(r"\d+", message)
+                message = f"{prefix.group(0) if prefix else ''} products are low on stock"
+            elif "عميل لديهم ذمم" in message:
+                prefix = re.search(r"\d+", message)
+                message = f"{prefix.group(0) if prefix else ''} customers have balances over 1000"
         formatted_insights.append(
             {
                 "icon": "⚠️" if insight["type"] == "warning" else "ℹ️",
-                "title": insight["title"],
-                "insight": insight["message"],
-                "action": insight["action"],
+                "title": title,
+                "insight": message,
+                "action": action,
             }
         )
 
@@ -4580,6 +4627,7 @@ def get_product_stock(product_name):
 
 @ai_bp.route("/system/summary")
 @login_required
+@permission_required("view_reports")
 def get_system_summary():
     """ملخص النظام الشامل"""
     try:

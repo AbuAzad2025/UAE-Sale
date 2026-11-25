@@ -22,6 +22,7 @@ from models import (
     Supplier,
     Warehouse,
 )
+from models.erp_modules import FiscalPeriod
 from services.advanced_journal_manager import (
     AdvancedJournalEntryManager,
     JournalEntryAudit,
@@ -327,6 +328,68 @@ class TestFiscalPeriodService:
         q = _make_quotation(db, owner_user, test_customer, test_product, warehouse)
         with pytest.raises(ValueError, match=r"الفترة المالية.*مغلقة"):
             QuotationService.convert_to_sale(q.id, owner_user.id)
+
+    def test_provisioning_creates_a_period_per_active_tenant(self, db):
+        """Boot must not leave every tenant sharing one platform period.
+
+        A global period (tenant_id NULL) cannot be closed by a tenant
+        manager, and one tenant closing it would freeze all the others.
+        """
+        from models import Tenant
+        from services.fiscal_period_guard import ensure_periods_for_active_tenants
+
+        tenants = [
+            Tenant(
+                name="Tenant A", name_ar="مستأجر أ", slug="tenant-a", is_active=True
+            ),
+            Tenant(
+                name="Tenant B", name_ar="مستأجر ب", slug="tenant-b", is_active=True
+            ),
+        ]
+        db.session.add_all(tenants)
+        db.session.commit()
+
+        year = 2035
+        periods = ensure_periods_for_active_tenants(year)
+        db.session.commit()
+
+        assert {p.tenant_id for p in periods} == {t.id for t in tenants}
+        assert all(p.tenant_id is not None for p in periods)
+        assert all(p.year == year and not p.is_closed for p in periods)
+
+        # Idempotent: a second boot must not duplicate the rows.
+        ensure_periods_for_active_tenants(year)
+        db.session.commit()
+        rows = FiscalPeriod.query.filter_by(year=year).all()
+        assert len(rows) == len(tenants)
+
+    def test_tenant_sees_its_own_period_not_the_global_duplicate(self, db):
+        """A tenant-specific year hides the platform row for the same year."""
+        from models.tenant_scope import run_in_tenant_context
+
+        global_fp = FiscalPeriod(
+            name="Global 2036",
+            year=2036,
+            period_type="annual",
+            start_date=date(2036, 1, 1),
+            end_date=date(2036, 12, 31),
+            tenant_id=None,
+        )
+        tenant_fp = FiscalPeriod(
+            name="Tenant 2036",
+            year=2036,
+            period_type="annual",
+            start_date=date(2036, 1, 1),
+            end_date=date(2036, 12, 31),
+            tenant_id=77,
+        )
+        db.session.add_all([global_fp, tenant_fp])
+        db.session.commit()
+
+        rows = run_in_tenant_context(77, FiscalPeriodService.visible_periods)
+        years_2036 = [p for p in rows if p.year == 2036]
+        assert len(years_2036) == 1
+        assert years_2036[0].tenant_id == 77
 
 
 class TestStockTransferService:

@@ -1000,3 +1000,10 @@ table .custom-select {
     border-color: #64748b !important;
   }
 }
+
+/* Language direction: the Arabic base themes force RTL on <body>. Honour the
+   active language declared on <html> so English pages are genuinely LTR. */
+html[dir="ltr"] body {
+  direction: ltr;
+  text-align: left;
+}

@@ -469,6 +469,28 @@ def edit(id):
     return render_template("purchases/edit.html", purchase=purchase)
 
 
+def _reverse_purchase_stock(purchase):
+    """Remove the stock effects of a purchase whose GL entry is reversed.
+
+    A deleted/archived purchase must not keep the units it added in stock —
+    otherwise inventory movements still report them and the valuation no
+    longer matches the reversed inventory entry (GL 1140).
+    """
+    from models import StockMovement
+
+    movements = StockMovement.query.filter_by(
+        reference_type="Purchase", reference_id=purchase.id
+    ).all()
+    for movement in movements:
+        product = db.session.get(Product, movement.product_id)
+        if product is not None and movement.quantity:
+            product.current_stock = Decimal(str(product.current_stock or 0)) - Decimal(
+                str(movement.quantity)
+            )
+        db.session.delete(movement)
+    return len(movements)
+
+
 @purchases_bp.route("/<int:id>/delete", methods=["POST"])
 @login_required
 @permission_required("manage_purchases")
@@ -509,6 +531,7 @@ def delete(id):
                     )
                     return redirect(url_for("purchases.view", id=id))
 
+            _reverse_purchase_stock(purchase)
             archive_service = ArchiveService()
             archive_service.archive_record(
                 "purchases",
@@ -542,6 +565,7 @@ def delete(id):
                 )
                 return redirect(url_for("purchases.view", id=id))
 
+            _reverse_purchase_stock(purchase)
             PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
 
             db.session.delete(purchase)

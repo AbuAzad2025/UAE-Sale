@@ -366,29 +366,19 @@ class TestTenantUserProvisioning:
         assert u is not None
         assert u.tenant_id == t.id
 
-    def test_max_users_enforced(self, client, owner_user):
+    def test_no_user_quota(self, client, owner_user):
         _owner_login(client, owner_user)
         role = self._role()
         t = self._tenant(client, owner_user)
-        # Account for the default operational users created per tenant.
-        from models import User as _U
-
-        current_count = _U.query.filter_by(tenant_id=t.id).count()
-        t.max_users = current_count + 1
+        # A legacy low max_users must not block staffing an owned company.
+        t.max_users = 1
         _db.session.commit()
-        client.post(
-            f"/users/create?tenant_id={t.id}",
-            data=self._payload(role.id, username="first_one"),
-        )
-        assert User.query.filter_by(username="first_one").first() is not None
-        # Now at capacity — second user should be rejected.
-        t.max_users = current_count + 1
-        _db.session.commit()
-        client.post(
-            f"/users/create?tenant_id={t.id}",
-            data=self._payload(role.id, username="second_one"),
-        )
-        assert User.query.filter_by(username="second_one").first() is None
+        for username in ("first_one", "second_one"):
+            client.post(
+                f"/users/create?tenant_id={t.id}",
+                data=self._payload(role.id, username=username),
+            )
+            assert User.query.filter_by(username=username).first() is not None
 
     def test_duplicate_username_rejected(self, client, owner_user):
         _owner_login(client, owner_user)

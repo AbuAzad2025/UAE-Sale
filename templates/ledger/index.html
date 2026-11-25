@@ -77,7 +77,7 @@
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
               {{ account.code }} - {{ display_name(account) }}
             </a>
-            <span class="badge badge-success badge-pill">{{ account.type }}</span>
+            <span class="badge badge-success badge-pill">{{ account.type|status_label }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -89,7 +89,7 @@
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
               {{ account.code }} - {{ display_name(account) }}
             </a>
-            <span class="badge badge-danger badge-pill">{{ account.type }}</span>
+            <span class="badge badge-danger badge-pill">{{ account.type|status_label }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -103,7 +103,7 @@
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
               {{ account.code }} - {{ display_name(account) }}
             </a>
-            <span class="badge badge-primary badge-pill">{{ account.type }}</span>
+            <span class="badge badge-primary badge-pill">{{ account.type|status_label }}</span>
           </li>
           {% endfor %}
         </ul>
@@ -115,7 +115,7 @@
             <a href="{{ url_for('ledger.account_ledger', id=account.id) }}">
               {{ account.code }} - {{ display_name(account) }}
             </a>
-            <span class="badge badge-warning badge-pill">{{ account.type }}</span>
+            <span class="badge badge-warning badge-pill">{{ account.type|status_label }}</span>
           </li>
           {% endfor %}
         </ul>

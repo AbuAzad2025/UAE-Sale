@@ -69,9 +69,9 @@
                     </label>
                     <input type="text" class="form-control" name="company_name_en" 
                            value="{{ settings.company_name_en }}" required
-                           placeholder="e.g: Azad Smart Systems">
+                           placeholder="{{ t('e.g: Azad Smart Systems') }}">
                     <small class="form-text text-muted">
-                       Company official name in English
+                       {{ t('Company official name in English') }}
                     </small>
                   </div>
                 </div>
@@ -96,9 +96,9 @@
                       <i class="fas fa-map-marker-alt text-success"></i> {{ t('Address (English)') }}
                     </label>
                     <textarea class="form-control" name="address_en" rows="2"
-                              placeholder="e.g: Abu Dhabi - UAE">{{ settings.address_en }}</textarea>
+                              placeholder="{{ t('e.g: Abu Dhabi - UAE') }}">{{ settings.address_en }}</textarea>
                     <small class="form-text text-muted">
-                       Complete company address in English
+                       {{ t('Complete company address in English') }}
                     </small>
                   </div>
                 </div>
@@ -182,7 +182,7 @@
                     <input type="text" class="form-control" name="tax_number" 
                            value="{{ settings.tax_number }}" placeholder="TRN-123456789">
                     <small class="form-text text-muted">
-                       {{ t('Tax Registration Number') }} - Tax Registration Number
+                       {{ t('Tax Registration Number') }} (TRN)
                     </small>
                   </div>
                 </div>

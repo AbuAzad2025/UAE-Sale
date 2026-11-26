@@ -44,7 +44,12 @@
       } %}
       <div class="card-body">
         <p><strong>{{ t('Order Number:') }}</strong> {{ order.order_no }}</p>
-        <p><strong>{{ t('Customer') }}:</strong> {{ order.customer.name if order.customer else '-' }}</p>
+        <p>
+          <strong>{{ t('Customer') }}:</strong> {{ order.customer.name if order.customer else '-' }}
+          {% if order.customer and (current_user.has_permission('manage_customers') or current_user.has_permission('manage_ledger')) %}
+          <a class="ml-2" href="{{ url_for('customers.statement', id=order.customer_id) }}">{{ t('Account Statement') }}</a>
+          {% endif %}
+        </p>
         <p><strong>{{ t('Date:') }}</strong> {{ order.received_at.strftime('%Y-%m-%d %H:%M') if order.received_at else '-' }}</p>
         <p><strong>{{ t('Status:') }}</strong>
           <span class="badge badge-{{ 'success' if order.status=='closed' else ('warning' if order.status in ('in_progress','diagnosis') else 'secondary') }}">

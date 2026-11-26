@@ -359,6 +359,10 @@ def test_receipt_collects_cash_and_reduces_the_receivable(client, env):
     _advance(client, env, order, "ready")
     client.post(f"/maintenance/{order.id}/invoice")
 
+    customer_id = order.customer_id
+    invoice = MaintenanceInvoice.query.filter_by(maintenance_order_id=order.id).one()
+    total = invoice.total_amount_base
+    assert db.session.get(Customer, customer_id).balance == total
     response = client.post(
         f"/maintenance/{order.id}/receive",
         data={"amount": "100", "payment_method": "cash"},
@@ -377,6 +381,35 @@ def test_receipt_collects_cash_and_reduces_the_receivable(client, env):
     order = db.session.get(MaintenanceOrder, order.id)
     assert order.paid_amount == D("100.000")
     assert order.balance_due == order.total_amount - D("100.000")
+    expected = total - D("100.000")
+    assert db.session.get(Customer, customer_id).balance == expected
+    from models.customer import maintenance_receivable_movements
+    from services.subledger_reconciliation import SubLedgerReconciliation
+
+    movements = list(maintenance_receivable_movements(customer_id))
+    assert sum(m["debit"] - m["credit"] for m in movements) == expected
+    report = SubLedgerReconciliation.reconcile_receivables(tenant_id=order.tenant_id)
+    assert report["control_balance"] == report["subledger_sum"] == expected
+    assert report["balanced"]
+
+    from io import BytesIO
+    from openpyxl import load_workbook
+
+    env["admin"].role.permissions.append(Permission(
+        code="manage_ledger", name="Manage ledger", category="ledger"
+    ))
+    db.session.commit()
+    statement = f"/customers/{customer_id}/statement"
+    display = client.get(statement)
+    assert display.status_code == 200
+    assert receipt.receipt_no in display.get_data(as_text=True)
+    assert client.get(f"/customers/{env['other_customer'].id}/statement").status_code == 403
+    excel = client.get(f"{statement}/export?transaction_type=maintenance_receipt")
+    assert excel.status_code == 200
+    worksheet = load_workbook(BytesIO(excel.data)).active
+    assert list(worksheet.values)[-1][1:7] == (
+        "maintenance_receipt", receipt.receipt_no, "سند قبض صيانة", 0, 100, -100,
+    )
 
 
 def test_cash_order_cannot_be_delivered_before_it_is_paid(client, env):

@@ -365,6 +365,8 @@ STATEMENT_FILTERS = [
     ("payment", {"ar": "الدفعات فقط", "en": "Payments only"}),
     ("return", {"ar": "مرتجعات", "en": "Returns only"}),
     ("maintenance_invoice", {"ar": "فاتورة صيانة", "en": "Maintenance Invoice"}),
+    ("maintenance_receipt", {"ar": "سند قبض صيانة", "en": "Maintenance Receipt"}),
+    ("maintenance_credit_note", {"ar": "إشعار دائن صيانة", "en": "Maintenance Credit Note"}),
     ("cheque", {"ar": "شيك", "en": "Cheque"}),
     ("receipt", {"ar": "إشعار", "en": "Receipt"}),
     ("write_off", {"ar": "إطفاء", "en": "Write-off"}),

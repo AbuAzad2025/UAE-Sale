@@ -366,6 +366,9 @@ def post_maintenance_invoice(order, invoice, *, created_by=None, entry_date=None
     db.session.flush()
 
     post_maintenance_labor_cost(order, created_by=created_by, entry_date=entry_date)
+    from models.customer import recompute_customer_balance
+
+    recompute_customer_balance(order.customer_id)
     return entry
 
 
@@ -395,6 +398,9 @@ def post_maintenance_receipt(receipt, *, created_by=None, entry_date=None):
     receipt.posted = True
     receipt.posted_at = datetime.now(timezone.utc)
     db.session.flush()
+    from models.customer import recompute_customer_balance
+
+    recompute_customer_balance(order.customer_id)
     return entry
 
 
@@ -427,6 +433,9 @@ def post_deposit_receipt(order, receipt, *, created_by=None, entry_date=None):
     receipt.posted = True
     receipt.posted_at = datetime.now(timezone.utc)
     db.session.flush()
+    from models.customer import recompute_customer_balance
+
+    recompute_customer_balance(order.customer_id)
     return entry
 
 
@@ -555,6 +564,9 @@ def post_maintenance_credit_note(
     credit_note.posted = True
     credit_note.posted_at = datetime.now(timezone.utc)
     db.session.flush()
+    from models.customer import recompute_customer_balance
+
+    recompute_customer_balance(order.customer_id)
     return entry
 
 

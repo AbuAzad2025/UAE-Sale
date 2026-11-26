@@ -352,6 +352,14 @@ class Cheque(TenantScopedMixin, db.Model):
         receipt = Receipt.query.filter_by(cheque_id=self.id).first()
         if receipt:
             receipt.confirm_receipt()
+        elif (
+            self.cheque_type == "incoming" and self.customer_id
+            and not (self.sale_id or self.receipt_id or self.payment_id or payment)
+        ):
+            from models.customer import recompute_customer_balance
+
+            db.session.flush()
+            recompute_customer_balance(self.customer_id)
 
     def _create_clearing_journal_entry(self):
         """إنشاء القيد المحاسبي عند صرف الشيك

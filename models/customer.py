@@ -42,6 +42,48 @@ def _dec(value, default="0"):
         return Decimal(default)
 
 
+def maintenance_receivable_movements(customer_id, connection=None):
+    """Posted maintenance documents that debit or credit the customer in base currency."""
+    from sqlalchemy import func, select
+    from models.maintenance import (
+        MaintenanceCreditNote, MaintenanceInvoice, MaintenanceOrder, MaintenanceReceipt,
+    )
+
+    connection = connection if connection is not None else db.session.connection()
+    orders = MaintenanceOrder.__table__
+    customers = Customer.__table__
+    documents = (
+        (MaintenanceInvoice, "maintenance_invoice", "invoice_no", "total_amount_base", "فاتورة صيانة", True),
+        (MaintenanceReceipt, "maintenance_receipt", "receipt_no", "amount_base", "سند قبض صيانة", False),
+        (MaintenanceCreditNote, "maintenance_credit_note", "credit_note_no", "amount_base", "إشعار دائن صيانة", False),
+    )
+    for model, kind, number, amount, label, is_debit in documents:
+        document = model.__table__
+        query = (
+            select(
+                document.c[number], document.c[amount], document.c.currency,
+                document.c.exchange_rate,
+                func.coalesce(document.c.posted_at, document.c.created_at),
+            )
+            .select_from(document.join(orders, document.c.maintenance_order_id == orders.c.id)
+                         .join(customers, orders.c.customer_id == customers.c.id))
+            .where(
+                customers.c.id == customer_id,
+                document.c.posted.is_(True),
+                document.c.tenant_id.is_not_distinct_from(orders.c.tenant_id),
+                orders.c.tenant_id.is_not_distinct_from(customers.c.tenant_id),
+            )
+        )
+        for reference, base, currency, rate, posted_at in connection.execute(query):
+            value = _dec(base)
+            yield {
+                "type": kind, "reference": reference, "date": posted_at,
+                "description": label, "currency": currency, "exchange_rate": _dec(rate, "1"),
+                "debit": value if is_debit else Decimal("0"),
+                "credit": Decimal("0") if is_debit else value,
+            }
+
+
 def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     """اشتقاق رصيد العميل من مستنداته المصدرية (بالعملة الأساسية).
 
@@ -123,6 +165,8 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             Cheque.__table__.c.amount_base,
             Cheque.__table__.c.status,
             Cheque.__table__.c.is_active,
+            Cheque.__table__.c.cheque_type,
+            Cheque.__table__.c.gl_journal_entry_id,
         ).where(
             Cheque.__table__.c.customer_id == customer_id,
             Cheque.__table__.c.receipt_id.is_(None),
@@ -133,7 +177,12 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in cheque_rows:
         amount = _dec(row.amount_base)
         status = row.status
-        if status == "bounced":
+        if (
+            status == "cleared" and row.is_active and row.cheque_type == "incoming"
+            and row.gl_journal_entry_id is not None
+        ):
+            total -= amount
+        elif status == "bounced":
             total += amount
         elif status == "cancelled":
             total -= amount
@@ -175,20 +224,8 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in woff_rows:
         total -= _dec(row.amount_base)
 
-    # Maintenance invoices (posted)
-    from models.maintenance import MaintenanceInvoice, MaintenanceOrder
-    from sqlalchemy import select as _sel
-    maint_rows = connection.execute(
-        _sel(MaintenanceInvoice.__table__.c.total_amount_base).join(
-            MaintenanceOrder.__table__,
-            MaintenanceInvoice.__table__.c.maintenance_order_id == MaintenanceOrder.__table__.c.id,
-        ).where(
-            MaintenanceOrder.__table__.c.customer_id == customer_id,
-            MaintenanceInvoice.__table__.c.posted.is_(True),
-        )
-    ).fetchall()
-    for row in maint_rows:
-        total += _dec(row.total_amount_base)
+    for movement in maintenance_receivable_movements(customer_id, connection):
+        total += movement["debit"] - movement["credit"]
 
     return total.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 

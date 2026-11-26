@@ -89,14 +89,14 @@ DEFAULT_AR_MERCHANT_BUCKETS = ["2115", "3350"]
 _PENDING_CHEQUE_STATUSES = ("pending", "under_collection", "deposited")
 
 
-def _resolve_role_codes(role_value, fallback_codes):
+def _resolve_role_codes(role_value, fallback_codes, tenant_id=None):
     """
     Resolve a role to its account code via the central resolver contract,
     keeping any additional fallback control codes that are still distinct.
     """
     if AccountResolver is not None and AccountRole is not None:
         try:
-            code = AccountResolver.resolve(AccountRole(role_value))
+            code = AccountResolver.resolve(AccountRole(role_value), tenant_id)
             if code:
                 return [code] + [c for c in fallback_codes if c != code]
         except Exception as exc:
@@ -106,7 +106,7 @@ def _resolve_role_codes(role_value, fallback_codes):
     return list(fallback_codes)
 
 
-def _ar_control_codes():
+def _ar_control_codes(tenant_id=None):
     """AR scope = plain control ('1130') + partner/merchant buckets.
 
     Consumes sale_service.merchant_receivable_codes() defensively so both
@@ -124,7 +124,9 @@ def _ar_control_codes():
 
     codes = []
     for code in (
-        _resolve_role_codes("AR_CONTROL", DEFAULT_AR_CONTROL_CODES)
+        _resolve_role_codes("AR_CONTROL", DEFAULT_AR_CONTROL_CODES, tenant_id)
+        + _resolve_role_codes("MAINTENANCE_AR", ["1131"], tenant_id)
+        + _resolve_role_codes("PARTNERS_CURRENT", [], tenant_id)
         + buckets
         + DEFAULT_AR_MERCHANT_BUCKETS
     ):
@@ -149,7 +151,7 @@ def _q2(value):
     return Decimal(value).quantize(Decimal("0.01"))
 
 
-def _ar_debit_normal_balance(account_codes, tenant_id=None):
+def _ar_debit_normal_balance(account_codes, tenant_id=None, *, partner_only=False):
     """Σ(debit − credit) across the AR control scope (base currency).
 
     Merchant ('2115') and partner ('3350') buckets are DEBITED by the sale
@@ -172,6 +174,17 @@ def _ar_debit_normal_balance(account_codes, tenant_id=None):
     posted = db.session.query(GLJournalEntry.id).filter(GLJournalEntry.is_posted.is_(True))
     if tenant_id is not None:
         posted = posted.filter(GLJournalEntry.tenant_id == tenant_id)
+    if partner_only:
+        expense_codes = _resolve_role_codes("PARTNER_SHARE_EXPENSE", ["6910"], tenant_id)
+        share_entries = (
+            db.session.query(GLJournalLine.entry_id)
+            .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
+            .filter(GLAccount.code.in_(expense_codes))
+        )
+        posted = posted.filter(
+            GLJournalEntry.reference_type.in_(("PartnerDistribution", "PartnerDraw"))
+            | GLJournalEntry.id.in_(share_entries)
+        )
     line_filters = [
         GLJournalLine.account_id == GLAccount.id,
         GLJournalLine.entry_id.in_(posted),
@@ -311,7 +324,7 @@ class SubLedgerReconciliation:
         from models import Customer
         from models.customer import derive_customer_balance
 
-        codes = _ar_control_codes()
+        codes = _ar_control_codes(tenant_id)
 
         customers = Customer.query.order_by(Customer.id).populate_existing().all()
         if tenant_id is not None:
@@ -392,10 +405,12 @@ class SubLedgerReconciliation:
             _reconciling_item(
                 "partner_current_shares",
                 "حصص الشركاء على الحساب الجاري (3350) — ضمن حسابات ضبط AR",
-                abs(_ar_debit_normal_balance(["3350"], tenant_id)),
-                1,
-                "توزيع أرباح الشركاء يُقيَّد دائناً على 3350 وهو داخل نطاق "
-                "ضبط الذمم، بينما ذمم العملاء لا تتضمن حصة الشريك.",
+                abs(partner_net := _ar_debit_normal_balance(
+                    _resolve_role_codes("PARTNERS_CURRENT", ["3350"], tenant_id),
+                    tenant_id, partner_only=True,
+                )),
+                -1 if partner_net > 0 else 1,
+                "تُستبعد قيود حصص الأرباح والتوزيعات والمسحوبات من ذمم العملاء.",
             ),
         ]
         reconciling_total = _reconciling_total(reconciling_items)

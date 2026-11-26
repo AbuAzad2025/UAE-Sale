@@ -83,7 +83,7 @@ def tx(f):
     return wrapper
 
 
-def permission_required(permission_code):
+def permission_required(permission_code, *alternatives):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -91,7 +91,7 @@ def permission_required(permission_code):
                 flash("الرجاء تسجيل الدخول أولاً", "warning")
                 return redirect(url_for("auth.login"))
 
-            if not current_user.has_permission(permission_code):
+            if not any(current_user.has_permission(code) for code in (permission_code, *alternatives)):
                 flash("ليس لديك صلاحية للوصول لهذه الصفحة", "danger")
                 abort(403)
 

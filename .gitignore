@@ -112,6 +112,11 @@ ai_knowledge/models/*.joblib
 /_*.ps1
 /_*.txt
 
+# Local development launchers with real credentials (never commit)
+/start_server.ps1
+/scripts/dev/*.local.ps1
+/scripts/dev/secrets.*
+
 # Temporary scripts
 # migrate_old_data.py
 # verify_*.py

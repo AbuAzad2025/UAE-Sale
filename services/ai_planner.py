@@ -172,7 +172,6 @@ def extract_entities(message: str) -> dict:
             ents["expense_description"] = raw
             break
     _rd = ents.setdefault("relative_dates", [])
-    low_norm = norm
     low_text = text.lower()
     if "اليوم" in norm or "today" in low_text:
         _rd.append("today")

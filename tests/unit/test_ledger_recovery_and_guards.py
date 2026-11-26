@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from _rebuild_gl import restore_journals
+from scripts.restore_journals import restore_journals
 from models import GLAccount, GLJournalEntry, SystemSettings, Tenant
 from models.tenant_scope import run_in_tenant_context
 from services.advanced_journal_manager import AdvancedJournalEntryManager

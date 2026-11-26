@@ -107,6 +107,11 @@ ai_knowledge/models/*.joblib
 *.temp
 ~$*
 
+# Local scratch/audit scripts (never mix these with production source)
+/_*.py
+/_*.ps1
+/_*.txt
+
 # Temporary scripts
 # migrate_old_data.py
 # verify_*.py

@@ -62,12 +62,14 @@ def with_tenant_header(settings, tenant):
     # The owner invoice-settings form stores an uploaded logo in
     # InvoiceSettings.logo_path (tenant-scoped), while the tenant form stores a
     # URL in Tenant.logo_url. Honour both so an uploaded logo actually prints.
-    # Both sources belong to THIS document's tenant — no cross-tenant data.
-    _logo = (
-        tenant.logo_url
-        or getattr(settings, "logo_url", None)
-        or getattr(settings, "logo_path", None)
-    )
+    # Settings are only honoured when they explicitly belong to THIS tenant —
+    # a platform-level settings object can never supply a business logo.
+    settings_logo = None
+    if getattr(settings, "tenant_id", None) == tenant.id:
+        settings_logo = getattr(settings, "logo_url", None) or getattr(
+            settings, "logo_path", None
+        )
+    _logo = tenant.logo_url or settings_logo
     data["logo_url"] = _logo
     data["logo_path"] = _logo
     data["show_logo"] = bool(_logo)

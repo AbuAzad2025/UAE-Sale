@@ -225,9 +225,7 @@ Expected response (five checks — `nowpayments` may be a warning before the vau
 
 ## 📚 Documentation
 
-Documentation is split into production-facing and development-only material.
-
-### Production documentation (`docs/production/`)
+Production documentation is kept in `docs/production/`.
 
 | Document | Description |
 |----------|-------------|
@@ -236,15 +234,6 @@ Documentation is split into production-facing and development-only material.
 | [FULL_USER_GUIDE.md](docs/production/FULL_USER_GUIDE.md) | Machine-readable public guide consumed by the local AI assistant |
 | [OWNER_USER_GUIDE.md](docs/production/OWNER_USER_GUIDE.md) | Machine-readable owner-only guide consumed by the local AI assistant |
 | [.env.example](.env.example) | Environment variables reference |
-
-### Development documentation (`docs/development/`)
-
-| Document | Description |
-|----------|-------------|
-| [TECHNICAL_STATUS.md](docs/development/TECHNICAL_STATUS.md) | Authoritative technical state — architecture, isolation, security, finance, CI |
-| [MIGRATIONS.md](docs/development/MIGRATIONS.md) | Migration chain & golden rules |
-| [CHANGELOG.md](docs/development/CHANGELOG.md) | Version history & current-state notes |
-| [LOCAL_AGENT_CONTEXT.md](docs/development/LOCAL_AGENT_CONTEXT.md) | Local agent context architecture |
 
 ### Key Directories
 
@@ -311,7 +300,7 @@ All CI workflows are green: `ci.yml` (8 jobs: lint, security-scan, verify-boot, 
 
 ### Security Features
 
-- **Load-time tenant isolation**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria()`) filters all ~79 registered tenant-scoped tables — including `session.get()`, relationships, aliases and paginated queries. A `before_flush` guard stamps/validates `tenant_id` on writes. Platform rows (roles, tax rulesets, fiscal periods) stay visible via an `OR tenant_id IS NULL` criterion. See [docs/development/TECHNICAL_STATUS.md](docs/development/TECHNICAL_STATUS.md).
+- **Load-time tenant isolation**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria()`) filters all ~79 registered tenant-scoped tables — including `session.get()`, relationships, aliases and paginated queries. A `before_flush` guard stamps/validates `tenant_id` on writes. Platform rows (roles, tax rulesets, fiscal periods) stay visible via an `OR tenant_id IS NULL` criterion. Verified by the tenant-isolation and security test suites.
 - **Role-based access control**: Granular permissions per role (27 seeded codes)
 - **Feature gates (package enforcement)**: `install_feature_gate()` on `api`, `ai`, `ledger` (`gl`), `reports`, `maintenance`, `api_enhanced`, `api_analytics`, `graphql`. Disabled feature → 403; verification failure → 503 (fail-closed); infra endpoints exempt. `enable_api` defaults to **False**; other `enable_*` flags default True.
 - **Audit trail**: All financial transactions logged (append-only, soft-delete via `b41`)

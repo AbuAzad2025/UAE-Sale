@@ -45,13 +45,14 @@ from utils.decorators import (
 )
 from utils.system_init import _ensure_operational_roles_for_tenant
 
-_FX_REVALUATION_CONFIRM_TOKEN = "YES_POST_FX_REVALUATION"
 from utils.db_safety import (
     validate_table_name,
     validate_backup_filename,
     is_protected_table,
 )
 from sqlalchemy import text, inspect
+
+_FX_REVALUATION_CONFIRM_TOKEN = "YES_POST_FX_REVALUATION"
 
 
 def get_allowed_table_names_safe():
@@ -804,8 +805,6 @@ def restore_backup(filename):
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
 
-
-
     if not current_user.check_password(password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
         return redirect(url_for("owner.list_backups"))
@@ -883,8 +882,6 @@ def custom_restore_backup(filename):
     if not password:
         flash("❌ يرجى إدخال كلمة المرور للتأكيد", "warning")
         return redirect(url_for("owner.list_backups"))
-
-
 
     if not current_user.check_password(password):
         flash("❌ كلمة المرور غير صحيحة!", "danger")
@@ -1047,9 +1044,9 @@ def clear_cache():
     try:
         cache.clear()
         flash("✅ تم مسح الذاكرة المؤقتة بنجاح", "success")
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("owner.dashboard"))
 
@@ -1096,10 +1093,10 @@ def truncate_table():
         db.session.commit()
 
         flash(f"✅ تم مسح جدول {table_name} بنجاح", "success")
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("owner.database_tools"))
 
@@ -1142,9 +1139,9 @@ def browse_table(table_name):
             total=total,
         )
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("owner.database_tools"))
 
 
@@ -1179,7 +1176,9 @@ def update_row(table_name, row_id):
         # Never allow changing the primary key itself.
         updates = {k: v for k, v in data.items() if k in real_cols and k != pk_col}
         if not updates:
-            return jsonify({"success": False, "error": "No valid columns to update"}), 400
+            return jsonify(
+                {"success": False, "error": "No valid columns to update"}
+            ), 400
         set_clause = ", ".join(f"{col} = :v_{i}" for i, col in enumerate(updates))
         params = {f"v_{i}": v for i, v in enumerate(updates.values())}
         params["pk"] = row_id
@@ -1216,9 +1215,9 @@ def edit_table_data(table_name):
             "owner/edit_table.html", table_name=table_name, columns=columns, rows=rows
         )
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("owner.database_tools"))
 
 
@@ -1419,10 +1418,10 @@ def company_info():
             flash("تم حفظ معلومات الشركة بنجاح", "success")
             return redirect(url_for("owner.company_info"))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"خطأ في حفظ المعلومات: حدث خطأ غير متوقع", "error")
+            flash("خطأ في حفظ المعلومات: حدث خطأ غير متوقع", "error")
 
     return render_template("owner/company_info.html", tenant=tenant)
 
@@ -1471,10 +1470,10 @@ def system_config():
             flash("تم حفظ إعدادات النظام بنجاح", "success")
             return redirect(url_for("owner.system_config"))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
+            flash("خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
 
     return render_template("owner/system_config.html", settings=settings)
 
@@ -1844,7 +1843,7 @@ def tenant_export(id):
     """Export all data for a single tenant as ZIP (CSV per table) or JSON."""
     from services.tenant_export_service import export_tenant_zip, export_tenant_json
 
-    tenant = Tenant.query.get_or_404(id)
+    Tenant.query.get_or_404(id)
     fmt = request.args.get("format", "zip").lower()
 
     if fmt == "json":
@@ -2136,7 +2135,7 @@ def constants_add(group):
             "create", "system_lookups", None, {"group": group, "code": code}
         )
         flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
         flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
@@ -2159,7 +2158,7 @@ def constants_label(group):
             "update", "system_lookups", None, {"group": group, "code": code}
         )
         flash("تم حفظ التسمية بنجاح", "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
         flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
@@ -2186,7 +2185,7 @@ def constants_visibility(group):
             {"group": group, "code": code, "disabled": disable},
         )
         flash("تم تحديث الحالة بنجاح", "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
         flash("حدث خطأ غير متوقع", "danger")
     except Exception as e:
@@ -2196,7 +2195,9 @@ def constants_visibility(group):
 
 
 @owner_bp.route("/settings/letterheads", methods=["GET", "POST"])
-@owner_bp.route("/invoice-settings", methods=["GET", "POST"])  # legacy alias (tests/bookmarks)
+@owner_bp.route(
+    "/invoice-settings", methods=["GET", "POST"]
+)  # legacy alias (tests/bookmarks)
 @login_required
 @permission_required("manage_settings")
 def invoice_settings():
@@ -2313,16 +2314,25 @@ def invoice_settings():
                             # one is configured (config.UPLOAD_ROOT), so the
                             # logo survives a redeploy. The stored path is
                             # unchanged, so the /static/... URL stays the same.
-                            upload_root = current_app.config.get(
-                                "UPLOAD_ROOT"
-                            ) or current_app.static_folder
-                            upload_folder = os.path.join(upload_root, "uploads", "logos")
+                            upload_root = (
+                                current_app.config.get("UPLOAD_ROOT")
+                                or current_app.static_folder
+                            )
+                            tenant_id = getattr(current_user, "tenant_id", None)
+                            if tenant_id is None:
+                                abort(403)
+                            tenant_prefix = f"tenant_{tenant_id}"
+                            upload_folder = os.path.join(
+                                upload_root, tenant_prefix, "uploads", "logos"
+                            )
                             os.makedirs(upload_folder, exist_ok=True)
 
                             filepath = os.path.join(upload_folder, filename)
                             logo_file.save(filepath)
 
-                            settings.logo_path = f"uploads/logos/{filename}"
+                            settings.logo_path = (
+                                f"{tenant_prefix}/uploads/logos/{filename}"
+                            )
 
             if "watermark_image" in request.files:
                 watermark_file = request.files["watermark_image"]
@@ -2334,16 +2344,25 @@ def invoice_settings():
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     filename = f"watermark_{timestamp}_{filename}"
 
-                    upload_root = current_app.config.get(
-                        "UPLOAD_ROOT"
-                    ) or current_app.static_folder
-                    upload_folder = os.path.join(upload_root, "uploads", "watermarks")
+                    upload_root = (
+                        current_app.config.get("UPLOAD_ROOT")
+                        or current_app.static_folder
+                    )
+                    tenant_id = getattr(current_user, "tenant_id", None)
+                    if tenant_id is None:
+                        abort(403)
+                    tenant_prefix = f"tenant_{tenant_id}"
+                    upload_folder = os.path.join(
+                        upload_root, tenant_prefix, "uploads", "watermarks"
+                    )
                     os.makedirs(upload_folder, exist_ok=True)
 
                     filepath = os.path.join(upload_folder, filename)
                     watermark_file.save(filepath)
 
-                    settings.watermark_image_path = f"uploads/watermarks/{filename}"
+                    settings.watermark_image_path = (
+                        f"{tenant_prefix}/uploads/watermarks/{filename}"
+                    )
 
             settings.updated_by = current_user.id
 
@@ -2355,10 +2374,10 @@ def invoice_settings():
                 return redirect(url_for("main.letterheads_settings"))
             return redirect(url_for("owner.invoice_settings"))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
+            flash("خطأ في حفظ الإعدادات: حدث خطأ غير متوقع", "error")
 
     return render_template("owner/invoice_settings.html", settings=settings)
 
@@ -2630,9 +2649,9 @@ def system_health():  # noqa: C901
 
         return render_template("owner/system_health.html", health=health_data)
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع", "danger")
+        flash("خطأ في تحميل معلومات النظام: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("owner.dashboard"))
 
 
@@ -3153,9 +3172,9 @@ def database_optimize():
                 or "عملية التحسين لم تكتمل"
             )
             flash(f"⚠️ تحذير: {msg}", "warning")
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ في التحسين: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ في التحسين: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("owner.system_health"))
 
@@ -3190,9 +3209,9 @@ def verify_backups():
 
         return render_template("owner/verify_backups.html", backups=verified)
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع", "danger")
+        flash("خطأ في تحميل النسخ الاحتياطية: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("owner.dashboard"))
 
 
@@ -3350,9 +3369,9 @@ def export_excel(table_name):
             as_attachment=True,
             download_name=f"{table_name}_{today_str}.xlsx",
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"خطأ في التصدير: حدث خطأ غير متوقع", "danger")
+        flash("خطأ في التصدير: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("owner.import_export_tools"))
 
 
@@ -3572,7 +3591,6 @@ def tax_rulesets():
     )
 
 
-
 # ── Budget management ──────────────────────────────────────────────────────
 def _assert_budget_tenant_access(requested_tenant_id):
     """Ensure the current user may access budgets for *requested_tenant_id*.
@@ -3582,6 +3600,7 @@ def _assert_budget_tenant_access(requested_tenant_id):
     tenant id (None means "all tenants", only for platform roles).
     """
     from flask import abort
+
     u = current_user
     is_platform = bool(
         getattr(u, "is_owner", False)
@@ -3633,7 +3652,9 @@ def budget_create():
     accounts = GLAccount.query.filter_by(is_active=True).order_by(GLAccount.code).all()
 
     if request.method == "POST":
-        tenant_id = _assert_budget_tenant_access(request.form.get("tenant_id", type=int))
+        tenant_id = _assert_budget_tenant_access(
+            request.form.get("tenant_id", type=int)
+        )
 
         name_ar = request.form.get("name_ar", "").strip()
         name_en = request.form.get("name_en", "").strip()
@@ -3645,16 +3666,35 @@ def budget_create():
 
         if not name_ar:
             flash("اسم الموازنة (عربي) مطلوب", "danger")
-            return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+            return render_template(
+                "owner/budget_form.html",
+                tenants=tenants,
+                accounts=accounts,
+                budget=None,
+            )
 
         try:
-            ps = _date.fromisoformat(period_start) if period_start else _date.today().replace(month=1, day=1)
-            pe = _date.fromisoformat(period_end) if period_end else _date.today().replace(month=12, day=31)
+            ps = (
+                _date.fromisoformat(period_start)
+                if period_start
+                else _date.today().replace(month=1, day=1)
+            )
+            pe = (
+                _date.fromisoformat(period_end)
+                if period_end
+                else _date.today().replace(month=12, day=31)
+            )
         except ValueError:
             flash("تاريخ غير صالح", "danger")
-            return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+            return render_template(
+                "owner/budget_form.html",
+                tenants=tenants,
+                accounts=accounts,
+                budget=None,
+            )
 
         import secrets
+
         budget_number = f"BDG-{fiscal_year}-{secrets.token_hex(3).upper()}"
 
         budget = Budget(
@@ -3692,7 +3732,9 @@ def budget_create():
         flash(f"تم إنشاء الموازنة: {budget_number}", "success")
         return redirect(url_for("owner.budgets_list"))
 
-    return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None)
+    return render_template(
+        "owner/budget_form.html", tenants=tenants, accounts=accounts, budget=None
+    )
 
 
 @owner_bp.route("/budgets/<int:budget_id>", methods=["GET"])
@@ -3712,7 +3754,6 @@ def budget_view(budget_id):
 def budget_edit(budget_id):
     from models.budget import Budget
     from models import GLAccount
-    from datetime import date as _date
 
     budget = get_owned_or_404(Budget, budget_id)
     _assert_budget_tenant_access(budget.tenant_id)
@@ -3729,7 +3770,9 @@ def budget_edit(budget_id):
         flash("تم تحديث الموازنة", "success")
         return redirect(url_for("owner.budget_view", budget_id=budget.id))
 
-    return render_template("owner/budget_form.html", tenants=tenants, accounts=accounts, budget=budget)
+    return render_template(
+        "owner/budget_form.html", tenants=tenants, accounts=accounts, budget=budget
+    )
 
 
 @owner_bp.route("/budgets/<int:budget_id>/delete", methods=["POST"])
@@ -4124,15 +4167,20 @@ def _partners_view(imp, post_endpoint="owner.partners"):
             return redirect(url_for("owner.partners"))
 
         action = (request.form.get("action") or "").strip()
-        permission = {"set_scope": "manage_customers", "record_draw": "manage_payments",
-                      "distribute": "manage_ledger"}.get(action)
+        permission = {
+            "set_scope": "manage_customers",
+            "record_draw": "manage_payments",
+            "distribute": "manage_ledger",
+        }.get(action)
         if permission and not current_user.has_permission(permission):
             abort(403)
         try:
             if action == "set_scope":
                 cid = request.form.get("customer_id", type=int)
                 Tenant.query.filter_by(id=imp.id).with_for_update().one()
-                customer = Customer.query.filter_by(id=cid, tenant_id=imp.id, is_active=True).first()
+                customer = Customer.query.filter_by(
+                    id=cid, tenant_id=imp.id, is_active=True
+                ).first()
                 if customer is None:
                     raise ValueError("العميل غير موجود")
                 scope = (request.form.get("scope") or "").strip()
@@ -4144,12 +4192,22 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                     if not share.is_finite() or share <= 0 or share > 100:
                         raise ValueError("النسبة يجب أن تكون بين 0 و 100")
                     share = share.quantize(Decimal("0.001"))
-                    others = db.session.query(func.coalesce(func.sum(Customer.partner_share), 0)).filter(
-                        Customer.tenant_id == imp.id, Customer.id != customer.id, Customer.is_active.is_(True),
-                        Customer.partner_scope == "company",
-                    ).scalar()
+                    others = (
+                        db.session.query(
+                            func.coalesce(func.sum(Customer.partner_share), 0)
+                        )
+                        .filter(
+                            Customer.tenant_id == imp.id,
+                            Customer.id != customer.id,
+                            Customer.is_active.is_(True),
+                            Customer.partner_scope == "company",
+                        )
+                        .scalar()
+                    )
                     if share <= 0 or others + share > 100:
-                        raise ValueError("مجموع نسب الشركاء يجب ألا يتجاوز 100%، والنسبة المدخلة يجب أن تكون موجبة.")
+                        raise ValueError(
+                            "مجموع نسب الشركاء يجب ألا يتجاوز 100%، والنسبة المدخلة يجب أن تكون موجبة."
+                        )
                     customer.partner_scope = "company"
                     customer.partner_share = share
                     customer.customer_type = "partner"
@@ -4173,7 +4231,11 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                             customer.customer_type = "regular"
                     changes = {"partner_scope": "none", "partner_share": None}
                 create_audit_log(
-                    "set_partner_scope", "customers", customer.id, changes=changes, commit=False
+                    "set_partner_scope",
+                    "customers",
+                    customer.id,
+                    changes=changes,
+                    commit=False,
                 )
                 db.session.commit()
                 flash("✅ تم تحديث إعدادات الشريك", "success")
@@ -4182,7 +4244,9 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                 pid = request.form.get("partner_id", type=int)
                 amount_raw = (request.form.get("amount") or "").strip()
                 source = (request.form.get("source") or "cash").strip().lower()
-                partner = Customer.query.filter_by(id=pid, tenant_id=imp.id, is_active=True).first()
+                partner = Customer.query.filter_by(
+                    id=pid, tenant_id=imp.id, is_active=True
+                ).first()
                 if partner is None or not partner.is_active:
                     raise ValueError("الشريك غير موجود")
                 amount = Decimal(amount_raw)
@@ -4282,7 +4346,9 @@ def _partners_view(imp, post_endpoint="owner.partners"):
                 .all()
             ):
                 link_counts[pid] = cnt
-            accrual = pp._product_shares_bulk(ids, period_from, period_to, tenant_id=imp.id)
+            accrual = pp._product_shares_bulk(
+                ids, period_from, period_to, tenant_id=imp.id
+            )
 
         partner_ids = [p.id for p in company_partners]
         balances = {}
@@ -4290,15 +4356,15 @@ def _partners_view(imp, post_endpoint="owner.partners"):
             q = (
                 db.session.query(
                     GLJournalLine.party_id,
-                    func.coalesce(
-                        func.sum(-GLJournalLine.amount_base), 0
-                    ),
+                    func.coalesce(func.sum(-GLJournalLine.amount_base), 0),
                 )
                 .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
                 .join(GLJournalEntry, GLJournalEntry.id == GLJournalLine.entry_id)
                 .filter(
-                    GLAccount.code == "3350", GLJournalLine.party_id.in_(partner_ids),
-                    GLJournalEntry.is_posted.is_(True), GLJournalEntry.tenant_id == imp.id,
+                    GLAccount.code == "3350",
+                    GLJournalLine.party_id.in_(partner_ids),
+                    GLJournalEntry.is_posted.is_(True),
+                    GLJournalEntry.tenant_id == imp.id,
                     GLJournalLine.tenant_id == imp.id,
                 )
                 .group_by(GLJournalLine.party_id)

@@ -139,5 +139,5 @@ health endpoints are exempt.
 
 ---
 
-*للحالة التقنية والهندسية راجع `docs/TECHNICAL_STATUS.md`. For technical/architecture
-state see `docs/TECHNICAL_STATUS.md`.*
+*للتفاصيل التقنية راجع الكود المصدري واختبارات المشروع. For technical details,
+refer to the source code and the project test suites.*

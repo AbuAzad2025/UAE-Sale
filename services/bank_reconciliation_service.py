@@ -27,7 +27,7 @@ class BankReconciliationService:
         from services.gl_service import GLService
 
         statement = GLService.get_account_statement(
-            bank_account_id, date_from=None, date_to=period_end
+            bank_account_id, date_from=period_start, date_to=period_end
         )
 
         closing_balance_per_books = Decimal(str(statement["closing_balance"]))

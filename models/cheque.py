@@ -19,11 +19,11 @@ except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوا
     AccountResolver = None  # type: ignore[assignment,misc]
 
 
-def _resolve_account(role_value, fallback_code):
+def _resolve_account(role_value, fallback_code, tenant_id=None):
     """Resolve an account by role name, falling back to the historical literal."""
     try:
         if AccountRole is not None and AccountResolver is not None:
-            code = AccountResolver.resolve(AccountRole(role_value))
+            code = AccountResolver.resolve(AccountRole(role_value), tenant_id=tenant_id)
             if code:
                 return code
     except Exception:
@@ -211,18 +211,18 @@ class Cheque(TenantScopedMixin, db.Model):
 
     def receive_cheque(self):
         """تسجيل استلام الشيك الوارد"""
-        if self.cheque_type == "incoming":
+        if self.cheque_type == "incoming" and not self.gl_journal_entry_id:
             from services.gl_service import GLService
 
             try:
                 credit_account = (
                     GLService.get_customer_credit_account(self.customer)
                     if self.customer_id
-                    else "1130"
+                    else _resolve_account("AR_CONTROL", "1130", self.tenant_id)
                 )
                 lines = [
                     {
-                        "account": "1150",
+                        "account": _resolve_account("UNDER_COLLECTION", "1150", self.tenant_id),
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"استلام شيك رقم {self.cheque_bank_number}",
@@ -240,6 +240,10 @@ class Cheque(TenantScopedMixin, db.Model):
                     description=f"استلام شيك وارد رقم {self.cheque_bank_number}",
                     reference_type="cheque_receive",
                     reference_id=self.id,
+                    entry_date=datetime.combine(self.issue_date, datetime.min.time()),
+                    tenant_id=self.tenant_id,
+                    created_by=self.user_id,
+                    idempotency_key=f"cheque_receive:{self.id}",
                 )
                 if entry is not None and not self.gl_journal_entry_id:
                     self.gl_journal_entry_id = entry.id
@@ -251,16 +255,16 @@ class Cheque(TenantScopedMixin, db.Model):
 
     def issue_cheque(self):
         """تسجيل إصدار الشيك الصادر"""
-        if self.cheque_type == "outgoing":
+        if self.cheque_type == "outgoing" and not self.gl_journal_entry_id:
             from services.gl_service import GLService
 
             try:
                 if self.supplier_id:
-                    debit_account = "2110"
+                    debit_account = _resolve_account("AP_CONTROL", "2110", self.tenant_id)
                 elif self.customer_id:
                     debit_account = GLService.get_customer_credit_account(self.customer)
                 else:
-                    debit_account = "2110"
+                    debit_account = _resolve_account("AP_CONTROL", "2110", self.tenant_id)
                 lines = [
                     {
                         "account": debit_account,
@@ -269,7 +273,7 @@ class Cheque(TenantScopedMixin, db.Model):
                         "description": f"إصدار شيك رقم {self.cheque_bank_number}",
                     },
                     {
-                        "account": "2120",
+                        "account": _resolve_account("DEFERRED_CHEQUES_PAYABLE", "2120", self.tenant_id),
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"إصدار شيك - رقم {self.cheque_bank_number}",
@@ -281,6 +285,10 @@ class Cheque(TenantScopedMixin, db.Model):
                     description=f"إصدار شيك صادر رقم {self.cheque_bank_number}",
                     reference_type="cheque_issue",
                     reference_id=self.id,
+                    entry_date=datetime.combine(self.issue_date, datetime.min.time()),
+                    tenant_id=self.tenant_id,
+                    created_by=self.user_id,
+                    idempotency_key=f"cheque_issue:{self.id}",
                 )
                 self.gl_journal_entry_id = entry.id
             except Exception as e:
@@ -294,14 +302,20 @@ class Cheque(TenantScopedMixin, db.Model):
         if self.status not in ["pending", "under_collection"]:
             raise ValueError(f"لا يمكن إيداع شيك بحالة: {self.status_ar}")
 
+        effective_date = deposit_date or datetime.now().date()
+        if effective_date < self.issue_date:
+            raise ValueError("تاريخ الإيداع يجب ألا يسبق إصدار الشيك.")
         self.status = "deposited"
-        self.deposit_date = deposit_date or datetime.now().date()
+        self.deposit_date = effective_date
 
-    def clear_cheque(self, clearance_date=None, clearance_exchange_rate=None):
+    def clear_cheque(self, clearance_date=None, clearance_exchange_rate=None, *, actor_id=None):
         """تأكيد صرف الشيك من البنك - المحاسبة الحقيقية تبدأ هنا"""
         if self.status not in ["deposited", "pending"]:
             raise ValueError(f"لا يمكن تأكيد صرف شيك بحالة: {self.status_ar}")
 
+        effective_date = clearance_date or datetime.now().date()
+        if effective_date < (self.deposit_date or self.issue_date):
+            raise ValueError("تاريخ الصرف يجب ألا يسبق الإصدار أو الإيداع.")
         from services.currency_service import CurrencyService
 
         _base = CurrencyService.get_base_currency()
@@ -309,11 +323,11 @@ class Cheque(TenantScopedMixin, db.Model):
         explicit_rate = None
         if self.currency != _base and clearance_exchange_rate is not None:
             explicit_rate = Decimal(str(clearance_exchange_rate))
-            if explicit_rate <= 0:
+            if not explicit_rate.is_finite() or explicit_rate <= 0:
                 raise ValueError("Invalid clearance exchange rate: must be positive")
 
         self.status = "cleared"
-        self.clearance_date = clearance_date or datetime.now().date()
+        self.clearance_date = effective_date
 
         if self.currency != _base and explicit_rate is not None:
             self.clearance_exchange_rate = explicit_rate.quantize(
@@ -341,7 +355,7 @@ class Cheque(TenantScopedMixin, db.Model):
             self.actual_amount_base - Decimal(str(self.amount_base))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        self._create_clearing_journal_entry()
+        self._create_clearing_journal_entry(actor_id=actor_id)
 
         from models.payment import Payment, Receipt
 
@@ -361,7 +375,7 @@ class Cheque(TenantScopedMixin, db.Model):
             db.session.flush()
             recompute_customer_balance(self.customer_id)
 
-    def _create_clearing_journal_entry(self):
+    def _create_clearing_journal_entry(self, *, actor_id=None):
         """إنشاء القيد المحاسبي عند صرف الشيك
 
         اصطلاح الإشارة المُثبَّت (موجب currency_gain_loss = الفعلي أعلى من الدفتري):
@@ -370,8 +384,9 @@ class Cheque(TenantScopedMixin, db.Model):
         """
         from services.gl_service import GLService
 
-        fx_gain_account = _resolve_account("FX_GAIN", "4400")
-        fx_loss_account = _resolve_account("FX_LOSS", "6900")
+        fx_gain_account = _resolve_account("FX_GAIN", "4400", self.tenant_id)
+        fx_loss_account = _resolve_account("FX_LOSS", "6900", self.tenant_id)
+        bank_account = _resolve_account("BANK", "1120", self.tenant_id)
 
         try:
             lines = []
@@ -379,7 +394,7 @@ class Cheque(TenantScopedMixin, db.Model):
             if self.cheque_type == "incoming":
                 lines.append(
                     {
-                        "account": "1120",  # البنك
+                        "account": bank_account,
                         "debit": self.actual_amount_base,
                         "credit": 0,
                         "description": f"صرف شيك وارد رقم {self.cheque_bank_number}",
@@ -387,7 +402,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 )
                 lines.append(
                     {
-                        "account": "1150",  # شيكات تحت التحصيل
+                        "account": _resolve_account("UNDER_COLLECTION", "1150", self.tenant_id),
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"صرف شيك رقم {self.cheque_bank_number}",
@@ -417,7 +432,7 @@ class Cheque(TenantScopedMixin, db.Model):
             elif self.cheque_type == "outgoing":
                 lines.append(
                     {
-                        "account": "2120",  # شيكات مؤجلة الدفع
+                        "account": _resolve_account("DEFERRED_CHEQUES_PAYABLE", "2120", self.tenant_id),
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"صرف شيك صادر رقم {self.cheque_bank_number}",
@@ -425,7 +440,7 @@ class Cheque(TenantScopedMixin, db.Model):
                 )
                 lines.append(
                     {
-                        "account": "1120",  # البنك
+                        "account": bank_account,
                         "debit": 0,
                         "credit": self.actual_amount_base,
                         "description": f"صرف شيك رقم {self.cheque_bank_number}",
@@ -458,6 +473,9 @@ class Cheque(TenantScopedMixin, db.Model):
                 reference_type="cheque_clear",
                 reference_id=self.id,
                 tenant_id=getattr(self, "tenant_id", None),
+                created_by=actor_id,
+                entry_date=datetime.combine(self.clearance_date, datetime.min.time()),
+                idempotency_key=f"cheque_clear:{self.id}",
             )
             if entry is not None and not self.gl_clearing_entry_id:
                 self.gl_clearing_entry_id = entry.id

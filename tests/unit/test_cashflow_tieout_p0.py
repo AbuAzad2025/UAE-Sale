@@ -21,8 +21,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import insert, select
 
-from models import GLAccount, GLJournalEntry, GLJournalLine
+from models import GLAccount, GLJournalEntry, GLJournalLine, Tenant
+from models.tenant_scope import (
+    clear_current_tenant_id,
+    get_current_tenant_id,
+    set_current_tenant_id,
+)
 from services.cash_flow_service import CashFlowService
+from services.fiscal_period_guard import ensure_current_period
 from services.gl_service import GLService
 
 BASE_CURRENCY = "ILS"
@@ -50,11 +56,20 @@ TIE_OUT_KEYS = {"gl_cash_ending", "computed_ending", "difference", "balanced"}
 
 
 @pytest.fixture
-def chart_of_accounts(db):
+def chart_of_accounts(db, owner_user):
     """شجرة الحسابات الأساسية + فترة مالية مفتوحة."""
-    GLService.ensure_core_accounts()
-    db.session.commit()
-    return {acc.code: acc for acc in GLAccount.query.all()}
+    tenant = Tenant(name="Cash flow", name_ar="التدفق النقدي", slug="cash-flow-test")
+    db.session.add(tenant)
+    db.session.flush()
+    set_current_tenant_id(tenant.id)
+    try:
+        GLService.ensure_core_accounts()
+        for year in {PERIOD_END.year, (PERIOD_START - timedelta(days=30)).year}:
+            ensure_current_period(year, tenant_id=tenant.id)
+        db.session.commit()
+        yield tenant
+    finally:
+        clear_current_tenant_id()
 
 
 def _post(
@@ -100,6 +115,7 @@ def _post_unbalanced_cash_entry(db, account_code, amount, entry_date):
             is_posted=True,
             created_at=now,
             updated_at=now,
+            tenant_id=get_current_tenant_id(),
         )
     )
     entry_id = db.session.execute(
@@ -115,6 +131,7 @@ def _post_unbalanced_cash_entry(db, account_code, amount, entry_date):
             debit=amount,
             credit=Decimal("0"),
             amount_base=amount,
+            tenant_id=get_current_tenant_id(),
         )
     )
     db.session.commit()
@@ -413,6 +430,8 @@ class TestCashFlowTieOut:
         )
         db.session.commit()
 
+        with client.session_transaction() as session:
+            session["impersonate_tenant_id"] = chart_of_accounts.id
         resp = client.get("/reports/cash-flow")
         assert resp.status_code == 200
 
@@ -491,3 +510,44 @@ class TestCashFlowTieOut:
         assert 'id="cash-flow-tie-out-break"' in html
         assert "فرق في مطابقة النقدية مع دفتر الأستاذ" in html
         assert "alert-danger" in html
+
+
+def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
+    from models import Cheque
+    from models.tenant_scope import run_in_tenant_context
+
+    tenant = Tenant(name="Treasury check", name_ar="تدقيق الخزينة", slug="treasury-check")
+    db.session.add(tenant)
+    db.session.commit()
+
+    def check():
+        GLService.ensure_core_accounts()
+
+        def post(debit, credit, amount, reference_type=None):
+            return GLService.post_entry(
+                [{"account": debit, "debit": amount}, {"account": credit, "credit": amount}],
+                tenant_id=tenant.id, created_by=owner_user.id,
+                reference_type=reference_type,
+            )
+        post("1110", "3100", 100)
+        post("1140", "2110", 50)
+        post("1120", "3350", 10, "Payment")
+        issue = post("1150", "1130", 20)
+        db.session.add(Cheque(
+            cheque_type="incoming", cheque_number="TREASURY-1", cheque_bank_number="1",
+            bank_name="Bank", issue_date=date.today(), due_date=date.today(),
+            amount=20, amount_base=20, tenant_id=tenant.id, gl_journal_entry_id=issue.id,
+        ))
+        db.session.flush()
+        report = CashFlowService.generate_gl_cash_flow(None, None)
+        assert report["cash_ending"] == report["net_change"] == Decimal("110")
+        assert report["operating_total"] == 10 and report["investing_total"] == 0
+        assert report["financing_total"] == 100
+        snapshot = CashFlowService.treasury_snapshot()
+        assert snapshot["cash"] == Decimal("100") and snapshot["bank"] == 10
+        assert [(row["register"], row["ledger"], row["difference"]) for row in snapshot["cheques"]] == [
+            (Decimal("20"), Decimal("20"), Decimal("0")),
+            (Decimal("0"), Decimal("0"), Decimal("0")),
+        ]
+
+    run_in_tenant_context(tenant.id, check)

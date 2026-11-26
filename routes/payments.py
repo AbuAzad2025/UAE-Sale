@@ -1661,8 +1661,11 @@ def create_payment(purchase_id):  # noqa: C901
                 for value in (amount_decimal, exchange_rate_decimal)
             ):
                 raise ValidationError("المبلغ وسعر الصرف يجب أن يكونا أكبر من صفر.")
+            pays_by_cheque = payment_method_value == "cheque"
+            if pays_by_cheque and amount_decimal != amount_decimal.quantize(Decimal("0.01")):
+                raise ValidationError("مبلغ الشيك يقبل منزلتين عشريتين.")
             amount_base = (amount_decimal * exchange_rate_decimal).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
+                Decimal("0.01" if pays_by_cheque else "0.001"), rounding=ROUND_HALF_UP
             )
             # balance is BASE currency; validate the BASE amount against it.
             if amount_base <= 0 or amount_base > balance:
@@ -1755,36 +1758,43 @@ def create_payment(purchase_id):  # noqa: C901
                 #   pending cheque  -> Dr 2110 / Cr 2120 (Deferred Cheques Payable);
                 #                      the Bank is only credited when the cheque clears.
                 if payment_method_value == "cheque":
-                    settlement_account = "2120"
+                    settlement_role = AccountRole.DEFERRED_CHEQUES_PAYABLE
                 elif payment_method_value == "cash":
-                    settlement_account = "1110"
+                    settlement_role = AccountRole.CASH
                 else:
-                    settlement_account = "1120"
+                    settlement_role = AccountRole.BANK
+                settlement_account = AccountResolver.resolve(
+                    settlement_role, tenant_id=purchase.tenant_id
+                )
+                # Cheques settle the same two-decimal book amount held by the register.
+                posting_amount = amount_base if pays_by_cheque else payment.amount
                 lines = [
                     {
                         "account": AccountResolver.resolve(
                             AccountRole.AP_CONTROL, tenant_id=purchase.tenant_id
                         ),
-                        "debit": payment.amount,
+                        "debit": posting_amount,
                         "description": f"سداد للمورد {payment.supplier_name}",
                     },
                     {
                         "account": settlement_account,
-                        "credit": payment.amount,
+                        "credit": posting_amount,
                         "description": f"سند صرف {payment.payment_number}",
                     },
                 ]
-                GLService.post_entry(
+                entry = GLService.post_entry(
                     lines,
                     description=f"Payment {payment.payment_number}",
                     reference_type="Payment",
                     reference_id=payment.id,
                     idempotency_key=f"Payment:{payment.id}",
-                    currency=payment.currency,
-                    exchange_rate=payment.exchange_rate,
+                    currency=_base_curr_pay if pays_by_cheque else payment.currency,
+                    exchange_rate=1 if pays_by_cheque else payment.exchange_rate,
                     created_by=current_user.id,
                     tenant_id=purchase.tenant_id,
                 )
+                if payment_method_value == "cheque":
+                    cheque.gl_journal_entry_id = entry.id
             except Exception:
                 # Never record a payment without a balanced GL entry.
                 db.session.rollback()

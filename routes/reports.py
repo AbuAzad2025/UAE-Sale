@@ -1643,6 +1643,7 @@ def cash_flow():
         cash_ending=report["cash_ending"],
         cash_ending_computed=report["cash_ending_computed"],
         tie_out=report["tie_out"],
+        treasury=CashFlowService.treasury_snapshot(),
         date_from=date_from,
         date_to=date_to,
     )

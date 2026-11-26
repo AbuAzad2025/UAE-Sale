@@ -24,7 +24,7 @@ def test_purchase_payment_accounts_for_pending_cheque(
     purchase = Purchase(
         purchase_number="P-TEST-CHEQUE", supplier_id=supplier.id,
         supplier_name=supplier.name, tenant_id=tenant.id, user_id=owner_user.id,
-        currency="USD", exchange_rate=Decimal("4"), amount_base=Decimal("100"),
+        currency="USD", exchange_rate=Decimal("4.001"), amount_base=Decimal("100"),
         total_amount=Decimal("25"), status="confirmed",
     )
     db.session.add(purchase)
@@ -34,17 +34,19 @@ def test_purchase_payment_accounts_for_pending_cheque(
 
     path = f"/payments/create_payment/{purchase.id}"
     form = client.get(path)
-    assert form.status_code == 200
+    assert form.status_code == 200, form.headers.get("Location")
     assert 'value="ILS" selected' in form.get_data(as_text=True)
 
     result = client.post(path, data={
-        "amount": "60", "currency": "ILS", "payment_method": "cheque",
+        "amount": "15", "currency": "USD", "payment_method": "cheque",
         "cheque_number": "CHEQUE-TEST", "cheque_date": "2040-01-10",
         "bank_name": "Example Bank",
     })
     assert result.status_code == 302 and "/purchases/" in result.headers["Location"]
     pending = Payment.query.filter_by(purchase_id=purchase.id).one()
     assert pending.cheque_id and not pending.payment_confirmed
+    assert pending.cheque.gl_journal_entry_id
+    assert pending.amount_base == pending.cheque.amount_base == Decimal("60.02")
     assert purchase.get_paid_amount() == 0
 
     result = client.post(path, data={
@@ -54,15 +56,16 @@ def test_purchase_payment_accounts_for_pending_cheque(
     assert Payment.query.filter_by(purchase_id=purchase.id).count() == 1
 
     result = client.post(path, data={
-        "amount": "40", "currency": "ILS", "payment_method": "cash",
+        "amount": "39.98", "currency": "ILS", "payment_method": "cash",
     })
     assert "/purchases/" in result.headers["Location"]
-    assert purchase.get_paid_amount() == Decimal("40")
+    assert purchase.get_paid_amount() == Decimal("39.98")
     journal = GLJournalEntry.query.filter_by(
         reference_type="Payment", reference_id=pending.id
     ).one()
     assert pending.supplier_id == supplier.id
-    assert any(line.account.code == "2110" and line.debit == Decimal("60") for line in journal.lines)
+    assert any(line.account.code == "2110" and line.debit == Decimal("60.02") for line in journal.lines)
+    assert pending.cheque.gl_journal_entry_id == journal.id
 
 
 class TestReceiptCreation:

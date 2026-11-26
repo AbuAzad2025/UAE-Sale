@@ -58,6 +58,47 @@
   </div>
 </div>
 
+{% if treasury is defined %}
+<section class="card mb-4" aria-labelledby="treasury-book-title">
+  <div class="card-body">
+    <h2 class="h5" id="treasury-book-title">{{ 'أرصدة الخزينة الحالية في الدفاتر' if current_language == 'ar' else 'Current treasury book balances' }}</h2>
+    <div class="row mb-2">
+      <div class="col-sm-6 mb-2">
+        <div>{{ 'الصندوق' if current_language == 'ar' else 'Cash on hand' }}</div>
+        <strong>{{ "{:,.2f}".format(treasury.cash) }} {{ base_currency }}</strong>
+      </div>
+      <div class="col-sm-6 mb-2">
+        <div>{{ 'البنك' if current_language == 'ar' else 'Bank' }}</div>
+        <strong>{{ "{:,.2f}".format(treasury.bank) }} {{ base_currency }}</strong>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr>
+          <th scope="col">{{ 'الشيكات المفتوحة' if current_language == 'ar' else 'Outstanding cheques' }}</th>
+          <th scope="col">{{ 'سجل الشيكات' if current_language == 'ar' else 'Cheque register' }}</th>
+          <th scope="col">{{ 'دفتر الأستاذ' if current_language == 'ar' else 'General ledger' }}</th>
+          <th scope="col">{{ 'الفرق' if current_language == 'ar' else 'Difference' }}</th>
+        </tr></thead>
+        <tbody>
+          {% for row in treasury.cheques %}
+          <tr>
+            <th scope="row">
+              {% if row.direction == 'incoming' %}{{ 'واردة' if current_language == 'ar' else 'Incoming' }}
+              {% else %}{{ 'صادرة' if current_language == 'ar' else 'Outgoing' }}{% endif %} ({{ row.code }})
+            </th>
+            <td>{{ "{:,.2f}".format(row.register) }} {{ base_currency }}</td>
+            <td>{{ "{:,.2f}".format(row.ledger) }} {{ base_currency }}</td>
+            <td class="{{ 'text-danger' if row.difference else '' }}">{{ "{:,.2f}".format(row.difference) }} {{ base_currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <div class="row mb-4">
   <div class="col-md-3">
     <div class="info-box {% if operating_total >= 0 %}bg-success{% else %}bg-danger{% endif %}">

@@ -27,6 +27,12 @@ from decimal import Decimal, InvalidOperation
 cheques_bp = Blueprint("cheques", __name__, url_prefix="/cheques")
 
 
+def _lock_cheque(cheque_id):
+    cheque = get_owned_or_404(Cheque, cheque_id)
+    db.session.refresh(cheque, with_for_update=True)
+    return cheque
+
+
 @cheques_bp.route("/")
 @login_required
 @permission_required("manage_payments")
@@ -388,7 +394,7 @@ def edit(id):
 @permission_required("manage_payments")
 def deposit_cheque(id):
     """إيداع الشيك في البنك - الخطوة 1"""
-    cheque = get_owned_or_404(Cheque, id)
+    cheque = _lock_cheque(id)
 
     try:
         deposit_date_str = request.form.get("deposit_date")
@@ -399,14 +405,14 @@ def deposit_cheque(id):
         )
 
         cheque.deposit_cheque(deposit_date)
-        db.session.commit()
-
         create_audit_log(
             "cheque_deposit",
             "cheques",
             id,
             f"إيداع شيك رقم {cheque.cheque_bank_number} في البنك",
+            commit=False,
         )
+        db.session.commit()
 
         flash(f"✅ تم إيداع الشيك {cheque.cheque_bank_number} في البنك", "success")
 
@@ -429,7 +435,7 @@ def deposit_cheque(id):
 @permission_required("manage_payments")
 def clear_cheque(id):
     """تأكيد صرف الشيك من البنك - الخطوة 2 - المحاسبة الفعلية"""
-    cheque = get_owned_or_404(Cheque, id)
+    cheque = _lock_cheque(id)
 
     try:
         clearance_date_str = request.form.get("clearance_date")
@@ -439,22 +445,16 @@ def clear_cheque(id):
             else None
         )
 
-        clearance_exchange_rate = request.form.get(
-            "clearance_exchange_rate", type=float
-        )
+        submitted_rate = request.form.get("clearance_exchange_rate")
+        clearance_exchange_rate = Decimal(submitted_rate) if submitted_rate else None
 
-        cheque.clear_cheque(clearance_date, clearance_exchange_rate)
-        db.session.commit()
-
+        cheque.clear_cheque(clearance_date, clearance_exchange_rate, actor_id=current_user.id)
         if cheque.currency_gain_loss and abs(cheque.currency_gain_loss) > Decimal(
             "0.01"
         ):
-            if cheque.currency_gain_loss > 0:
-                gain_loss_msg = f" - تم تحقيق ربح من فرق العملة: +{cheque.currency_gain_loss:.2f} AED"
-            else:
-                gain_loss_msg = (
-                    f" - خسارة من فرق العملة: {cheque.currency_gain_loss:.2f} AED"
-                )
+            gains = (cheque.currency_gain_loss > 0) == (cheque.cheque_type == "incoming")
+            label = "ربح فرق عملة" if gains else "خسارة فرق عملة"
+            gain_loss_msg = f" - {label}: {abs(cheque.currency_gain_loss):.2f} {CurrencyService.get_base_currency()}"
         else:
             gain_loss_msg = ""
 
@@ -463,7 +463,9 @@ def clear_cheque(id):
             "cheques",
             id,
             f"تأكيد صرف شيك رقم {cheque.cheque_bank_number} من البنك - تم تحديث الحسابات{gain_loss_msg}",
+            commit=False,
         )
+        db.session.commit()
 
         flash(
             f"✅ تم تأكيد صرف الشيك {cheque.cheque_bank_number} - تم تحديث الحسابات المالية{gain_loss_msg}",
@@ -489,7 +491,7 @@ def clear_cheque(id):
 @permission_required("manage_payments")
 def bounce_cheque(id):
     """رفض الشيك من البنك - إرجاع الدين"""
-    cheque = get_owned_or_404(Cheque, id)
+    cheque = _lock_cheque(id)
 
     try:
         reason = request.form.get("bounce_reason", "غير محدد")
@@ -497,14 +499,14 @@ def bounce_cheque(id):
         full_reason = f"{reason}. {details}" if details else reason
 
         cheque.bounce_cheque(full_reason)
-        db.session.commit()
-
         create_audit_log(
             "cheque_bounce",
             "cheques",
             id,
             f"رفض شيك رقم {cheque.cheque_bank_number}: {full_reason}",
+            commit=False,
         )
+        db.session.commit()
 
         flash(
             f"❌ تم رفض الشيك {cheque.cheque_bank_number} - تم إرجاع الدين للزبون",
@@ -530,7 +532,7 @@ def bounce_cheque(id):
 @permission_required("manage_payments")
 def cancel(id):
     """إلغاء الشيك"""
-    cheque = get_owned_or_404(Cheque, id)
+    cheque = _lock_cheque(id)
 
     if cheque.status in ("cleared", "bounced"):
         flash(
@@ -543,14 +545,14 @@ def cancel(id):
         reason = request.form.get("cancel_reason")
 
         cheque.cancel_cheque(reason)
-        db.session.commit()
-
         create_audit_log(
             "cancel",
             "cheques",
             id,
             f"إلغاء شيك رقم {cheque.cheque_bank_number} — السبب: {reason or 'غير محدد'}",
+            commit=False,
         )
+        db.session.commit()
 
         flash(f"✅ تم إلغاء الشيك {cheque.cheque_bank_number}", "success")
 

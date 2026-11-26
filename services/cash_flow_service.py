@@ -23,7 +23,7 @@ F4: لا أكواد حسابات ثابتة في هذه الخدمة. كل حس�
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, datetime
 from types import SimpleNamespace
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, case
 from extensions import db
 from models import GLAccount, GLJournalEntry, GLJournalLine, Payment, Receipt, Expense
 
@@ -34,6 +34,7 @@ CASH_FLOW_ROLE_MAP = {
     "CAPITAL": "CAPITAL",
     "OWNER_DRAWS": "OWNER_DRAWS",
     "LOANS": "LOANS",
+    "PARTNERS_CURRENT": "PARTNERS_CURRENT",
 }
 
 FIXED_ASSET_ROLES = ("LAND", "BUILDINGS", "VEHICLES", "EQUIPMENT", "FURNITURE")
@@ -266,6 +267,23 @@ class CashFlowService:
         )
 
         base_debit, base_credit, signed_base = CashFlowService._gl_base_expressions()
+        cash_account_ids = CashFlowService._cash_account_ids()
+        cash_entries = db.session.query(GLJournalLine.entry_id).filter(
+            GLJournalLine.account_id.in_(cash_account_ids)
+        )
+        account_codes = resolve_cash_flow_accounts()
+        section_expr = case(
+            (
+                and_(
+                    GLAccount.code == account_codes["PARTNERS_CURRENT"],
+                    GLJournalEntry.reference_type.in_(("Payment", "Receipt", "Sale", "ProductReturn")),
+                ),
+                "operating",
+            ),
+            (GLAccount.code.in_(account_codes["FIXED_ASSETS"]), "investing"),
+            ((GLAccount.type == "equity") | (GLAccount.code == account_codes["LOANS"]), "financing"),
+            else_="operating",
+        )
 
         query = (
             db.session.query(
@@ -274,6 +292,7 @@ class CashFlowService:
                 GLAccount.code.label("account_code"),
                 GLAccount.name.label("account_name"),
                 GLAccount.name_ar.label("account_name_ar"),
+                section_expr.label("section"),
                 func.sum(signed_base).label("net_base"),
                 func.sum(base_debit).label("debit_base"),
                 func.sum(base_credit).label("credit_base"),
@@ -281,7 +300,10 @@ class CashFlowService:
             .select_from(GLJournalLine)
             .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
             .join(GLAccount, GLJournalLine.account_id == GLAccount.id)
-            .filter(GLJournalEntry.is_posted.is_(True))
+            .filter(
+                GLJournalEntry.is_posted.is_(True),
+                GLJournalEntry.id.in_(cash_entries),
+            )
         )
         if period_start_dt is not None:
             query = query.filter(GLJournalEntry.entry_date >= period_start_dt)
@@ -294,12 +316,12 @@ class CashFlowService:
             GLAccount.code,
             GLAccount.name,
             GLAccount.name_ar,
+            section_expr,
         ).all()
 
         sections = {"operating": {}, "investing": {}, "financing": {}}
         export_rows = []
 
-        cash_account_ids = CashFlowService._cash_account_ids()
         cash_account_id_set = set(cash_account_ids)
 
         for row in rows:
@@ -307,7 +329,7 @@ class CashFlowService:
                 continue
 
             account_type = row.account_type
-            section = CashFlowService.classify_account(account_type)
+            section = row.section
             net_base = CashFlowService._dec(row.net_base)
             amount = CashFlowService._section_amount(account_type, net_base)
             if amount == 0:
@@ -372,6 +394,46 @@ class CashFlowService:
                 period_start, period_end
             ),
             "rows": export_rows,
+        }
+
+    @staticmethod
+    def treasury_snapshot():
+        """Current book balances and the cheque register's outstanding control amounts."""
+        from models import Cheque
+        from services.account_resolution import AccountResolver, AccountRole
+
+        tenant_id = _current_tenant_id()
+        roles = (AccountRole.CASH, AccountRole.BANK, AccountRole.UNDER_COLLECTION,
+                 AccountRole.DEFERRED_CHEQUES_PAYABLE)
+        codes = AccountResolver.resolve_codes(*roles, tenant_id=tenant_id)
+        accounts = {account.code: account for account in GLAccount.query.filter(
+            GLAccount.code.in_(codes.values())
+        )}
+        balances = {
+            role.value: accounts[code].get_balance() if code in accounts else Decimal("0")
+            for role, code in ((role, codes[role.value]) for role in roles)
+        }
+        pending = db.session.query(Cheque.cheque_type, func.sum(Cheque.amount_base)).filter(
+            Cheque.is_active.is_(True),
+            Cheque.status.in_(("pending", "deposited", "under_collection", "overdue")),
+        ).group_by(Cheque.cheque_type).all()
+        outstanding = dict(pending)
+        return {
+            "cash": balances["CASH"], "bank": balances["BANK"],
+            "cheques": [
+                {
+                    "direction": direction,
+                    "code": codes[role.value],
+                    "register": amount,
+                    "ledger": balances[role.value],
+                    "difference": balances[role.value] - amount,
+                }
+                for direction, role in (
+                    ("incoming", AccountRole.UNDER_COLLECTION),
+                    ("outgoing", AccountRole.DEFERRED_CHEQUES_PAYABLE),
+                )
+                for amount in (CashFlowService._dec(outstanding.get(direction)),)
+            ],
         }
 
     @staticmethod

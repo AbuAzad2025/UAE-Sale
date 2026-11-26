@@ -40,6 +40,7 @@ install_feature_gate(ai_bp, "ai")
 
 
 @ai_bp.errorhandler(AIServiceError)
+@permission_required("view_reports")
 def handle_ai_service_error(error: AIServiceError):
     """معالج مركزي لأخطاء خدمات AI.
 
@@ -56,6 +57,7 @@ def handle_ai_service_error(error: AIServiceError):
     ), 500
 
 
+@permission_required("view_reports")
 def _validate_csrf_token():
     """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
 
@@ -104,6 +106,7 @@ def _validate_csrf_token():
     return False
 
 
+@permission_required("view_reports")
 def _validate_origin():
     """Origin/Referer check — real CSRF defense for cookie-authed JSON APIs.
 
@@ -127,6 +130,7 @@ def _validate_origin():
         return False
 
 
+@permission_required("view_reports")
 def _log_security_event(event_type, details=None):
     """Log security events for audit trail"""
     try:
@@ -146,6 +150,7 @@ def _log_security_event(event_type, details=None):
         pass  # Avoid breaking the flow if logging fails
 
 
+@permission_required("view_reports")
 def _require_csrf_for_sensitive_ops():
     """Apply CSRF protection to sensitive AI operations that modify data.
 
@@ -176,6 +181,7 @@ def _require_csrf_for_sensitive_ops():
     return None
 
 
+@permission_required("view_reports")
 def _detect_ai_operation(message):
     """Map a chat message to a sensitive operation name (or 'chat_ai').
 
@@ -286,6 +292,7 @@ _PERMISSION_LABELS_AR = {
 }
 
 
+@permission_required("view_reports")
 def _ai_action_denied(user, permission_code):
     """permission_required-equivalent inline check for destructive AI actions.
 
@@ -307,6 +314,7 @@ def _ai_action_denied(user, permission_code):
     )
 
 
+@permission_required("view_reports")
 def _ai_tenant_denied(user, is_write_operation):
     """Phase 3: tenant_id إلزامي — يرفض أي كتابة لمستخدم بلا tenant.
 
@@ -337,6 +345,7 @@ def _ai_tenant_denied(user, is_write_operation):
     return None
 
 
+@permission_required("view_reports")
 def _ai_audit(table_name, record_id, changes=None, action="create"):
     """Phase 3: سجل تدقيق لكل إجراء AI يتجاوز ai_commands (fail-closed في الطلب)."""
     try:
@@ -356,6 +365,7 @@ def _ai_audit(table_name, record_id, changes=None, action="create"):
         return
 
 
+@permission_required("view_reports")
 def _ai_decimal(value, default=None):
     """تحويل مبلغ إلى Decimal (لا حسابات بمؤشرات عائمة)."""
     if value is None or (isinstance(value, str) and not value.strip()):
@@ -366,6 +376,7 @@ def _ai_decimal(value, default=None):
         return default
 
 
+@permission_required("view_reports")
 def _ai_create_sale(
     user, customer, product, quantity, payment_method="cash", notes=None
 ):
@@ -445,6 +456,7 @@ def _ai_create_sale(
     return sale
 
 
+@permission_required("view_reports")
 def _ai_record_receipt(user, customer, amount, payment_method="cash", notes=None):
     """قبض دفعة من عميل عبر المساعد الذكي — عبر PaymentService.
 
@@ -479,6 +491,7 @@ def _ai_record_receipt(user, customer, amount, payment_method="cash", notes=None
     return receipt
 
 
+@permission_required("view_reports")
 def _ai_record_refund(user, customer, amount, reason=None, payment_method="cash"):
     """صرف مبلغ للعميل عبر المساعد الذكي (استرداد).
 
@@ -504,6 +517,7 @@ def _ai_record_refund(user, customer, amount, reason=None, payment_method="cash"
     )
 
 
+@permission_required("view_reports")
 def _ai_set_customer_balance(user, customer, new_balance, reason=None):
     """تصحيح يدوي لرصيد العميل — مسجَّل بالكامل في سجل التدقيق.
 
@@ -527,6 +541,7 @@ def _ai_set_customer_balance(user, customer, new_balance, reason=None):
     return customer
 
 
+@permission_required("view_reports")
 def smart_listener(message, context):
     """مستمع ذكي يفهم نية المستخدم"""
     msg_lower = message.lower().strip()
@@ -546,6 +561,7 @@ def smart_listener(message, context):
     return "continue"
 
 
+@permission_required("view_reports")
 def train_local_ai(action, data, result):
     """تدريب الذكاء المحلي من كل عملية"""
     try:
@@ -583,6 +599,7 @@ def train_local_ai(action, data, result):
         return False
 
 
+@permission_required("view_reports")
 def apply_smart_listeners(message, context, action_name):
     """دالة عامة للمستمعات الذكية - تطبق على جميع الوحدات"""
     listener_response = smart_listener(message, context)
@@ -614,6 +631,7 @@ def apply_smart_listeners(message, context, action_name):
     return "continue", None
 
 
+@permission_required("view_reports")
 def create_final_options(action_name, item_name, item_id):
     """خيارات نهائية ذكية بعد كل عملية"""
     options = {
@@ -657,6 +675,7 @@ def create_final_options(action_name, item_name, item_id):
 @ai_bp.route("/recommend-price", methods=["POST"])
 @csrf.exempt
 @login_required
+@permission_required("manage_sales")
 def recommend_price():
     """API: توصية السعر"""
     csrf_check = _require_csrf_for_sensitive_ops()
@@ -681,6 +700,7 @@ def recommend_price():
 @ai_bp.route("/check-stock", methods=["POST"])
 @csrf.exempt
 @login_required
+@permission_required("manage_sales")
 def check_stock():
     """API: فحص المخزون"""
     csrf_check = _require_csrf_for_sensitive_ops()
@@ -704,6 +724,7 @@ def check_stock():
 
 @ai_bp.route("/analyze-customer/<int:customer_id>", methods=["GET"])
 @login_required
+@permission_required("manage_customers")
 def analyze_customer(customer_id):
     """API: تحليل سلوك العميل"""
     analysis = AIService.analyze_customer_behavior(customer_id)
@@ -716,6 +737,7 @@ def analyze_customer(customer_id):
 
 @ai_bp.route("/exchange-rate/<currency>", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def exchange_rate(currency):
     """API: اقتراح سعر الصرف"""
     suggestion = AIService.get_exchange_rate_suggestion(currency)
@@ -724,6 +746,7 @@ def exchange_rate(currency):
 
 @ai_bp.route("/search-market-price/<int:product_id>", methods=["GET"])
 @login_required
+@permission_required("view_products")
 def search_market_price(product_id):
     """API: البحث عن سعر القطعة في الأسواق العالمية"""
     from models import Product
@@ -742,6 +765,7 @@ def search_market_price(product_id):
 
 @ai_bp.route("/find-compatible/<int:product_id>", methods=["GET"])
 @login_required
+@permission_required("view_products")
 def find_compatible(product_id):
     """API: البحث عن السيارات المتوافقة"""
     from models import Product
@@ -760,6 +784,7 @@ def find_compatible(product_id):
 
 @ai_bp.route("/chat", methods=["POST"])
 @login_required
+@permission_required("view_reports")
 def chat():
     """API: الدردشة مع المساعد الذكي"""
     start_time = time.time()
@@ -862,6 +887,7 @@ def chat():
     )
 
 
+@permission_required("view_reports")
 def _assistant_response(result):
     if isinstance(result, tuple):
         payload, status = result
@@ -871,6 +897,7 @@ def _assistant_response(result):
 
 @ai_bp.route("/chat/events", methods=["POST"])
 @login_required
+@permission_required("view_reports")
 def enqueue_bot_event():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -878,6 +905,7 @@ def enqueue_bot_event():
     return _enqueue_bot_message(data.get("message"))
 
 
+@permission_required("view_reports")
 def _enqueue_bot_message(message, *, command=None):
     from bot_core.gateway import MessageEvent
     from bot_core.gateway.store import IdempotencyConflict, submit
@@ -900,6 +928,7 @@ def _enqueue_bot_message(message, *, command=None):
 
 @ai_bp.route("/chat/events/<uuid:event_id>", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def get_bot_event(event_id):
     from bot_core.gateway.store import read
     from bot_core.security import Actor
@@ -923,6 +952,7 @@ def get_bot_event(event_id):
 
 @ai_bp.route("/chat/events", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def active_bot_events():
     from bot_core.gateway.store import active
     from bot_core.security import Actor
@@ -939,6 +969,7 @@ def active_bot_events():
 
 @ai_bp.route("/chat/actions/pending", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def pending_assistant_actions():
     from services import assistant_actions
 
@@ -949,6 +980,7 @@ def pending_assistant_actions():
 
 @ai_bp.route("/chat/actions/<uuid:action_id>/details/<step>", methods=["POST"])
 @login_required
+@permission_required("view_reports")
 def collect_assistant_details(action_id, step):
     from services.assistant_actions import collect
 
@@ -961,6 +993,7 @@ def collect_assistant_details(action_id, step):
 
 @ai_bp.route("/chat/actions/<uuid:action_id>/confirm", methods=["POST"])
 @login_required
+@permission_required("view_reports")
 def confirm_assistant_action(action_id):
     from services import assistant_actions
 
@@ -969,6 +1002,7 @@ def confirm_assistant_action(action_id):
 
 @ai_bp.route("/chat/actions/<uuid:action_id>/queue-confirmation", methods=["POST"])
 @login_required
+@permission_required("view_reports")
 def enqueue_assistant_confirmation(action_id):
     return _enqueue_bot_message(
         f"ERP confirmation {action_id}",
@@ -976,6 +1010,7 @@ def enqueue_assistant_confirmation(action_id):
     )
 
 
+@permission_required("view_reports")
 def _process_user_action(message, user):  # noqa: C901
     """معالجة أوامر المستخدم المباشرة - جميع عمليات النظام"""
     try:
@@ -3868,6 +3903,7 @@ http://localhost:5000/ai/assistant
 
 @ai_bp.route("/guide", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def guide_api():
     """Guide API — نطاق آمن: العام للجميع، دليل المالك للمالك فقط.
 
@@ -4058,6 +4094,7 @@ def upload_excel():
 
 @ai_bp.route("/predict-sales", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def predict_sales():
     """🔮 API: توقع المبيعات"""
     days = request.args.get("days", 7, type=int)
@@ -4067,6 +4104,7 @@ def predict_sales():
 
 @ai_bp.route("/analyze-margins", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def analyze_margins():
     """💰 API: تحليل هوامش الربح"""
     if not current_user.can_see_costs():
@@ -4077,6 +4115,7 @@ def analyze_margins():
 
 @ai_bp.route("/detect-patterns", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def detect_patterns():
     """🔍 API: كشف الأنماط"""
     patterns = AIService.detect_sales_patterns()
@@ -4085,6 +4124,7 @@ def detect_patterns():
 
 @ai_bp.route("/inventory-health", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def inventory_health():
     """📦 API: صحة المخزون"""
     health = AIService.analyze_inventory_health()
@@ -4114,6 +4154,7 @@ def cash_flow_prediction():
 
 @ai_bp.route("/smart-price", methods=["POST"])
 @login_required
+@permission_required("manage_sales")
 def smart_price():
     """💎 API: محرك التسعير الذكي الخارق"""
     if not current_user.can_see_costs():
@@ -4203,6 +4244,7 @@ def business_insights():
 
 @ai_bp.route("/contextual-help/<page>", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def contextual_help(page):
     """❓ API: مساعدة سياقية"""
     user_role = current_user.role.name if current_user.role else "user"
@@ -4414,6 +4456,7 @@ def get_system_summary():
 
 @ai_bp.route("/system/search/<search_term>")
 @login_required
+@permission_required("view_reports")
 def search_system_data(search_term):
     """البحث في بيانات النظام"""
     try:
@@ -4531,6 +4574,7 @@ def add_knowledge_document():
 
 @ai_bp.route("/knowledge/search")
 @login_required
+@permission_required("view_reports")
 def search_knowledge():
     """البحث في المعرفة الموسعة"""
     try:
@@ -4549,6 +4593,7 @@ def search_knowledge():
 
 @ai_bp.route("/knowledge/summary")
 @login_required
+@permission_required("view_reports")
 def get_knowledge_summary():
     """📚 API: ملخص المعرفة الموسعة"""
     try:
@@ -4561,6 +4606,7 @@ def get_knowledge_summary():
 
 @ai_bp.route("/neural-status", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def neural_status():
     """🧠 API: حالة الشبكات العصبية"""
     try:
@@ -4573,6 +4619,7 @@ def neural_status():
 
 @ai_bp.route("/automotive-ecu/<code>", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def automotive_ecu_code(code):
     """🚗 API: تشخيص كود OBD-II"""
     try:
@@ -4587,6 +4634,7 @@ def automotive_ecu_code(code):
 
 @ai_bp.route("/automotive-sensor/<sensor>", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def automotive_sensor(sensor):
     """🔧 API: معلومات حساس محدد"""
     try:
@@ -4601,6 +4649,7 @@ def automotive_sensor(sensor):
 
 @ai_bp.route("/external-sources", methods=["GET"])
 @login_required
+@permission_required("view_reports")
 def external_sources():
     """📚 API: قائمة مصادر التعلم الخارجية"""
     try:
@@ -4624,6 +4673,7 @@ def external_sources():
 @ai_bp.route("/ask-genius", methods=["POST"])
 @csrf.exempt
 @login_required
+@permission_required("view_reports")
 def ask_genius():
     """🌟 API: اسأل العبقري - الواجهة الموحدة"""
     request.ai_operation = "ask_genius"
@@ -4653,6 +4703,7 @@ def ask_genius():
 @ai_bp.route("/quick-calc", methods=["POST"])
 @csrf.exempt
 @login_required
+@permission_required("view_reports")
 def quick_calc():
     """⚡ API: حسابات سريعة"""
     request.ai_operation = "quick_calc"
@@ -4680,6 +4731,7 @@ def quick_calc():
 @ai_bp.route("/transformers-understand", methods=["POST"])
 @csrf.exempt
 @login_required
+@permission_required("view_reports")
 def transformers_understand():
     """🤖 API: فهم بالـ Transformers"""
     request.ai_operation = "transformers_understand"

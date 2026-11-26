@@ -21,7 +21,7 @@ from services.ai_normalize import normalize
 
 QUESTION_WORDS = (
     "كم", "عدد", "إجمالي", "مجموع", "كيف", "ماذا", "ما هو", "هل ",
-    "؟", "?", "how many", "what is", "total", "count", "status",
+    "أفضل", "أي", "؟", "?", "how many", "what is", "total", "count", "status", "top",
 )
 
 SUMMARY_PERMISSIONS = {
@@ -307,6 +307,7 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             Product,
             Purchase,
             Sale,
+            SaleLine,
             Supplier,
             User,
         )
@@ -334,6 +335,131 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             if not _allowed(user, *permissions):
                 return _denied(*permissions)
             return business_summary(summary, authenticated_scope(user))
+
+        # --- receivables --------------------------------------------------
+        if any(w in text for w in ("ذمم", "مستحق", "receivable", "due balance")):
+            if not _allowed(user, "view_reports", "view_ledger", "manage_sales"):
+                return _denied("view_reports", "view_ledger")
+            q = Sale.query.filter(Sale.status == "confirmed", Sale.balance_due > 0)
+            q = _scope(q, Sale, user)
+            count = q.count()
+            total = db.session.query(func.sum(Sale.balance_due)).select_from(Sale).filter(
+                Sale.id.in_(q.with_entities(Sale.id))
+            ).scalar()
+            return (
+                f"💰 الذمم المدينة (مستحقات العملاء): {count} فاتورة بقيمة {_money(total)} شيقل. "
+                "الأرقام من بيانات شركتك."
+            )
+
+        # --- VAT summary --------------------------------------------------
+        if any(w in text for w in ("ضريب", "vat", "tax")):
+            if not _allowed(user, "view_reports"):
+                return _denied("view_reports")
+            try:
+                from routes.reports import _vat_report_data
+
+                summary = _vat_report_data("", "").get("summary", {})
+                return (
+                    "🧾 ملخص VAT (ضريبة القيمة المضافة): "
+                    f"ضريبة مخرجات {_money(summary.get('total_output_vat'))}، "
+                    f"ضريبة مدخلات {_money(summary.get('total_input_vat'))}، "
+                    f"صافي {_money(summary.get('net_vat'))} (مسترد/مستحق). "
+                    "الأرقام مطابقة لتقرير VAT."
+                )
+            except Exception:
+                return "⚠️ تعذر حساب ملخص VAT حالياً."
+
+        # --- cash flow summary -------------------------------------------
+        if any(w in text for w in ("تدفق", "cash flow", "نقد")):
+            if not _allowed(user, "view_ledger", "view_reports"):
+                return _denied("view_ledger", "view_reports")
+            try:
+                from datetime import timedelta
+                from services.cash_flow_service import CashFlowService
+
+                end = date.today()
+                start = end - timedelta(days=30)
+                cf = CashFlowService.generate_cash_flow(start, end)
+                net = cf.get("net_change_in_cash", 0)
+                op_total = (cf.get("operating_activities") or {}).get("net_cash_from_operating", 0)
+                return (
+                    "💵 التدفق النقدي (آخر 30 يوماً): "
+                    f"صافي التغيير {_money(net)} شيقل، "
+                    f"التشغيلي {_money(op_total)} شيقل. "
+                    "الأرقام مطابقة لقائمة التدفقات."
+                )
+            except Exception:
+                return "⚠️ تعذر حساب التدفق النقدي حالياً."
+
+        # --- low-stock list ----------------------------------------------
+        if any(w in text for w in ("منخفض", "low stock", "إعادة تموين", "low-stock")):
+            if not _allowed(user, "view_products", "view_reports"):
+                return _denied("view_products", "view_reports")
+            q = Product.query.filter(
+                Product.is_active.is_(True),
+                Product.current_stock <= Product.min_stock_alert,
+            )
+            q = _scope(q, Product, user)
+            rows = q.order_by(Product.current_stock.asc()).limit(8).all()
+            if not rows:
+                return "✅ لا توجد منتجات تحت حد التنبيه حالياً."
+            lines = [f"- {p.name} (المخزون: {p.current_stock} {p.unit or ''})" for p in rows]
+            return "⚠️ منتجات بمخزون منخفض:\n" + "\n".join(lines)
+
+        # --- top customers -----------------------------------------------
+        if any(w in text for w in ("أفضل", "top")) and any(w in text for w in ("عميل", "عملاء", "customer")):
+            if not _allowed(user, "view_reports"):
+                return _denied("view_reports")
+            from models import Customer
+            q = (
+                db.session.query(
+                    Sale.customer_id,
+                    func.sum(Sale.total_amount).label("revenue"),
+                    func.count(Sale.id).label("invoices"),
+                )
+                .filter(Sale.status == "confirmed")
+            )
+            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+                q = q.filter(Sale.tenant_id == user.tenant_id)
+            q = q.group_by(Sale.customer_id).order_by(func.sum(Sale.total_amount).desc()).limit(5)
+            rows = q.all()
+            if not rows:
+                return "🏆 أفضل 5 عملاء (حسب المبيعات): لا توجد مبيعات مؤكدة لترتيب العملاء."
+            lines = []
+            for cid, revenue, invoices in rows:
+                cust = db.session.get(Customer, cid)
+                name = cust.name if cust else f"عميل #{cid}"
+                lines.append(f"- {name}: {_money(revenue)} شيقل ({invoices} فاتورة)")
+            return "🏆 أفضل 5 عملاء (حسب المبيعات):\n" + "\n".join(lines)
+
+        # --- top products -------------------------------------------------
+        if any(w in text for w in ("أفضل", "top")) and ("منتج" in text or "product" in text):
+            if not _allowed(user, "view_reports"):
+                return _denied("view_reports")
+            q = (
+                db.session.query(
+                    SaleLine.product_id,
+                    func.sum(SaleLine.quantity).label("qty"),
+                    func.sum(SaleLine.line_total).label("revenue"),
+                )
+            )
+            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+                q = q.filter(SaleLine.tenant_id == user.tenant_id)
+            q = q.group_by(SaleLine.product_id).order_by(func.sum(SaleLine.quantity).desc()).limit(5)
+            rows = q.all()
+            if not rows:
+                return "🏆 أفضل 5 منتجات (حسب الكمية): لا توجد مبيعات مؤكدة لترتيب المنتجات."
+            lines = []
+            for pid, qty, revenue in rows:
+                from models import Product
+
+                prod = db.session.get(Product, pid)
+                name = prod.name if prod else f"منتج #{pid}"
+                tail = ""
+                if _allowed(user, "view_costs"):
+                    tail = f" (إيراد {_money(revenue)})"
+                lines.append(f"- {name}: {qty} وحدة{tail}")
+            return "🏆 أفضل 5 منتجات (حسب الكمية):\n" + "\n".join(lines)
 
         # --- customers ----------------------------------------------------
         if any(w in text for w in ("عميل", "زبون", "عملاء", "customer")):
@@ -427,7 +553,9 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             opened = q.filter_by(is_closed=False).count()
             return f"🗓 الفترات المالية: {opened} مفتوحة و{closed} مغلقة في شركتك."
 
-    except Exception:
+    except Exception as _exc:
+        import traceback
+        traceback.print_exc()
         if sales_question:
             from flask import current_app
 

@@ -62,6 +62,23 @@ _CASES = [
     ("أضف 5000 درهم لرصيد العميل أحمد", "balance", "set_customer_balance", []),
 ]
 
+# Stage 0 grounded-read cases: question -> expected substring in the grounded
+# answer (numbers are validated separately by the caller against live data).
+_GROUNDED_CASES = [
+    ("كم عدد المبيعات اليوم؟", "المبيعات اليوم", "manage_sales", "view_reports"),
+    ("كم عدد العملاء؟", "العملاء النشطون", "manage_customers", "view_reports"),
+    ("ما حالة المخزون؟", "المخزون", "view_products", "view_reports"),
+    ("كم عدد المصروفات هذا الشهر؟", "مصروفات هذا الشهر", "manage_expenses", "view_ledger"),
+    ("كم عدد الشيكات؟", "الشيكات", "manage_payments", "view_ledger"),
+    ("ما حالة الفترات المالية؟", "الفترات المالية", "manage_ledger", "view_ledger"),
+    ("ما الذمم المدينة؟", "الذمم المدينة", "view_reports", "view_ledger"),
+    ("ما ملخص VAT؟", "ملخص VAT", "view_reports", "view_reports"),
+    ("ما التدفق النقدي؟", "التدفق النقدي", "view_ledger", "view_reports"),
+    ("أي منتجات بمخزون منخفض؟", "لا توجد منتجات تحت حد التنبيه", "view_products", "view_reports"),
+    ("أفضل 5 عملاء", "أفضل 5 عملاء", "view_reports", "view_reports"),
+    ("أفضل 5 منتجات", "أفضل 5 منتجات", "view_reports", "view_reports"),
+]
+
 
 def run_eval() -> dict:
     from services.ai_planner import plan
@@ -91,6 +108,35 @@ def run_eval() -> dict:
         "total": total,
         "intent_accuracy": hits / total if total else 0,
         "tool_accuracy": tool_hits / total if total else 0,
+        "rows": rows,
+    }
+
+
+def run_grounded_eval(user) -> dict:
+    """Evaluate the grounded read layer for one authenticated user.
+
+    Returns a dict with counts and a per-question list. Numbers are checked
+    against live DB by the caller (tests); this function reports whether an
+    answer was produced and whether it is permission-gated.
+    """
+    from services.ai_questions import answer
+
+    total = len(_GROUNDED_CASES)
+    produced = 0
+    denied = 0
+    rows = []
+    for q, expected, *_perms in _GROUNDED_CASES:
+        result = answer(q, user)
+        ok = bool(result) and expected in result
+        is_denial = bool(result) and "صلاحية" in result
+        produced += int(ok)
+        denied += int(is_denial)
+        rows.append({"q": q, "expected": expected, "result": result, "ok": ok, "denial": is_denial})
+    return {
+        "total": total,
+        "produced": produced,
+        "denied": denied,
+        "accuracy": produced / total if total else 0,
         "rows": rows,
     }
 

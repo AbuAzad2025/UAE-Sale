@@ -378,6 +378,29 @@ class AIService:
         )
 
     @staticmethod
+    def _train_local_from_groq(question, local_answer, improved_answer, user_id):
+        """Feed improved answers back to the local learner.
+
+        The assistant no longer calls external LLMs, but the local learning
+        loop still accepts feedback so it can improve without them.
+        """
+        try:
+            from ai_knowledge.learning_system import learning_system
+
+            learning_system.learn_from_groq_feedback(
+                {
+                    "question": question,
+                    "local_answer": local_answer,
+                    "improved_answer": improved_answer,
+                    "user_id": user_id,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
     def is_enabled():
         """هل AI مفعّل؟ (دائماً - AI محلي خارق)"""
         return True

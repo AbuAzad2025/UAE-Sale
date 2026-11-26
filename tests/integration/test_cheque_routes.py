@@ -162,6 +162,8 @@ class TestLifecycleActions:
         assert pending_cheque.status == "cleared"
 
     def test_bounce_action(self, client, posting_owner, pending_cheque):
+        pending_cheque.receive_cheque()
+        db.session.commit()
         resp = client.post(
             f"/cheques/{pending_cheque.id}/bounce",
             data={"bounce_reason": "لا رصيد"},
@@ -170,6 +172,24 @@ class TestLifecycleActions:
         assert resp.status_code == 200
         db.session.refresh(pending_cheque)
         assert pending_cheque.status == "bounced"
+
+    def test_bounce_missing_original_keeps_cheque_and_ledger_unchanged(
+        self, client, posting_owner, pending_cheque
+    ):
+        from models import GLJournalEntry
+
+        before = GLJournalEntry.query.count()
+        response = client.post(
+            f"/cheques/{pending_cheque.id}/bounce",
+            data={"bounce_reason": "NSF"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert "القيد الأصلي" in response.get_data(as_text=True)
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == "pending"
+        assert pending_cheque.gl_bounce_entry_id is None
+        assert GLJournalEntry.query.count() == before
 
     def test_cancel_action(self, client, login_owner, pending_cheque):
         resp = client.post(
@@ -271,10 +291,42 @@ class TestApiAlerts:
 class TestHttpInterfaceBalanceAdjustment:
     """اختبارات واجهة HTTP لتعديل الأرصدة عند الارتداد/الإلغاء"""
 
+    @pytest.mark.parametrize("action", ["bounce", "cancel"])
+    def test_statement_records_reversed_cheque_without_changing_balance(
+        self, client, posting_owner, pending_cheque, test_customer, action
+    ):
+        from flask import template_rendered
+
+        pending_cheque.receive_cheque()
+        db.session.commit()
+        client.post(
+            f"/cheques/{pending_cheque.id}/{action}", data={"bounce_reason": "NSF"}
+        )
+        db.session.refresh(pending_cheque)
+        assert (
+            pending_cheque.status
+            == {"cancel": "cancelled", "bounce": "bounced"}[action]
+        )
+        rendered = []
+
+        def capture(sender, template, context, **extra):
+            if template.name == "customers/statement.html":
+                rendered.append(context)
+
+        with template_rendered.connected_to(capture, client.application):
+            response = client.get(f"/customers/{test_customer.id}/statement")
+        assert response.status_code == 200
+        (context,) = rendered
+        (row,) = [r for r in context["transactions"] if r["type"] == "cheque"]
+        assert row["debit"] == row["credit"] == 0
+        assert context["final_balance"] == context["system_balance"] == 0
+
     def test_bounce_via_http_updates_customer_balance(
         self, client, posting_owner, pending_cheque, test_customer
     ):
         """ارتداد الشيك عبر HTTP يحدث رصيد العميل"""
+        pending_cheque.receive_cheque()
+        db.session.commit()
         db.session.refresh(test_customer)
         balance_before = test_customer.balance or Decimal("0")
 
@@ -286,7 +338,7 @@ class TestHttpInterfaceBalanceAdjustment:
         )
 
         db.session.refresh(test_customer)
-        assert test_customer.balance == balance_before + Decimal("800.00")
+        assert test_customer.balance == balance_before
 
     def test_cancel_via_http_updates_customer_balance(
         self, client, login_owner, pending_cheque, test_customer
@@ -302,12 +354,14 @@ class TestHttpInterfaceBalanceAdjustment:
         )
 
         db.session.refresh(test_customer)
-        assert test_customer.balance == balance_before - Decimal("800.00")
+        assert test_customer.balance == balance_before
 
     def test_bounce_via_http_updates_status(
         self, client, posting_owner, pending_cheque
     ):
         """ارتداد الشيك عبر HTTP يحدث الحالة"""
+        pending_cheque.receive_cheque()
+        db.session.commit()
         client.post(f"/cheques/{pending_cheque.id}/deposit", follow_redirects=True)
         client.post(
             f"/cheques/{pending_cheque.id}/bounce",
@@ -354,14 +408,18 @@ class TestHttpInterfaceBalanceAdjustment:
         assert pending_cheque.status == "deposited"
         assert pending_cheque.deposit_date is not None
 
-    def test_view_after_bounce_works(self, client, login_owner, pending_cheque):
+    def test_view_after_bounce_works(self, client, posting_owner, pending_cheque):
         """عرض الشيك بعد ارتداده يعمل"""
+        pending_cheque.receive_cheque()
+        db.session.commit()
         client.post(f"/cheques/{pending_cheque.id}/deposit", follow_redirects=True)
         client.post(
             f"/cheques/{pending_cheque.id}/bounce",
             data={"bounce_reason": "لا رصيد"},
             follow_redirects=True,
         )
+        db.session.refresh(pending_cheque)
+        assert pending_cheque.status == "bounced"
         resp = client.get(f"/cheques/{pending_cheque.id}")
         assert resp.status_code == 200
 

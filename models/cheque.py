@@ -535,11 +535,11 @@ class Cheque(TenantScopedMixin, db.Model):
         if self.status not in ["deposited", "pending"]:
             raise ValueError(f"لا يمكن رفض شيك بحالة: {self.status_ar}")
 
+        reversal = self._reverse_linked_journal("cheque_bounce", actor_id)
+        self.gl_bounce_entry_id = reversal.id
         self.status = "bounced"
         self.bounce_reason = reason
         self.clearance_date = datetime.now().date()
-
-        self._create_bounce_journal_entry(actor_id=actor_id)
 
         if self.cheque_type == "incoming" and self.customer_id:
             db.session.flush()
@@ -563,103 +563,6 @@ class Cheque(TenantScopedMixin, db.Model):
         return original.reverse_entry(
             created_by=actor_id, reversal_reference=(reference_type, self.id)
         )
-
-    def _create_bounce_journal_entry(self, *, actor_id=None):
-        if self.gl_journal_entry_id:
-            entry = self._reverse_linked_journal("cheque_bounce", actor_id)
-            self.gl_bounce_entry_id = entry.id
-            return entry
-
-        from services.gl_service import GLService
-
-        try:
-            lines = []
-
-            if self.cheque_type == "incoming":
-                customer = self.customer
-                ar_account = (
-                    GLService.get_customer_credit_account(customer)
-                    if self.customer_id
-                    else AccountResolver.resolve(
-                        AccountRole.AP_CONTROL
-                        if self.supplier_id
-                        else AccountRole.AR_CONTROL,
-                        tenant_id=self.tenant_id,
-                    )
-                )
-                lines.append(
-                    {
-                        "account": ar_account,
-                        "debit": self.amount_base,
-                        "credit": 0,
-                        "description": f"ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين",
-                        "party_id": customer.id
-                        if customer and customer.customer_type == "partner"
-                        else None,
-                    }
-                )
-                lines.append(
-                    {
-                        "account": AccountResolver.resolve(
-                            AccountRole.UNDER_COLLECTION, tenant_id=self.tenant_id
-                        ),
-                        "debit": 0,
-                        "credit": self.amount_base,
-                        "description": f"ارتداد شيك رقم {self.cheque_bank_number}",
-                    }
-                )
-
-            elif self.cheque_type == "outgoing":
-                lines.append(
-                    {
-                        "account": AccountResolver.resolve(
-                            AccountRole.DEFERRED_CHEQUES_PAYABLE,
-                            tenant_id=self.tenant_id,
-                        ),
-                        "debit": self.amount_base,
-                        "credit": 0,
-                        "description": f"ارتداد شيك صادر رقم {self.cheque_bank_number}",
-                    }
-                )
-                customer = self.customer if not self.supplier_id else None
-                credit_account = (
-                    GLService.get_customer_credit_account(customer)
-                    if customer
-                    else AccountResolver.resolve(
-                        AccountRole.AP_CONTROL, tenant_id=self.tenant_id
-                    )
-                )
-                lines.append(
-                    {
-                        "account": credit_account,
-                        "debit": 0,
-                        "credit": self.amount_base,
-                        "description": f"ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام",
-                        "party_id": customer.id
-                        if customer and customer.customer_type == "partner"
-                        else None,
-                    }
-                )
-
-            entry = GLService.post_entry(
-                lines=lines,
-                description=f"ارتداد شيك {self.type_ar} رقم {self.cheque_bank_number}",
-                reference_type="cheque_bounce",
-                reference_id=self.id,
-                tenant_id=self.tenant_id,
-                idempotency_key=f"cheque_bounce:{self.id}",
-                created_by=actor_id,
-            )
-            if entry is not None and not self.gl_bounce_entry_id:
-                self.gl_bounce_entry_id = entry.id
-            return entry
-
-        except Exception as e:
-            current_app.logger.error(
-                f"Failed to create GL entry for bounced cheque {self.id}: {e}"
-            )
-            raise
-            return None
 
     def cancel_cheque(self, reason=None):
         """إلغاء الشيك - عكس القيود المحاسبية"""

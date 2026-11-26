@@ -122,18 +122,18 @@ class TestLifecycle:
         with pytest.raises(ValueError, match="صرف"):
             ch.clear_cheque()
 
-    def test_bounce_records_reason_and_gl(self, app, db, owner_user):
-        ch = _cheque(cheque_type="incoming", status="pending")
-        db.session.add(ch)
+    def test_bounce_without_original_rejected(self, db, owner_user):
+        cheque = _cheque(status="pending")
+        db.session.add(cheque)
         db.session.commit()
         before = GLJournalEntry.query.count()
-
-        ch.bounce_cheque(reason="حساب مجمد")
+        with pytest.raises(ValueError, match="no posted"):
+            cheque.bounce_cheque("حساب مجمد", actor_id=owner_user.id)
         db.session.commit()
-
-        assert ch.status == "bounced"
-        assert ch.bounce_reason == "حساب مجمد"
-        assert GLJournalEntry.query.count() > before
+        db.session.refresh(cheque)
+        assert cheque.status == "pending"
+        assert cheque.gl_bounce_entry_id is None
+        assert GLJournalEntry.query.count() == before
 
     def test_bounce_wrong_state_raises(self, db):
         ch = _cheque(status="cleared")

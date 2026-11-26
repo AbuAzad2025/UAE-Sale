@@ -394,6 +394,7 @@ class TestPurchasePaidAmountTrackedColumn:
 # ─────────────────────── 4. cheque GL id persistence ───────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestChequeGLEntryIdsPersisted:
     def test_receive_cheque_persists_gl_journal_entry_id(self, db, test_customer):
         ch = _incoming_cheque(db, test_customer, "CH-LR-RCV-1")
@@ -410,6 +411,7 @@ class TestChequeGLEntryIdsPersisted:
     def test_bounce_persists_gl_bounce_entry_id(self, db, test_customer):
         ch = _incoming_cheque(db, test_customer, "CH-LR-BNC-1")
 
+        ch.receive_cheque()
         ch.bounce_cheque("NSF — insufficient funds")
         db.session.commit()
 
@@ -709,7 +711,9 @@ class TestReturnCostBasisAndFx:
             ln for ln in cost_entry.lines if "COGS Reversal" in (ln.description or "")
         )
         inv_line = next(
-            ln for ln in cost_entry.lines if "Inventory Restock" in (ln.description or "")
+            ln
+            for ln in cost_entry.lines
+            if "Inventory Restock" in (ln.description or "")
         )
         assert cogs_line.credit == Decimal("25.000")
         assert inv_line.debit == Decimal("25.000")

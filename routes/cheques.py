@@ -264,11 +264,11 @@ def create():
             flash(
                 "❌ مبلغ الشيك غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.", "danger"
             )
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
             flash(
-                f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
+                "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
                 "danger",
             )
 
@@ -364,11 +364,11 @@ def edit(id):
             flash(
                 "❌ مبلغ الشيك غير صالح.\n💡 أدخل رقماً صحيحاً وحاول مرة أخرى.", "danger"
             )
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
             flash(
-                f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
+                "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
                 "danger",
             )
 
@@ -416,15 +416,15 @@ def deposit_cheque(id):
 
         flash(f"✅ تم إيداع الشيك {cheque.cheque_bank_number} في البنك", "success")
 
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "error")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "error")
         db.session.rollback()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
 
     return redirect(url_for("cheques.view", id=id))
@@ -448,11 +448,15 @@ def clear_cheque(id):
         submitted_rate = request.form.get("clearance_exchange_rate")
         clearance_exchange_rate = Decimal(submitted_rate) if submitted_rate else None
 
-        cheque.clear_cheque(clearance_date, clearance_exchange_rate, actor_id=current_user.id)
+        cheque.clear_cheque(
+            clearance_date, clearance_exchange_rate, actor_id=current_user.id
+        )
         if cheque.currency_gain_loss and abs(cheque.currency_gain_loss) > Decimal(
             "0.01"
         ):
-            gains = (cheque.currency_gain_loss > 0) == (cheque.cheque_type == "incoming")
+            gains = (cheque.currency_gain_loss > 0) == (
+                cheque.cheque_type == "incoming"
+            )
             label = "ربح فرق عملة" if gains else "خسارة فرق عملة"
             gain_loss_msg = f" - {label}: {abs(cheque.currency_gain_loss):.2f} {CurrencyService.get_base_currency()}"
         else:
@@ -472,15 +476,15 @@ def clear_cheque(id):
             "success",
         )
 
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "error")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "error")
         db.session.rollback()
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
 
     return redirect(url_for("cheques.view", id=id))
@@ -498,7 +502,7 @@ def bounce_cheque(id):
         details = request.form.get("bounce_details", "")
         full_reason = f"{reason}. {details}" if details else reason
 
-        cheque.bounce_cheque(full_reason)
+        cheque.bounce_cheque(full_reason, actor_id=current_user.id)
         create_audit_log(
             "cheque_bounce",
             "cheques",
@@ -509,19 +513,21 @@ def bounce_cheque(id):
         db.session.commit()
 
         flash(
-            f"❌ تم رفض الشيك {cheque.cheque_bank_number} - تم إرجاع الدين للزبون",
-            "warning",
+            f"تم تسجيل ارتداد الشيك {cheque.cheque_bank_number} وعكس قيده.", "warning"
         )
 
-    except ValueError as e:
-        current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "error")
+    except ValueError:
         db.session.rollback()
-    except Exception as e:
+        current_app.logger.warning("Cheque bounce rejected", exc_info=True)
+        flash(
+            "تعذّر تسجيل الارتداد. تحقق من حالة الشيك والقيد الأصلي المرحّل المرتبط به.",
+            "error",
+        )
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
 
     return redirect(url_for("cheques.view", id=id))
@@ -556,11 +562,11 @@ def cancel(id):
 
         flash(f"✅ تم إلغاء الشيك {cheque.cheque_bank_number}", "success")
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
 
     return redirect(url_for("cheques.view", id=id))
@@ -656,11 +662,11 @@ def delete(id):
 
         return redirect(url_for("cheques.index"))
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
         return redirect(url_for("cheques.view", id=id))
 
@@ -680,11 +686,11 @@ def restore(id):
 
         flash(f"✅ تم استعادة الشيك {cheque.cheque_bank_number}", "success")
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
+            "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.", "danger"
         )
 
     return redirect(url_for("cheques.view", id=id))

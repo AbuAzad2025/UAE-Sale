@@ -608,8 +608,7 @@ class TestChequeBounceSubledgerReconciliation:
         )
         db.session.refresh(test_customer)
 
-        # التحقق من أن الرصيد زاد بمبلغ الشيك
-        assert test_customer.balance == balance_before + Decimal("1000.00")
+        assert test_customer.balance == balance_before
 
     def test_cancel_cheque_customer_balance_restored(
         self, db, owner_user, test_customer
@@ -628,8 +627,7 @@ class TestChequeBounceSubledgerReconciliation:
         cheque.cancel_cheque(reason="إلغاء تجريبي")
         db.session.refresh(test_customer)
 
-        # التحقق من أن الرصيد انخفض بمبلغ الشيك
-        assert test_customer.balance == balance_before - Decimal("1000.00")
+        assert test_customer.balance == balance_before
 
     def test_bounce_cheque_outgoing_supplier_balance_restored(self, db, owner_user):
         """بعد ارتداد الشيك الصادر، يجب أن يسترد رصيد المورد"""

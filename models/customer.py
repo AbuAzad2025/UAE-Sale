@@ -229,10 +229,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             and row.gl_journal_entry_id is not None
         ):
             total -= amount
-        elif status == "bounced":
-            total += amount
-        elif status == "cancelled":
-            total -= amount
         elif not row.is_active and status in (
             "pending",
             "deposited",

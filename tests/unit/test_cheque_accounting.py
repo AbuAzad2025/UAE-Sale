@@ -190,6 +190,51 @@ class TestClearCheque:
             ChequeAccountingIntegration.clear_cheque(incoming_pending.id)
 
 
+@pytest.mark.parametrize("action", ["bounce", "cancel"])
+def test_standalone_cheque_restores_subledger_and_control(
+    db, owner_user, test_customer, incoming_pending, cheque_tenant, action
+):
+    from models import GLJournalEntry
+    from models.customer import derive_customer_balance, recompute_customer_balance
+    from services.account_resolution import AccountResolver
+    from services.gl_service import GLService
+
+    ar = AccountResolver.get_account("AR_CONTROL", tenant_id=cheque_tenant.id)
+    collection = AccountResolver.get_account(
+        "UNDER_COLLECTION", tenant_id=cheque_tenant.id
+    )
+    test_customer.opening_balance = Decimal("2375.50")
+    test_customer.opening_balance_rate = Decimal("1")
+    db.session.flush()
+    recompute_customer_balance(test_customer.id)
+    GLService.post_entry(
+        [
+            {"account": ar.code, "debit": Decimal("2375.50")},
+            {"account": "3100", "credit": Decimal("2375.50")},
+        ],
+        tenant_id=cheque_tenant.id,
+    )
+    db.session.commit()
+    before = (test_customer.balance, ar.get_balance(), collection.get_balance())
+    assert before == (Decimal("2375.50"), Decimal("2375.50"), 0)
+    original = ChequeAccountingIntegration.receive_cheque(
+        incoming_pending.id, received_by=owner_user.id
+    )
+    assert ar.get_balance() == before[1] - incoming_pending.amount_base
+    assert collection.get_balance() == before[2] + incoming_pending.amount_base
+    if action == "bounce":
+        incoming_pending.bounce_cheque("NSF", actor_id=owner_user.id)
+    else:
+        incoming_pending.cancel_cheque("Cancelled")
+    db.session.commit()
+    db.session.expire_all()
+    reversal = db.session.get(GLJournalEntry, original.reversed_entry_id)
+    assert reversal.reversed_entry_id == original.id
+    assert reversal.tenant_id == cheque_tenant.id
+    assert derive_customer_balance(test_customer.id) == before[0]
+    assert (test_customer.balance, ar.get_balance(), collection.get_balance()) == before
+
+
 class TestBounceCheque:
     def test_bounce_incoming_restores_ar(
         self, db, owner_user, incoming_pending, test_customer
@@ -213,7 +258,7 @@ class TestBounceCheque:
 
         # التحقق من تحديث رصيد العميل عند الارتداد
         db.session.refresh(test_customer)
-        assert test_customer.balance == Decimal("1000.00")
+        assert test_customer.balance == Decimal("0.00")
 
     def test_bounce_outgoing_restores_ap(self, db, owner_user, outgoing_pending):
         ChequeAccountingIntegration.issue_cheque(outgoing_pending.id)
@@ -241,7 +286,6 @@ class TestCancelCheque:
         self, db, owner_user, incoming_pending, test_customer
     ):
         """إلغاء الشيك الوارد يعيد رصيد العميل"""
-        # استلام الشيك يزيد رصيد العميل
         ChequeAccountingIntegration.receive_cheque(
             incoming_pending.id, received_by=owner_user.id
         )
@@ -251,7 +295,7 @@ class TestCancelCheque:
         # إلغاء الشيك يعيد رصيد العميل
         incoming_pending.cancel_cheque(reason="إلغاء تجريبي")
         db.session.refresh(test_customer)
-        assert test_customer.balance == balance_after_receive - Decimal("1000.00")
+        assert test_customer.balance == balance_after_receive
 
     def test_cancel_outgoing_restores_supplier_balance(
         self, db, owner_user, outgoing_pending

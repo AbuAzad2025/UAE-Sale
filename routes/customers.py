@@ -711,84 +711,24 @@ def _customer_statement(id, *, export=False):
         elif cheque.sale_id:
             linked_ref = f" (مرتبط ببيع #{cheque.sale_id})"
 
-        if status == "bounced":
-            if is_linked:
-                transactions.append(
-                    {
-                        "date": cheque.issue_date
-                        if hasattr(cheque, "issue_date")
-                        else None,
-                        "type": "cheque",
-                        "reference": cheque.cheque_number,
-                        "debit": 0,
-                        "credit": 0,
-                        "balance": 0,
-                        "description": f"شيك مرتد (ارتد){linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
-                        "currency": cheque.currency or "AED",
-                        "exchange_rate": float(cheque.exchange_rate or 1),
-                        "paid_amount": 0,
-                        "balance_due": 0,
-                        "status": status,
-                    }
-                )
-            else:
-                transactions.append(
-                    {
-                        "date": cheque.issue_date
-                        if hasattr(cheque, "issue_date")
-                        else None,
-                        "type": "cheque",
-                        "reference": cheque.cheque_number,
-                        "debit": amount,
-                        "credit": 0,
-                        "balance": 0,
-                        "description": "شيك مرتد (ارتد)",
-                        "currency": cheque.currency or "AED",
-                        "exchange_rate": float(cheque.exchange_rate or 1),
-                        "paid_amount": 0,
-                        "balance_due": 0,
-                        "status": status,
-                    }
-                )
-        elif status == "cancelled":
-            if is_linked:
-                transactions.append(
-                    {
-                        "date": cheque.issue_date
-                        if hasattr(cheque, "issue_date")
-                        else None,
-                        "type": "cheque",
-                        "reference": cheque.cheque_number,
-                        "debit": 0,
-                        "credit": 0,
-                        "balance": 0,
-                        "description": f"شيك ملغى{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
-                        "currency": cheque.currency or "AED",
-                        "exchange_rate": float(cheque.exchange_rate or 1),
-                        "paid_amount": 0,
-                        "balance_due": 0,
-                        "status": status,
-                    }
-                )
-            else:
-                transactions.append(
-                    {
-                        "date": cheque.issue_date
-                        if hasattr(cheque, "issue_date")
-                        else None,
-                        "type": "cheque",
-                        "reference": cheque.cheque_number,
-                        "debit": 0,
-                        "credit": amount,
-                        "balance": 0,
-                        "description": "شيك ملغى",
-                        "currency": cheque.currency or "AED",
-                        "exchange_rate": float(cheque.exchange_rate or 1),
-                        "paid_amount": 0,
-                        "balance_due": 0,
-                        "status": status,
-                    }
-                )
+        if status in ("bounced", "cancelled"):
+            label = "شيك مرتد" if status == "bounced" else "شيك ملغى"
+            transactions.append(
+                {
+                    "date": cheque.issue_date,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": label + linked_ref,
+                    "currency": cheque.currency or "AED",
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                }
+            )
         elif not is_active and status in ("pending", "deposited", "under_collection"):
             if is_linked:
                 transactions.append(

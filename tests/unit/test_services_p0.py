@@ -394,6 +394,7 @@ class TestChequeBounceUsesTheSingleWriter:
         )
         db.session.add(cheque)
         db.session.commit()
+        cheque.receive_cheque()
         return cheque
 
     def test_bounce_updates_the_balance_through_the_single_writer(self, db, owner_user):
@@ -406,8 +407,7 @@ class TestChequeBounceUsesTheSingleWriter:
         db.session.commit()
 
         db.session.refresh(customer)
-        # الرصيد بعد الارتداد = 100 (الشيك المرتد يُعيد الدين).
-        assert Decimal(str(customer.balance)) == Decimal("100.000")
+        assert Decimal(str(customer.balance)) == Decimal("0.000")
 
         # الكاتبان يتّفقان: المخزَّن = المشتق.
         stored = Decimal(str(customer.balance))

@@ -124,27 +124,14 @@ ai_knowledge/models/*.joblib
 # check_db.py
 # test_db.py
 
-# Uploads — runtime files are ignored, but the per-tenant folder skeleton is kept
+# Uploads — generic runtime uploads stay ignored; tenant brand assets are
+# production assets and are committed under static/uploads/tenant_<id>/.
 static/uploads/*
 !static/uploads/.gitkeep
 !static/uploads/products/
 static/uploads/products/*
 !static/uploads/products/.gitkeep
 !static/uploads/tenant_*/
-static/uploads/tenant_*/*
-!static/uploads/tenant_*/.gitkeep
-!static/uploads/tenant_*/uploads/
-static/uploads/tenant_*/uploads/*
-!static/uploads/tenant_*/uploads/.gitkeep
-!static/uploads/tenant_*/uploads/logos/
-static/uploads/tenant_*/uploads/logos/*
-!static/uploads/tenant_*/uploads/logos/.gitkeep
-!static/uploads/tenant_*/uploads/watermarks/
-static/uploads/tenant_*/uploads/watermarks/*
-!static/uploads/tenant_*/uploads/watermarks/.gitkeep
-!static/uploads/tenant_*/uploads/products/
-static/uploads/tenant_*/uploads/products/*
-!static/uploads/tenant_*/uploads/products/.gitkeep
 
 # AI Runtime Memory
 ai_knowledge/*.json

@@ -664,13 +664,14 @@ def send_stock_transfer(id):
 @login_required
 @permission_required("manage_warehouse")
 def receive_stock_transfer(id):
+    get_owned_or_404(StockTransfer, id)
     try:
         StockTransferService.receive_transfer(id, current_user.id)
         db.session.commit()  # service flushes only; persist stock + status
         flash("✅ تم استلام الشحنة وتحديث المخزون", "success")
-    except ValueError as e:
-        current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        db.session.rollback()
+        flash(f"⚠️ {exc}", "danger")
     return redirect(url_for("erp_modules.stock_transfers"))
 
 

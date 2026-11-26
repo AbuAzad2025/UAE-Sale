@@ -1344,32 +1344,25 @@ def top_selling():
     return render_template("reports/top_selling.html", products=products)
 
 
-@reports_bp.route("/inventory-valuation")
-@login_required
-@permission_required("view_reports")
-def inventory_valuation():
-    """
-    تقرير تقييم المخزون — Inventory Valuation
-    Per warehouse/category, qty × cost, totals.
-
-    SECURITY: valuation exposes qty × cost — owner/super_admin/manager only.
-    view_reports alone must never reveal cost-based inventory value.
-    """
-    if not current_user.can_see_costs():
-        abort(403)
-    from models import Warehouse, ProductCategory
-
-    warehouse_id = request.args.get("warehouse_id", type=int)
-    category_id = request.args.get("category_id", type=int)
+def _inventory_valuation_rows(warehouse_id, category_id):
+    from models import Warehouse
+    from models.tenant_scope import get_current_tenant_id
 
     qty_by_product = {}
     if warehouse_id:
+        warehouse = get_owned_or_404(Warehouse, warehouse_id)
+        scope = get_current_tenant_id()
+        if scope and warehouse.tenant_id != scope:
+            abort(403)
         movement_rows = (
             db.session.query(
                 StockMovement.product_id.label("product_id"),
                 func.sum(StockMovement.quantity).label("net_qty"),
             )
-            .filter(StockMovement.warehouse_id == warehouse_id)
+            .filter(
+                StockMovement.warehouse_id == warehouse_id,
+                StockMovement.tenant_id == warehouse.tenant_id,
+            )
             .group_by(StockMovement.product_id)
             .all()
         )
@@ -1380,7 +1373,7 @@ def inventory_valuation():
     products_query = Product.query.filter(Product.is_active.is_(True))
 
     if warehouse_id:
-        stocked_ids = [pid for pid, qty in qty_by_product.items() if qty > 0]
+        stocked_ids = [pid for pid, qty in qty_by_product.items() if qty != 0]
         products_query = products_query.filter(Product.id.in_(stocked_ids or [0]))
     else:
         products_query = products_query.filter(Product.current_stock > 0)
@@ -1388,21 +1381,29 @@ def inventory_valuation():
     if category_id:
         products_query = products_query.filter_by(category_id=category_id)
 
-    products = products_query.order_by(Product.name).all()
+    for product in products_query.order_by(Product.name, Product.id):
+        qty = qty_by_product[product.id] if warehouse_id else product.current_stock
+        cost = CostingService.current_unit_cost(product)
+        yield product, qty, cost, qty * cost
+
+
+@reports_bp.route("/inventory-valuation")
+@login_required
+@permission_required("view_reports")
+def inventory_valuation():
+    if not current_user.can_see_costs():
+        abort(403)
+    from models import Warehouse, ProductCategory
+
+    warehouse_id = request.args.get("warehouse_id", type=int)
+    category_id = request.args.get("category_id", type=int)
+    rows = list(_inventory_valuation_rows(warehouse_id, category_id))
 
     categories_data = {}
     total_value = Decimal("0")
     total_qty = Decimal("0")
 
-    for product in products:
-        if warehouse_id:
-            qty = qty_by_product.get(product.id) or Decimal("0")
-        else:
-            qty = product.current_stock or Decimal("0")
-        cost = Decimal(str(product.average_cost or 0))
-        if cost <= 0:
-            cost = CostingService.current_unit_cost(product)
-        value = qty * cost
+    for product, qty, cost, value in rows:
         total_value += value
         total_qty += qty
 
@@ -1449,7 +1450,7 @@ def inventory_valuation():
         categories_list=categories,
         total_value=total_value,
         total_qty=total_qty,
-        total_products=len(products),
+        total_products=len(rows),
         inventory_reconciliation=inventory_reconciliation,
         selected_warehouse=warehouse_id,
         selected_category=category_id,
@@ -1494,10 +1495,9 @@ def _inventory_reconciliation_summary():
     try:
         from services.inventory_reconciliation import reconcile_inventory
 
-        report = reconcile_inventory(include_inactive=False)
+        report = reconcile_inventory()
     except Exception as exc:  # pragma: no cover - measurement must not break the page
         current_app.logger.warning(f"inventory reconciliation unavailable: {exc}")
-        summary["error"] = str(exc)
         return summary
 
     summary.update(
@@ -1520,6 +1520,10 @@ def _inventory_reconciliation_summary():
             "balanced": report.get("balanced"),
             "products": [_row(row) for row in report.get("products", [])],
             "breaks": [_row(row) for row in report.get("breaks", [])],
+            "warehouses": [_row(row) for row in report.get("warehouses", [])],
+            "negative_warehouse_positions": [
+                _row(row) for row in report.get("negative_warehouse_positions", [])
+            ],
         }
     )
     return summary
@@ -2350,25 +2354,18 @@ def export_inventory_valuation():
         )
         abort(403)
 
-    _audit_export(
-        "inventory_valuation", fmt, filters={"scope": "active_products_with_stock"}
-    )
-
-    products = (
-        Product.query.filter(Product.is_active == True, Product.current_stock > 0)
-        .order_by(Product.name)
-        .all()
-    )  # noqa: E712
+    warehouse_id = request.args.get("warehouse_id", type=int)
+    category_id = request.args.get("category_id", type=int)
+    products = list(_inventory_valuation_rows(warehouse_id, category_id))
+    _audit_export("inventory_valuation", fmt, filters={
+        "scope": "active_products_with_stock",
+        "warehouse_id": warehouse_id, "category_id": category_id,
+    })
     headers = ["المنتج", "الكود", "الفئة", "الكمية", "متوسط التكلفة", "القيمة"]
     rows = []
     total_value = Decimal("0")
     total_qty = Decimal("0")
-    for p in products:
-        qty = p.current_stock or Decimal("0")
-        cost = Decimal(str(p.average_cost or 0))
-        if cost <= 0:
-            cost = CostingService.current_unit_cost(p)
-        val = qty * cost
+    for p, qty, cost, val in products:
         total_value += val
         total_qty += qty
         rows.append(
@@ -2383,7 +2380,7 @@ def export_inventory_valuation():
         )
     summary = {"إجمالي الكمية": float(total_qty), "إجمالي القيمة": float(total_value)}
 
-    reconciliation = _inventory_reconciliation_summary()
+    reconciliation = _inventory_reconciliation_summary() if not (warehouse_id or category_id) else {}
     if reconciliation.get("available"):
         summary["رصيد المخزون في الأستاذ العام"] = reconciliation.get("control_balance")
         summary["قيمة التقييم (كمية × متوسط التكلفة)"] = reconciliation.get(

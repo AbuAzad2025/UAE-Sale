@@ -148,9 +148,9 @@ class CostingService:
             return Decimal("0.000")
         average = _dec(getattr(product, "average_cost", 0))
         if average > 0:
-            return _q3(average)
+            return _q6(average)
         reference = _dec(getattr(product, "cost_price", 0))
-        return _q3(reference) if reference > 0 else Decimal("0.000")
+        return _q6(reference) if reference > 0 else Decimal("0.000")
 
     @staticmethod
     def cost_for_sale(product, qty=1) -> Decimal:

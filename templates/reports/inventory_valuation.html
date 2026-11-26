@@ -9,8 +9,17 @@
       <div class="card-body">
         <form method="GET" class="form-inline">
           <div class="form-group mr-2">
-            <label class="mr-1">{{ t('Category') }}:</label>
-            <select name="category_id" class="form-control form-control-sm">
+            <label for="inventory-warehouse" class="mr-1">{{ t('Warehouse') }}</label>
+            <select id="inventory-warehouse" name="warehouse_id" class="form-control form-control-sm">
+              <option value="">{{ t('All') }}</option>
+              {% for warehouse in warehouses %}
+              <option value="{{ warehouse.id }}" {% if selected_warehouse == warehouse.id %}selected{% endif %}>{{ display_name(warehouse) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group mr-2">
+            <label for="inventory-category" class="mr-1">{{ t('Category') }}</label>
+            <select id="inventory-category" name="category_id" class="form-control form-control-sm">
               <option value="">{{ t('All') }}</option>
               {% for cat in categories_list %}
               <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>{{ display_name(cat) }}</option>
@@ -21,13 +30,13 @@
             <i class="fas fa-filter"></i> {{ t('Apply Filter') }}
           </button>
           <div class="btn-group ml-2">
-            <a href="{{ url_for('reports.export_inventory_valuation', format='xlsx') }}" class="btn btn-sm btn-success">
+            <a href="{{ url_for('reports.export_inventory_valuation', format='xlsx', warehouse_id=selected_warehouse, category_id=selected_category) }}" class="btn btn-sm btn-success">
               <i class="fas fa-file-excel"></i> Excel
             </a>
-            <a href="{{ url_for('reports.export_inventory_valuation', format='pdf') }}" class="btn btn-sm btn-danger">
+            <a href="{{ url_for('reports.export_inventory_valuation', format='pdf', warehouse_id=selected_warehouse, category_id=selected_category) }}" class="btn btn-sm btn-danger">
               <i class="fas fa-file-pdf"></i> PDF
             </a>
-            <a href="{{ url_for('reports.export_inventory_valuation', format='csv') }}" class="btn btn-sm btn-secondary">
+            <a href="{{ url_for('reports.export_inventory_valuation', format='csv', warehouse_id=selected_warehouse, category_id=selected_category) }}" class="btn btn-sm btn-secondary">
               <i class="fas fa-file-csv"></i> CSV
             </a>
             <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary">
@@ -42,7 +51,7 @@
 
 <div class="row mb-4">
   <div class="col-md-4">
-    <div class="info-box bg-gradient-primary">
+    <div class="info-box inventory-kpi inventory-kpi-products">
       <span class="info-box-icon"><i class="fas fa-cubes"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('Total Products') }}</span>
@@ -51,7 +60,7 @@
     </div>
   </div>
   <div class="col-md-4">
-    <div class="info-box bg-gradient-success">
+    <div class="info-box inventory-kpi inventory-kpi-quantity">
       <span class="info-box-icon"><i class="fas fa-hashtag"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('Total Quantity') }}</span>
@@ -70,6 +79,64 @@
   </div>
 </div>
 
+{% set rec = inventory_reconciliation %}
+<section class="card mb-4" aria-labelledby="inventory-reconciliation-title">
+  <div class="card-body">
+    <h2 class="h5" id="inventory-reconciliation-title">{{ 'مطابقة المخزون على مستوى الشركة' if current_language == 'ar' else 'Company-wide inventory reconciliation' }}</h2>
+    {% if rec.available %}
+    <div class="row">
+      <div class="col-sm-6 col-lg-3">
+        <small>{{ 'الكميات من الحركات' if current_language == 'ar' else 'Quantity from movements' }}</small>
+        <div class="h5 mb-3">{{ "{:,.3f}".format(rec.total_quantity_from_movements) }}</div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <small>{{ 'الكمية المسجّلة' if current_language == 'ar' else 'Recorded quantity' }}</small>
+        <div class="h5 mb-3">{{ "{:,.3f}".format(rec.total_current_stock) }}</div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <small>{{ 'القيمة حسب الحركات' if current_language == 'ar' else 'Value from movements' }}</small>
+        <div class="h5 mb-3">{{ "{:,.2f}".format(rec.valuation_at_average_cost) }} {{ base_currency }}</div>
+      </div>
+      <div class="col-sm-6 col-lg-3">
+        <small>{{ 'رصيد دفتر الأستاذ' if current_language == 'ar' else 'General ledger balance' }}</small>
+        <div class="h5 mb-3">{{ "{:,.2f}".format(rec.control_balance) }} {{ base_currency }}</div>
+      </div>
+    </div>
+    <p class="mb-2">
+      <span class="badge badge-{{ 'success' if rec.balanced else 'warning' }}">
+        {% if rec.balanced %}{{ 'الإجماليات متطابقة' if current_language == 'ar' else 'Totals reconciled' }}
+        {% else %}{{ 'توجد فروق' if current_language == 'ar' else 'Differences found' }}{% endif %}
+      </span>
+      <span class="mx-2">{{ 'فرق القيمة' if current_language == 'ar' else 'Value difference' }} {{ "{:,.2f}".format(rec.gl_difference) }} {{ base_currency }}</span>
+    </p>
+    {% if rec.unattributed_gl_balance %}
+    <p class="text-muted mb-2">{{ 'صافي القيود غير المنسوبة إلى صنف' if current_language == 'ar' else 'Net postings without a product reference' }} {{ "{:,.2f}".format(rec.unattributed_gl_balance) }} {{ base_currency }}</p>
+    {% endif %}
+    {% if rec.warehouses %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-2">
+        <thead><tr><th scope="col">{{ t('Warehouse') }}</th><th scope="col">{{ t('Quantity') }}</th><th scope="col">{{ t('Total Value') }} ({{ base_currency }})</th></tr></thead>
+        <tbody>
+        {% for position in rec.warehouses %}
+          <tr><td>{{ position.warehouse or position.warehouse_id }}</td><td>{{ "{:,.3f}".format(position.quantity) }}</td><td>{{ "{:,.2f}".format(position.valuation) }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if rec.negative_warehouse_positions %}
+    <ul class="text-danger mb-0">
+      {% for position in rec.negative_warehouse_positions %}
+      <li>{{ position.warehouse or position.warehouse_id }} · {{ position.sku or position.product_id }} · {{ "{:,.3f}".format(position.quantity) }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% else %}
+    <p class="mb-0">{{ 'تعذّرت المطابقة حاليًا' if current_language == 'ar' else 'Reconciliation is currently unavailable' }}</p>
+    {% endif %}
+  </div>
+</section>
+
 {% for cat_key, cat_data in categories_data.items() %}
 <div class="card mb-4">
   <div class="card-header bg-info">
@@ -79,14 +146,14 @@
       <span class="badge badge-light ml-2">{{ cat_data.product_count }} {{ t('Product Item') }}</span>
     </h4>
   </div>
-  <div class="card-body p-0">
+  <div class="card-body p-0 table-responsive">
     <table class="table table-striped table-sm mb-0">
       <thead>
         <tr>
           <th>{{ t('Product') }}</th>
           <th>{{ t('Code') }}</th>
           <th class="text-right num-cell">{{ t('Quantity') }}</th>
-          <th class="text-right num-cell">{{ t('Cost Price') }}</th>
+          <th class="text-right num-cell">{{ t('Moving average cost') }}</th>
           <th class="text-right num-cell">{{ t('Total Value') }}</th>
         </tr>
       </thead>
@@ -96,7 +163,7 @@
           <td>{{ display_name(item.product) }}</td>
           <td><code>{{ item.product.sku or item.product.part_number or '-' }}</code></td>
           <td class="text-right num-cell">{{ "{:,.3f}".format(item.qty) }}</td>
-          <td class="text-right num-cell">{{ "{:,.3f}".format(item.cost) }}</td>
+          <td class="text-right num-cell">{{ "{:,.6f}".format(item.cost) }}</td>
           <td class="text-right num-cell font-weight-bold">{{ "{:,.3f}".format(item.value) }}</td>
         </tr>
         {% endfor %}
@@ -126,4 +193,13 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/financial_grid.css') }}">
+<style>
+.info-box.inventory-kpi-products { background: #17447c !important; }
+.info-box.inventory-kpi-quantity { background: #126342 !important; }
+.inventory-kpi-products .info-box-text,
+.inventory-kpi-quantity .info-box-text,
+.inventory-kpi-products .info-box-number,
+.inventory-kpi-quantity .info-box-number,
+.inventory-kpi .info-box-icon { color: #fff !important; }
+</style>
 {% endblock %}

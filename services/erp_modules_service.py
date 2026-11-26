@@ -642,97 +642,81 @@ class FiscalPeriodService:
 
 class StockTransferService:
     @staticmethod
-    def _adjust_stock_no_gl(product_id, quantity, notes, warehouse_id):
-        """C1: transfers are pure stock relocation — no P&L GL rows.
-
-        Calls StockService.adjust_stock(..., post_gl=False) per contract C1.
-        Defensive TypeError fallback for the window before services.stock_service
-        (owned by L) exposes the post_gl kwarg; in that case the legacy GL
-        posting still fires and a warning is logged.
-        """
-        from services.stock_service import StockService
-
-        try:
-            return StockService.adjust_stock(
-                product_id,
-                quantity,
-                notes=notes,
-                warehouse_id=warehouse_id,
-                post_gl=False,
-            )
-        except TypeError:
-            logger.warning(
-                "StockService.adjust_stock(post_gl=...) unavailable — "
-                "legacy signature used (GL rows possible) for product %s",
-                product_id,
-            )
-            return StockService.adjust_stock(
-                product_id,
-                quantity,
-                notes=notes,
-                warehouse_id=warehouse_id,
-            )
-
-    @staticmethod
     def create_transfer(
         from_warehouse_id, to_warehouse_id, lines_data, user_id, notes=None
     ):
-        from models import Warehouse
+        from models import Product, Warehouse
 
         if from_warehouse_id == to_warehouse_id:
             raise ValueError("لا يمكن النقل لنفس المستودع")
 
-        db.get_or_404(Warehouse, from_warehouse_id)
-        db.get_or_404(Warehouse, to_warehouse_id)
+        source = get_owned_or_raise(Warehouse, from_warehouse_id)
+        destination = get_owned_or_raise(Warehouse, to_warehouse_id)
+        if not source or not destination or not source.is_active or not destination.is_active:
+            raise ValueError("اختر مستودعين نشطين")
+        if source.tenant_id != destination.tenant_id:
+            raise ValueError("يجب أن يتبع المستودعان الشركة نفسها")
+        if not lines_data:
+            raise ValueError("أضف صنفًا واحدًا على الأقل")
+
+        transfer_lines = []
+        for item in lines_data:
+            product = get_owned_or_raise(Product, item["product_id"])
+            quantity = Decimal(str(item["quantity"]))
+            if not product or not product.is_active or product.tenant_id != source.tenant_id:
+                raise ValueError("الصنف غير متاح في الشركة")
+            if not quantity.is_finite() or quantity <= 0:
+                raise ValueError("كمية النقل يجب أن تكون أكبر من صفر")
+            transfer_lines.append(StockTransferLine(
+                product_id=product.id, quantity=quantity, notes=item.get("notes"),
+                tenant_id=source.tenant_id,
+            ))
 
         transfer = StockTransfer(
+            tenant_id=source.tenant_id,
             transfer_number=generate_transactional_number("TRF", StockTransfer, "transfer_number"),
             from_warehouse_id=from_warehouse_id,
             to_warehouse_id=to_warehouse_id,
             transfer_date=date.today(),
             requested_by_id=user_id,
             notes=notes,
+            lines=transfer_lines,
         )
         db.session.add(transfer)
         db.session.flush()
 
-        for ld in lines_data:
-            line = StockTransferLine(
-                transfer_id=transfer.id,
-                product_id=ld["product_id"],
-                quantity=Decimal(str(ld["quantity"])),
-                notes=ld.get("notes"),
-            )
-            db.session.add(line)
-
-        db.session.flush()
         return transfer
 
     @staticmethod
     def receive_transfer(transfer_id, user_id):
         """Receive transfer: deduct from source, add to destination"""
-        transfer = db.get_or_404(StockTransfer, transfer_id)
+        from services.stock_service import StockService
+
+        transfer = (
+            StockTransfer.query.filter_by(id=transfer_id)
+            .populate_existing().with_for_update().first_or_404()
+        )
         if transfer.status != "in_transit":
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
-        for line in transfer.lines:
-            StockTransferService._adjust_stock_no_gl(
-                line.product_id,
-                -line.quantity,
-                f"Transfer OUT to {transfer.transfer_number}",
-                transfer.from_warehouse_id,
-            )
-            StockTransferService._adjust_stock_no_gl(
-                line.product_id,
-                line.quantity,
-                f"Transfer IN from {transfer.transfer_number}",
-                transfer.to_warehouse_id,
-            )
+        with db.session.begin_nested():
+            for line in sorted(transfer.lines, key=lambda line: line.product_id):
+                for warehouse_id, qty in (
+                    (transfer.from_warehouse_id, -line.quantity),
+                    (transfer.to_warehouse_id, line.quantity),
+                ):
+                    StockService.adjust_stock(
+                        line.product_id, qty,
+                        notes=transfer.transfer_number,
+                        warehouse_id=warehouse_id,
+                        post_gl=False,
+                        reference_type="StockTransfer",
+                        reference_id=transfer.id,
+                    )
 
-        transfer.status = "received"
-        transfer.received_by_id = user_id
-        transfer.received_at = datetime.now(timezone.utc)
-        db.session.flush()
+            transfer.status = "received"
+            transfer.received_by_id = user_id
+            transfer.received_at = datetime.now(timezone.utc)
         return transfer
 
 

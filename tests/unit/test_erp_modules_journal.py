@@ -502,6 +502,11 @@ class TestStockTransferService:
         ).all()
         assert {m.quantity for m in adjustments} == {Decimal("-5"), Decimal("5")}
         assert {m.warehouse_id for m in adjustments} == {warehouse.id, dest.id}
+        assert {(m.reference_type, m.reference_id) for m in adjustments} == {
+            ("StockTransfer", transfer.id)
+        }
+        with pytest.raises(ValueError, match="في الطريق"):
+            StockTransferService.receive_transfer(transfer.id, owner_user.id)
 
 
 class TestStockTakeService:

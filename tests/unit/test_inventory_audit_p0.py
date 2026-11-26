@@ -302,6 +302,62 @@ class TestZeroCostGuard:
 
 
 class TestWarehouseStockApi:
+    def test_reconciliation_allocates_opening_stock_and_keeps_unit_cost_precision(self, db, owner_user):
+        from models import Tenant, Warehouse
+        from models.tenant_scope import run_in_tenant_context
+        from services.gl_service import GLService
+        from services.inventory_reconciliation import reconcile_inventory
+        from services.stock_service import StockService
+
+        tenant = Tenant(name="Inventory audit", name_ar="تدقيق المخزون", slug="inventory-audit")
+        db.session.add(tenant)
+        db.session.flush()
+        warehouse = Warehouse(name="Inventory audit warehouse", tenant_id=tenant.id)
+        product = Product(
+            name="Inventory audit item", tenant_id=tenant.id, sku="INVENTORY-AUDIT",
+            current_stock=0, regular_price=2,
+        )
+        db.session.add_all([warehouse, product])
+        db.session.commit()
+
+        def post_opening():
+            movement = StockService.add_stock(
+                product.id, Decimal("1000"), warehouse_id=warehouse.id,
+                unit_cost_base=Decimal("1.000125"), reference_type="Product Creation",
+            )
+            GLService.ensure_core_accounts()
+            GLService.post_entry(
+                [{"account": "1140", "debit": Decimal("1000.125")},
+                 {"account": "3100", "credit": Decimal("1000.125")}],
+                reference_type="OpeningStock", reference_id=movement.id, created_by=owner_user.id,
+                tenant_id=tenant.id,
+            )
+            db.session.commit()
+
+        run_in_tenant_context(tenant.id, post_opening)
+        report = reconcile_inventory(tenant_id=tenant.id)
+        assert report["balanced"]
+        assert report["warehouses"][0]["quantity"] == Decimal("1000.000")
+        assert report["products"][0]["average_cost"] == Decimal("1.000125")
+        assert report["products"][0]["gl_control_balance"] == Decimal("1000.13")
+        assert report["unattributed_gl_balance"] == 0
+
+    def test_central_stock_write_rejects_insufficient_warehouse_quantity(
+        self, db, fresh_product, two_warehouses
+    ):
+        from services.stock_service import StockService
+        from utils.errors import ValidationError
+
+        main, other = two_warehouses
+        StockService.add_stock(fresh_product.id, Decimal("20"), warehouse_id=main.id)
+        StockService.add_stock(fresh_product.id, Decimal("2"), warehouse_id=other.id)
+        db.session.commit()
+
+        with pytest.raises(ValidationError, match="في هذا المستودع"):
+            StockService.remove_stock(fresh_product.id, Decimal("3"), warehouse_id=other.id)
+        assert StockService.get_warehouse_quantity(fresh_product.id, other.id) == Decimal("2")
+        assert fresh_product.current_stock == Decimal("22")
+
     def test_foreign_warehouse_stock_is_the_plain_sum_of_its_movements(
         self, client, db, owner_user, fresh_product, two_warehouses
     ):

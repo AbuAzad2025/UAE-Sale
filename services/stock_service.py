@@ -249,30 +249,30 @@ class StockService:
             for_update=True,
         )
         if product is not None:
-            product = (
-                db.session.get(Product, product.id, with_for_update=True) or product
-            )
+            db.session.refresh(product, ["current_stock", "average_cost", "cost_price"])
 
         if not product:
             raise ValueError(
                 f"⚠️ المنتج غير موجود (ID: {product_id}).\n💡 تأكد من اختيار منتج صحيح من القائمة."
             )
 
+        warehouse_query = Warehouse.query.filter_by(
+            tenant_id=product.tenant_id, is_active=True
+        )
         if warehouse_id:
-            warehouse = Warehouse.query.filter_by(
-                id=warehouse_id, is_active=True
-            ).first()
+            warehouse = warehouse_query.filter_by(id=warehouse_id).first()
             if not warehouse:
                 raise ValueError(
                     f"⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id})."
                 )
         else:
-            warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
+            warehouse = warehouse_query.filter_by(is_main=True).order_by(Warehouse.id).first()
             if not warehouse:
-                warehouse = Warehouse.query.filter_by(is_active=True).first()
+                warehouse = warehouse_query.order_by(Warehouse.id).first()
 
             if not warehouse:
                 warehouse = Warehouse(
+                    tenant_id=product.tenant_id,
                     name="Main Warehouse",
                     name_ar="المستودع الرئيسي",
                     is_active=True,
@@ -301,7 +301,21 @@ class StockService:
                 f'❌ المخزون غير كافٍ للمنتج "{product.name}"!\n📦 المتوفر: {available_stock} | المطلوب: {abs(quantity_decimal)}\n💡 قلل الكمية أو اطلب مخزون جديد من المورد.'
             )  # noqa: E501
 
+        if quantity_decimal < 0:
+            movement_stock = StockService.get_product_quantity_from_movements(
+                product.id, tenant_id=product.tenant_id
+            )
+            if movement_stock == available_stock:
+                warehouse_stock = StockService.get_warehouse_quantity(
+                    product.id, warehouse.id, tenant_id=product.tenant_id
+                )
+                if warehouse_stock + quantity_decimal < 0:
+                    raise ValidationError(
+                        f"المخزون غير كافٍ في هذا المستودع (المتوفر: {warehouse_stock})"
+                    )
+
         movement = StockMovement(
+            tenant_id=product.tenant_id,
             product_id=product_id,
             warehouse_id=warehouse.id,
             movement_type=movement_type,
@@ -312,27 +326,16 @@ class StockService:
             notes=notes,
         )
 
-        db.session.add(movement)
-
-        nested = db.session.begin_nested()
-        old_average = Decimal(str(product.average_cost or 0))
         try:
-            if quantity_decimal > 0:
-                in_cost = unit_cost_base
-                if in_cost is None:
-                    in_cost = CostingService.current_unit_cost(product)
-                CostingService.apply_inbound(product, quantity_decimal, in_cost)
-            product.current_stock = resulting_stock
-            db.session.flush()
-            nested.commit()
+            with db.session.begin_nested():
+                db.session.add(movement)
+                if quantity_decimal > 0:
+                    in_cost = unit_cost_base
+                    if in_cost is None:
+                        in_cost = CostingService.current_unit_cost(product)
+                    CostingService.apply_inbound(product, quantity_decimal, in_cost)
+                product.current_stock = resulting_stock
         except Exception as flush_error:
-            nested.rollback()
-            product.current_stock = available_stock
-            product.average_cost = old_average
-            try:
-                db.session.expunge(movement)
-            except Exception:
-                pass
             current_app.logger.error(f"Stock movement failed: {flush_error}")
             raise
 
@@ -457,7 +460,7 @@ class StockService:
         return True
 
     @staticmethod
-    def get_warehouse_quantity(product_id, warehouse_id):
+    def get_warehouse_quantity(product_id, warehouse_id, *, tenant_id=None):
         """رصيد المنتج في مستودع محدد = المجموع البسيط لكميات حركاته.
 
         Convention (sign): a StockMovement ALWAYS carries the sign of the
@@ -470,27 +473,29 @@ class StockService:
         """
         from sqlalchemy import func
 
-        total = (
+        query = (
             db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
             .filter(
                 StockMovement.product_id == product_id,
                 StockMovement.warehouse_id == warehouse_id,
             )
-            .scalar()
         )
-        return Decimal(str(total or 0))
+        if tenant_id is not None:
+            query = query.filter(StockMovement.tenant_id == tenant_id)
+        return Decimal(str(query.scalar() or 0))
 
     @staticmethod
-    def get_product_quantity_from_movements(product_id):
+    def get_product_quantity_from_movements(product_id, *, tenant_id=None):
         """إجمالي رصيد المنتج من الحركات = مجموع بسيط لكل حركاته."""
         from sqlalchemy import func
 
-        total = (
+        query = (
             db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
             .filter(StockMovement.product_id == product_id)
-            .scalar()
         )
-        return Decimal(str(total or 0))
+        if tenant_id is not None:
+            query = query.filter(StockMovement.tenant_id == tenant_id)
+        return Decimal(str(query.scalar() or 0))
 
     @staticmethod
     def check_availability(product_id, quantity, warehouse_id=None):

@@ -33,7 +33,7 @@ TOLERANCE = Decimal("0.0001")
 
 
 @pytest.fixture(autouse=True)
-def open_fiscal_period(db):
+def open_fiscal_period(db, posting_tenant):
     """فترة مالية مفتوحة تغطي السنة الحالية.
 
     F10: الترحيل إلى دفتر الأستاذ مرفوض الآن خارج فترة مالية مفتوحة
@@ -62,7 +62,7 @@ def open_fiscal_period(db):
 
 
 @pytest.fixture
-def warehouse(db):
+def warehouse(db, test_product, second_product):
     wh = Warehouse(
         name="Integrity WH",
         name_ar="مستودع الفحص",
@@ -70,7 +70,19 @@ def warehouse(db):
         is_active=True,
         is_main=True,
     )
+    from models import StockMovement
+
     db.session.add(wh)
+    db.session.flush()
+    for product in (test_product, second_product):
+        db.session.add(
+            StockMovement(
+                product_id=product.id,
+                warehouse_id=wh.id,
+                quantity=product.current_stock,
+                movement_type="adjustment",
+            )
+        )
     db.session.commit()
     return wh
 

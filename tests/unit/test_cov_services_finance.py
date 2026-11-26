@@ -19,27 +19,9 @@ from utils.helpers import generate_number
 
 
 @pytest.fixture
-def core(db):
-    """دليل الحسابات + فترة مالية مفتوحة (F10: شرط لازم للترحيل)."""
-    from datetime import date
-
-    from models.erp_modules import FiscalPeriod
-
+def core(posting_tenant):
     GLService.ensure_core_accounts()
-    year = date.today().year
-    if FiscalPeriod.query.filter_by(year=year, period_type="annual").first() is None:
-        db.session.add(
-            FiscalPeriod(
-                name=f"FY {year}",
-                year=year,
-                period_type="annual",
-                start_date=date(year, 1, 1),
-                end_date=date(year, 12, 31),
-                is_closed=False,
-            )
-        )
-        db.session.commit()
-    return True
+    return posting_tenant
 
 
 def _post(ref_type, ref_id, amount=Decimal("100.000"), **kwargs):
@@ -73,7 +55,7 @@ class TestPurgeByReference:
 
     def test_posted_entry_is_never_purged(self, db, core):
         """F1: القيد المرحّل لا يُحذف — يُعكَس فقط."""
-        e = _post("COV-PURGE", 91002)
+        _post("COV-PURGE", 91002)
         db.session.commit()
         with pytest.raises(ValueError):
             GLService.purge_by_reference("COV-PURGE", 91002)

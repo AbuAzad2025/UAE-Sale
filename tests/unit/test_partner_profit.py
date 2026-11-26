@@ -112,7 +112,7 @@ def _partner_lines(db, partner_id):
         .filter(
             GLJournalLine.party_id == partner_id,
             GLAccount.code == "3350",
-            GLJournalEntry.is_reversed.is_(False),
+            GLJournalEntry.is_posted.is_(True),
         )
     )
 
@@ -505,6 +505,19 @@ class TestDualRoleAndBoundaries:
         from services.sale_service import SaleService
         from services import partner_profit as pp
 
+        from models import Warehouse, StockMovement
+
+        warehouse = Warehouse(name="Partner sales", is_active=True, is_main=True)
+        db.session.add(warehouse)
+        db.session.flush()
+        db.session.add(
+            StockMovement(
+                product_id=test_product.id,
+                warehouse_id=warehouse.id,
+                quantity=test_product.current_stock,
+                movement_type="adjustment",
+            )
+        )
         test_product.average_cost = Decimal("30")
         test_product.cost_price = Decimal("30")
         db.session.commit()

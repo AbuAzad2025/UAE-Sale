@@ -1860,7 +1860,7 @@ TRANSLATIONS = {
     "en": "Supplier"
   },
   "Supplier Details": {
-    "ar": "تفاصيل الموردين",
+    "ar": "بيانات المورد",
     "en": "Supplier Details"
   },
   "Supplier Information": {

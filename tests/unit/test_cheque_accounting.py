@@ -235,6 +235,23 @@ def test_standalone_cheque_restores_subledger_and_control(
     assert (test_customer.balance, ar.get_balance(), collection.get_balance()) == before
 
 
+def test_cancel_journal_entry_uses_cheque_tenant(db, outgoing_pending, cheque_tenant):
+    from models import GLJournalEntry
+
+    original = ChequeAccountingIntegration.issue_cheque(outgoing_pending.id)
+    outgoing_pending.cancel_cheque()
+    db.session.commit()
+    reversal = db.session.get(GLJournalEntry, original.reversed_entry_id)
+    assert reversal is not None
+    assert (
+        reversal.tenant_id
+        == original.tenant_id
+        == outgoing_pending.tenant_id
+        == cheque_tenant.id
+    )
+    assert reversal.reversed_entry_id == original.id
+
+
 class TestBounceCheque:
     def test_bounce_incoming_restores_ar(
         self, db, owner_user, incoming_pending, test_customer

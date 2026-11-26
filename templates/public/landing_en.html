@@ -14,7 +14,7 @@
     
     
     <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:url" content="{{ request.url_root }}">
     <meta property="og:title" content="Azad Smart Systems - All-in-One Sales and Inventory Management">
     <meta property="og:description" content="An integrated sales, purchasing and inventory system with advanced AI assistance. A professional solution for businesses and retail stores.">
     <meta property="og:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
@@ -28,7 +28,7 @@
     <meta name="twitter:image" content="{{ url_for('static', filename='img/azad_logo.png', _external=True) }}">
     
     
-    <link rel="canonical" href="{{ request.url }}">
+    <link rel="canonical" href="{{ request.url_root }}">
     
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
@@ -48,12 +48,6 @@
         "highPrice": "150",
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.9",
-        "reviewCount": "150",
-        "bestRating": "5"
       },
       "provider": {
         "@type": "Organization",

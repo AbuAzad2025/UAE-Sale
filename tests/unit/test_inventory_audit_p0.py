@@ -244,9 +244,11 @@ class TestZeroCostGuard:
 
     def test_ai_sale_refuses_a_zero_cost_product(self, db, owner_user, test_customer):
         """مسار AI: منتج بلا تكلفة ⇒ لا فاتورة إيراد بلا تكلفة."""
+        from flask_login import login_user
         from routes.ai import _ai_create_sale
         from utils.errors import ValidationError
 
+        login_user(owner_user)
         product = Product(
             name="صنف بلا تكلفة",
             sku="SKU-ZERO-2",
@@ -273,9 +275,11 @@ class TestZeroCostGuard:
         self, db, owner_user, test_customer, two_warehouses, open_fiscal_period
     ):
         """فاتورة AI: حركة مخزون + لقطة تكلفة على سطر البيع."""
+        from flask_login import login_user
         from routes.ai import _ai_create_sale
         from services.stock_service import StockService
 
+        login_user(owner_user)
         main, _other = two_warehouses
         product = Product(
             name="صنف بسعر",

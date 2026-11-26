@@ -104,7 +104,23 @@ class TestAdvancedExpense:
         exp.calculate_taxes()
         assert exp.get_total_amount() == Decimal("2090")
 
-    def test_reverse_expense_creates_manual_reversal_entry(self, db, owner_user):
+    def _post_expense(self, db, expense):
+        from services.gl_service import GLService
+
+        db.session.add(expense)
+        db.session.flush()
+        expense.gl_journal_entry = GLService.post_entry(
+            [
+                {"account": "6200", "debit": expense.amount_base},
+                {"account": "1110", "credit": expense.amount_base},
+            ],
+            reference_type="AdvancedExpense",
+            reference_id=expense.id,
+            tenant_id=expense.tenant_id,
+        )
+        db.session.commit()
+
+    def test_reverse_expense_creates_manual_reversal_entry(self, db, owner_user, posting_tenant):
         cat = ExpenseCategory(name="Rent Cat", gl_account_code="6200")
         db.session.add(cat)
         db.session.flush()
@@ -118,10 +134,9 @@ class TestAdvancedExpense:
             amount_base=Decimal("250"),
             created_by=owner_user.id,
         )
-        db.session.add(exp)
-        db.session.commit()
+        self._post_expense(db, exp)
 
-        exp.reverse_expense("خطأ إدخال", owner_user)
+        reversal = exp.reverse_expense("خطأ إدخال", owner_user)
 
         assert exp.is_reversed is True
         assert exp.reversal_reason == "خطأ إدخال"
@@ -129,13 +144,14 @@ class TestAdvancedExpense:
         assert exp.reversed_at is not None
 
         entries = GLJournalEntry.query.all()
-        assert len(entries) == 1
-        assert entries[0].description == f"عكس مصروف {exp.expense_number}"
-        lines = {ln.account.code: ln for ln in GLJournalLine.query.all()}
+        assert len(entries) == 2
+        assert reversal.reversed_entry_id == exp.gl_journal_entry.id
+        assert reversal.description == f"عكس مصروف {exp.expense_number}"
+        lines = {ln.account.code: ln for ln in reversal.lines}
         assert lines["6200"].credit == Decimal("250")
         assert lines["1110"].debit == Decimal("250")
 
-    def test_reverse_expense_twice_raises(self, db, owner_user):
+    def test_reverse_expense_twice_raises(self, db, owner_user, posting_tenant):
         cat = ExpenseCategory(name="Rent Cat 2", gl_account_code="6200")
         db.session.add(cat)
         db.session.flush()
@@ -149,8 +165,7 @@ class TestAdvancedExpense:
             amount_base=Decimal("100"),
             created_by=owner_user.id,
         )
-        db.session.add(exp)
-        db.session.commit()
+        self._post_expense(db, exp)
 
         exp.reverse_expense("سبب", owner_user)
         with pytest.raises(ValueError):

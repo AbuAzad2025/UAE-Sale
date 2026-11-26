@@ -5,13 +5,6 @@ os.environ.setdefault('PYTHONIOENCODING','utf-8')
 from app import create_app
 
 
-def test_cancel_journal_entry_uses_cheque_tenant():
-    src = open('models/cheque.py', encoding='utf-8').read()
-    block = src[src.index('def _create_cancel_journal_entry'):]
-    block = block[:block.index('def archive')]
-    assert 'tenant_id=getattr(self, "tenant_id", None)' in block
-
-
 def test_cancel_reverses_issue_entry_when_executed():
     app = create_app()
     with app.app_context():

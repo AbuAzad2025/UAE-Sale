@@ -37,6 +37,7 @@ def _existing_accrual(tid, as_of_date):
     from models.gl import GLJournalEntry
 
     q = GLJournalEntry.query.filter_by(
+        tenant_id=tid,
         reference_type="CorporateTax",
         reference_id=tid,
         is_posted=True,
@@ -80,6 +81,7 @@ def post_corporate_tax(tenant, net_profit, as_of_date=None, created_by=None) -> 
             {"account": liab_code, "credit": amount, "description": "ضرائب دخل مستحقة"},
         ],
         description="Corporate Tax Accrual",
+        tenant_id=tid,
         reference_type="CorporateTax",
         reference_id=tid,
         entry_date=as_of_date,

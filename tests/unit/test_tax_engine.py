@@ -6,10 +6,7 @@ ReturnService tax-reversal block against the legacy formula fixtures.
 """
 
 import random
-import sys
-import types
 from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN
-from enum import Enum
 
 import pytest
 
@@ -268,21 +265,12 @@ class TestLiabilityRouting:
             assert routing["output_vat"] == "2131"
 
     def test_consumes_account_resolver_when_available(self, monkeypatch):
-        fake = types.ModuleType("services.account_resolution")
+        from services.account_resolution import AccountResolver
 
-        class AccountRole(str, Enum):
-            VAT_OUTPUT = "VAT_OUTPUT"
-            SALES_RETURNS = "SALES_RETURNS"
+        def resolve(role, tenant_id=None):
+            return {"VAT_OUTPUT": "9999"}.get(role, f"R{tenant_id}-{role}")
 
-        class AccountResolver:
-            @staticmethod
-            def resolve(role, tenant_id=None):
-                mapping = {"VAT_OUTPUT": "9999"}
-                return mapping.get(role.value, f"R{tenant_id}-{role.value}")
-
-        fake.AccountRole = AccountRole
-        fake.AccountResolver = AccountResolver
-        monkeypatch.setitem(sys.modules, "services.account_resolution", fake)
+        monkeypatch.setattr(AccountResolver, "resolve", staticmethod(resolve))
 
         routing = TaxEngine.liability_routing(tenant_id=7)
         assert routing["output_vat"] == "9999"
@@ -299,6 +287,7 @@ def taxable_sale(db, owner_user, test_customer, test_product, test_sale):
     return test_sale
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReturnReversalParity:
     def test_parity_with_legacy_formula_fixture(self, owner_user, taxable_sale):
         line = _get_sale_line(taxable_sale)

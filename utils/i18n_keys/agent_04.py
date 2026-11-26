@@ -1920,7 +1920,7 @@ TRANSLATIONS = {
     "en": "Supplier Balance Due"
   },
   "Supplier Details": {
-    "ar": "تفاصيل الموردين",
+    "ar": "بيانات المورد",
     "en": "Supplier Details"
   },
   "Supplier Dues Over Time": {

@@ -123,15 +123,17 @@ def _make_sale(
     return sale
 
 
-def _incoming_cheque(db, customer, number, amount=Decimal("1000")):
+def _incoming_cheque(
+    db, customer, number, amount=Decimal("1000"), *, currency="ILS", rate="1"
+):
     ch = Cheque(
         cheque_number=number,
         cheque_bank_number="BNK-" + number,
         cheque_type="incoming",
         bank_name="Emirates NBD",
         amount=amount,
-        currency="ILS",
-        exchange_rate=Decimal("1"),
+        currency=currency,
+        exchange_rate=Decimal(rate),
         issue_date=date.today() - timedelta(days=5),
         due_date=date.today() + timedelta(days=30),
         status="pending",
@@ -209,6 +211,7 @@ class TestSupplierTotalsSinglePass:
 # ─────────────────────── 2. payment_service C4 / FX ───────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReceiptAllocationC4:
     def _two_open_sales(self, db, owner_user, customer):
         older = _make_sale(
@@ -425,6 +428,7 @@ class TestChequeGLEntryIdsPersisted:
 # ─────────────────── 5. integration statuses + role routing ───────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestChequeIntegrationDepositedContract:
     def test_receive_sets_model_valid_deposited_status(self, db, test_customer):
         ch = _incoming_cheque(db, test_customer, "CH-LR-INT-1")
@@ -448,7 +452,9 @@ class TestChequeIntegrationDepositedContract:
         assert ch.gl_journal_entry_id == entry.id
 
     def test_clear_routes_bank_charge_and_fx_roles(self, db, test_customer):
-        ch = _incoming_cheque(db, test_customer, "CH-LR-INT-3")
+        ch = _incoming_cheque(
+            db, test_customer, "CH-LR-INT-3", currency="USD", rate="3.5"
+        )
         ChequeAccountingIntegration.receive_cheque(ch.id)
 
         entry = ChequeAccountingIntegration.clear_cheque(
@@ -461,7 +467,9 @@ class TestChequeIntegrationDepositedContract:
         assert total_debit(entry) == total_credit(entry)
 
     def test_clear_loss_routes_fx_loss_role(self, db, test_customer):
-        ch = _incoming_cheque(db, test_customer, "CH-LR-INT-4")
+        ch = _incoming_cheque(
+            db, test_customer, "CH-LR-INT-4", currency="USD", rate="3.5"
+        )
         ChequeAccountingIntegration.receive_cheque(ch.id)
 
         entry = ChequeAccountingIntegration.clear_cheque(
@@ -494,6 +502,7 @@ class TestMerchantReceivableCodes:
 # ─────────────── 7. subledger recon includes merchant buckets ───────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestSubledgerARMerchantAware:
     @staticmethod
     def _merchant_and_partner(db):
@@ -609,6 +618,7 @@ class TestSubledgerARMerchantAware:
 # ─────────────────────── 8. stock_service C1 + validation ───────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestAdjustStockPostGL:
     def test_post_gl_false_skips_gl_rows_entirely(self, db, test_product):
         from services.stock_service import StockService
@@ -683,6 +693,7 @@ def _return_line_for(sale):
     return SaleLine.query.filter_by(sale_id=sale.id).first()
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReturnCostBasisAndFx:
     def test_cogs_reversal_uses_sale_line_historical_cost(
         self, db, owner_user, test_product, test_sale

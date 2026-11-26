@@ -14,9 +14,9 @@ from decimal import Decimal
 
 
 @pytest.fixture
-def warehouse(db):
+def warehouse(db, test_product):
     """Create a test warehouse."""
-    from models import Warehouse
+    from models import StockMovement, Warehouse
 
     wh = Warehouse(
         name="Main Warehouse",
@@ -26,17 +26,25 @@ def warehouse(db):
         is_main=True,
     )
     db.session.add(wh)
+    db.session.flush()
+    db.session.add(
+        StockMovement(
+            product_id=test_product.id,
+            warehouse_id=wh.id,
+            quantity=test_product.current_stock,
+            movement_type="adjustment",
+        )
+    )
     db.session.commit()
     return wh
 
 
 @pytest.fixture
-def gl_accounts(app):
+def gl_accounts(db):
     """Ensure GL core accounts exist."""
-    with app.app_context():
-        from services.gl_service import GLService
+    from services.gl_service import GLService
 
-        GLService.ensure_core_accounts()
+    GLService.ensure_core_accounts()
 
 
 class TestSaleToGL:
@@ -46,7 +54,7 @@ class TestSaleToGL:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -104,7 +112,7 @@ class TestSaleToGL:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -148,7 +156,7 @@ class TestSaleToGL:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -176,7 +184,7 @@ class TestSaleToGL:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -220,7 +228,7 @@ class TestStockOnSale:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -251,7 +259,7 @@ class TestStockOnSale:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -288,7 +296,7 @@ class TestStockOnSale:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -339,7 +347,7 @@ class TestChequeLifecycle:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -376,7 +384,7 @@ class TestChequeLifecycle:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,
@@ -413,7 +421,7 @@ class TestChequeLifecycle:
         self,
         client,
         db,
-        login_owner,
+        posting_tenant,
         owner_user,
         test_customer,
         test_product,

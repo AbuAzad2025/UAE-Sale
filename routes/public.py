@@ -169,12 +169,6 @@ def sitemap():
             "changefreq": "monthly",
             "keywords": "دليل المستخدم، شرح البرنامج",
         },
-        {
-            "loc": f"{base_url}/auth/login",
-            "priority": "0.80",
-            "changefreq": "monthly",
-            "keywords": "تسجيل دخول",
-        },
     ]
 
     try:

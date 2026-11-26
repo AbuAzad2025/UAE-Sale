@@ -30,10 +30,11 @@ def test_compute_ct_disabled():
     assert compute_ct(Decimal("1000000"), tenant) == Decimal("0")
 
 
-def test_post_corporate_tax_is_atomic_and_idempotent(db, owner_user):
+def test_post_corporate_tax_is_atomic_and_idempotent(db, posting_tenant):
     from models.gl import GLJournalEntry
 
-    tenant = _CTTenant()
+    tenant = posting_tenant
+    tenant.corp_tax_enabled = True
     res1 = post_corporate_tax(tenant, Decimal("575000"))
     assert res1["posted"] is True
     assert res1["liability"] == Decimal("18000.00")
@@ -43,6 +44,7 @@ def test_post_corporate_tax_is_atomic_and_idempotent(db, owner_user):
     ).all()
     assert len(entries) == 1
     entry = entries[0]
+    assert entry.tenant_id == tenant.id
     assert entry.is_posted and entry.total_debit == entry.total_credit
 
     with pytest.raises(ValueError, match="سابق"):

@@ -452,7 +452,7 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
     idempotency_key = db.Column(db.String(120), nullable=True, index=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(
-        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False
     )
     updated_at = db.Column(
         db.DateTime,

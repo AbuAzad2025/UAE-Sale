@@ -47,7 +47,10 @@ from utils.errors import ValidationError
 # =====================================================================
 
 
-def _warehouse(db, code, name=None, is_main=False):
+pytestmark = pytest.mark.usefixtures("posting_tenant")
+
+
+def _warehouse(db, code, name=None, is_main=False, opening_product=None):
     wh = Warehouse(
         name=name or code,
         name_ar=name or code,
@@ -56,6 +59,17 @@ def _warehouse(db, code, name=None, is_main=False):
         is_main=is_main,
     )
     db.session.add(wh)
+    if opening_product is not None:
+        db.session.flush()
+        db.session.add(
+            StockMovement(
+                product_id=opening_product.id,
+                warehouse_id=wh.id,
+                quantity=opening_product.current_stock,
+                movement_type="adjustment",
+                reference_type="test_opening",
+            )
+        )
     db.session.commit()
     return wh
 
@@ -134,7 +148,7 @@ class TestZeroCostSaleIsRefused:
         product = _product(
             db, "صنف بتكلفة", "SKU-P0-COST", cost="10", price="50", stock="10"
         )
-        warehouse = _warehouse(db, "WH-P0-COST", is_main=True)
+        warehouse = _warehouse(db, "WH-P0-COST", is_main=True, opening_product=product)
 
         sale = SaleService.create_sale(
             customer=customer,
@@ -148,7 +162,7 @@ class TestZeroCostSaleIsRefused:
         ).all()
         cogs = [e for e in entries if e.description.startswith("COGS")]
         assert cogs, "no COGS entry for a costed sale"
-        cogs_debit = sum(Decimal(str(l.debit or 0)) for l in cogs[0].lines)
+        cogs_debit = sum(Decimal(str(line.debit or 0)) for line in cogs[0].lines)
         assert cogs_debit == Decimal("20.000")  # 2 × 10 (تكلفة بالأساس)
 
 
@@ -224,12 +238,14 @@ class TestAiCommandSalePath:
 
         customer = _customer(db, "عميل AI")
         product = _product(db, "صنف AI", "SKU-P0-AI", cost="10", price="25", stock="10")
-        _warehouse(db, "WH-P0-AI", is_main=True)
+        _warehouse(db, "WH-P0-AI", is_main=True, opening_product=product)
 
         sale = cmd.create_sale(customer.id, product.id, Decimal("2"), owner_user.id)
 
         # 1) حركة مخزون (لم تعد كتابة مباشرة على current_stock)
-        moves = StockMovement.query.filter_by(product_id=product.id).all()
+        moves = StockMovement.query.filter_by(
+            product_id=product.id, reference_id=sale.id
+        ).all()
         assert len(moves) == 1
         assert Decimal(str(moves[0].quantity)) == Decimal("-2.000")
         db.session.refresh(product)
@@ -247,7 +263,7 @@ class TestAiCommandSalePath:
         cogs = [e for e in entries if e.description.startswith("COGS")]
         assert revenue, "no revenue entry for the AI sale"
         assert cogs, "no COGS entry for the AI sale"
-        cogs_debit = sum(Decimal(str(l.debit or 0)) for l in cogs[0].lines)
+        cogs_debit = sum(Decimal(str(line.debit or 0)) for line in cogs[0].lines)
         assert cogs_debit == Decimal("20.000")
 
     def test_ai_sale_of_a_zero_cost_product_is_refused(self, db, owner_user):
@@ -283,7 +299,7 @@ class TestReturnSettlement:
         product = _product(
             db, "صنف مرتجع", "SKU-P0-RET", cost="10", price="50", stock="10"
         )
-        warehouse = _warehouse(db, "WH-P0-RET", is_main=True)
+        warehouse = _warehouse(db, "WH-P0-RET", is_main=True, opening_product=product)
 
         sale = SaleService.create_sale(
             customer=customer,
@@ -328,7 +344,7 @@ class TestReturnSettlement:
         product = _product(
             db, "صنف مرتجع جزئي", "SKU-P0-RET2", cost="10", price="50", stock="10"
         )
-        warehouse = _warehouse(db, "WH-P0-RET2", is_main=True)
+        warehouse = _warehouse(db, "WH-P0-RET2", is_main=True, opening_product=product)
 
         sale = SaleService.create_sale(
             customer=customer,
@@ -569,9 +585,9 @@ class TestPaymentServiceRefundAndAdjustment:
         product = _product(
             db, "صنف استرداد", "SKU-P0-REF", cost="10", price="50", stock="10"
         )
-        warehouse = _warehouse(db, "WH-P0-REF", is_main=True)
+        warehouse = _warehouse(db, "WH-P0-REF", is_main=True, opening_product=product)
 
-        sale = SaleService.create_sale(
+        SaleService.create_sale(
             customer=customer,
             seller=owner_user,
             lines_data=_lines(product, "2"),
@@ -603,9 +619,9 @@ class TestPaymentServiceRefundAndAdjustment:
         assert Decimal(str(entry.total_debit)) == Decimal("30.000")
         assert Decimal(str(entry.total_credit)) == Decimal("30.000")
 
-        # أثر الرصيد: 100 − 30 = 70 (عبر الاشتقاق لا بالكتابة اليدوية)
+        # أثر الرصيد: 100 + 30 = 130 (عبر الاشتقاق لا بالكتابة اليدوية)
         db.session.refresh(customer)
-        assert Decimal(str(customer.balance)) == Decimal("70.000")
+        assert Decimal(str(customer.balance)) == Decimal("130.000")
 
         # صف تدقيق
         audit = AuditLog.query.filter_by(
@@ -635,9 +651,9 @@ class TestPaymentServiceRefundAndAdjustment:
         product = _product(
             db, "صنف ضبط", "SKU-P0-ADJ", cost="10", price="50", stock="10"
         )
-        warehouse = _warehouse(db, "WH-P0-ADJ", is_main=True)
+        warehouse = _warehouse(db, "WH-P0-ADJ", is_main=True, opening_product=product)
 
-        sale = SaleService.create_sale(
+        SaleService.create_sale(
             customer=customer,
             seller=owner_user,
             lines_data=_lines(product, "2"),
@@ -702,6 +718,7 @@ class TestCashFlowResolvesAccountsThroughTheResolver:
         assert codes == (
             AccountResolver.code_for(AccountRole.CASH),
             AccountResolver.code_for(AccountRole.BANK),
+            AccountResolver.code_for(AccountRole.BANK_SAVINGS),
         )
 
     def test_a_remapped_cash_account_is_followed(self, db, owner_user):
@@ -720,33 +737,38 @@ class TestCashFlowResolvesAccountsThroughTheResolver:
         """قيد على الصندوق المُعاد ترميزه ينعكس على رصيد النقدية."""
         from datetime import datetime, timezone
 
+        from models import GLAccount, Tenant
         from models.system_settings import SystemSettings
+        from models.tenant_scope import run_in_tenant_context
         from services.cash_flow_service import CashFlowService
         from services.gl_service import GLService
 
         settings = SystemSettings(system_name="P0", is_active=True)
-        settings.set_custom_setting("gl_role_map", {"CASH": "1121"})
-        db.session.add(settings)
-        db.session.commit()
-
-        GLService.ensure_core_accounts()
-
-        # قيد على الصندوق المُعاد ترميزه (1121) بتاريخ قبل بداية الفترة
-        GLService.post_entry(
-            lines=[
-                {"account": "1121", "debit": Decimal("500"), "credit": Decimal("0")},
-                {"account": "4100", "debit": Decimal("0"), "credit": Decimal("500")},
-            ],
-            description="P0 cash flow",
-            reference_type="manual",
-            entry_date=datetime.now(timezone.utc) - timedelta(days=3),
+        tenant = Tenant(name="Mapped cash", name_ar="الصندوق", slug="mapped-cash")
+        db.session.add(tenant)
+        db.session.flush()
+        settings.set_custom_setting(f"gl_role_map:{tenant.id}", {"CASH": "1127"})
+        db.session.add_all(
+            [settings, GLAccount(code="1127", name="Mapped cash", type="asset")]
         )
         db.session.commit()
 
-        report = CashFlowService.generate_gl_cash_flow(
-            date.today() - timedelta(days=2), date.today() + timedelta(days=2)
-        )
-        # رصيد النقدية الافتتاحي يشمل الحساب المُعاد ترميزه (1121) — لو
-        # كان الكود ثابتاً ('1110','1120') لما ظهر الـ 500 إطلاقاً.
+        def statement():
+            GLService.ensure_core_accounts()
+            GLService.post_entry(
+                lines=[
+                    {"account": "1127", "debit": Decimal("500")},
+                    {"account": "4100", "credit": Decimal("500")},
+                ],
+                description="P0 cash flow",
+                reference_type="manual",
+                entry_date=datetime.now(timezone.utc) - timedelta(days=3),
+                created_by=owner_user.id,
+            )
+            return CashFlowService.generate_gl_cash_flow(
+                date.today() - timedelta(days=2), date.today() + timedelta(days=2)
+            )
+
+        report = run_in_tenant_context(tenant.id, statement)
         assert Decimal(str(report["cash_beginning"])) == Decimal("500.000")
         assert Decimal(str(report["cash_ending"])) == Decimal("500.000")

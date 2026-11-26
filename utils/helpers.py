@@ -162,9 +162,14 @@ def allocate_transactional_numbers(prefix, model, field_name, count):
     column = getattr(model, field_name)
     suffix = func.substr(column, len(stem) + 1)
     if dialect == "postgresql":
+        lock_stem = prefix if model.__tablename__ == "gl_journal_entries" else stem
         key = int.from_bytes(
-            blake2b(f"{model.__tablename__}:{field_name}:{stem}".encode(), digest_size=8).digest(),
-            "big", signed=True,
+            blake2b(
+                f"{model.__tablename__}:{field_name}:{lock_stem}".encode(),
+                digest_size=8,
+            ).digest(),
+            "big",
+            signed=True,
         )
         db.session.execute(select(func.pg_advisory_xact_lock(key)))
         numeric = suffix.op("~")(r"^[0-9]{1,12}$")
@@ -173,7 +178,9 @@ def allocate_transactional_numbers(prefix, model, field_name, count):
             connection.exec_driver_sql("BEGIN IMMEDIATE")
         numeric = suffix.op("GLOB")("[0-9]*") & ~suffix.op("GLOB")("*[^0-9]*")
     else:
-        raise RuntimeError("Transactional document numbering requires PostgreSQL or SQLite.")
+        raise RuntimeError(
+            "Transactional document numbering requires PostgreSQL or SQLite."
+        )
     number = db.session.scalar(
         select(func.max(cast(suffix, BigInteger)))
         .where(column.startswith(stem), numeric, func.length(suffix) <= 12)
@@ -304,8 +311,12 @@ def create_audit_log(
 
     try:
         log = AuditLog(
-            user_id=actor_id if actor_id is not None else (
-                current_user.id if getattr(current_user, "is_authenticated", False) else None
+            user_id=actor_id
+            if actor_id is not None
+            else (
+                current_user.id
+                if getattr(current_user, "is_authenticated", False)
+                else None
             ),
             action=action,
             table_name=table_name,

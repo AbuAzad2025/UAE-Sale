@@ -45,7 +45,6 @@ def build_expense_gl_lines(expense):
     tid = getattr(expense, "tenant_id", None)
     method = getattr(expense, "payment_method", "cash")
     num = getattr(expense, "expense_number", "") or ""
-    tid = getattr(expense, "tenant_id", None)
 
     net, tax, total = compute_expense_tax(
         getattr(expense, "amount", 0),
@@ -62,15 +61,17 @@ def build_expense_gl_lines(expense):
 
     category = getattr(expense, "category", None)
     expense_account = (
-        category.gl_account_code if category and category.gl_account_code else "6990"
+        category.gl_account_code
+        if category and category.gl_account_code
+        else AccountResolver.resolve(AccountRole.MISC_EXPENSE, tenant_id=tid)
     )
 
-    if method == "cash":
-        payment_account = AccountResolver.resolve(AccountRole.CASH, tenant_id=tid)
-    elif method == "cheque":
+    if method == "cheque":
         payment_account = AccountResolver.resolve(AccountRole.AP_CONTROL, tenant_id=tid)
     else:
-        payment_account = AccountResolver.resolve(AccountRole.BANK, tenant_id=tid)
+        from services.gl_service import GLService
+
+        payment_account = GLService.get_payment_debit_account(method, tenant_id=tid)
 
     vat_input = AccountResolver.resolve(AccountRole.VAT_INPUT, tenant_id=tid)
     vat_output = AccountResolver.resolve(AccountRole.VAT_OUTPUT, tenant_id=tid)

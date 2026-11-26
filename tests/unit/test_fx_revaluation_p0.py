@@ -21,7 +21,8 @@ from decimal import Decimal
 import pytest
 
 from extensions import db as _db
-from models import AuditLog, GLJournalEntry
+from models import AuditLog, GLJournalEntry, Tenant
+from models.tenant_scope import clear_current_tenant_id, set_current_tenant_id
 from services.fx_revaluation import FXRevaluationService
 from utils.errors import ValidationError
 
@@ -34,6 +35,20 @@ DEPRECIATED = Decimal("3.5")
 # ---------------------------------------------------------------------------
 # fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def fx_tenant(db):
+    tenant = Tenant(
+        name="FX tests", name_ar="الفحص", slug="fx-test", default_currency=BASE
+    )
+    db.session.add(tenant)
+    db.session.commit()
+    set_current_tenant_id(tenant.id)
+    try:
+        yield tenant
+    finally:
+        clear_current_tenant_id()
 
 
 @pytest.fixture

@@ -73,6 +73,7 @@ class TestAmountBase:
         assert ch.amount_base == Decimal("250")
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestLifecycle:
     def test_deposit_from_pending(self, db):
         ch = _cheque()
@@ -153,10 +154,15 @@ class TestLifecycle:
         assert ch.status == "cancelled"
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestArchiveRestore:
     def test_archive_active_cheque_posts_reversal(self, app, db, owner_user):
-        ch = _cheque(status="deposited")
+        ch = _cheque()
+        ch.calculate_amount_base()
         db.session.add(ch)
+        db.session.flush()
+        ch.receive_cheque(actor_id=owner_user.id)
+        ch.deposit_cheque()
         db.session.commit()
         before = GLJournalEntry.query.count()
 

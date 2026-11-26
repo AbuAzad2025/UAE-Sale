@@ -153,19 +153,22 @@ class TestResolverPrecedence:
         assert AccountResolver.resolve(AccountRole.CASH, tenant_id=tenant.id) == "1121"
         assert AccountResolver.resolve(AccountRole.BANK, tenant_id=tenant.id) == "1110"
 
-    def test_malformed_custom_settings_json_ignored(self, db, core, settings_row):
+    def test_reject_malformed_custom_settings(self, db, core, settings_row):
         settings_row.custom_settings = "{definitely-not-json"
         db.session.commit()
-        assert AccountResolver.resolve(AccountRole.CASH) == "1110"
+        with pytest.raises(ValueError, match="Invalid JSON"):
+            AccountResolver.resolve(AccountRole.CASH)
 
-    def test_non_dict_override_value_ignored(self, db, core, settings_row):
+    def test_reject_non_dict_override(self, db, core, settings_row):
         settings_row.set_custom_setting("gl_role_map", ["CASH"])
         db.session.commit()
-        assert AccountResolver.resolve(AccountRole.CASH) == "1110"
+        with pytest.raises(ValueError, match="must be a JSON object"):
+            AccountResolver.resolve(AccountRole.CASH)
 
-    def test_empty_override_string_falls_back(self, db, core, settings_row):
+    def test_reject_empty_override(self, db, core, settings_row):
         _set_global_map(db, settings_row, {"CASH": ""})
-        assert AccountResolver.resolve(AccountRole.CASH) == "1110"
+        with pytest.raises(ValueError, match="Invalid account code"):
+            AccountResolver.resolve(AccountRole.CASH)
 
     def test_resolve_has_no_write_side_effects(self, db, core, settings_row):
         tenant = self._seed_tenant(db, 9)
@@ -213,7 +216,8 @@ class TestGLServiceMigratedMappings:
         assert GLService.get_payment_debit_account("bank_transfer") == "1120"
         assert GLService.get_payment_debit_account("card") == "1120"
         assert GLService.get_payment_debit_account("cheque") == "1150"
-        assert GLService.get_payment_debit_account("unknown") == "1110"
+        with pytest.raises(ValueError, match="Unsupported GL payment method"):
+            GLService.get_payment_debit_account("unknown")
         assert GLService.get_payment_debit_account(None) == "1110"
 
     def test_payment_debit_respects_global_override(self, db, settings_row):
@@ -259,6 +263,7 @@ class TestGLServiceMigratedMappings:
         )
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestBalanceSignConventions:
     def _entry(self, lines):
         return GLService.create_manual_entry(description="اختبار أرصدة", lines=lines)
@@ -336,6 +341,7 @@ class TestBalanceSignConventions:
         assert land.get_balance() == 0
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestHeaderGuardAndAggregation:
     def test_header_accounts_excluded_from_posting(self, db, core):
         with pytest.raises(ValueError, match="رئيسي"):

@@ -46,7 +46,7 @@ from extensions import db
 
 
 @pytest.fixture(autouse=True)
-def _fiscal_period(db):
+def _fiscal_period(db, posting_tenant):
     """.GL postings need an OPEN fiscal period covering today."""
     from models.erp_modules import FiscalPeriod
 
@@ -257,7 +257,7 @@ class TestSingleBalanceDerivation:
         db.session.refresh(test_customer)
         assert Decimal(str(test_customer.balance)) == Decimal("50.000")
 
-        # 3) a standalone customer refund (F11) — reduces the receivable
+        # 3) a standalone customer refund (F11) — debits the receivable
         refund = Payment(
             payment_number="PAY-P0-F1-2",
             payment_type="refund",
@@ -274,15 +274,15 @@ class TestSingleBalanceDerivation:
         db.session.add(refund)
         db.session.commit()
         db.session.refresh(test_customer)
-        assert Decimal(str(test_customer.balance)) == Decimal("45.000")
+        assert Decimal(str(test_customer.balance)) == Decimal("55.000")
 
         # every reader agrees with the stored column
         from services.payment_service import PaymentService as PS
         from utils.balance_checker import check_customer_balance
 
-        assert PS.get_customer_balance(test_customer) == Decimal("45.000")
-        assert PS.get_customer_balance_aed(test_customer) == Decimal("45.000")
-        assert test_customer.get_balance() == Decimal("45.000")
+        assert PS.get_customer_balance(test_customer) == Decimal("55.000")
+        assert PS.get_customer_balance_aed(test_customer) == Decimal("55.000")
+        assert test_customer.get_balance() == Decimal("55.000")
         assert check_customer_balance(test_customer.id) == []
 
     def test_balance_survives_recompute_from_any_document(
@@ -562,6 +562,26 @@ class TestChequeLifecycle:
         assert sale.payment_status == "paid"
         assert Decimal(str(sale.paid_amount_base)) == Decimal("100.000")
         assert Decimal(str(test_customer.balance)) == Decimal("0.000")
+
+    @pytest.mark.parametrize("legacy_link", [False, True])
+    def test_clearing_one_receipt_settles_invoice_once(
+        self, db, owner_user, test_customer, legacy_link
+    ):
+        from models.customer import derive_customer_balance
+
+        sale = _sale(db, "S-P0-CH-LINK", test_customer, owner_user, total="100.000")
+        receipt = self._cheque_receipt(db, owner_user, test_customer, sale)
+        cheque = receipt.cheque
+        assert cheque.receipt_id == receipt.id
+        if legacy_link:
+            cheque.receipt_id = None
+            db.session.commit()
+        cheque.deposit_cheque()
+        cheque.clear_cheque(actor_id=owner_user.id)
+        db.session.commit()
+        assert receipt.payment_confirmed
+        assert sale.balance_due == 0
+        assert derive_customer_balance(test_customer.id) == 0
 
     def test_bounced_cheque_restores_balance_and_invoice(
         self, db, owner_user, test_customer

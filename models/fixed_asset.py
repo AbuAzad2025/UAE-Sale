@@ -198,6 +198,8 @@ class FixedAsset(TenantScopedMixin, db.Model):
             description=f"قيد استهلاك شهري - {self.asset_number}",
             reference_type="depreciation",
             reference_id=self.id,
+            entry_date=period_date,
+            tenant_id=self.tenant_id,
         )
         db.session.flush()
 
@@ -238,7 +240,15 @@ class FixedAsset(TenantScopedMixin, db.Model):
         if notes:
             self.notes = (self.notes or "") + f"\n{notes}"
 
+        from services.account_resolution import AccountResolver, AccountRole
         from services.gl_service import GLService
+
+        codes = AccountResolver.resolve_codes(
+            AccountRole.BANK,
+            AccountRole.OTHER_REVENUE,
+            AccountRole.MISC_EXPENSE,
+            tenant_id=self.tenant_id,
+        )
 
         lines = []
 
@@ -254,7 +264,7 @@ class FixedAsset(TenantScopedMixin, db.Model):
         if self.disposal_price > 0:
             lines.append(
                 {
-                    "account": "1120",  # البنك (أو الصندوق)
+                    "account": codes["BANK"],
                     "debit": self.disposal_price,
                     "credit": 0,
                     "description": f"ثمن بيع الأصل - {self.name_ar}",
@@ -264,7 +274,7 @@ class FixedAsset(TenantScopedMixin, db.Model):
         if self.disposal_gain_loss > 0:
             lines.append(
                 {
-                    "account": "4500",  # إيرادات أخرى
+                    "account": codes["OTHER_REVENUE"],
                     "debit": 0,
                     "credit": self.disposal_gain_loss,
                     "description": f"ربح بيع أصل - {self.name_ar}",
@@ -273,7 +283,7 @@ class FixedAsset(TenantScopedMixin, db.Model):
         elif self.disposal_gain_loss < 0:
             lines.append(
                 {
-                    "account": "6990",  # مصروفات متنوعة
+                    "account": codes["MISC_EXPENSE"],
                     "debit": abs(self.disposal_gain_loss),
                     "credit": 0,
                     "description": f"خسارة بيع/إتلاف أصل - {self.name_ar}",
@@ -295,6 +305,8 @@ class FixedAsset(TenantScopedMixin, db.Model):
             description=f"قيد {disposal_type} أصل - {self.asset_number}",
             reference_type="asset_disposal",
             reference_id=self.id,
+            entry_date=disposal_date,
+            tenant_id=self.tenant_id,
         )
 
         db.session.commit()

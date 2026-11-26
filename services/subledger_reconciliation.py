@@ -72,15 +72,10 @@ import logging
 from decimal import Decimal
 
 from extensions import db
+from services.account_resolution import AccountResolver, AccountRole
 from utils.balance_checker import TOLERANCE, get_control_account_balance, to_decimal
 
 logger = logging.getLogger(__name__)
-
-try:
-    from services.account_resolution import AccountResolver, AccountRole
-except ImportError:  # pragma: no cover - resolver ships in Agent 1's turn
-    AccountResolver = None  # type: ignore[assignment,misc]
-    AccountRole = None  # type: ignore[assignment,misc]
 
 DEFAULT_AR_CONTROL_CODES = ["1130"]
 DEFAULT_AP_CONTROL_CODES = ["2115", "2110"]
@@ -94,16 +89,8 @@ def _resolve_role_codes(role_value, fallback_codes, tenant_id=None):
     Resolve a role to its account code via the central resolver contract,
     keeping any additional fallback control codes that are still distinct.
     """
-    if AccountResolver is not None and AccountRole is not None:
-        try:
-            code = AccountResolver.resolve(AccountRole(role_value), tenant_id)
-            if code:
-                return [code] + [c for c in fallback_codes if c != code]
-        except Exception as exc:
-            logger.warning(
-                f"AccountResolver failed for role {role_value}: {exc} — using literal fallback"
-            )
-    return list(fallback_codes)
+    code = AccountResolver.resolve(AccountRole(role_value), tenant_id=tenant_id)
+    return [code] + [legacy for legacy in fallback_codes if legacy != code]
 
 
 def _ar_control_codes(tenant_id=None):
@@ -112,15 +99,9 @@ def _ar_control_codes(tenant_id=None):
     Consumes sale_service.merchant_receivable_codes() defensively so both
     sides of the contract stay in sync; falls back to today's literals.
     """
-    try:
-        from services.sale_service import merchant_receivable_codes
+    from services.sale_service import merchant_receivable_codes
 
-        buckets = [str(c) for c in merchant_receivable_codes() if c]
-    except Exception as exc:
-        logger.warning(
-            f"merchant_receivable_codes unavailable ({exc}) — using literal buckets"
-        )
-        buckets = []
+    buckets = merchant_receivable_codes(tenant_id=tenant_id)
 
     codes = []
     for code in (
@@ -135,12 +116,12 @@ def _ar_control_codes(tenant_id=None):
     return codes
 
 
-def _ap_control_codes():
+def _ap_control_codes(tenant_id=None):
     """AP scope per audit mandate: merchants payable ('2115') + AP control ('2110')."""
     codes = []
     for code in _resolve_role_codes(
-        "MERCHANTS_PAYABLE", ["2115"]
-    ) + _resolve_role_codes("AP_CONTROL", ["2110"]):
+        "MERCHANTS_PAYABLE", ["2115"], tenant_id
+    ) + _resolve_role_codes("AP_CONTROL", ["2110"], tenant_id):
         if code not in codes:
             codes.append(code)
     return codes
@@ -171,11 +152,15 @@ def _ar_debit_normal_balance(account_codes, tenant_id=None, *, partner_only=Fals
     from models import GLJournalEntry
     from sqlalchemy import and_
 
-    posted = db.session.query(GLJournalEntry.id).filter(GLJournalEntry.is_posted.is_(True))
+    posted = db.session.query(GLJournalEntry.id).filter(
+        GLJournalEntry.is_posted.is_(True)
+    )
     if tenant_id is not None:
         posted = posted.filter(GLJournalEntry.tenant_id == tenant_id)
     if partner_only:
-        expense_codes = _resolve_role_codes("PARTNER_SHARE_EXPENSE", ["6910"], tenant_id)
+        expense_codes = _resolve_role_codes(
+            "PARTNER_SHARE_EXPENSE", ["6910"], tenant_id
+        )
         share_entries = (
             db.session.query(GLJournalLine.entry_id)
             .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
@@ -368,7 +353,10 @@ class SubLedgerReconciliation:
         control_balance = _ar_debit_normal_balance(codes, tenant_id)
 
         breakdown = [
-            {"account_code": code, "balance": _q2(_ar_debit_normal_balance([code], tenant_id))}
+            {
+                "account_code": code,
+                "balance": _q2(_ar_debit_normal_balance([code], tenant_id)),
+            }
             for code in codes
         ]
 
@@ -405,10 +393,13 @@ class SubLedgerReconciliation:
             _reconciling_item(
                 "partner_current_shares",
                 "حصص الشركاء على الحساب الجاري (3350) — ضمن حسابات ضبط AR",
-                abs(partner_net := _ar_debit_normal_balance(
-                    _resolve_role_codes("PARTNERS_CURRENT", ["3350"], tenant_id),
-                    tenant_id, partner_only=True,
-                )),
+                abs(
+                    partner_net := _ar_debit_normal_balance(
+                        _resolve_role_codes("PARTNERS_CURRENT", ["3350"], tenant_id),
+                        tenant_id,
+                        partner_only=True,
+                    )
+                ),
                 -1 if partner_net > 0 else 1,
                 "تُستبعد قيود حصص الأرباح والتوزيعات والمسحوبات من ذمم العملاء.",
             ),
@@ -460,7 +451,7 @@ class SubLedgerReconciliation:
         from models import Supplier
         from models.supplier import derive_supplier_totals
 
-        codes = _ap_control_codes()
+        codes = _ap_control_codes(tenant_id)
 
         suppliers = Supplier.query.order_by(Supplier.id).populate_existing().all()
         if tenant_id is not None:
@@ -507,7 +498,12 @@ class SubLedgerReconciliation:
         control_balance = get_control_account_balance(codes, tenant_id=tenant_id)
 
         breakdown = [
-            {"account_code": code, "balance": _q2(get_control_account_balance([code], tenant_id=tenant_id))}
+            {
+                "account_code": code,
+                "balance": _q2(
+                    get_control_account_balance([code], tenant_id=tenant_id)
+                ),
+            }
             for code in codes
         ]
 

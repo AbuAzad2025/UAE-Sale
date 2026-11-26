@@ -48,6 +48,13 @@ def open_period(db):
     from models.erp_modules import FiscalPeriod
 
     year = date.today().year
+    from models.tenant_scope import get_current_tenant_id
+
+    existing = FiscalPeriod.query.filter_by(
+        tenant_id=get_current_tenant_id(), year=year, period_type="annual"
+    ).first()
+    if existing is not None:
+        return existing
     fp = FiscalPeriod(
         name=f"SFY {year}",
         year=year,
@@ -107,6 +114,7 @@ def _post(**kwargs):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestPurgeByReference:
     def test_refuses_posted_entry_and_keeps_audit_rows(
         self, db, core_accounts, open_period, owner_user
@@ -251,6 +259,7 @@ INVALID_LINES = {
 }
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestServiceLevelBalanceGuard:
     @pytest.mark.parametrize("case", sorted(INVALID_LINES))
     def test_post_entry_rejects(self, db, core_accounts, open_period, case):
@@ -316,6 +325,7 @@ class TestServiceLevelBalanceGuard:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReversalAndImmutability:
     def test_draft_can_be_created_and_then_approved(
         self, db, core_accounts, open_period, owner_user
@@ -428,6 +438,7 @@ class TestReversalAndImmutability:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestAutoPostedEntriesAreAudited:
     def test_post_entry_writes_audit_with_codes_and_amounts(
         self, db, core_accounts, open_period, owner_user
@@ -477,6 +488,7 @@ class TestAutoPostedEntriesAreAudited:
 
 
 class TestFiscalPeriodLock:
+    @pytest.mark.usefixtures("posting_tenant")
     def test_posting_into_closed_period_is_rejected(
         self, db, core_accounts, open_period
     ):
@@ -488,6 +500,7 @@ class TestFiscalPeriodLock:
             GLService.post_entry(lines=list(BALANCED), description="فترة مغلقة")
         db.session.rollback()
 
+    @pytest.mark.usefixtures("posting_tenant")
     def test_posting_with_no_period_is_rejected(self, db, core_accounts):
         """لا توجد أي فترة مالية → لا ترحيل.
 
@@ -506,6 +519,7 @@ class TestFiscalPeriodLock:
             )
         db.session.rollback()
 
+    @pytest.mark.usefixtures("posting_tenant")
     def test_manual_entry_into_closed_period_is_rejected(
         self, db, core_accounts, open_period
     ):
@@ -529,6 +543,7 @@ class TestFiscalPeriodLock:
             )
         db.session.rollback()
 
+    @pytest.mark.usefixtures("posting_tenant")
     def test_journal_entry_into_closed_period_is_rejected(
         self, db, core_accounts, open_period
     ):
@@ -639,6 +654,7 @@ class TestBalanceGuardAcrossTenantSwitch:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestAccountIntegrity:
     def test_invalid_account_type_is_rejected(self, db):
         with pytest.raises(ValueError):

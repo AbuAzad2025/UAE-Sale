@@ -5,6 +5,28 @@ from services import ai_commands as cmd
 from extensions import db as _db
 
 
+@pytest.fixture
+def ai_tenant(db):
+    from models import Tenant
+    from models.tenant_scope import clear_current_tenant_id, set_current_tenant_id
+
+    tenant = Tenant(
+        name="AI posting",
+        name_ar="الفحص",
+        slug="ai-posting",
+        default_currency="ILS",
+        enable_tax=False,
+        default_tax_rate=Decimal("0"),
+    )
+    db.session.add(tenant)
+    db.session.commit()
+    set_current_tenant_id(tenant.id)
+    try:
+        yield tenant
+    finally:
+        clear_current_tenant_id()
+
+
 @pytest.fixture(scope="function")
 def owner(db):
     from models import Role, User
@@ -44,7 +66,7 @@ class TestProductService:
 
 
 class TestSaleService:
-    def test_create_moves_stock(self, db, owner):
+    def test_create_moves_stock(self, db, ai_tenant, owner):
         # F1/F2: منتج بلا تكلفة لا يمكن بيعه (لا قيد COGS) — لذا يُنشأ
         # المنتج بتكلفة، والبيع يمرّ عبر SaleService (حركة + قيدان).
         p = cmd.create_product(
@@ -93,7 +115,7 @@ class TestPaymentService:
 
 
 class TestExpenseService:
-    def test_create(self, db, owner):
+    def test_create(self, db, ai_tenant, owner):
         e = cmd.create_expense("مصروف", Decimal("30"), owner.id)
         assert e.id and e.amount_base == Decimal("30")
 
@@ -110,8 +132,13 @@ class TestPurchaseService:
         from models.tenant_scope import run_in_tenant_context
 
         tenant = Tenant(
-            name="Purchasing", name_ar="المشتريات", slug="purchasing", default_currency="ILS",
-            enable_tax=True, default_tax_rate=Decimal("16"), tax_inclusive=False,
+            name="Purchasing",
+            name_ar="المشتريات",
+            slug="purchasing",
+            default_currency="ILS",
+            enable_tax=True,
+            default_tax_rate=Decimal("16"),
+            tax_inclusive=False,
         )
         db.session.add(tenant)
         db.session.flush()
@@ -123,7 +150,9 @@ class TestPurchaseService:
         def create():
             supplier = cmd.create_supplier("مورد مشتريات")
             product = cmd.create_product("قطعة شراء", regular_price=Decimal("5"))
-            purchase = cmd.create_purchase(supplier.id, product.id, Decimal("3"), Decimal("4"), owner.id)
+            purchase = cmd.create_purchase(
+                supplier.id, product.id, Decimal("3"), Decimal("4"), owner.id
+            )
             return supplier, product, purchase
 
         supplier, p, pu = run_in_tenant_context(tenant.id, create)
@@ -131,21 +160,32 @@ class TestPurchaseService:
         assert pu.tax_amount == Decimal("1.920")
         assert pu.currency == "ILS" and pu.warehouse_id == warehouse.id
         assert Product.query.get(p.id).current_stock == Decimal("3")
-        movement = StockMovement.query.filter_by(reference_type="Purchase", reference_id=pu.id).one()
+        movement = StockMovement.query.filter_by(
+            reference_type="Purchase", reference_id=pu.id
+        ).one()
         assert movement.warehouse_id == warehouse.id
-        entry = GLJournalEntry.query.filter_by(reference_type="Purchase", reference_id=pu.id).one()
+        entry = GLJournalEntry.query.filter_by(
+            reference_type="Purchase", reference_id=pu.id
+        ).one()
         assert entry.is_posted and entry.tenant_id == tenant.id
         assert entry.total_debit == entry.total_credit == pu.amount_base
         assert pu.supplier_id == supplier.id
-        assert any(line.account.code == "2110" and line.credit == pu.amount_base for line in entry.lines)
+        assert any(
+            line.account.code == "2110" and line.credit == pu.amount_base
+            for line in entry.lines
+        )
 
 
 class TestChequeService:
-    def test_create_incoming(self, db, owner):
-        from datetime import date
+    def test_create_incoming(self, db, ai_tenant, owner):
+        from datetime import date, timedelta
 
         ch = cmd.create_cheque(
-            "CH-1", Decimal("500"), date(2026, 12, 31), "incoming", owner.id
+            "CH-1",
+            Decimal("500"),
+            date.today() + timedelta(days=30),
+            "incoming",
+            owner.id,
         )
         assert ch.id and ch.cheque_type == "incoming"
 

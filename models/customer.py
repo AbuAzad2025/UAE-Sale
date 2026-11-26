@@ -46,27 +46,56 @@ def maintenance_receivable_movements(customer_id, connection=None):
     """Posted maintenance documents that debit or credit the customer in base currency."""
     from sqlalchemy import func, select
     from models.maintenance import (
-        MaintenanceCreditNote, MaintenanceInvoice, MaintenanceOrder, MaintenanceReceipt,
+        MaintenanceCreditNote,
+        MaintenanceInvoice,
+        MaintenanceOrder,
+        MaintenanceReceipt,
     )
 
     connection = connection if connection is not None else db.session.connection()
     orders = MaintenanceOrder.__table__
     customers = Customer.__table__
     documents = (
-        (MaintenanceInvoice, "maintenance_invoice", "invoice_no", "total_amount_base", "فاتورة صيانة", True),
-        (MaintenanceReceipt, "maintenance_receipt", "receipt_no", "amount_base", "سند قبض صيانة", False),
-        (MaintenanceCreditNote, "maintenance_credit_note", "credit_note_no", "amount_base", "إشعار دائن صيانة", False),
+        (
+            MaintenanceInvoice,
+            "maintenance_invoice",
+            "invoice_no",
+            "total_amount_base",
+            "فاتورة صيانة",
+            True,
+        ),
+        (
+            MaintenanceReceipt,
+            "maintenance_receipt",
+            "receipt_no",
+            "amount_base",
+            "سند قبض صيانة",
+            False,
+        ),
+        (
+            MaintenanceCreditNote,
+            "maintenance_credit_note",
+            "credit_note_no",
+            "amount_base",
+            "إشعار دائن صيانة",
+            False,
+        ),
     )
     for model, kind, number, amount, label, is_debit in documents:
         document = model.__table__
         query = (
             select(
-                document.c[number], document.c[amount], document.c.currency,
+                document.c[number],
+                document.c[amount],
+                document.c.currency,
                 document.c.exchange_rate,
                 func.coalesce(document.c.posted_at, document.c.created_at),
             )
-            .select_from(document.join(orders, document.c.maintenance_order_id == orders.c.id)
-                         .join(customers, orders.c.customer_id == customers.c.id))
+            .select_from(
+                document.join(
+                    orders, document.c.maintenance_order_id == orders.c.id
+                ).join(customers, orders.c.customer_id == customers.c.id)
+            )
             .where(
                 customers.c.id == customer_id,
                 document.c.posted.is_(True),
@@ -77,8 +106,12 @@ def maintenance_receivable_movements(customer_id, connection=None):
         for reference, base, currency, rate, posted_at in connection.execute(query):
             value = _dec(base)
             yield {
-                "type": kind, "reference": reference, "date": posted_at,
-                "description": label, "currency": currency, "exchange_rate": _dec(rate, "1"),
+                "type": kind,
+                "reference": reference,
+                "date": posted_at,
+                "description": label,
+                "currency": currency,
+                "exchange_rate": _dec(rate, "1"),
                 "debit": value if is_debit else Decimal("0"),
                 "credit": Decimal("0") if is_debit else value,
             }
@@ -145,7 +178,7 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
     for row in return_rows:
         total -= _dec(row.refund_amount) * _dec(row.exchange_rate, "1")
 
-    from models.payment import Payment
+    from models.payment import Payment, Receipt
 
     refund_rows = connection.execute(
         select(Payment.__table__.c.amount_base).where(
@@ -156,7 +189,7 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
         )
     ).fetchall()
     for row in refund_rows:
-        total -= _dec(row.amount_base)
+        total += _dec(row.amount_base)
 
     from models.cheque import Cheque
 
@@ -172,13 +205,27 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             Cheque.__table__.c.receipt_id.is_(None),
             Cheque.__table__.c.payment_id.is_(None),
             Cheque.__table__.c.sale_id.is_(None),
+            ~select(Receipt.__table__.c.id)
+            .where(
+                Receipt.__table__.c.cheque_id == Cheque.__table__.c.id,
+                Receipt.__table__.c.customer_id == customer_id,
+            )
+            .exists(),
+            ~select(Payment.__table__.c.id)
+            .where(
+                Payment.__table__.c.cheque_id == Cheque.__table__.c.id,
+                Payment.__table__.c.customer_id == customer_id,
+            )
+            .exists(),
         )
     ).fetchall()
     for row in cheque_rows:
         amount = _dec(row.amount_base)
         status = row.status
         if (
-            status == "cleared" and row.is_active and row.cheque_type == "incoming"
+            status == "cleared"
+            and row.is_active
+            and row.cheque_type == "incoming"
             and row.gl_journal_entry_id is not None
         ):
             total -= amount
@@ -192,8 +239,6 @@ def derive_customer_balance(customer_id, connection=None):  # noqa: C901
             "under_collection",
         ):
             total -= amount
-
-    from models.payment import Receipt
 
     receipt_rows = connection.execute(
         select(

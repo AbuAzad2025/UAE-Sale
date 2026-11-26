@@ -9,6 +9,7 @@ from flask import (
     url_for,
     current_app,
 )
+from werkzeug.exceptions import HTTPException
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -125,10 +126,13 @@ def add_customs_tax():
             flash(f"✅ تم إضافة {tax.name_ar} بنجاح", "success")
             return redirect(url_for("advanced_ledger.customs_taxes"))
 
-        except Exception as e:
+        except HTTPException:
+            db.session.rollback()
+            raise
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
             return render_template(
                 "ledger/advanced/add_customs_tax.html",
                 accounts=accounts,
@@ -174,8 +178,16 @@ def add_expense_category():
         name = request.form.get("name", "").strip()
         name_ar = request.form.get("name_ar", "").strip()
         account_id = request.form.get("gl_account_id", type=int)
-        account = next((candidate for candidate in accounts if candidate.id == account_id), None)
-        if not name or not name_ar or len(name) > 100 or len(name_ar) > 100 or account is None:
+        account = next(
+            (candidate for candidate in accounts if candidate.id == account_id), None
+        )
+        if (
+            not name
+            or not name_ar
+            or len(name) > 100
+            or len(name_ar) > 100
+            or account is None
+        ):
             flash("يرجى إدخال الاسمين واختيار حساب محاسبي نشط.", "warning")
         else:
             try:
@@ -187,10 +199,15 @@ def add_expense_category():
                 category.gl_account_code = account.code
                 db.session.add(category)
                 db.session.flush()
-                create_audit_log(action, "expense_categories", category.id, commit=False)
+                create_audit_log(
+                    action, "expense_categories", category.id, commit=False
+                )
                 db.session.commit()
                 flash("تم حفظ فئة المصروفات.", "success")
                 return redirect(url_for("advanced_ledger.expense_categories"))
+            except HTTPException:
+                db.session.rollback()
+                raise
             except Exception:
                 db.session.rollback()
                 current_app.logger.exception("Expense category save failed")
@@ -199,7 +216,14 @@ def add_expense_category():
         form_data = {
             "name": category.name,
             "name_ar": category.name_ar,
-            "gl_account_id": next((account.id for account in accounts if account.code == category.gl_account_code), None),
+            "gl_account_id": next(
+                (
+                    account.id
+                    for account in accounts
+                    if account.code == category.gl_account_code
+                ),
+                None,
+            ),
         }
     return render_template(
         "ledger/advanced/add_expense_category.html",
@@ -237,7 +261,9 @@ def add_advanced_expense():
                     request.form.get("expense_date"), "%Y-%m-%d"
                 ).date(),
                 description=request.form.get("description"),
-                description_ar=request.form.get("description_ar"),
+                description_ar=request.form.get("description_ar")
+                or request.form.get("description")
+                or "",
                 category_id=int(request.form.get("category_id")),
                 supplier_id=(
                     get_owned_or_404(Supplier, int(request.form.get("supplier_id"))).id
@@ -257,20 +283,25 @@ def add_advanced_expense():
                 taxable_amount=Decimal(request.form.get("taxable_amount", 0)),
                 tax_amount=Decimal(request.form.get("tax_amount", 0)),
                 tax_rate=Decimal(request.form.get("tax_rate", 0)),
-                tax_exempt=request.form.get("tax_exempt") in ("on", "1", "true", "True"),
+                tax_exempt=request.form.get("tax_exempt")
+                in ("on", "1", "true", "True"),
                 customs_amount=Decimal(request.form.get("customs_amount", 0)),
                 customs_rate=Decimal(request.form.get("customs_rate", 0)),
-                customs_exempt=request.form.get("customs_exempt") in ("on", "1", "true", "True"),
+                customs_exempt=request.form.get("customs_exempt")
+                in ("on", "1", "true", "True"),
                 payment_method=request.form.get("payment_method"),
                 payment_status=request.form.get("payment_status", "pending"),
+                paid_amount=Decimal(request.form.get("paid_amount") or 0),
                 due_date=datetime.strptime(
                     request.form.get("due_date"), "%Y-%m-%d"
                 ).date()
                 if request.form.get("due_date")
                 else None,
-                requires_approval=request.form.get("requires_approval") in ("on", "1", "true", "True"),
+                requires_approval=request.form.get("requires_approval")
+                in ("on", "1", "true", "True"),
                 approval_status=request.form.get("approval_status", "pending"),
-                has_receipt=request.form.get("has_receipt") in ("on", "1", "true", "True"),
+                has_receipt=request.form.get("has_receipt")
+                in ("on", "1", "true", "True"),
                 receipt_number=request.form.get("receipt_number"),
                 created_by=current_user.id,
             )
@@ -278,16 +309,21 @@ def add_advanced_expense():
             expense.calculate_taxes()
 
             db.session.add(expense)
+            db.session.flush()
+            expense.post_expense()
+            create_audit_log("create", "advanced_expenses", expense.id, commit=False)
             db.session.commit()
 
-            create_audit_log("create", "advanced_expenses", expense.id)
             flash(f"✅ تم إضافة المصروف {expense.expense_number} بنجاح", "success")
             return redirect(url_for("advanced_ledger.advanced_expenses"))
 
-        except Exception as e:
+        except HTTPException:
+            db.session.rollback()
+            raise
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     categories = ExpenseCategory.query.filter_by(is_active=True).all()
     suppliers = Supplier.query.filter_by(is_active=True).all()
@@ -330,16 +366,22 @@ def receive_cheque(cheque_id):
     """تسجيل استلام شيك"""
     try:
         entry = ChequeAccountingIntegration.receive_cheque(
-            cheque_id=cheque_id, received_by=current_user
+            cheque_id=cheque_id, received_by=current_user.id
         )
+        create_audit_log("cheque_deposit", "cheques", cheque_id, commit=False)
+        db.session.commit()
 
         flash(
             f"✅ تم تسجيل استلام الشيك بنجاح - القيد: {entry.entry_number}", "success"
         )
 
-    except Exception as e:
+    except HTTPException:
+        db.session.rollback()
+        raise
+    except Exception:
+        db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ في تسجيل استلام الشيك: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ في تسجيل استلام الشيك: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("advanced_ledger.cheque_integration"))
 
@@ -355,16 +397,22 @@ def clear_cheque(cheque_id):
 
         entry = ChequeAccountingIntegration.clear_cheque(
             cheque_id=cheque_id,
-            cleared_by=current_user,
+            cleared_by=current_user.id,
             bank_charges=bank_charges,
             exchange_gain_loss=exchange_gain_loss,
         )
+        create_audit_log("cheque_clear", "cheques", cheque_id, commit=False)
+        db.session.commit()
 
         flash(f"✅ تم تسجيل صرف الشيك بنجاح - القيد: {entry.entry_number}", "success")
 
-    except Exception as e:
+    except HTTPException:
+        db.session.rollback()
+        raise
+    except Exception:
+        db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ في تسجيل صرف الشيك: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ في تسجيل صرف الشيك: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("advanced_ledger.cheque_integration"))
 
@@ -412,7 +460,10 @@ def cheque_accounting_summary_api(cheque_id):
     try:
         summary = ChequeAccountingIntegration.get_cheque_accounting_summary(cheque_id)
         return jsonify({"success": True, "summary": summary})
-    except Exception as e:
+    except HTTPException:
+        db.session.rollback()
+        raise
+    except Exception:
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 400
 
 

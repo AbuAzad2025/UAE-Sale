@@ -6,6 +6,21 @@ from models.gl import GLJournalEntry
 from services.sale_service import SaleService
 
 
+@pytest.fixture
+def taxable_tenant(db, posting_tenant):
+    posting_tenant.enable_tax = True
+    posting_tenant.default_tax_rate = Decimal("5")
+    db.session.commit()
+    return posting_tenant
+
+
+@pytest.fixture
+def taxable_owner(client, login_owner, taxable_tenant):
+    with client.session_transaction() as session:
+        session["impersonate_tenant_id"] = taxable_tenant.id
+    return taxable_tenant
+
+
 @pytest.mark.parametrize(
     "treatment,inclusive,price,total,tax",
     [
@@ -16,7 +31,16 @@ from services.sale_service import SaleService
     ],
 )
 def test_sale_posting_balances_and_records_tax(
-    db, owner_user, test_customer, test_product, treatment, inclusive, price, total, tax
+    db,
+    taxable_tenant,
+    owner_user,
+    test_customer,
+    test_product,
+    treatment,
+    inclusive,
+    price,
+    total,
+    tax,
 ):
     sale = SaleService.create_sale(
         customer=test_customer,
@@ -47,7 +71,7 @@ def test_sale_posting_balances_and_records_tax(
 
 
 def test_inclusive_discount_edit_adjusts_revenue_tax_and_receivable(
-    client, db, owner_user, login_owner, test_customer, test_product
+    client, db, taxable_owner, owner_user, test_customer, test_product
 ):
     sale = SaleService.create_sale(
         customer=test_customer,
@@ -86,7 +110,7 @@ def test_inclusive_discount_edit_adjusts_revenue_tax_and_receivable(
 
 @pytest.mark.parametrize("inclusive", [False, True])
 def test_preview_equals_saved_sale_with_fractional_amounts(
-    client, db, owner_user, login_owner, test_customer, test_product, inclusive
+    client, db, taxable_owner, owner_user, test_customer, test_product, inclusive
 ):
     line = {"quantity": "1.23", "unit_price": "105.325", "discount_percent": "3.5"}
     preview = client.post(
@@ -101,6 +125,9 @@ def test_preview_equals_saved_sale_with_fractional_amounts(
         },
     )
     assert preview.status_code == 200
+    from models.tenant_scope import set_current_tenant_id
+
+    set_current_tenant_id(taxable_owner.id)
     sale = SaleService.create_sale(
         customer=test_customer,
         seller=owner_user,

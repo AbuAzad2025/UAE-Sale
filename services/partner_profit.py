@@ -296,9 +296,7 @@ def compute_net_income(period_from=None, period_to=None, tenant_id=None):
     # Using the transaction-currency debit/credit columns here would corrupt
     # profit for any FX period (finding: partner profit on wrong currency base).
     revenue_q = (
-        db.session.query(
-            func.coalesce(func.sum(-GLJournalLine.amount_base), 0)
-        )
+        db.session.query(func.coalesce(func.sum(-GLJournalLine.amount_base), 0))
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
@@ -311,9 +309,7 @@ def compute_net_income(period_from=None, period_to=None, tenant_id=None):
             GLJournalLine.tenant_id == tenant_id, _Entry.tenant_id == tenant_id
         )
     expense_q = (
-        db.session.query(
-            func.coalesce(func.sum(GLJournalLine.amount_base), 0)
-        )
+        db.session.query(func.coalesce(func.sum(GLJournalLine.amount_base), 0))
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
@@ -347,6 +343,7 @@ def _draws_for_partner(partner_id, period_from=None, period_to=None):
     """
     from sqlalchemy import func, or_
     from models import GLAccount, GLJournalEntry as _Entry
+    from services.account_resolution import AccountRole
 
     # amount_base is the authoritative BASE-currency signed amount
     # ((debit - credit) * rate); summing transaction-currency `debit` would
@@ -359,7 +356,14 @@ def _draws_for_partner(partner_id, period_from=None, period_to=None):
             _Entry.is_posted.is_(True),
             _Entry.is_reversed.is_(False),
             GLJournalLine.debit > 0,
-            GLAccount.code.in_(("3300", "3350")),
+            GLAccount.code.in_(
+                {
+                    "3300",
+                    "3350",
+                    _resolve_role(AccountRole.OWNER_DRAWS),
+                    _resolve_role(AccountRole.PARTNERS_CURRENT),
+                }
+            ),
             GLJournalLine.party_id == partner_id,
             or_(
                 _Entry.reference_type.is_(None),
@@ -385,11 +389,9 @@ def _sales_to_partner(partner_id, period_from=None, period_to=None):
     from sqlalchemy import func
     from models import Sale
 
-    q = db.session.query(
-        func.coalesce(
-            func.sum(Sale.balance_due), 0
-        )
-    ).filter(Sale.customer_id == partner_id, Sale.status == "confirmed")
+    q = db.session.query(func.coalesce(func.sum(Sale.balance_due), 0)).filter(
+        Sale.customer_id == partner_id, Sale.status == "confirmed"
+    )
     if period_from is not None:
         q = q.filter(func.date(Sale.sale_date) >= period_from)
     if period_to is not None:
@@ -405,16 +407,17 @@ def _product_shares_in_period(partner_id, period_from=None, period_to=None):
     """
     from sqlalchemy import func
     from models import GLAccount, GLJournalEntry as _Entry
+    from services.account_resolution import AccountRole
 
     q = (
-        db.session.query(
-            func.coalesce(func.sum(GLJournalLine.amount_base), 0)
-        )
+        db.session.query(func.coalesce(func.sum(GLJournalLine.amount_base), 0))
         .join(_Entry, _Entry.id == GLJournalLine.entry_id)
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
             _Entry.is_posted.is_(True),
-            GLAccount.code == "6910",
+            GLAccount.code.in_(
+                {"6910", _resolve_role(AccountRole.PARTNER_SHARE_EXPENSE)}
+            ),
             GLJournalLine.party_id == partner_id,
         )
     )
@@ -568,13 +571,22 @@ def post_partner_distributions(
 
     active_tid = get_current_tenant_id()
     tid = tenant_id if tenant_id is not None else active_tid
-    if type(tid) is not int or tid <= 0 or (active_tid is not None and active_tid != tid):
+    if (
+        type(tid) is not int
+        or tid <= 0
+        or (active_tid is not None and active_tid != tid)
+    ):
         raise ValueError("اختر شركة صحيحة قبل ترحيل التوزيع.")
     period_from = _to_date(period_from)
     period_to = _to_date(period_to)
     if period_from is not None and period_to is not None and period_from > period_to:
         raise ValueError("تاريخ بداية التوزيع يجب أن يسبق تاريخ النهاية أو يساويه.")
-    tenant = db.session.query(Tenant).filter_by(id=tid, is_active=True).with_for_update().first()
+    tenant = (
+        db.session.query(Tenant)
+        .filter_by(id=tid, is_active=True)
+        .with_for_update()
+        .first()
+    )
     if tenant is None:
         raise ValueError("الشركة غير موجودة أو غير نشطة.")
 
@@ -758,9 +770,16 @@ def post_partner_draw(
     tenant_id = get_current_tenant_id()
     if type(tenant_id) is not int or tenant_id <= 0:
         raise ValueError("اختر شركة صحيحة قبل تسجيل المسحوبات.")
-    partner = Customer.query.filter_by(id=int(partner_customer_id), tenant_id=tenant_id, is_active=True).filter(
-        (Customer.customer_type == "partner") | Customer.partner_scope.in_(("company", "product"))
-    ).first()
+    partner = (
+        Customer.query.filter_by(
+            id=int(partner_customer_id), tenant_id=tenant_id, is_active=True
+        )
+        .filter(
+            (Customer.customer_type == "partner")
+            | Customer.partner_scope.in_(("company", "product"))
+        )
+        .first()
+    )
     if partner is None or not partner.is_active:
         raise ValueError("الشريك غير موجود")
 
@@ -804,8 +823,13 @@ def main(argv=None):
     import sys
 
     parser = argparse.ArgumentParser(description="Partner profit-sharing tools")
-    parser.add_argument("--tenant", dest="tenant", type=int, required=True,
-                        help="معرف المستأجر — إلزامي لمنع خلط بيانات المستأجرين")
+    parser.add_argument(
+        "--tenant",
+        dest="tenant",
+        type=int,
+        required=True,
+        help="معرف المستأجر — إلزامي لمنع خلط بيانات المستأجرين",
+    )
     parser.add_argument("--from", dest="from_", default=None)
     parser.add_argument("--to", dest="to", default=None)
     parser.add_argument("--preview", action="store_true")
@@ -828,7 +852,9 @@ def main(argv=None):
                 f" — الإجمالي {r.get('total_entitlement', r['net_payout'])}"
             )
     elif args.distribute:
-        entry = post_partner_distributions(args.from_, args.to, tenant_id=args.tenant, force=args.force)
+        entry = post_partner_distributions(
+            args.from_, args.to, tenant_id=args.tenant, force=args.force
+        )
         print(
             f"Distributed: {entry.entry_number}" if entry else "Nothing to distribute."
         )
@@ -838,13 +864,16 @@ if __name__ == "__main__":
     main()
 
 
-def _product_shares_bulk(partner_ids, period_from=None, period_to=None, *, tenant_id=None):
+def _product_shares_bulk(
+    partner_ids, period_from=None, period_to=None, *, tenant_id=None
+):
     """حصص المنتجات متراكمة في الفترة — dict {partner_id: Decimal} (استعلام واحد).
 
     يحل محل N استعلام فردي (واحد لكل شريك) — يُستخدم في المعاينة وصفحة المالك.
     """
     from sqlalchemy import func
     from models import GLAccount, GLJournalEntry as _Entry
+    from services.account_resolution import AccountRole
 
     if not partner_ids:
         return {}
@@ -857,12 +886,16 @@ def _product_shares_bulk(partner_ids, period_from=None, period_to=None, *, tenan
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
             _Entry.is_posted.is_(True),
-            GLAccount.code == "6910",
+            GLAccount.code.in_(
+                {"6910", _resolve_role(AccountRole.PARTNER_SHARE_EXPENSE, tenant_id)}
+            ),
             GLJournalLine.party_id.in_(list(partner_ids)),
         )
     )
     if tenant_id is not None:
-        q = q.filter(_Entry.tenant_id == tenant_id, GLJournalLine.tenant_id == tenant_id)
+        q = q.filter(
+            _Entry.tenant_id == tenant_id, GLJournalLine.tenant_id == tenant_id
+        )
     if period_from is not None:
         q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
@@ -871,10 +904,13 @@ def _product_shares_bulk(partner_ids, period_from=None, period_to=None, *, tenan
     return {pid: _q3(total) for pid, total in q.all()}
 
 
-def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None, *, tenant_id=None):
+def _draws_for_partners_bulk(
+    partner_ids, period_from=None, period_to=None, *, tenant_id=None
+):
     """مسحوبات كل شريك في استعلام واحد (N+1 fix)."""
     from sqlalchemy import func
     from models import GLAccount, GLJournalEntry as _Entry
+    from services.account_resolution import AccountRole
 
     if not partner_ids:
         return {}
@@ -891,7 +927,14 @@ def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None, *, t
             _Entry.is_posted.is_(True),
             _Entry.is_reversed.is_(False),
             GLJournalLine.debit > 0,
-            GLAccount.code.in_(("3300", "3350")),
+            GLAccount.code.in_(
+                {
+                    "3300",
+                    "3350",
+                    _resolve_role(AccountRole.OWNER_DRAWS, tenant_id),
+                    _resolve_role(AccountRole.PARTNERS_CURRENT, tenant_id),
+                }
+            ),
             GLJournalLine.party_id.in_(list(partner_ids)),
             or_(
                 _Entry.reference_type.is_(None),
@@ -902,7 +945,9 @@ def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None, *, t
         )
     )
     if tenant_id is not None:
-        q = q.filter(_Entry.tenant_id == tenant_id, GLJournalLine.tenant_id == tenant_id)
+        q = q.filter(
+            _Entry.tenant_id == tenant_id, GLJournalLine.tenant_id == tenant_id
+        )
     if period_from is not None:
         q = q.filter(func.date(_Entry.entry_date) >= period_from)
     if period_to is not None:
@@ -911,7 +956,9 @@ def _draws_for_partners_bulk(partner_ids, period_from=None, period_to=None, *, t
     return {pid: _q3(total) for pid, total in q.all()}
 
 
-def _sales_to_partners_bulk(partner_ids, period_from=None, period_to=None, *, tenant_id=None):
+def _sales_to_partners_bulk(
+    partner_ids, period_from=None, period_to=None, *, tenant_id=None
+):
     """مبيعات غير مسددة لكل شريك في استعلام واحد (N+1 fix)."""
     from sqlalchemy import func
     from models import Sale
@@ -920,9 +967,7 @@ def _sales_to_partners_bulk(partner_ids, period_from=None, period_to=None, *, te
         return {}
     q = db.session.query(
         Sale.customer_id,
-        func.coalesce(
-            func.sum(Sale.balance_due), 0
-        ),
+        func.coalesce(func.sum(Sale.balance_due), 0),
     ).filter(Sale.customer_id.in_(list(partner_ids)), Sale.status == "confirmed")
     if tenant_id is not None:
         q = q.filter(Sale.tenant_id == tenant_id)

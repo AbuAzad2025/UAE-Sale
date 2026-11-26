@@ -63,6 +63,7 @@ class AdvancedJournalEntryManager:
     def update_entry(entry_id, updates, updated_by, reason=None):
         """تحديث قيد محاسبي"""
         entry = get_owned_or_404(GLJournalEntry, entry_id)
+        db.session.refresh(entry, with_for_update=True)
 
         if entry.is_posted:
             raise ValueError(
@@ -76,6 +77,16 @@ class AdvancedJournalEntryManager:
 
         rate = Decimal(str(entry.exchange_rate or 1)) or Decimal("1")
 
+        editable = {
+            "lines",
+            "description",
+            "notes",
+            "entry_date",
+            "currency",
+            "exchange_rate",
+        }
+        if updates.keys() - editable:
+            raise ValueError("Only draft financial details can be edited.")
         for field, value in updates.items():
             if field == "lines":
                 continue
@@ -171,7 +182,11 @@ class AdvancedJournalEntryManager:
         """عكس قيد محاسبي متقدم"""
         entry = get_owned_or_404(GLJournalEntry, entry_id)
 
-        if entry.is_reversed or entry.reversed_entry_id is not None or entry.entry_type == "reversing":
+        if (
+            entry.is_reversed
+            or entry.reversed_entry_id is not None
+            or entry.entry_type == "reversing"
+        ):
             raise ValueError("القيد معكوس مسبقاً")
 
         if not entry.is_posted:
@@ -182,7 +197,9 @@ class AdvancedJournalEntryManager:
         reversal_entry = None
         if create_reversal_entry:
             reversal_entry = entry.reverse_entry(
-                description=f"عكس القيد {entry.entry_number}", created_by=reversed_by, notes=f"سبب العكس: {reason}",
+                description=f"عكس القيد {entry.entry_number}",
+                created_by=reversed_by,
+                notes=f"سبب العكس: {reason}",
             )
             JournalEntryAudit.record(
                 journal_entry_id=reversal_entry.id,
@@ -241,26 +258,73 @@ class AdvancedJournalEntryManager:
     @staticmethod
     def approve_entry(entry_id, approved_by, approval_notes=None):
         """الموافقة على قيد محاسبي"""
+        from sqlalchemy import or_, select
+        from services.gl_service import (
+            _assert_period_open,
+            _normalize_lines,
+            _normalize_rate,
+            _posting_tenant,
+        )
+
         entry = get_owned_or_404(GLJournalEntry, entry_id)
+        db.session.refresh(entry, with_for_update=True)
+        tenant_id = _posting_tenant(entry.tenant_id)
 
         if entry.is_posted:
             raise ValueError("القيد مرحل مسبقاً")
+        if entry.is_reversed:
+            raise ValueError("لا يمكن اعتماد قيد معكوس")
 
-        total_debit = sum((line.debit for line in entry.lines), Decimal("0"))
-        total_credit = sum((line.credit for line in entry.lines), Decimal("0"))
+        line_table = GLJournalLine.__table__
+        if (
+            db.session.scalar(
+                select(line_table.c.id)
+                .where(
+                    line_table.c.entry_id == entry.id,
+                    or_(
+                        line_table.c.tenant_id.is_(None),
+                        line_table.c.tenant_id != tenant_id,
+                    ),
+                )
+                .limit(1)
+            )
+            is not None
+        ):
+            raise ValueError("Journal lines must belong to the journal's tenant")
+        lines = entry.lines.order_by(GLJournalLine.id).all()
+        _assert_period_open(entry.entry_date, tenant_id)
+        normalized, total_debit, total_credit = _normalize_lines(
+            [
+                {
+                    "account": line.account,
+                    "debit": line.debit,
+                    "credit": line.credit,
+                    "party_id": line.party_id,
+                }
+                for line in lines
+            ],
+            _normalize_rate(entry.exchange_rate),
+            tenant_id=tenant_id,
+            ensure_accounts=False,
+        )
 
-        if abs(total_debit - total_credit) > Decimal("0.01"):
+        if total_debit != total_credit:
             raise ValueError(
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
 
+        old_values = entry.to_dict()
+        entry.total_debit = total_debit
+        entry.total_credit = total_credit
+        for line, validated in zip(lines, normalized):
+            line.amount_base = validated.amount_base
         entry.is_posted = True
         entry.updated_at = datetime.now(timezone.utc)
 
         AdvancedJournalEntryManager._log_audit(
             entry_id,
             "approve",
-            entry.to_dict(),
+            old_values,
             entry.to_dict(),
             f"الموافقة على القيد - ملاحظات: {approval_notes or 'لا توجد'}",
             approved_by,

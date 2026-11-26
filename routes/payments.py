@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from werkzeug.exceptions import HTTPException
 from flask import (
     Blueprint,
     render_template,
@@ -78,6 +79,9 @@ def _archive_payment_record(record_id, reason):
         payment = get_owned_or_404(Payment, record_id, code=404)
     except (NotFound, Forbidden):
         payment = None
+    except HTTPException:
+        db.session.rollback()
+        raise
     except Exception:
         raise
 
@@ -477,18 +481,23 @@ def view_payment(id):
     )
 
 
-
 def _receipt_party(doc, is_payment):
     """Return the counterparty shown on a receipt/payment print."""
     if is_payment:
         supplier = getattr(doc, "supplier", None)
-        name = (supplier.name if supplier else None) or getattr(doc, "supplier_name", None) or "-"
+        name = (
+            (supplier.name if supplier else None)
+            or getattr(doc, "supplier_name", None)
+            or "-"
+        )
         phone = supplier.phone if supplier else ""
         email = supplier.email if supplier else ""
         label = _t("Supplier Details")
     else:
         cust = getattr(doc, "customer", None)
-        name = (cust.name if cust else None) or getattr(doc, "customer_name", None) or "-"
+        name = (
+            (cust.name if cust else None) or getattr(doc, "customer_name", None) or "-"
+        )
         phone = cust.phone if cust else ""
         email = cust.email if cust else ""
         label = _t("Customer Details")
@@ -599,7 +608,7 @@ def archive_payment(id):
         db.session.rollback()
         current_app.logger.error(f"Failed to archive payment {id}: {e}")
         current_app.logger.exception("handler failed")
-        flash(f"فشلت الأرشفة: حدث خطأ غير متوقع", "danger")
+        flash("فشلت الأرشفة: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("payments.receipts"))
 
     return redirect(url_for("payments.receipts"))
@@ -701,10 +710,10 @@ def create_from_sale(sale_id):
             flash("تم إنشاء سند القبض بنجاح", "success")
             return redirect(url_for("payments.view_receipt", id=receipt.id))
 
-        except Exception as e:
+        except Exception:
             current_app.logger.exception("handler failed")
             flash(
-                f"حدث خطأ: حدث خطأ غير متوقع\nتحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "حدث خطأ: حدث خطأ غير متوقع\nتحقق من البيانات المدخلة وحاول مرة أخرى.",
                 "danger",
             )
 
@@ -818,6 +827,29 @@ def create_voucher_submit():  # noqa: C901
                 amount_base = amount_decimal * exchange_rate
 
                 supplier = get_owned_or_404(Supplier, party_id)
+                is_cheque = payment_method == "cheque"
+                received_on = (
+                    datetime.strptime(date_str, "%Y-%m-%d").date()
+                    if date_str
+                    else datetime.now().date()
+                )
+                if is_cheque:
+                    if (
+                        not cheque_number
+                        or not bank_name
+                        or not cheque_due
+                        or cheque_due < received_on
+                    ):
+                        raise ValueError(
+                            "أدخل رقم الشيك والبنك وتاريخ استحقاق لا يسبق الاستلام."
+                        )
+                    if amount_decimal != amount_decimal.quantize(Decimal("0.01")):
+                        raise ValueError("مبلغ الشيك يقبل منزلتين عشريتين.")
+                    amount_base = amount_base.quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                    if amount_base <= 0:
+                        raise ValueError("يجب أن يكون مبلغ الشيك موجبًا.")
                 payment = Payment(
                     payment_number=generate_number(
                         "PAY", Payment, "payment_number"
@@ -836,6 +868,9 @@ def create_voucher_submit():  # noqa: C901
                     cheque_date=cheque_due if payment_method == "cheque" else None,
                     bank_name=bank_name if payment_method == "cheque" else None,
                     user_id=current_user.id,
+                    payment_confirmed=not is_cheque,
+                    payment_date=datetime.combine(received_on, datetime.min.time()),
+                    tenant_id=supplier.tenant_id,
                 )
                 db.session.add(payment)
                 db.session.flush()
@@ -844,10 +879,35 @@ def create_voucher_submit():  # noqa: C901
                 from services.account_resolution import AccountResolver, AccountRole
 
                 GLService.ensure_core_accounts()
-                debit_account = (
-                    AccountResolver.resolve(AccountRole.CASH)
-                    if payment_method == "cash"
-                    else AccountResolver.resolve(AccountRole.BANK)
+                if is_cheque:
+                    from models import Cheque
+
+                    cheque = Cheque(
+                        cheque_number=generate_number("CHQ", Cheque, "cheque_number"),
+                        cheque_bank_number=cheque_number,
+                        cheque_type="incoming",
+                        bank_name=bank_name,
+                        supplier_id=supplier.id,
+                        payment_id=payment.id,
+                        amount=amount_decimal,
+                        amount_base=amount_base,
+                        currency=currency,
+                        exchange_rate=exchange_rate,
+                        issue_date=received_on,
+                        due_date=cheque_due,
+                        user_id=current_user.id,
+                        tenant_id=supplier.tenant_id,
+                    )
+                    db.session.add(cheque)
+                    db.session.flush()
+                    payment.cheque_id = cheque.id
+                    cheque.receive_cheque()
+                    db.session.commit()
+                    flash("تم تسجيل شيك المورد تحت التحصيل", "success")
+                    return redirect(url_for("payments.receipts"))
+
+                debit_account = GLService.get_payment_debit_account(
+                    payment_method, tenant_id=supplier.tenant_id
                 )
                 lines = [
                     {
@@ -856,7 +916,9 @@ def create_voucher_submit():  # noqa: C901
                         "description": f"استرداد من المورد {supplier.name}",
                     },
                     {
-                        "account": AccountResolver.resolve(AccountRole.AP_CONTROL),
+                        "account": AccountResolver.resolve(
+                            AccountRole.AP_CONTROL, tenant_id=supplier.tenant_id
+                        ),
                         "credit": amount_decimal,
                         "description": f"سند قبض من مورد {payment.payment_number}",
                     },
@@ -869,6 +931,8 @@ def create_voucher_submit():  # noqa: C901
                     idempotency_key=f"Payment:{payment.id}",
                     currency=currency,
                     exchange_rate=exchange_rate,
+                    entry_date=payment.payment_date,
+                    tenant_id=supplier.tenant_id,
                 )
 
                 db.session.commit()
@@ -885,12 +949,37 @@ def create_voucher_submit():  # noqa: C901
             amount_decimal = Decimal(str(amount))
             amount_base = amount_decimal * exchange_rate
 
+            issued_on = (
+                datetime.strptime(date_str, "%Y-%m-%d").date()
+                if date_str
+                else datetime.now().date()
+            )
+            if payment_method == "cheque":
+                if (
+                    not cheque_number
+                    or not bank_name
+                    or not cheque_due
+                    or cheque_due < issued_on
+                ):
+                    raise ValueError(
+                        "أدخل رقم الشيك والبنك وتاريخ استحقاق لا يسبق الإصدار."
+                    )
+                if amount_decimal != amount_decimal.quantize(Decimal("0.01")):
+                    raise ValueError("مبلغ الشيك يقبل منزلتين عشريتين.")
+                amount_base = amount_base.quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
+            if not amount_base.is_finite() or amount_base <= 0:
+                raise ValueError("يجب أن يكون مبلغ السند موجبًا.")
+
             if party_type == "supplier":
                 supplier = get_owned_or_404(Supplier, party_id)
                 payment = Payment(
                     payment_number=generate_number("PAY", Payment, "payment_number"),
                     payment_type="bill_payment",
                     direction="outgoing",
+                    tenant_id=supplier.tenant_id,
+                    payment_date=datetime.combine(issued_on, datetime.min.time()),
                     supplier_id=supplier.id,
                     supplier_name=supplier.name,
                     amount=amount_decimal,
@@ -898,6 +987,7 @@ def create_voucher_submit():  # noqa: C901
                     exchange_rate=exchange_rate,
                     amount_base=amount_base,
                     payment_method=payment_method,
+                    payment_confirmed=payment_method != "cheque",
                     notes=notes,
                     cheque_number=cheque_number if payment_method == "cheque" else None,
                     cheque_date=cheque_due if payment_method == "cheque" else None,
@@ -920,9 +1010,7 @@ def create_voucher_submit():  # noqa: C901
                         currency=payment.currency,
                         exchange_rate=payment.exchange_rate,
                         amount_base=payment.amount_base,
-                        issue_date=datetime.strptime(date_str, "%Y-%m-%d").date()
-                        if date_str
-                        else datetime.now().date(),
+                        issue_date=issued_on,
                         due_date=cheque_due or datetime.now().date(),
                         bank_name=bank_name,
                         payee_name=supplier.name,
@@ -933,7 +1021,8 @@ def create_voucher_submit():  # noqa: C901
                     db.session.add(cheque)
                     db.session.flush()
 
-                    cheque.issue_cheque()
+                    payment.cheque_id = cheque.id
+                    cheque.issue_cheque(actor_id=current_user.id)
 
                 else:
                     from services.gl_service import GLService
@@ -941,14 +1030,14 @@ def create_voucher_submit():  # noqa: C901
 
                     GLService.ensure_core_accounts()
 
-                    credit_account = (
-                        AccountResolver.resolve(AccountRole.BANK)
-                        if payment_method in ("bank_transfer", "card")
-                        else AccountResolver.resolve(AccountRole.CASH)
+                    credit_account = GLService.get_payment_debit_account(
+                        payment_method, tenant_id=supplier.tenant_id
                     )
                     lines = [
                         {
-                            "account": AccountResolver.resolve(AccountRole.AP_CONTROL),
+                            "account": AccountResolver.resolve(
+                                AccountRole.AP_CONTROL, tenant_id=supplier.tenant_id
+                            ),
                             "debit": payment.amount,
                             "description": f"سداد للمورد {payment.supplier_name}",
                         },
@@ -966,6 +1055,9 @@ def create_voucher_submit():  # noqa: C901
                         idempotency_key=f"Payment:{payment.id}",
                         currency=currency,
                         exchange_rate=exchange_rate,
+                        tenant_id=payment.tenant_id,
+                        entry_date=payment.payment_date,
+                        created_by=current_user.id,
                     )
 
                 db.session.commit()
@@ -978,12 +1070,15 @@ def create_voucher_submit():  # noqa: C901
                     payment_number=generate_number("PAY", Payment, "payment_number"),
                     payment_type="refund",
                     direction="outgoing",
+                    tenant_id=customer.tenant_id,
+                    payment_date=datetime.combine(issued_on, datetime.min.time()),
                     customer_id=customer.id,
                     amount=amount_decimal,
                     currency=currency,
                     exchange_rate=exchange_rate,
                     amount_base=amount_base,
                     payment_method=payment_method,
+                    payment_confirmed=payment_method != "cheque",
                     notes=notes,
                     cheque_number=cheque_number if payment_method == "cheque" else None,
                     cheque_date=cheque_due if payment_method == "cheque" else None,
@@ -1006,9 +1101,7 @@ def create_voucher_submit():  # noqa: C901
                         currency=payment.currency,
                         exchange_rate=payment.exchange_rate,
                         amount_base=payment.amount_base,
-                        issue_date=datetime.strptime(date_str, "%Y-%m-%d").date()
-                        if date_str
-                        else datetime.now().date(),
+                        issue_date=issued_on,
                         due_date=cheque_due or datetime.now().date(),
                         bank_name=bank_name,
                         payee_name=customer.name,
@@ -1019,14 +1112,17 @@ def create_voucher_submit():  # noqa: C901
                     db.session.add(cheque)
                     db.session.flush()
 
-                    cheque.issue_cheque()
+                    payment.cheque_id = cheque.id
+                    cheque.issue_cheque(actor_id=current_user.id)
 
                 else:
                     from services.gl_service import GLService
 
                     GLService.ensure_core_accounts()
 
-                    credit_account = GLService.get_payment_debit_account(payment_method)
+                    credit_account = GLService.get_payment_debit_account(
+                        payment_method, tenant_id=customer.tenant_id
+                    )
 
                     debit_account = GLService.get_customer_credit_account(customer)
 
@@ -1035,6 +1131,9 @@ def create_voucher_submit():  # noqa: C901
                             "account": debit_account,
                             "debit": payment.amount,
                             "description": f"سداد/سحب {customer.name}",
+                            "party_id": customer.id
+                            if customer.customer_type == "partner"
+                            else None,
                         },
                         {
                             "account": credit_account,
@@ -1050,17 +1149,23 @@ def create_voucher_submit():  # noqa: C901
                         idempotency_key=f"Payment:{payment.id}",
                         currency=currency,
                         exchange_rate=exchange_rate,
+                        tenant_id=payment.tenant_id,
+                        entry_date=payment.payment_date,
+                        created_by=current_user.id,
                     )
 
                 db.session.commit()
                 flash("تم إنشاء سند صرف لعميل/شريك بنجاح", "success")
                 return redirect(url_for("payments.receipts"))
 
+    except HTTPException:
+        db.session.rollback()
+        raise
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Voucher creation error: {e}")
         current_app.logger.exception("handler failed")
-        flash(f"حدث خطأ أثناء حفظ السند: حدث خطأ غير متوقع", "danger")
+        flash("حدث خطأ أثناء حفظ السند: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("payments.create_voucher"))
 
     return redirect(url_for("payments.receipts"))
@@ -1428,10 +1533,10 @@ def delete_receipt(id):  # noqa: C901
 
         return redirect(url_for("payments.receipts"))
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"فشل الحذف: حدث خطأ غير متوقع", "danger")
+        flash("فشل الحذف: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("payments.view_receipt", id=id))
 
 
@@ -1563,10 +1668,10 @@ def delete_payment(id):
 
         return redirect(url_for("payments.receipts"))
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"فشل الحذف: حدث خطأ غير متوقع", "danger")
+        flash("فشل الحذف: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("payments.view_payment", id=id))
 
 
@@ -1611,7 +1716,9 @@ def create_payment(purchase_id):  # noqa: C901
             Cheque.status.in_(("pending", "under_collection", "deposited")),
         )
     )
-    balance = (purchase.amount_base or Decimal("0")) - purchase.get_paid_amount() - reserved
+    balance = (
+        (purchase.amount_base or Decimal("0")) - purchase.get_paid_amount() - reserved
+    )
     suggested_amount = max(balance, Decimal("0"))
 
     if request.method == "POST":
@@ -1662,7 +1769,9 @@ def create_payment(purchase_id):  # noqa: C901
             ):
                 raise ValidationError("المبلغ وسعر الصرف يجب أن يكونا أكبر من صفر.")
             pays_by_cheque = payment_method_value == "cheque"
-            if pays_by_cheque and amount_decimal != amount_decimal.quantize(Decimal("0.01")):
+            if pays_by_cheque and amount_decimal != amount_decimal.quantize(
+                Decimal("0.01")
+            ):
                 raise ValidationError("مبلغ الشيك يقبل منزلتين عشريتين.")
             amount_base = (amount_decimal * exchange_rate_decimal).quantize(
                 Decimal("0.01" if pays_by_cheque else "0.001"), rounding=ROUND_HALF_UP
@@ -1681,7 +1790,9 @@ def create_payment(purchase_id):  # noqa: C901
                 cheque_number = (cheque_number or "").strip()
                 bank_name = (bank_name or "").strip()
                 if not cheque_number or not cheque_date or not bank_name:
-                    raise ValidationError("رقم الشيك وتاريخ الاستحقاق واسم البنك مطلوبة.")
+                    raise ValidationError(
+                        "رقم الشيك وتاريخ الاستحقاق واسم البنك مطلوبة."
+                    )
                 parsed_cheque_date = datetime.strptime(cheque_date, "%Y-%m-%d").date()
 
             payment_number = generate_number("PAY", Payment, "payment_number")
@@ -1795,6 +1906,9 @@ def create_payment(purchase_id):  # noqa: C901
                 )
                 if payment_method_value == "cheque":
                     cheque.gl_journal_entry_id = entry.id
+            except HTTPException:
+                db.session.rollback()
+                raise
             except Exception:
                 # Never record a payment without a balanced GL entry.
                 db.session.rollback()
@@ -1819,6 +1933,9 @@ def create_payment(purchase_id):  # noqa: C901
         except (InvalidOperation, ValueError):
             db.session.rollback()
             flash("تحقق من المبلغ وسعر الصرف وتاريخ الاستحقاق.", "danger")
+        except HTTPException:
+            db.session.rollback()
+            raise
         except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")

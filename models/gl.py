@@ -490,7 +490,15 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         }
         return types.get(self.entry_type, self.entry_type)
 
-    def reverse_entry(self, description=None, entry_date=None, created_by=None, *, notes=None):
+    def reverse_entry(
+        self,
+        description=None,
+        entry_date=None,
+        created_by=None,
+        *,
+        notes=None,
+        reversal_reference=None,
+    ):
         """عكس القيد (إنشاء قيد معاكس).
 
         F2: كان يولّد رقم القيد العكسي يدوياً (max+1) بدون قفل موزّع،
@@ -502,8 +510,16 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         - إجماليات القيد العكسي تُشتق من السطور التي يكتبها (لا من إجماليات
           القيد الأصلي، فقد لا يكون القيد الأصلي متسقاً داخلياً).
         """
-        db.session.refresh(self, ["is_reversed", "reversed_entry_id", "is_posted"], with_for_update=True)
-        if self.is_reversed or self.reversed_entry_id is not None or self.entry_type == "reversing":
+        db.session.refresh(
+            self,
+            ["is_reversed", "reversed_entry_id", "is_posted"],
+            with_for_update=True,
+        )
+        if (
+            self.is_reversed
+            or self.reversed_entry_id is not None
+            or self.entry_type == "reversing"
+        ):
             raise ValueError("هذا القيد تم عكسه مسبقاً")
         if not self.is_posted:
             raise ValueError("لا يمكن عكس قيد غير مرحل")
@@ -545,12 +561,16 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
             total_debit += _credit
             total_credit += _debit
 
+        reference_type, reference_id = reversal_reference or (
+            self.reference_type,
+            self.reference_id,
+        )
         reversed_entry = GLJournalEntry(
             entry_number=entry_number,
             entry_date=entry_date,
             description=description or f"عكس قيد: {self.description}",
-            reference_type=self.reference_type,
-            reference_id=self.reference_id,
+            reference_type=reference_type,
+            reference_id=reference_id,
             entry_type="reversing",
             currency=self.currency,
             exchange_rate=self.exchange_rate,

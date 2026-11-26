@@ -12,23 +12,12 @@ from sqlalchemy.orm import validates
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
-try:
-    from services.account_resolution import AccountResolver, AccountRole
-except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوازي
-    AccountRole = None  # type: ignore[assignment,misc]
-    AccountResolver = None  # type: ignore[assignment,misc]
+from services.account_resolution import AccountResolver, AccountRole
 
 
-def _resolve_account(role_value, fallback_code, tenant_id=None):
-    """Resolve an account by role name, falling back to the historical literal."""
-    try:
-        if AccountRole is not None and AccountResolver is not None:
-            code = AccountResolver.resolve(AccountRole(role_value), tenant_id=tenant_id)
-            if code:
-                return code
-    except Exception:
-        pass
-    return fallback_code
+def _resolve_account(role_value, tenant_id):
+    """Resolve the configured account for this cheque's tenant."""
+    return AccountResolver.resolve(AccountRole(role_value), tenant_id=tenant_id)
 
 
 class Cheque(TenantScopedMixin, db.Model):
@@ -90,8 +79,12 @@ class Cheque(TenantScopedMixin, db.Model):
     gl_journal_entry_id = db.Column(
         db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True
     )
-    gl_clearing_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True)
-    gl_bounce_entry_id = db.Column(db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True)
+    gl_clearing_entry_id = db.Column(
+        db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True
+    )
+    gl_bounce_entry_id = db.Column(
+        db.Integer, db.ForeignKey("gl_journal_entries.id"), index=True
+    )
 
     notes = db.Column(db.Text)
     bounce_reason = db.Column(db.String(500))  # سبب الإرتداد
@@ -209,7 +202,7 @@ class Cheque(TenantScopedMixin, db.Model):
         else:
             self.amount_base = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    def receive_cheque(self):
+    def receive_cheque(self, *, actor_id=None):
         """تسجيل استلام الشيك الوارد"""
         if self.cheque_type == "incoming" and not self.gl_journal_entry_id:
             from services.gl_service import GLService
@@ -219,14 +212,21 @@ class Cheque(TenantScopedMixin, db.Model):
                 credit_account = (
                     GLService.get_customer_credit_account(customer)
                     if self.customer_id
-                    else _resolve_account("AR_CONTROL", "1130", self.tenant_id)
+                    else AccountResolver.resolve(
+                        AccountRole.AP_CONTROL
+                        if self.supplier_id
+                        else AccountRole.AR_CONTROL,
+                        tenant_id=self.tenant_id,
+                    )
                 )
                 partner_id = (
-                    customer.id if customer and customer.customer_type == "partner" else None
+                    customer.id
+                    if customer and customer.customer_type == "partner"
+                    else None
                 )
                 lines = [
                     {
-                        "account": _resolve_account("UNDER_COLLECTION", "1150", self.tenant_id),
+                        "account": _resolve_account("UNDER_COLLECTION", self.tenant_id),
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"استلام شيك رقم {self.cheque_bank_number}",
@@ -247,7 +247,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     reference_id=self.id,
                     entry_date=datetime.combine(self.issue_date, datetime.min.time()),
                     tenant_id=self.tenant_id,
-                    created_by=self.user_id,
+                    created_by=actor_id or self.user_id,
                     idempotency_key=f"cheque_receive:{self.id}",
                 )
                 if entry is not None and not self.gl_journal_entry_id:
@@ -258,27 +258,32 @@ class Cheque(TenantScopedMixin, db.Model):
                 )
                 raise
 
-    def issue_cheque(self):
+    def issue_cheque(self, *, actor_id=None):
         """تسجيل إصدار الشيك الصادر"""
         if self.cheque_type == "outgoing" and not self.gl_journal_entry_id:
             from services.gl_service import GLService
 
             try:
-                if self.supplier_id:
-                    debit_account = _resolve_account("AP_CONTROL", "2110", self.tenant_id)
-                elif self.customer_id:
-                    debit_account = GLService.get_customer_credit_account(self.customer)
-                else:
-                    debit_account = _resolve_account("AP_CONTROL", "2110", self.tenant_id)
+                customer = self.customer if not self.supplier_id else None
+                debit_account = (
+                    GLService.get_customer_credit_account(customer)
+                    if customer
+                    else _resolve_account("AP_CONTROL", self.tenant_id)
+                )
                 lines = [
                     {
                         "account": debit_account,
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"إصدار شيك رقم {self.cheque_bank_number}",
+                        "party_id": customer.id
+                        if customer and customer.customer_type == "partner"
+                        else None,
                     },
                     {
-                        "account": _resolve_account("DEFERRED_CHEQUES_PAYABLE", "2120", self.tenant_id),
+                        "account": _resolve_account(
+                            "DEFERRED_CHEQUES_PAYABLE", self.tenant_id
+                        ),
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"إصدار شيك - رقم {self.cheque_bank_number}",
@@ -292,7 +297,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     reference_id=self.id,
                     entry_date=datetime.combine(self.issue_date, datetime.min.time()),
                     tenant_id=self.tenant_id,
-                    created_by=self.user_id,
+                    created_by=actor_id or self.user_id,
                     idempotency_key=f"cheque_issue:{self.id}",
                 )
                 self.gl_journal_entry_id = entry.id
@@ -313,10 +318,22 @@ class Cheque(TenantScopedMixin, db.Model):
         self.status = "deposited"
         self.deposit_date = effective_date
 
-    def clear_cheque(self, clearance_date=None, clearance_exchange_rate=None, *, actor_id=None):
+    def clear_cheque(
+        self,
+        clearance_date=None,
+        clearance_exchange_rate=None,
+        *,
+        actor_id=None,
+        bank_charges=0,
+    ):
         """تأكيد صرف الشيك من البنك - المحاسبة الحقيقية تبدأ هنا"""
         if self.status not in ["deposited", "pending"]:
             raise ValueError(f"لا يمكن تأكيد صرف شيك بحالة: {self.status_ar}")
+
+        bank_charges = Decimal(str(bank_charges))
+        if not bank_charges.is_finite() or bank_charges < 0:
+            raise ValueError("Bank charges must be a nonnegative amount.")
+        bank_charges = bank_charges.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         effective_date = clearance_date or datetime.now().date()
         if effective_date < (self.deposit_date or self.issue_date):
@@ -360,7 +377,14 @@ class Cheque(TenantScopedMixin, db.Model):
             self.actual_amount_base - Decimal(str(self.amount_base))
         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        self._create_clearing_journal_entry(actor_id=actor_id)
+        if self.actual_amount_base <= 0 or (
+            self.cheque_type == "incoming" and bank_charges > self.actual_amount_base
+        ):
+            raise ValueError("The cleared cheque amount cannot cover the bank charges.")
+        self.cleared_date = effective_date
+        self._create_clearing_journal_entry(
+            actor_id=actor_id, bank_charges=bank_charges
+        )
 
         from models.payment import Payment, Receipt
 
@@ -372,7 +396,8 @@ class Cheque(TenantScopedMixin, db.Model):
         if receipt:
             receipt.confirm_receipt()
         elif (
-            self.cheque_type == "incoming" and self.customer_id
+            self.cheque_type == "incoming"
+            and self.customer_id
             and not (self.sale_id or self.receipt_id or self.payment_id or payment)
         ):
             from models.customer import recompute_customer_balance
@@ -380,7 +405,9 @@ class Cheque(TenantScopedMixin, db.Model):
             db.session.flush()
             recompute_customer_balance(self.customer_id)
 
-    def _create_clearing_journal_entry(self, *, actor_id=None):
+    def _create_clearing_journal_entry(
+        self, *, actor_id=None, bank_charges=Decimal("0")
+    ):
         """إنشاء القيد المحاسبي عند صرف الشيك
 
         اصطلاح الإشارة المُثبَّت (موجب currency_gain_loss = الفعلي أعلى من الدفتري):
@@ -389,9 +416,9 @@ class Cheque(TenantScopedMixin, db.Model):
         """
         from services.gl_service import GLService
 
-        fx_gain_account = _resolve_account("FX_GAIN", "4400", self.tenant_id)
-        fx_loss_account = _resolve_account("FX_LOSS", "6900", self.tenant_id)
-        bank_account = _resolve_account("BANK", "1120", self.tenant_id)
+        fx_gain_account = _resolve_account("FX_GAIN", self.tenant_id)
+        fx_loss_account = _resolve_account("FX_LOSS", self.tenant_id)
+        bank_account = _resolve_account("BANK", self.tenant_id)
 
         try:
             lines = []
@@ -400,14 +427,14 @@ class Cheque(TenantScopedMixin, db.Model):
                 lines.append(
                     {
                         "account": bank_account,
-                        "debit": self.actual_amount_base,
+                        "debit": self.actual_amount_base - bank_charges,
                         "credit": 0,
                         "description": f"صرف شيك وارد رقم {self.cheque_bank_number}",
                     }
                 )
                 lines.append(
                     {
-                        "account": _resolve_account("UNDER_COLLECTION", "1150", self.tenant_id),
+                        "account": _resolve_account("UNDER_COLLECTION", self.tenant_id),
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"صرف شيك رقم {self.cheque_bank_number}",
@@ -437,7 +464,9 @@ class Cheque(TenantScopedMixin, db.Model):
             elif self.cheque_type == "outgoing":
                 lines.append(
                     {
-                        "account": _resolve_account("DEFERRED_CHEQUES_PAYABLE", "2120", self.tenant_id),
+                        "account": _resolve_account(
+                            "DEFERRED_CHEQUES_PAYABLE", self.tenant_id
+                        ),
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"صرف شيك صادر رقم {self.cheque_bank_number}",
@@ -447,7 +476,7 @@ class Cheque(TenantScopedMixin, db.Model):
                     {
                         "account": bank_account,
                         "debit": 0,
-                        "credit": self.actual_amount_base,
+                        "credit": self.actual_amount_base + bank_charges,
                         "description": f"صرف شيك رقم {self.cheque_bank_number}",
                     }
                 )
@@ -472,6 +501,16 @@ class Cheque(TenantScopedMixin, db.Model):
                             }
                         )
 
+            if bank_charges:
+                lines.append(
+                    {
+                        "account": AccountResolver.resolve(
+                            AccountRole.BANK_CHARGES, tenant_id=self.tenant_id
+                        ),
+                        "debit": bank_charges,
+                        "description": f"رسوم البنك للشيك {self.cheque_bank_number}",
+                    }
+                )
             entry = GLService.post_entry(
                 lines=lines,
                 description=f"صرف شيك {self.type_ar} رقم {self.cheque_bank_number}",
@@ -491,7 +530,7 @@ class Cheque(TenantScopedMixin, db.Model):
             )
             raise
 
-    def bounce_cheque(self, reason):
+    def bounce_cheque(self, reason, *, actor_id=None):
         """رفض الشيك من البنك - إرجاع الدين"""
         if self.status not in ["deposited", "pending"]:
             raise ValueError(f"لا يمكن رفض شيك بحالة: {self.status_ar}")
@@ -500,11 +539,7 @@ class Cheque(TenantScopedMixin, db.Model):
         self.bounce_reason = reason
         self.clearance_date = datetime.now().date()
 
-        self._create_bounce_journal_entry()
-
-        from decimal import Decimal
-
-        amount_base = self.amount_base or Decimal("0")
+        self._create_bounce_journal_entry(actor_id=actor_id)
 
         if self.cheque_type == "incoming" and self.customer_id:
             db.session.flush()
@@ -521,12 +556,20 @@ class Cheque(TenantScopedMixin, db.Model):
         if receipt:
             receipt.reject_receipt(reason)
 
-    def _create_bounce_journal_entry(self):
-        """إنشاء القيد المحاسبي عند ارتداد الشيك
+    def _reverse_linked_journal(self, reference_type, actor_id=None):
+        from services.cheque_accounting_integration import ChequeAccountingIntegration
 
-        Returns the created GLJournalEntry (or None when posting failed and
-        the exception was swallowed — GL failures never block the bounce).
-        """
+        original = ChequeAccountingIntegration._original_entry(self)
+        return original.reverse_entry(
+            created_by=actor_id, reversal_reference=(reference_type, self.id)
+        )
+
+    def _create_bounce_journal_entry(self, *, actor_id=None):
+        if self.gl_journal_entry_id:
+            entry = self._reverse_linked_journal("cheque_bounce", actor_id)
+            self.gl_bounce_entry_id = entry.id
+            return entry
+
         from services.gl_service import GLService
 
         try:
@@ -537,7 +580,12 @@ class Cheque(TenantScopedMixin, db.Model):
                 ar_account = (
                     GLService.get_customer_credit_account(customer)
                     if self.customer_id
-                    else "1130"
+                    else AccountResolver.resolve(
+                        AccountRole.AP_CONTROL
+                        if self.supplier_id
+                        else AccountRole.AR_CONTROL,
+                        tenant_id=self.tenant_id,
+                    )
                 )
                 lines.append(
                     {
@@ -545,12 +593,16 @@ class Cheque(TenantScopedMixin, db.Model):
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين",
-                        "party_id": customer.id if customer and customer.customer_type == "partner" else None,
+                        "party_id": customer.id
+                        if customer and customer.customer_type == "partner"
+                        else None,
                     }
                 )
                 lines.append(
                     {
-                        "account": "1150",  # شيكات تحت التحصيل
+                        "account": AccountResolver.resolve(
+                            AccountRole.UNDER_COLLECTION, tenant_id=self.tenant_id
+                        ),
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"ارتداد شيك رقم {self.cheque_bank_number}",
@@ -560,26 +612,32 @@ class Cheque(TenantScopedMixin, db.Model):
             elif self.cheque_type == "outgoing":
                 lines.append(
                     {
-                        "account": "2120",  # شيكات مؤجلة الدفع
+                        "account": AccountResolver.resolve(
+                            AccountRole.DEFERRED_CHEQUES_PAYABLE,
+                            tenant_id=self.tenant_id,
+                        ),
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"ارتداد شيك صادر رقم {self.cheque_bank_number}",
                     }
                 )
-                if self.supplier_id:
-                    credit_account = "2110"
-                elif self.customer_id:
-                    credit_account = GLService.get_customer_credit_account(
-                        self.customer
+                customer = self.customer if not self.supplier_id else None
+                credit_account = (
+                    GLService.get_customer_credit_account(customer)
+                    if customer
+                    else AccountResolver.resolve(
+                        AccountRole.AP_CONTROL, tenant_id=self.tenant_id
                     )
-                else:
-                    credit_account = "2110"
+                )
                 lines.append(
                     {
                         "account": credit_account,
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الالتزام",
+                        "party_id": customer.id
+                        if customer and customer.customer_type == "partner"
+                        else None,
                     }
                 )
 
@@ -588,6 +646,9 @@ class Cheque(TenantScopedMixin, db.Model):
                 description=f"ارتداد شيك {self.type_ar} رقم {self.cheque_bank_number}",
                 reference_type="cheque_bounce",
                 reference_id=self.id,
+                tenant_id=self.tenant_id,
+                idempotency_key=f"cheque_bounce:{self.id}",
+                created_by=actor_id,
             )
             if entry is not None and not self.gl_bounce_entry_id:
                 self.gl_bounce_entry_id = entry.id
@@ -609,10 +670,6 @@ class Cheque(TenantScopedMixin, db.Model):
         if reason:
             self.notes = (self.notes or "") + f"\nسبب الإلغاء: {reason}"
 
-        from decimal import Decimal
-
-        amount_base = self.amount_base or Decimal("0")
-
         if self.cheque_type == "incoming" and self.customer_id:
             db.session.flush()
             from models.customer import recompute_customer_balance
@@ -622,70 +679,9 @@ class Cheque(TenantScopedMixin, db.Model):
 
     def _create_cancel_journal_entry(self):
         """إنشاء قيد عكسي عند إلغاء الشيك"""
-        from services.gl_service import GLService
-
-        try:
-            lines = []
-            if self.cheque_type == "incoming":
-                customer = self.customer
-                ar_account = (
-                    GLService.get_customer_credit_account(customer)
-                    if self.customer_id
-                    else "1130"
-                )
-                lines = [
-                    {
-                        "account": ar_account,
-                        "debit": self.amount_base,
-                        "credit": 0,
-                        "description": f"إلغاء شيك وارد رقم {self.cheque_bank_number}",
-                        "party_id": customer.id if customer and customer.customer_type == "partner" else None,
-                    },
-                    {
-                        "account": "1150",
-                        "debit": 0,
-                        "credit": self.amount_base,
-                        "description": f"إلغاء شيك رقم {self.cheque_bank_number}",
-                    },
-                ]
-
-            elif self.cheque_type == "outgoing":
-                if self.supplier_id:
-                    credit_account = "2110"
-                elif self.customer_id:
-                    credit_account = GLService.get_customer_credit_account(
-                        self.customer
-                    )
-                else:
-                    credit_account = "2110"
-                lines = [
-                    {
-                        "account": "2120",
-                        "debit": self.amount_base,
-                        "credit": 0,
-                        "description": f"إلغاء شيك صادر رقم {self.cheque_bank_number}",
-                    },
-                    {
-                        "account": credit_account,
-                        "debit": 0,
-                        "credit": self.amount_base,
-                        "description": f"إلغاء شيك رقم {self.cheque_bank_number}",
-                    },
-                ]
-
-            if lines:
-                GLService.post_entry(
-                    lines=lines,
-                    description=f"إلغاء شيك {self.type_ar} رقم {self.cheque_bank_number}",
-                    reference_type="cheque_cancel",
-                    reference_id=self.id,
-                    tenant_id=getattr(self, "tenant_id", None),
-                )
-        except Exception as e:
-            current_app.logger.error(
-                f"Failed to create GL entry for cancelled cheque {self.id}: {e}"
-            )
-            raise
+        if self.gl_journal_entry_id is None:
+            return
+        return self._reverse_linked_journal("cheque_cancel")
 
     def archive(self, reason=None):
         """أرشفة الشيك - مع عكس القيد إذا كان نشطاً"""
@@ -694,10 +690,6 @@ class Cheque(TenantScopedMixin, db.Model):
             "deposited",
             "under_collection",
         ]
-
-        from decimal import Decimal
-
-        amount_base = self.amount_base or Decimal("0")
 
         self.is_active = False
         self.archived_at = datetime.now(timezone.utc)

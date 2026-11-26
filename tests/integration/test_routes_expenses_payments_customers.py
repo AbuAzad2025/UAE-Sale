@@ -27,14 +27,17 @@ from utils.helpers import generate_number
 
 
 @pytest.fixture(autouse=True)
-def _offline_exchange_rates():
+def _offline_exchange_rates(monkeypatch):
     from services.currency_service import CurrencyService
 
-    CurrencyService._rates_cache["AED"] = {
-        "timestamp": time.time(),
-        "rates": {"AED": Decimal("1"), "ILS": Decimal("1")},
-    }
-    yield
+    monkeypatch.setitem(
+        CurrencyService._rates_cache,
+        "AED",
+        {
+            "timestamp": time.time(),
+            "rates": {"AED": Decimal("1"), "ILS": Decimal("1")},
+        },
+    )
 
 
 def _uniq(prefix=""):
@@ -130,6 +133,7 @@ def manual_receipt(db, owner_user, test_customer):
 def _expense_form(category_id=None, **over):
     data = {
         "description": "إيجار المعرض الشهري",
+        "exchange_rate": "1",
         "amount": "500",
         "currency": "AED",
         "payment_method": "cash",
@@ -228,7 +232,7 @@ class TestExpensesPages:
 
 class TestExpenseCreate:
     def test_post_cash_expense_persists_with_gl_entry(
-        self, client, login_owner, expense_category
+        self, client, posting_owner, expense_category
     ):
         resp = client.post("/expenses/create", data=_expense_form(expense_category.id))
         assert resp.status_code == 302
@@ -255,7 +259,7 @@ class TestExpenseCreate:
         assert exp.expense_number in view.get_data(as_text=True)
 
     def test_post_cheque_expense_creates_pending_outgoing_cheque(
-        self, client, login_owner, expense_category
+        self, client, posting_owner, expense_category
     ):
         chq_num = _uniq("CHQ-X-")
         form = _expense_form(
@@ -419,7 +423,7 @@ class TestPaymentsVoucher:
         assert client.get("/payments/receipts/create").status_code == 302
 
     def test_outgoing_supplier_payment_cash_persists_with_gl(
-        self, client, login_owner, supplier
+        self, client, posting_owner, supplier
     ):
         resp = client.post(
             "/payments/voucher/submit",
@@ -443,7 +447,7 @@ class TestPaymentsVoucher:
         assert entry.total_debit == entry.total_credit == Decimal("300")
         assert {ln.account.code for ln in entry.lines} == {"2110", "1110"}
 
-    def test_incoming_refund_from_supplier(self, client, login_owner, supplier):
+    def test_incoming_refund_from_supplier(self, client, posting_owner, supplier):
         client.post(
             "/payments/voucher/submit",
             data=_voucher_form(
@@ -469,7 +473,7 @@ class TestPaymentsVoucher:
         assert {ln.account.code for ln in entry.lines} == {"1120", "2110"}
 
     def test_outgoing_refund_to_partner_customer_posts_partner_account(
-        self, client, login_owner, partner_customer
+        self, client, posting_owner, partner_customer
     ):
         client.post(
             "/payments/voucher/submit",
@@ -527,7 +531,7 @@ class TestPaymentsVoucher:
 
 class TestReceiptsListing:
     @pytest.fixture
-    def ledger_rows(self, client, login_owner, supplier, test_customer):
+    def ledger_rows(self, client, posting_owner, supplier, test_customer):
         client.post(
             "/payments/voucher/submit",
             data=_voucher_form(
@@ -647,7 +651,7 @@ class TestSupplierPaymentDocs:
         assert db.session.get(Payment, pid) is None
 
     def test_archive_payment_reverses_gl_and_hides_from_listing(
-        self, client, login_owner, supplier
+        self, client, posting_owner, supplier
     ):
         client.post(
             "/payments/voucher/submit",
@@ -714,7 +718,7 @@ class TestReceiptDocsAndAllocation:
         assert db.session.get(Receipt, rid) is None
 
     def test_voucher_incoming_creates_manual_receipt(
-        self, client, login_owner, test_customer
+        self, client, posting_owner, test_customer
     ):
         before = Receipt.query.count()
         client.post(
@@ -733,7 +737,7 @@ class TestReceiptDocsAndAllocation:
         assert rcv.amount_base == Decimal("90")
 
     def test_create_from_sale_requires_method_then_allocates(
-        self, client, login_owner, test_sale
+        self, client, posting_owner, test_sale
     ):
         page = client.get(f"/payments/create_from_sale/{test_sale.id}")
         assert page.status_code == 200
@@ -878,8 +882,48 @@ class TestCustomersHttp:
         db.session.refresh(test_customer)
         assert test_customer.name == "اسم محدث"
 
+    def test_partner_statement_follows_mapping_and_nets_reversals(
+        self, client, db, posting_owner, owner_user, partner_customer
+    ):
+        from flask import template_rendered
+        from models import GLAccount, SystemSettings
+        from services.gl_service import GLService
+
+        account = GLAccount(code="3359", name="Partner current remap", type="equity")
+        db.session.add(account)
+        SystemSettings.get_current().set_custom_setting(
+            f"gl_role_map:{posting_owner.id}", {"PARTNERS_CURRENT": account.code}
+        )
+        entries = []
+        for amount in (30, 47):
+            entry = GLService.post_entry(
+                [
+                    {"account": "1110", "debit": amount},
+                    {
+                        "account": account.code,
+                        "credit": amount,
+                        "party_id": partner_customer.id,
+                    },
+                ],
+                tenant_id=posting_owner.id,
+                created_by=owner_user.id,
+            )
+            entries.append(entry)
+        entries[1].reverse_entry(created_by=owner_user.id)
+        db.session.commit()
+        rendered = []
+
+        def capture(sender, template, context, **extra):
+            if template.name == "customers/statement.html":
+                rendered.append(context["partner_entitlement"])
+
+        with template_rendered.connected_to(capture, client.application):
+            response = client.get(f"/customers/{partner_customer.id}/statement")
+        assert response.status_code == 200
+        assert rendered == [Decimal("30")]
+
     def test_statement_shows_sale_and_refund_payment(
-        self, client, login_owner, test_customer, test_sale
+        self, client, posting_owner, test_customer, test_sale
     ):
         client.post(
             "/payments/voucher/submit",

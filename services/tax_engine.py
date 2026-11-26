@@ -34,14 +34,6 @@ _ROLE_FALLBACKS = {
     "inventory": "INVENTORY",
     "cogs": "COGS",
 }
-_CODE_FALLBACKS = {
-    "output_vat": "2131",
-    "sales_returns": "4100",
-    "sales_revenue": "4100",
-    "ar_control": "1130",
-    "inventory": "1140",
-    "cogs": "5100",
-}
 
 
 def to_decimal(value):
@@ -175,29 +167,14 @@ class TaxEngine:
     def liability_routing(tenant_id=None):
         """Resolve GL accounts for tax-related postings.
 
-        Consumes Agent 1's central ``AccountResolver`` defensively: if the
-        module is absent (parallel development) or resolution fails, falls
-        back to today's literal chart codes.
+        The central resolver applies the tenant's map, global map, and defaults.
         """
-        routing = {}
-        for key, role_name in _ROLE_FALLBACKS.items():
-            routing[key] = TaxEngine._resolve_account(role_name, key, tenant_id)
-        return routing
+        from services.account_resolution import AccountResolver
 
-    @staticmethod
-    def _resolve_account(role_name, fallback_key, tenant_id=None):
-        fallback_code = _CODE_FALLBACKS[fallback_key]
-        try:
-            from services.account_resolution import AccountRole, AccountResolver
-
-            try:
-                role = AccountRole[role_name]
-            except KeyError:
-                role = AccountRole(role_name)
-            resolved = AccountResolver.resolve(role, tenant_id=tenant_id)
-            return str(resolved) if resolved else fallback_code
-        except Exception:
-            return fallback_code
+        return {
+            key: AccountResolver.resolve(role, tenant_id=tenant_id)
+            for key, role in _ROLE_FALLBACKS.items()
+        }
 
     @staticmethod
     def _normalise_line(spec, index):

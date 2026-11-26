@@ -3,6 +3,7 @@ HR Module Routes - Departments, Employees, Leave, Payroll
 """
 
 from datetime import datetime, date
+from werkzeug.exceptions import HTTPException
 from flask import (
     Blueprint,
     render_template,
@@ -79,13 +80,13 @@ def create_department():
             create_audit_log("create", "departments", dept.id)
             flash(f'✅ تم إنشاء قسم "{dept.name}" بنجاح!', "success")
             return redirect(url_for("hr.departments"))
-        except ValueError as e:
+        except ValueError:
             current_app.logger.exception("handler failed")
-            flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-        except Exception as e:
+            flash("⚠️: حدث خطأ غير متوقع", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     parent_depts = (
         Department.query.filter_by(is_active=True).order_by(Department.code).all()
@@ -116,10 +117,10 @@ def edit_department(id):
             create_audit_log("update", "departments", dept.id)
             flash("✅ تم تحديث القسم بنجاح!", "success")
             return redirect(url_for("hr.departments"))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     parent_depts = (
         Department.query.filter(
@@ -454,13 +455,13 @@ def create_leave():
             flash("✅ تم تقديم طلب الإجازة بنجاح!", "success")
             return redirect(url_for("hr.leave_requests"))
 
-        except ValueError as e:
+        except ValueError:
             current_app.logger.exception("handler failed")
-            flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-        except Exception as e:
+            flash("⚠️: حدث خطأ غير متوقع", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     employees = (
         Employee.query.filter_by(is_active=True, employment_status="active")
@@ -484,13 +485,13 @@ def approve_leave(id):
         leave = HRService.approve_leave(id, current_user.id)
         create_audit_log("approve", "leave_requests", leave.id)
         flash("✅ تمت الموافقة على طلب الإجازة", "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-    except Exception as e:
+        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
     return redirect(url_for("hr.leave_requests"))
 
 
@@ -503,13 +504,13 @@ def reject_leave(id):
         leave = HRService.reject_leave(id, current_user.id, reason)
         create_audit_log("reject", "leave_requests", leave.id)
         flash("⚠️ تم رفض طلب الإجازة", "warning")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-    except Exception as e:
+        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
     return redirect(url_for("hr.leave_requests"))
 
 
@@ -521,13 +522,13 @@ def cancel_leave(id):
         leave = HRService.cancel_leave(id)
         create_audit_log("cancel", "leave_requests", leave.id)
         flash("✅ تم إلغاء طلب الإجازة", "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-    except Exception as e:
+        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
     return redirect(url_for("hr.leave_requests"))
 
 
@@ -621,9 +622,9 @@ def generate_payroll():
 
             return redirect(url_for("hr.payroll"))
 
-        except Exception as e:
+        except Exception:
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return render_template("hr/generate_payroll.html")
 
@@ -633,7 +634,7 @@ def generate_payroll():
 @permission_required("manage_hr")
 def view_payslip(id):
     payslip = get_owned_or_404(Payslip, id)
-    return render_template("hr/view_payslip.html", payslip=payslip)
+    return render_template("hr/view_payslip.html", payslip=payslip, today=date.today())
 
 
 @hr_bp.route("/payroll/<int:id>/approve", methods=["POST"])
@@ -645,18 +646,22 @@ def approve_payslip(id):
         if payslip is None:
             abort(404)
         from utils.decorators import assert_same_tenant
+
         assert_same_tenant(payslip)
         payslip.approve(current_user.id)
         db.session.commit()
         create_audit_log("approve", "payslips", payslip.id)
         flash("✅ تم اعتماد كشف الرواتب بنجاح", "success")
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"⚠️: حدث خطأ غير متوقع", "danger")
-    except Exception as e:
+        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except HTTPException:
+        db.session.rollback()
+        raise
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
     return redirect(url_for("hr.view_payslip", id=id))
 
 
@@ -666,17 +671,31 @@ def approve_payslip(id):
 def mark_payslip_paid(id):
     from decimal import Decimal
 
+    payslip = get_owned_or_404(Payslip, id)
     try:
-        payslip = get_owned_or_404(Payslip, id)
+        db.session.refresh(payslip, with_for_update=True)
+        today = date.today()
+        disbursed_on = date.fromisoformat(
+            request.form.get("disbursed_on", today.isoformat())
+        )
+        method = request.form.get("payment_method", "cash")
+        settlement_roles = {"cash": "CASH", "bank_transfer": "BANK"}
+        if method not in settlement_roles:
+            raise ValueError("اختر الصندوق أو التحويل البنكي.")
+        if disbursed_on > today or disbursed_on < payslip.pay_period_start:
+            raise ValueError("تاريخ الصرف يجب أن يقع بين بداية فترة الراتب واليوم.")
         payslip.mark_paid()
+        payslip.disbursed_on = disbursed_on
+        payslip.payment_method = method
+        audit = {"disbursed_on": disbursed_on.isoformat(), "payment_method": method}
 
         total_earnings = Decimal(str(payslip.total_earnings or 0))
         total_deductions = Decimal(str(payslip.total_deductions or 0))
         net = Decimal(str(payslip.net_salary or 0))
 
         if total_earnings <= 0 and total_deductions <= 0 and net <= 0:
+            create_audit_log("pay", "payslips", payslip.id, audit, commit=False)
             db.session.commit()
-            create_audit_log("pay", "payslips", payslip.id)
             flash("✅ تم تسجيل الدفع (لا توجد مبالغ للترحيل)", "success")
             return redirect(url_for("hr.view_payslip", id=id))
 
@@ -688,8 +707,10 @@ def mark_payslip_paid(id):
             AccountRole.SALARY_EXPENSE,
             AccountRole.SALARIES_PAYABLE,
             AccountRole.TAX_PAYABLE,
-            AccountRole.CASH,
+            AccountRole(settlement_roles[method]),
+            tenant_id=payslip.tenant_id,
         )
+        settlement_account = codes[settlement_roles[method]]
         tax = Decimal(str(payslip.tax_deduction or 0))
         other_ded = total_deductions - tax
         # Correct structure: Dr gross expense / Cr tax withheld / Cr other
@@ -718,7 +739,7 @@ def mark_payslip_paid(id):
                 }
             )
         lines.append(
-            {"account": codes["CASH"], "credit": net, "description": "صرف رواتب"}
+            {"account": settlement_account, "credit": net, "description": "صرف رواتب"}
         )
         GLService.ensure_core_accounts()
         entry = GLService.post_entry(
@@ -728,19 +749,24 @@ def mark_payslip_paid(id):
             reference_id=payslip.id,
             currency=CurrencyService.get_base_currency(),
             exchange_rate=Decimal("1"),
-            entry_date=payslip.pay_date,
+            entry_date=disbursed_on,
             created_by=current_user.id,
-            idempotency_key=f"Payslip:{payslip.id}:pay",
+            tenant_id=payslip.tenant_id,
+            idempotency_key=f"Payslip:{payslip.id}:disbursement:{disbursed_on.isoformat()}",
         )
         if entry is not None:
             payslip.gl_journal_entry_id = entry.id
+        audit["account_code"] = settlement_account
+        create_audit_log("pay", "payslips", payslip.id, audit, commit=False)
         db.session.commit()
-        create_audit_log("pay", "payslips", payslip.id)
         flash("✅ تم تسجيل الدفع وترحيل القيد إلى دفتر الأستاذ", "success")
     except ValueError as e:
         db.session.rollback()
         current_app.logger.warning(f"Payslip paid rejected: {e}")
         flash(f"⚠️ تعذر تسجيل الدفع: {e}", "danger")
+    except HTTPException:
+        db.session.rollback()
+        raise
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Payroll pay failed: {e}", exc_info=True)

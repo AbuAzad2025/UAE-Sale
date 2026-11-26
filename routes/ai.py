@@ -7,6 +7,7 @@ import os
 import re
 import threading
 import time
+import uuid
 from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, jsonify, render_template, current_app, abort, url_for
 from flask_login import login_required, current_user
@@ -796,7 +797,10 @@ def chat():
     from services import assistant_actions
     from services.ai_questions import COMPANY_SELECTION_REQUIRED, answer as grounded_answer, is_sales_question
 
-    structured = assistant_actions.interpret(message, current_user, request.headers.get("Idempotency-Key"))
+    key = request.headers.get("Idempotency-Key")
+    if not key:
+        key = str(uuid.uuid4())
+    structured = assistant_actions.interpret(message, current_user, key)
     if structured is not None:
         return _assistant_response(structured)
 

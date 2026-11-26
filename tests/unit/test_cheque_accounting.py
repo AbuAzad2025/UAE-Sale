@@ -5,8 +5,27 @@ from decimal import Decimal
 
 import pytest
 
-from models import Cheque, Supplier
+from models import Cheque, GLAccount, Supplier, Tenant
+from models.tenant_scope import clear_current_tenant_id, set_current_tenant_id
 from services.cheque_accounting_integration import ChequeAccountingIntegration
+from services.fiscal_period_guard import ensure_current_period
+
+
+@pytest.fixture(autouse=True)
+def cheque_tenant(db):
+    tenant = Tenant(
+        name="Cheque tests", name_ar="الفحص", slug="cheque-test", default_currency="ILS"
+    )
+    db.session.add(tenant)
+    db.session.flush()
+    set_current_tenant_id(tenant.id)
+    try:
+        for year in {date.today().year, (date.today() - timedelta(days=10)).year}:
+            ensure_current_period(year, tenant_id=tenant.id)
+        db.session.commit()
+        yield tenant
+    finally:
+        clear_current_tenant_id()
 
 
 def _cheque(
@@ -74,7 +93,7 @@ class TestReceiveCheque:
         assert debit_line.debit == Decimal("1000.00")
 
     def test_receive_outgoing_rejected(self, db, outgoing_pending):
-        with pytest.raises(Exception, match="ليس شيك وارد"):
+        with pytest.raises(ValueError, match="pending incoming cheque"):
             ChequeAccountingIntegration.receive_cheque(outgoing_pending.id)
 
     def test_missing_amount_base_self_heals(self, db, test_customer):
@@ -108,7 +127,7 @@ class TestIssueCheque:
         assert outgoing_pending.gl_journal_entry_id == entry.id
 
     def test_issue_incoming_rejected(self, db, incoming_pending):
-        with pytest.raises(Exception, match="ليس شيك صادر"):
+        with pytest.raises(ValueError, match="pending outgoing cheque"):
             ChequeAccountingIntegration.issue_cheque(incoming_pending.id)
 
 
@@ -130,6 +149,8 @@ class TestClearCheque:
     def test_clear_incoming_with_charges_balances(
         self, db, owner_user, incoming_pending
     ):
+        incoming_pending.currency = "USD"
+        db.session.flush()
         ChequeAccountingIntegration.receive_cheque(incoming_pending.id)
         entry = ChequeAccountingIntegration.clear_cheque(
             incoming_pending.id,
@@ -146,6 +167,8 @@ class TestClearCheque:
         assert loss_line.debit == Decimal("15")
 
     def test_clear_outgoing_with_gain(self, db, owner_user, outgoing_pending):
+        outgoing_pending.currency = "USD"
+        db.session.flush()
         ChequeAccountingIntegration.issue_cheque(outgoing_pending.id)
         entry = ChequeAccountingIntegration.clear_cheque(
             outgoing_pending.id,
@@ -163,7 +186,7 @@ class TestClearCheque:
         assert outgoing_pending.status == "cleared"
 
     def test_clear_pending_status_rejected(self, db, incoming_pending):
-        with pytest.raises(ValueError, match="يمكن صرفه"):
+        with pytest.raises(ValueError, match="uncleared"):
             ChequeAccountingIntegration.clear_cheque(incoming_pending.id)
 
 
@@ -186,7 +209,7 @@ class TestBounceCheque:
         db.session.refresh(incoming_pending)
         assert incoming_pending.status == "bounced"
         assert incoming_pending.bounce_reason == "عدم كفاية الرصيد"
-        assert incoming_pending.bounced_date is not None
+        assert incoming_pending.clearance_date is not None
 
         # التحقق من تحديث رصيد العميل عند الارتداد
         db.session.refresh(test_customer)
@@ -194,9 +217,8 @@ class TestBounceCheque:
 
     def test_bounce_outgoing_restores_ap(self, db, owner_user, outgoing_pending):
         ChequeAccountingIntegration.issue_cheque(outgoing_pending.id)
-        supplier = outgoing_pending.supplier
-        db.session.refresh(supplier)
-        initial_total_purchases = supplier.total_purchases_aed
+        payable = GLAccount.query.filter_by(code="2110").one()
+        assert payable.get_balance() == Decimal("-1000")
 
         entry = ChequeAccountingIntegration.bounce_cheque(outgoing_pending.id)
 
@@ -205,16 +227,12 @@ class TestBounceCheque:
         credit_line = next(ln for ln in entry.lines if ln.credit > 0)
         assert credit_line.account.code == "2110"
 
-        # التحقق من تحديث رصيد المورد عند الارتداد
-        db.session.refresh(supplier)
-        assert supplier.total_purchases_aed == initial_total_purchases - Decimal(
-            "1000.00"
-        )
+        assert payable.get_balance() == Decimal("0")
 
     def test_bounce_cleared_rejected(self, db, incoming_pending):
-        incoming_pending.status = "cleared"
-        db.session.commit()
-        with pytest.raises(ValueError, match="ارتداده"):
+        ChequeAccountingIntegration.receive_cheque(incoming_pending.id)
+        ChequeAccountingIntegration.clear_cheque(incoming_pending.id)
+        with pytest.raises(ValueError, match="رفض شيك"):
             ChequeAccountingIntegration.bounce_cheque(incoming_pending.id)
 
 
@@ -243,19 +261,16 @@ class TestCancelCheque:
         ChequeAccountingIntegration.issue_cheque(
             outgoing_pending.id, issued_by=owner_user.id
         )
-        supplier = outgoing_pending.supplier
-        db.session.refresh(supplier)
-        purchases_after_issue = supplier.total_purchases_aed
+        payable = GLAccount.query.filter_by(code="2110").one()
+        assert payable.get_balance() == Decimal("-1000")
 
         # إلغاء الشيك يعيد رصيد المورد
         outgoing_pending.cancel_cheque(reason="إلغاء تجريبي")
-        db.session.refresh(supplier)
-        assert supplier.total_purchases_aed == purchases_after_issue - Decimal(
-            "1000.00"
-        )
+        assert payable.get_balance() == Decimal("0")
 
     def test_cancel_already_cancelled_noop(self, db, incoming_pending):
         """إلغاء شيك ملغي مسبقاً لا يحدث تغيير"""
+        ChequeAccountingIntegration.receive_cheque(incoming_pending.id)
         incoming_pending.cancel_cheque()
         incoming_pending.cancel_cheque()  # استدعاء ثاني يجب أن يكون no-op
         assert incoming_pending.status == "cancelled"
@@ -297,6 +312,42 @@ class TestArchiveCheque:
 
 
 class TestSummary:
+    def test_summary_excludes_other_tenants_postings(
+        self, db, cheque_tenant, incoming_pending
+    ):
+        from services.gl_service import GLService
+
+        cheque_id = incoming_pending.id
+        ChequeAccountingIntegration.receive_cheque(cheque_id)
+        other = Tenant(
+            name="Other", name_ar="أخرى", slug="other-cheque", default_currency="ILS"
+        )
+        db.session.add(other)
+        db.session.flush()
+        set_current_tenant_id(other.id)
+        ensure_current_period(date.today().year, tenant_id=other.id)
+        GLService.post_entry(
+            [
+                {"account": "1150", "debit": Decimal("19.00")},
+                {"account": "1130", "credit": Decimal("19.00")},
+            ],
+            description="Other tenant receivable",
+            tenant_id=other.id,
+        )
+        db.session.flush()
+        clear_current_tenant_id()
+        try:
+            summary = ChequeAccountingIntegration.get_cheque_accounting_summary(
+                cheque_id
+            )
+            balances = {
+                item["code"]: item["balance"] for item in summary["account_impact"]
+            }
+            assert balances["1150"] == 1000
+            assert balances["1130"] == -1000
+        finally:
+            set_current_tenant_id(cheque_tenant.id)
+
     def test_full_lifecycle_summary(self, db, owner_user, incoming_pending):
         ChequeAccountingIntegration.receive_cheque(
             incoming_pending.id, received_by=owner_user.id

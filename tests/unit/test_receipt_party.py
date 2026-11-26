@@ -1,5 +1,6 @@
 """Payment receipts must show the supplier (not an empty customer box),
 and amount-in-words must contrast with the coloured amount panel."""
+
 import os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -20,15 +21,15 @@ def test_templates_use_party_not_customer():
 
 def test_route_passes_party_for_payment_and_receipt():
     src = open(os.path.join(ROOT, "routes", "payments.py"), encoding="utf-8").read()
-    assert 'def _receipt_party(doc, is_payment)' in src
+    assert "def _receipt_party(doc, is_payment)" in src
     # both print routes pass party
     assert src.count("party=_receipt_party(") >= 3
 
 
 def test_supplier_details_translation_keys():
-    p = os.path.join(ROOT, "utils", "i18n_keys", "agent_receipt_party.py")
-    src = open(p, encoding="utf-8").read()
-    assert '"Supplier Details"' in src and '"ar": "بيانات المورد"' in src
+    from utils.i18n import TRANSLATIONS
+
+    assert TRANSLATIONS["Supplier Details"]["ar"] == "بيانات المورد"
 
 
 def test_green_amount_panels_use_white_words():

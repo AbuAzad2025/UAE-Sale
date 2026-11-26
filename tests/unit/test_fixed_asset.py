@@ -129,6 +129,7 @@ class TestDepreciationMath:
         assert a.calculate_monthly_depreciation() == Decimal("0")
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestPostDepreciation:
     def test_posts_entry_and_schedule(self, db):
         a = _wired_asset(db)
@@ -166,6 +167,7 @@ class TestPostDepreciation:
         assert a.status == "fully_depreciated"
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestDispose:
     def _sellable(self, db):
         # Creating them with the helper's default type ('asset') made the

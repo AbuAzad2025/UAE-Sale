@@ -16,11 +16,11 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from extensions import db
 from models import GLJournalEntry, StockMovement
+from services.account_resolution import AccountResolver, AccountRole
+from services.currency_service import CurrencyService
 from services.gl_service import GLService
 
 MONEY = Decimal("0.001")
-INVENTORY_CODE = "1140"
-EQUITY_CODE = "3100"
 OPENING_REF_TYPE = "OpeningStock"
 SOURCE_REF_TYPE = "Product Creation"
 
@@ -33,7 +33,8 @@ class OpeningStockService:
             q = q.filter_by(tenant_id=tenant_id)
         rows = q.order_by(StockMovement.id).all()
         posted = {
-            rid for (rid,) in db.session.query(GLJournalEntry.reference_id)
+            rid
+            for (rid,) in db.session.query(GLJournalEntry.reference_id)
             .filter(GLJournalEntry.reference_type == OPENING_REF_TYPE)
             .all()
         }
@@ -62,11 +63,23 @@ class OpeningStockService:
         # to preserve existing reconciled openings; see config flag.
         from flask import current_app
 
+        codes = AccountResolver.resolve_codes(
+            AccountRole.INVENTORY,
+            AccountRole.CAPITAL,
+            AccountRole.VAT_INPUT,
+            tenant_id=movement.tenant_id,
+        )
         lines = [
-            {"account": INVENTORY_CODE, "debit": amount,
-             "description": f"رصيد افتتاحي مخزون - {product.name}"},
-            {"account": EQUITY_CODE, "credit": amount,
-             "description": f"رصيد افتتاحي مخزون - {product.name}"},
+            {
+                "account": codes["INVENTORY"],
+                "debit": amount,
+                "description": f"رصيد افتتاحي مخزون - {product.name}",
+            },
+            {
+                "account": codes["CAPITAL"],
+                "credit": amount,
+                "description": f"رصيد افتتاحي مخزون - {product.name}",
+            },
         ]
         if current_app.config.get("OPENING_STOCK_VAT_SPLIT", False):
             from services.tax_engine import TaxEngine
@@ -78,12 +91,21 @@ class OpeningStockService:
                 net = Decimal(str(parts["net"]))
                 vat = Decimal(str(parts["tax"]))
                 lines = [
-                    {"account": INVENTORY_CODE, "debit": net,
-                     "description": f"رصيد افتتاحي مخزون (صافي) - {product.name}"},
-                    {"account": "1141", "debit": vat,
-                     "description": f"ضريبة دخل رصيد افتتاحي - {product.name}"},
-                    {"account": EQUITY_CODE, "credit": amount,
-                     "description": f"رصيد افتتاحي مخزون - {product.name}"},
+                    {
+                        "account": codes["INVENTORY"],
+                        "debit": net,
+                        "description": f"رصيد افتتاحي مخزون (صافي) - {product.name}",
+                    },
+                    {
+                        "account": codes["VAT_INPUT"],
+                        "debit": vat,
+                        "description": f"ضريبة دخل رصيد افتتاحي - {product.name}",
+                    },
+                    {
+                        "account": codes["CAPITAL"],
+                        "credit": amount,
+                        "description": f"رصيد افتتاحي مخزون - {product.name}",
+                    },
                 ]
 
         GLService.ensure_core_accounts()
@@ -92,8 +114,11 @@ class OpeningStockService:
             description=f"Opening stock {movement.id}",
             reference_type=OPENING_REF_TYPE,
             reference_id=movement.id,
-            currency="ILS",
+            currency=CurrencyService.get_base_currency(),
             exchange_rate=Decimal("1"),
+            tenant_id=movement.tenant_id,
+            created_by=getattr(actor, "id", None),
+            idempotency_key=f"opening-stock:{movement.id}",
         )
         return entry
 

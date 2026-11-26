@@ -2,9 +2,18 @@
 
 from decimal import Decimal
 
+import pytest
+
 
 from models import Product
 from services.sale_service import SaleService
+
+
+@pytest.fixture(autouse=True)
+def tax_policy(db, posting_tenant):
+    posting_tenant.enable_tax = True
+    posting_tenant.default_tax_rate = Decimal("0")
+    db.session.commit()
 
 
 def _mixed_products(db, test_category):
@@ -94,8 +103,8 @@ def test_mixed_credit_note_deducts_only_returned_bucket(
     sale = _create_mixed_sale(
         db, test_customer, owner_user, test_product, test_category
     )
-    exempt_line = next(l for l in sale.lines if l.tax_treatment == "exempt")
-    zero_line = next(l for l in sale.lines if l.tax_treatment == "zero")
+    exempt_line = next(line for line in sale.lines if line.tax_treatment == "exempt")
+    zero_line = next(line for line in sale.lines if line.tax_treatment == "zero")
 
     ReturnService.create_return(
         sale.id,
@@ -123,7 +132,7 @@ def test_mixed_partial_standard_return_reverses_only_std_tax(
     sale = _create_mixed_sale(
         db, test_customer, owner_user, test_product, test_category
     )
-    std_line = next(l for l in sale.lines if l.tax_treatment == "standard")
+    std_line = next(line for line in sale.lines if line.tax_treatment == "standard")
     ret = ReturnService.create_return(
         sale.id, [{"sale_line_id": std_line.id, "quantity": 1}], user_id=owner_user.id
     )

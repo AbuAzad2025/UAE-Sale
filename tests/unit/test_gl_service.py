@@ -16,7 +16,7 @@ def core_accounts(db):
 
 
 @pytest.fixture(autouse=True)
-def open_fiscal_period(db):
+def open_fiscal_period(db, posting_tenant):
     """فترة مالية مفتوحة تغطي السنة الحالية.
 
     F10: منذ أن صار ``GLService`` يرفض الترحيل إلى فترة مغلقة أو إلى
@@ -48,7 +48,8 @@ class TestAccountMapping:
         assert GLService.get_payment_debit_account("bank_transfer") == "1120"
         assert GLService.get_payment_debit_account("card") == "1120"
         assert GLService.get_payment_debit_account("cheque") == "1150"
-        assert GLService.get_payment_debit_account("unknown_method") == "1110"
+        with pytest.raises(ValueError, match="Unsupported GL payment method"):
+            GLService.get_payment_debit_account("unknown_method")
         assert GLService.get_payment_debit_account(None) == "1110"
 
     def test_customer_credit_accounts(self, db, test_customer):

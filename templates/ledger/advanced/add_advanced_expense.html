@@ -31,9 +31,32 @@
             </div>
           </div>
         </div>
+        <div class="row">
+          <div class="col-md-4 form-group">
+            <label for="expense-payment-status">{{ t('Payment Status') }}</label>
+            <select id="expense-payment-status" name="payment_status" class="form-control">
+              <option value="pending">{{ t('Pending') }}</option>
+              <option value="paid">{{ t('Paid') }}</option>
+              <option value="partial">{{ t('Partially Paid') }}</option>
+            </select>
+          </div>
+          <div class="col-md-4 form-group">
+            <label for="expense-payment-method">{{ t('Payment Method') }}</label>
+            <select id="expense-payment-method" name="payment_method" class="form-control">
+              <option value="cash">{{ t('Cash') }}</option>
+              <option value="bank_transfer">{{ t('Bank Transfer') }}</option>
+              <option value="card">{{ t('Card') }}</option>
+              <option value="e_wallet">{{ t('E-Wallet') }}</option>
+            </select>
+          </div>
+          <div class="col-md-4 form-group">
+            <label for="expense-paid-amount">{{ 'المبلغ المدفوع بعملة الأساس (للدفع الجزئي)' if current_language == 'ar' else 'Paid amount in base currency (partial payments)' }}</label>
+            <input id="expense-paid-amount" type="number" min="0" step="0.001" name="paid_amount" class="form-control">
+          </div>
+        </div>
         <div class="form-group">
           <label>{{ t('Description') }}</label>
-          <textarea name="description" class="form-control" rows="3"></textarea>
+          <textarea name="description" class="form-control" rows="3" required></textarea>
         </div>
         <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> {{ t('Save') }}</button>
         <a href="{{ url_for('advanced_ledger.advanced_expenses') }}" class="btn btn-secondary"><i class="fas fa-times"></i> {{ t('Cancel') }}</a>

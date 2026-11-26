@@ -320,7 +320,11 @@ def edit(id):
             customer.tax_number = request.form.get("tax_number")
             # The edit form submits default_currency; accept either name and
             # preserve the current value if neither is present.
-            _cur = (request.form.get("preferred_currency") or request.form.get("default_currency") or "").strip()
+            _cur = (
+                request.form.get("preferred_currency")
+                or request.form.get("default_currency")
+                or ""
+            ).strip()
             if _cur:
                 customer.preferred_currency = _cur
             customer.payment_terms_days = payment_terms_days
@@ -398,7 +402,7 @@ def delete(id):
                 )
         except Exception:
             current_app.logger.exception("handler failed")
-            flash(f"❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع", "danger")
+            flash("❌ حدث خطأ أثناء حذف العميل: حدث خطأ غير متوقع", "danger")
             current_app.logger.error(f"Error deleting customer {id}: {e}")
 
     return redirect(url_for("customers.index"))
@@ -420,23 +424,21 @@ def _customer_statement(id, *, export=False):
 
     from sqlalchemy import func
     from models import Payment, ProductReturn
-    from models.customer import derive_customer_balance, maintenance_receivable_movements
+    from models.customer import (
+        derive_customer_balance,
+        maintenance_receivable_movements,
+    )
     from models.cheque import Cheque
     from models.write_off import WriteOff
 
-    sales_query = Sale.query.filter_by(customer_id=id, status="confirmed", is_active=True)
+    sales_query = Sale.query.filter_by(
+        customer_id=id, status="confirmed", is_active=True
+    )
     payments_query = Payment.query.filter_by(customer_id=id)
-    returns_query = ProductReturn.query.filter_by(customer_id=id, status='approved')
+    returns_query = ProductReturn.query.filter_by(customer_id=id, status="approved")
     cheques_query = Cheque.query.filter(
         Cheque.customer_id == id,
     )
-    receipts_query = Receipt.query.filter(
-        Receipt.customer_id == id,
-        Receipt.sale_id.is_(None),
-        Receipt.purchase_id.is_(None),
-    ) if False else None
-    # Receipt model import
-    from models.payment import Receipt
     receipts_query = Receipt.query.filter(
         Receipt.customer_id == id,
         Receipt.sale_id.is_(None),
@@ -470,9 +472,13 @@ def _customer_statement(id, *, export=False):
         returns_query = returns_query.filter(
             func.date(ProductReturn.return_date) <= date_to
         )
-        cheques_query = cheques_query.filter(
-            func.coalesce(Cheque.issue_date, Cheque.created_at) <= date_to
-        ) if hasattr(Cheque, 'created_at') else cheques_query
+        cheques_query = (
+            cheques_query.filter(
+                func.coalesce(Cheque.issue_date, Cheque.created_at) <= date_to
+            )
+            if hasattr(Cheque, "created_at")
+            else cheques_query
+        )
         receipts_query = receipts_query.filter(
             func.date(Receipt.receipt_date) <= date_to
         )
@@ -501,12 +507,22 @@ def _customer_statement(id, *, export=False):
     opening = customer.get_opening_balance_base()
     opening_date = customer.opening_balance_date
     opening_day = opening_date.isoformat() if opening_date else ""
-    if opening and (not date_from or opening_day >= date_from) and (not date_to or opening_day <= date_to):
-        transactions.append({
-            "date": opening_date, "type": "opening_balance", "reference": "-",
-            "description": "الرصيد الافتتاحي", "currency": customer.opening_balance_currency,
-            "debit": float(max(opening, 0)), "credit": float(max(-opening, 0)),
-        })
+    if (
+        opening
+        and (not date_from or opening_day >= date_from)
+        and (not date_to or opening_day <= date_to)
+    ):
+        transactions.append(
+            {
+                "date": opening_date,
+                "type": "opening_balance",
+                "reference": "-",
+                "description": "الرصيد الافتتاحي",
+                "currency": customer.opening_balance_currency,
+                "debit": float(max(opening, 0)),
+                "credit": float(max(-opening, 0)),
+            }
+        )
 
     for sale in sales:
         loaded_sale = sales_dict.get(sale.id, sale)
@@ -634,7 +650,9 @@ def _customer_statement(id, *, export=False):
                 "type": "return",
                 "reference": prod_return.return_number,
                 "debit": 0,
-                "credit": float((prod_return.refund_amount or 0) * (prod_return.exchange_rate or 1)),
+                "credit": float(
+                    (prod_return.refund_amount or 0) * (prod_return.exchange_rate or 1)
+                ),
                 "balance": 0,
                 "description": "مرتجع بضاعة",
                 "currency": prod_return.currency or "AED",
@@ -662,21 +680,29 @@ def _customer_statement(id, *, export=False):
         day = movement_date.date().isoformat() if movement_date else ""
         if (date_from and day < date_from) or (date_to and day > date_to):
             continue
-        transactions.append({
-            **movement,
-            "debit": float(movement["debit"]),
-            "credit": float(movement["credit"]),
-            "paid_amount": 0,
-            "balance_due": 0,
-            "status": "posted",
-        })
+        transactions.append(
+            {
+                **movement,
+                "debit": float(movement["debit"]),
+                "credit": float(movement["credit"]),
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": "posted",
+            }
+        )
 
     # Cheques (all cheques for this customer - standalone and linked)
     for cheque in cheques:
         amount = float(cheque.amount_base or 0)
         status = cheque.status
-        is_active = cheque.is_active if hasattr(cheque, 'is_active') else True
-        is_linked = bool(cheque.receipt_id or cheque.payment_id or cheque.sale_id)
+        is_active = cheque.is_active if hasattr(cheque, "is_active") else True
+        is_linked = bool(
+            cheque.receipt_id
+            or cheque.payment_id
+            or cheque.sale_id
+            or cheque.receipt_record
+            or cheque.payment_record
+        )
         linked_ref = ""
         if cheque.receipt_id:
             linked_ref = f" (مرتبط بإشعار #{cheque.receipt_id})"
@@ -687,187 +713,228 @@ def _customer_statement(id, *, export=False):
 
         if status == "bounced":
             if is_linked:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                    "type": "cheque",
-                    "reference": cheque.cheque_number,
-                    "debit": 0,
-                    "credit": 0,
-                    "balance": 0,
-                    "description": f"شيك مرتد (ارتد){linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
-                    "currency": cheque.currency or "AED",
-                    "exchange_rate": float(cheque.exchange_rate or 1),
-                    "paid_amount": 0,
-                    "balance_due": 0,
-                    "status": status,
-                })
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": 0,
+                        "credit": 0,
+                        "balance": 0,
+                        "description": f"شيك مرتد (ارتد){linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
             else:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                    "type": "cheque",
-                    "reference": cheque.cheque_number,
-                    "debit": amount,
-                    "credit": 0,
-                    "balance": 0,
-                    "description": "شيك مرتد (ارتد)",
-                    "currency": cheque.currency or "AED",
-                    "exchange_rate": float(cheque.exchange_rate or 1),
-                    "paid_amount": 0,
-                    "balance_due": 0,
-                    "status": status,
-                })
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": amount,
+                        "credit": 0,
+                        "balance": 0,
+                        "description": "شيك مرتد (ارتد)",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
         elif status == "cancelled":
             if is_linked:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                    "type": "cheque",
-                    "reference": cheque.cheque_number,
-                    "debit": 0,
-                    "credit": 0,
-                    "balance": 0,
-                    "description": f"شيك ملغى{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
-                    "currency": cheque.currency or "AED",
-                    "exchange_rate": float(cheque.exchange_rate or 1),
-                    "paid_amount": 0,
-                    "balance_due": 0,
-                    "status": status,
-                })
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": 0,
+                        "credit": 0,
+                        "balance": 0,
+                        "description": f"شيك ملغى{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
             else:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                    "type": "cheque",
-                    "reference": cheque.cheque_number,
-                    "debit": 0,
-                    "credit": amount,
-                    "balance": 0,
-                    "description": "شيك ملغى",
-                    "currency": cheque.currency or "AED",
-                    "exchange_rate": float(cheque.exchange_rate or 1),
-                    "paid_amount": 0,
-                    "balance_due": 0,
-                    "status": status,
-                })
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": 0,
+                        "credit": amount,
+                        "balance": 0,
+                        "description": "شيك ملغى",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
         elif not is_active and status in ("pending", "deposited", "under_collection"):
             if is_linked:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": 0,
+                        "credit": 0,
+                        "balance": 0,
+                        "description": f"شيك غير نشط{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
+            else:
+                transactions.append(
+                    {
+                        "date": cheque.issue_date
+                        if hasattr(cheque, "issue_date")
+                        else None,
+                        "type": "cheque",
+                        "reference": cheque.cheque_number,
+                        "debit": 0,
+                        "credit": amount,
+                        "balance": 0,
+                        "description": "شيك غير نشط",
+                        "currency": cheque.currency or "AED",
+                        "exchange_rate": float(cheque.exchange_rate or 1),
+                        "paid_amount": 0,
+                        "balance_due": 0,
+                        "status": status,
+                    }
+                )
+        elif (
+            status == "cleared"
+            and is_active
+            and not is_linked
+            and cheque.cheque_type == "incoming"
+            and cheque.gl_journal_entry_id
+        ):
+            transactions.append(
+                {
+                    "date": cheque.clearance_date or cheque.issue_date,
+                    "type": "cheque",
+                    "reference": cheque.cheque_number,
+                    "debit": 0,
+                    "credit": amount,
+                    "description": "تحصيل شيك وارد غير مرتبط بفاتورة",
+                    "currency": cheque.currency,
+                    "exchange_rate": float(cheque.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": status,
+                }
+            )
+        else:
+            # Show all other cheques (pending, deposited, under_collection, cleared) as informational
+            transactions.append(
+                {
+                    "date": cheque.issue_date
+                    if hasattr(cheque, "issue_date")
+                    else None,
                     "type": "cheque",
                     "reference": cheque.cheque_number,
                     "debit": 0,
                     "credit": 0,
                     "balance": 0,
-                    "description": f"شيك غير نشط{linked_ref} - التأثير في الدفعة/الإشعار المرتبط",
+                    "description": f"شيك ({status}){linked_ref}",
                     "currency": cheque.currency or "AED",
                     "exchange_rate": float(cheque.exchange_rate or 1),
                     "paid_amount": 0,
                     "balance_due": 0,
                     "status": status,
-                })
-            else:
-                transactions.append({
-                    "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                    "type": "cheque",
-                    "reference": cheque.cheque_number,
-                    "debit": 0,
-                    "credit": amount,
-                    "balance": 0,
-                    "description": "شيك غير نشط",
-                    "currency": cheque.currency or "AED",
-                    "exchange_rate": float(cheque.exchange_rate or 1),
-                    "paid_amount": 0,
-                    "balance_due": 0,
-                    "status": status,
-                })
-        elif (
-            status == "cleared" and is_active and not is_linked
-            and cheque.cheque_type == "incoming" and cheque.gl_journal_entry_id
-        ):
-            transactions.append({
-                "date": cheque.clearance_date or cheque.issue_date,
-                "type": "cheque",
-                "reference": cheque.cheque_number,
-                "debit": 0,
-                "credit": amount,
-                "description": "تحصيل شيك وارد غير مرتبط بفاتورة",
-                "currency": cheque.currency,
-                "exchange_rate": float(cheque.exchange_rate or 1),
-                "paid_amount": 0,
-                "balance_due": 0,
-                "status": status,
-            })
-        else:
-            # Show all other cheques (pending, deposited, under_collection, cleared) as informational
-            transactions.append({
-                "date": cheque.issue_date if hasattr(cheque, 'issue_date') else None,
-                "type": "cheque",
-                "reference": cheque.cheque_number,
-                "debit": 0,
-                "credit": 0,
-                "balance": 0,
-                "description": f"شيك ({status}){linked_ref}",
-                "currency": cheque.currency or "AED",
-                "exchange_rate": float(cheque.exchange_rate or 1),
-                "paid_amount": 0,
-                "balance_due": 0,
-                "status": status,
-            })
+                }
+            )
 
     # Receipts (standalone, not linked to sale/purchase)
     for receipt in receipts:
         amount = float(receipt.amount_base or 0)
         if receipt.rejection_reason:
-            transactions.append({
-                "date": receipt.receipt_date,
-                "type": "receipt",
-                "reference": receipt.receipt_number,
-                "debit": amount,
-                "credit": 0,
-                "balance": 0,
-                "description": "إشعار مرفوض",
-                "currency": receipt.currency or "AED",
-                "exchange_rate": float(receipt.exchange_rate or 1),
-                "paid_amount": 0,
-                "balance_due": 0,
-                "status": "rejected",
-            })
+            transactions.append(
+                {
+                    "date": receipt.receipt_date,
+                    "type": "receipt",
+                    "reference": receipt.receipt_number,
+                    "debit": amount,
+                    "credit": 0,
+                    "balance": 0,
+                    "description": "إشعار مرفوض",
+                    "currency": receipt.currency or "AED",
+                    "exchange_rate": float(receipt.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": "rejected",
+                }
+            )
         elif receipt.payment_confirmed:
-            transactions.append({
-                "date": receipt.receipt_date,
-                "type": "receipt",
-                "reference": receipt.receipt_number,
-                "debit": 0,
-                "credit": amount,
-                "balance": 0,
-                "description": "إشعار مؤكد",
-                "currency": receipt.currency or "AED",
-                "exchange_rate": float(receipt.exchange_rate or 1),
-                "paid_amount": 0,
-                "balance_due": 0,
-                "status": "confirmed",
-            })
+            transactions.append(
+                {
+                    "date": receipt.receipt_date,
+                    "type": "receipt",
+                    "reference": receipt.receipt_number,
+                    "debit": 0,
+                    "credit": amount,
+                    "balance": 0,
+                    "description": "إشعار مؤكد",
+                    "currency": receipt.currency or "AED",
+                    "exchange_rate": float(receipt.exchange_rate or 1),
+                    "paid_amount": 0,
+                    "balance_due": 0,
+                    "status": "confirmed",
+                }
+            )
 
     # Write-offs (posted)
     for woff in writeoffs:
         amount = float(woff.amount_base or 0)
-        transactions.append({
-            "date": woff.posted_at or woff.created_at,
-            "type": "write_off",
-            "reference": f"WO-{woff.id}",
-            "debit": 0,
-            "credit": amount,
-            "balance": 0,
-            "description": "إطفاء دين (شطب)",
-            "currency": woff.currency or "AED",
-            "exchange_rate": 1,
-            "paid_amount": 0,
-            "balance_due": 0,
-            "status": woff.status,
-        })
+        transactions.append(
+            {
+                "date": woff.posted_at or woff.created_at,
+                "type": "write_off",
+                "reference": f"WO-{woff.id}",
+                "debit": 0,
+                "credit": amount,
+                "balance": 0,
+                "description": "إطفاء دين (شطب)",
+                "currency": woff.currency or "AED",
+                "exchange_rate": 1,
+                "paid_amount": 0,
+                "balance_due": 0,
+                "status": woff.status,
+            }
+        )
 
     for payment in payments:
-        credit_amount = (
+        refund_amount = (
             float(payment.amount_base or 0)
-            if payment.payment_confirmed and not payment.sale_id and payment.direction == "outgoing"
+            if payment.payment_confirmed
+            and not payment.sale_id
+            and payment.direction == "outgoing"
             else 0.0
         )
 
@@ -880,13 +947,13 @@ def _customer_statement(id, *, export=False):
                 "reference": payment.reference_number
                 or payment.payment_number
                 or f"دفع #{payment.id}",
-                "debit": 0,
-                "credit": credit_amount,
+                "debit": refund_amount,
+                "credit": 0,
                 "balance": 0,
                 "description": f"دفعة - {payment.get_method_display('ar') if hasattr(payment, 'get_method_display') else payment.payment_method}",
                 "currency": payment.currency or "AED",
                 "exchange_rate": float(payment.exchange_rate or 1),
-                "paid_amount": credit_amount,
+                "paid_amount": refund_amount,
                 "balance_due": 0,
                 "status": payment.status_ar
                 if hasattr(payment, "status_ar")
@@ -935,7 +1002,17 @@ def _customer_statement(id, *, export=False):
 
     transactions.sort(key=_transaction_date_key)
 
-    if transaction_type in {"sale", "payment", "return", "maintenance_invoice", "maintenance_receipt", "maintenance_credit_note", "cheque", "receipt", "write_off"}:
+    if transaction_type in {
+        "sale",
+        "payment",
+        "return",
+        "maintenance_invoice",
+        "maintenance_receipt",
+        "maintenance_credit_note",
+        "cheque",
+        "receipt",
+        "write_off",
+    }:
         transactions = [
             trans for trans in transactions if trans["type"] == transaction_type
         ]
@@ -951,10 +1028,11 @@ def _customer_statement(id, *, export=False):
     system_balance = derive_customer_balance(id)
 
     # Partner entitlements: all GL lines booked to the partner current account
-    # (3350) with this customer as the party. Credits = profit shares owed to
+    # with this customer as the party. Credits = profit shares owed to
     # them, debits = draws/losses. This covers BOTH product-level shares (posted
     # per sale) and company-level distributions in one authoritative place.
     from models import GLAccount, GLJournalEntry, GLJournalLine, Product, ProductPartner
+    from services.account_resolution import AccountResolver, AccountRole
 
     partner_gl = (
         db.session.query(
@@ -968,9 +1046,13 @@ def _customer_statement(id, *, export=False):
         .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
         .filter(
             GLJournalLine.party_id == id,
-            GLAccount.code == "3350",
+            GLAccount.code
+            == AccountResolver.resolve(
+                AccountRole.PARTNERS_CURRENT, tenant_id=customer.tenant_id
+            ),
+            GLJournalEntry.tenant_id == customer.tenant_id,
+            GLJournalLine.tenant_id == customer.tenant_id,
             GLJournalEntry.is_posted.is_(True),
-            GLJournalEntry.is_reversed.is_(False),
         )
         .order_by(GLJournalEntry.entry_date, GLJournalEntry.id)
         .all()
@@ -980,13 +1062,15 @@ def _customer_statement(id, *, export=False):
     for num, desc, edate, debit, credit in partner_gl:
         amount = (credit or Decimal("0")) - (debit or Decimal("0"))
         partner_entitlement += amount
-        partner_movements.append({
-            "entry_number": num,
-            "description": desc or "-",
-            "date": edate,
-            "amount": amount,
-            "kind": "حصة ربح" if amount > 0 else "مسحوبات/تسوية",
-        })
+        partner_movements.append(
+            {
+                "entry_number": num,
+                "description": desc or "-",
+                "date": edate,
+                "amount": amount,
+                "kind": "حصة ربح" if amount > 0 else "مسحوبات/تسوية",
+            }
+        )
 
     partner_links = (
         db.session.query(Product.name, ProductPartner.percentage)
@@ -1148,35 +1232,44 @@ def _export_customer_statement(customer, transactions):
     ws.append(["التاريخ", "النوع", "المرجع", "الوصف", "مدين", "دائن", "الرصيد"])
 
     for row in transactions:
-        ws.append([
-            row["date"].strftime("%Y-%m-%d") if row["date"] else "-",
-            row["type"],
-            row["reference"],
-            row["description"],
-            row["debit"],
-            row["credit"],
-            row["balance"],
-        ])
+        ws.append(
+            [
+                row["date"].strftime("%Y-%m-%d") if row["date"] else "-",
+                row["type"],
+                row["reference"],
+                row["description"],
+                row["debit"],
+                row["credit"],
+                row["balance"],
+            ]
+        )
 
     # Style
     for cell in ws[5]:
         cell.font = Font(bold=True)
-        cell.fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+        cell.fill = PatternFill(
+            start_color="D9E2F3", end_color="D9E2F3", fill_type="solid"
+        )
 
     # Column widths
-    ws.column_dimensions['A'].width = 12
-    ws.column_dimensions['B'].width = 12
-    ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 25
-    ws.column_dimensions['E'].width = 12
-    ws.column_dimensions['F'].width = 12
-    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions["A"].width = 12
+    ws.column_dimensions["B"].width = 12
+    ws.column_dimensions["C"].width = 18
+    ws.column_dimensions["D"].width = 25
+    ws.column_dimensions["E"].width = 12
+    ws.column_dimensions["F"].width = 12
+    ws.column_dimensions["G"].width = 12
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
 
     from datetime import datetime as _dt
+
     filename = f"statement_{customer.name}_{_dt.now().strftime('%Y%m%d')}.xlsx"
-    return send_file(output, download_name=filename, as_attachment=True,
-                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return send_file(
+        output,
+        download_name=filename,
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )

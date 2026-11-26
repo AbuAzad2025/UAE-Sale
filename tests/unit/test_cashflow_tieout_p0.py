@@ -516,7 +516,9 @@ def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
     from models import Cheque
     from models.tenant_scope import run_in_tenant_context
 
-    tenant = Tenant(name="Treasury check", name_ar="تدقيق الخزينة", slug="treasury-check")
+    tenant = Tenant(
+        name="Treasury check", name_ar="تدقيق الخزينة", slug="treasury-check"
+    )
     db.session.add(tenant)
     db.session.commit()
 
@@ -529,20 +531,34 @@ def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
 
         def post(debit, credit, amount, reference_type=None, posting_day=today):
             return GLService.post_entry(
-                [{"account": debit, "debit": amount}, {"account": credit, "credit": amount}],
-                tenant_id=tenant.id, created_by=owner_user.id,
+                [
+                    {"account": debit, "debit": amount},
+                    {"account": credit, "credit": amount},
+                ],
+                tenant_id=tenant.id,
+                created_by=owner_user.id,
                 reference_type=reference_type,
                 entry_date=datetime.combine(posting_day, datetime.min.time()),
             )
+
         post("1110", "3100", 100)
         post("1140", "2110", 50)
         post("1120", "3350", 10, "Payment")
         issue = post("1150", "1130", 20)
-        db.session.add(Cheque(
-            cheque_type="incoming", cheque_number="TREASURY-1", cheque_bank_number="1",
-            bank_name="Bank", issue_date=date.today(), due_date=date.today(),
-            amount=20, amount_base=20, tenant_id=tenant.id, gl_journal_entry_id=issue.id,
-        ))
+        db.session.add(
+            Cheque(
+                cheque_type="incoming",
+                cheque_number="TREASURY-1",
+                cheque_bank_number="1",
+                bank_name="Bank",
+                issue_date=date.today(),
+                due_date=date.today(),
+                amount=20,
+                amount_base=20,
+                tenant_id=tenant.id,
+                gl_journal_entry_id=issue.id,
+            )
+        )
         db.session.flush()
         report = CashFlowService.generate_gl_cash_flow(None, None)
         assert report["cash_ending"] == report["net_change"] == Decimal("110")
@@ -550,17 +566,22 @@ def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
         assert report["financing_total"] == 100
         snapshot = CashFlowService.treasury_snapshot()
         assert snapshot["cash"] == Decimal("100") and snapshot["bank"] == 10
-        assert [(row["register"], row["ledger"], row["difference"]) for row in snapshot["cheques"]] == [
+        assert [
+            (row["register"], row["ledger"], row["difference"])
+            for row in snapshot["cheques"]
+        ] == [
             (Decimal("20"), Decimal("20"), Decimal("0")),
             (Decimal("0"), Decimal("0"), Decimal("0")),
         ]
+        post("1121", "4100", 5)
         post("6100", "1110", 120, "Payslip", tomorrow)
         current = CashFlowService.treasury_snapshot()
         previous = CashFlowService.treasury_snapshot(today - timedelta(days=1))
         future = CashFlowService.treasury_snapshot(tomorrow.isoformat())
         assert current["as_of"] == today and current["cash"] == Decimal("100")
+        assert current["bank"] == Decimal("15")
         assert previous["cash"] == previous["bank"] == 0
-        assert future["cash"] == Decimal("-20") and future["bank"] == 10
+        assert future["cash"] == Decimal("-20") and future["bank"] == 15
         assert future["cheques"] == current["cheques"]
 
     run_in_tenant_context(tenant.id, check)

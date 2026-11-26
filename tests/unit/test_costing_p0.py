@@ -180,14 +180,14 @@ class TestMovingAverage:
             Decimal("-5"), Decimal("10"), Decimal("5"), Decimal("20")
         ) == Decimal("20.000")
 
-    def test_the_average_is_rounded_half_up_to_three_decimals(self):
-        """1.0005 ⇒ 1.001 (ROUND_HALF_UP، لا التقريب إلى الزوج)."""
+    def test_the_average_is_rounded_half_up_to_six_decimals(self):
+        """1.0000005 ⇒ 1.000001 (ROUND_HALF_UP، لا التقريب إلى الزوج)."""
         from services.costing_service import CostingService
 
         result = CostingService.moving_average(
-            Decimal("0"), Decimal("0"), Decimal("2"), Decimal("1.0005")
+            Decimal("0"), Decimal("0"), Decimal("2"), Decimal("1.0000005")
         )
-        assert result == Decimal("1.001")
+        assert result == Decimal("1.000001")
 
     def test_apply_inbound_reads_the_stock_before_the_movement(self, db):
         """عقد apply_inbound: الكمية المقروءة هي ما قبل الحركة."""
@@ -390,6 +390,7 @@ class TestPurchaseMovesTheAverage:
 # =====================================================================
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestSaleSnapshot:
     def _sale(self, db, owner_user, customer, product, quantity="2"):
         from services.sale_service import SaleService
@@ -445,7 +446,7 @@ class TestSaleSnapshot:
         )
         # بعد البيع الأول بقي 8 وحدات بـ 12، فالمتوسط الجديد =
         # (8 × 12 + 10 × 18) / 18 = 15.333
-        assert Decimal(str(product.average_cost)) == Decimal("15.333")
+        assert Decimal(str(product.average_cost)) == Decimal("15.333333")
 
         second_sale = self._sale(db, owner_user, test_customer, product, "2")
         second_line = SaleLine.query.filter_by(sale_id=second_sale.id).one()
@@ -587,6 +588,7 @@ class TestValuationRows:
 # =====================================================================
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReconciliationUsesTheMovingAverage:
     def _post_purchase_entry(self, db, purchase, amount):
         from services.gl_service import GLService

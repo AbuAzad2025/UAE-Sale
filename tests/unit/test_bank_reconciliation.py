@@ -13,8 +13,11 @@ from models import (
     Cheque,
     GLAccount,
     GLJournalEntry,
+    Tenant,
 )
+from models.tenant_scope import clear_current_tenant_id, set_current_tenant_id
 from services.bank_reconciliation_service import BankReconciliationService
+from services.fiscal_period_guard import ensure_current_period
 from services.gl_service import GLService
 
 PS = date(2026, 1, 1)
@@ -30,6 +33,21 @@ def _d(v):
 @pytest.fixture(autouse=True)
 def _offline_generate_number(monkeypatch):
     monkeypatch.setattr("utils.distributed_lock._get_redis", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def bank_tenant(db):
+    company = Tenant(name="Bank test", name_ar="الفحص", slug="bank-test")
+    db.session.add(company)
+    db.session.flush()
+    set_current_tenant_id(company.id)
+    try:
+        ensure_current_period(2025, tenant_id=company.id)
+        ensure_current_period(2026, tenant_id=company.id)
+        db.session.commit()
+        yield company
+    finally:
+        clear_current_tenant_id()
 
 
 @pytest.fixture
@@ -59,6 +77,7 @@ def _cheque(
     is_active=True,
     drawer=None,
     payee=None,
+    book_account="1120",
 ):
     n = next(_seq)
     ch = Cheque(
@@ -78,6 +97,21 @@ def _cheque(
         payee_name=payee,
     )
     db.session.add(ch)
+    db.session.flush()
+    if book_account is not None:
+        debit, credit = (
+            (book_account, "1130")
+            if cheque_type == "incoming"
+            else ("2110", book_account)
+        )
+        entry = GLService.post_entry(
+            [
+                {"account": debit, "debit": ch.amount_base},
+                {"account": credit, "credit": ch.amount_base},
+            ],
+            entry_date=ch.issue_date,
+        )
+        ch.gl_journal_entry_id = entry.id
     db.session.commit()
     return ch
 
@@ -99,7 +133,7 @@ class TestCreateReconciliation:
 
         r = _make_recon(bank_account, Decimal("7500"), created_by=owner_user.id)
 
-        assert r.reconciliation_number.startswith("BR-2026-")
+        assert r.reconciliation_number.startswith(f"BR-{date.today().year}-")
         assert _d(r.opening_balance_per_books) == 0
         assert _d(r.closing_balance_per_books) == Decimal("7500")
         assert _d(r.closing_balance_per_bank) == Decimal("7500")
@@ -175,15 +209,23 @@ class TestAutoPopulateOutstandingItems:
     def test_cleared_inactive_future_and_cancelled_excluded(self, db, bank_account):
         _cheque(db, "incoming", "100", date(2026, 1, 10), status="cleared")
         _cheque(db, "incoming", "200", date(2026, 1, 11), is_active=False)
-        _cheque(db, "incoming", "300", PE + timedelta(days=1))
+        _cheque(db, "incoming", "300", PE + timedelta(days=6))
         _cheque(db, "outgoing", "400", date(2026, 1, 12), status="bounced")
-        _cheque(db, "outgoing", "500", PE + timedelta(days=2))
+        _cheque(db, "outgoing", "500", PE + timedelta(days=7))
 
         r = _make_recon(bank_account, Decimal("0"))
 
         assert len(r.items) == 0
         assert _d(r.outstanding_deposits) == 0
         assert _d(r.outstanding_withdrawals) == 0
+
+    def test_excludes_other_bank_and_register_only_cheques(self, db, bank_account):
+        _cheque(db, "incoming", "100", date(2026, 1, 15), book_account="1121")
+        _cheque(db, "incoming", "200", date(2026, 1, 15), book_account=None)
+        included = _cheque(db, "incoming", "75", date(2026, 1, 16))
+        draft = _make_recon(bank_account, Decimal("0"))
+        assert [item.cheque_id for item in draft.items] == [included.id]
+        assert draft.difference == Decimal("0")
 
 
 class TestBalanceComputation:
@@ -215,7 +257,7 @@ class TestBalanceComputation:
         assert r.is_balanced is False
 
     def test_outstanding_items_shift_bank_side_of_equation(self, db, bank_account):
-        _seed_gl([("إيداع", Decimal("2000"), 0, date(2026, 1, 9))])
+        _seed_gl([("إيداع", Decimal("1500"), 0, date(2026, 1, 9))])
         _cheque(db, "incoming", "500", date(2026, 1, 12))
 
         r = _make_recon(bank_account, Decimal("1500"))
@@ -408,13 +450,20 @@ class TestRerunAndSummary:
         inc2 = _cheque(db, "incoming", "200", date(2026, 1, 25), status="deposited")
         out1 = _cheque(db, "outgoing", "150", date(2026, 1, 20))
         _cheque(db, "incoming", "999", date(2026, 2, 15))
-        _cheque(db, "outgoing", "888", date(2026, 1, 5), status="cancelled")
+        _cheque(
+            db,
+            "outgoing",
+            "888",
+            date(2026, 1, 5),
+            status="cancelled",
+            book_account=None,
+        )
 
         s = BankReconciliationService.get_reconciliation_summary(
             bank_account.id, PS, PE
         )
 
-        assert s["closing_balance_per_books"] == 12000.0
+        assert s["closing_balance_per_books"] == 12350.0
         assert s["outstanding_deposits_count"] == 2
         assert s["outstanding_deposits_amount"] == 500.0
         assert s["outstanding_withdrawals_count"] == 1

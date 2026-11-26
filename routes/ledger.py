@@ -149,7 +149,6 @@ def _gl_signed_base_expression():
     ) * GLJournalEntry.exchange_rate
     return case(
         (GLJournalLine.amount_base.is_(None), fallback),
-        (GLJournalLine.amount_base == 0, fallback),
         (
             and_(GLJournalLine.debit > 0, GLJournalLine.credit == 0),
             func.abs(GLJournalLine.amount_base),
@@ -421,8 +420,13 @@ def index():
     total_accounts = GLAccount.query.count()
     total_entries = GLJournalEntry.query.count()
     posted_entries = GLJournalEntry.query.filter_by(is_posted=True).count()
-    cash_accounts = GLAccount.query.filter(GLAccount.code.like("11%")).all()
-    total_cash = sum((a.get_balance() for a in cash_accounts), Decimal("0"))
+    cash_accounts = GLAccount.query.filter(
+        GLAccount.code.in_(CashFlowService.cash_account_codes())
+    ).all()
+    today = date.today()
+    total_cash = sum(
+        (a.get_balance(as_of_date=today) for a in cash_accounts), Decimal("0")
+    )
     recent_entries = (
         GLJournalEntry.query.order_by(GLJournalEntry.created_at.desc()).limit(10).all()
     )
@@ -654,14 +658,11 @@ def _ct_profit_parts(date_from=None, date_to=None, tenant_id=None):
     from services.account_resolution import AccountRole, AccountResolver
     from models import GLAccount
 
-    try:
-        ct_code = AccountResolver.resolve(
-            AccountRole.INCOME_TAX_EXPENSE, tenant_id=tenant_id
-        )
-        ct_acc = GLAccount.query.filter_by(code=str(ct_code)).first()
-        ct_id = ct_acc.id if ct_acc else None
-    except Exception:
-        ct_id = None
+    ct_code = AccountResolver.resolve(
+        AccountRole.INCOME_TAX_EXPENSE, tenant_id=tenant_id
+    )
+    ct_acc = GLAccount.query.filter_by(code=str(ct_code)).first()
+    ct_id = ct_acc.id if ct_acc else None
 
     balances = _statement_balances(date_from=date_from, date_to=date_to)
     total_revenue = Decimal("0")
@@ -952,11 +953,11 @@ def manual_entry():  # noqa: C901
         except ValueError as e:
             current_app.logger.exception("handler failed")
             flash(f"❌ خطأ: {e}", "danger")
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
             flash(
-                f"❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
+                "❌ خطأ: حدث خطأ غير متوقع\n💡 تحقق من البيانات المدخلة وحاول مرة أخرى.",
                 "danger",
             )
 
@@ -1025,15 +1026,15 @@ def reverse_entry(id):
         )
         return redirect(url_for("ledger.view_entry", id=reversed_entry.id))
 
-    except ValueError as e:
+    except ValueError:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
         return redirect(url_for("ledger.view_entry", id=id))
 
 
@@ -1053,9 +1054,9 @@ def approve_entry(id):
 
         flash("✅ تم الموافقة على القيد وترحيله بنجاح", "success")
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("ledger.view_entry", id=id))
 
@@ -1077,9 +1078,9 @@ def delete_entry(id):
         flash("✅ تم حذف القيد بنجاح", "success")
         return redirect(url_for("ledger.journal_entries"))
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("ledger.view_entry", id=id))
 
@@ -1162,7 +1163,7 @@ def api_calculate_journal_balance():
                 "is_balanced": is_balanced,
             }
         )
-    except Exception as e:
+    except Exception:
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 400
 
 
@@ -1185,10 +1186,10 @@ def cash_flow():
         return render_template(
             "ledger/cash_flow.html", report=report, date_from=date_from, date_to=date_to
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ فشل إنشاء قائمة التدفقات: حدث خطأ غير متوقع\n💡 تحقق من الفترة المحددة وحاول مرة أخرى.",
+            "❌ فشل إنشاء قائمة التدفقات: حدث خطأ غير متوقع\n💡 تحقق من الفترة المحددة وحاول مرة أخرى.",
             "danger",
         )
         return redirect(url_for("ledger.index"))
@@ -1243,10 +1244,10 @@ def aging_analysis():
             title=title,
             as_of_date=as_of_date or date.today().strftime("%Y-%m-%d"),
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
         flash(
-            f"❌ فشل إنشاء تحليل الأعمار: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
+            "❌ فشل إنشاء تحليل الأعمار: حدث خطأ غير متوقع\n💡 تحقق من البيانات وحاول مرة أخرى.",
             "danger",
         )
         return redirect(url_for("ledger.index"))
@@ -1368,10 +1369,10 @@ def add_account():
                 parent_accounts=parent_accounts,
                 form_data=form_values,
             )
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
             form_values = request.form.to_dict()
             form_values["is_header"] = (
                 "on" if "on" in request.form.getlist("is_header") else "off"
@@ -1432,7 +1433,12 @@ def edit_account(id):
             # Only change is_active when the form actually submits it; an edit
             # form with no is_active control must not silently deactivate the account.
             if "is_active" in request.form:
-                account.is_active = request.form.get("is_active") in ("on", "1", "true", "True")
+                account.is_active = request.form.get("is_active") in (
+                    "on",
+                    "1",
+                    "true",
+                    "True",
+                )
 
             if account.parent_id:
                 parent = db.session.get(GLAccount, account.parent_id)
@@ -1450,10 +1456,10 @@ def edit_account(id):
             db.session.rollback()
             current_app.logger.info("GL account update rejected: %s", e)
             flash(f"❌ {e}", "danger")
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     parent_accounts = (
         GLAccount.query.filter_by(is_header=True).order_by(GLAccount.code).all()
@@ -1491,9 +1497,9 @@ def delete_account(id):
         db.session.rollback()
         current_app.logger.info("GL account delete rejected: %s", e)
         flash(f"❌ {e}", "danger")
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("handler failed")
-        flash(f"❌ خطأ: حدث خطأ غير متوقع", "danger")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("ledger.accounts"))
 

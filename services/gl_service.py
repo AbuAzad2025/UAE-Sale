@@ -66,8 +66,12 @@ from utils.errors import ValidationError
 
 _PAYMENT_METHOD_ROLES = {
     "cash": AccountRole.CASH,
+    "bank": AccountRole.BANK,
+    "transfer": AccountRole.BANK,
     "bank_transfer": AccountRole.BANK,
     "card": AccountRole.BANK,
+    "credit_card": AccountRole.BANK,
+    "e_wallet": AccountRole.BANK,
     "cheque": AccountRole.UNDER_COLLECTION,
 }
 
@@ -98,12 +102,16 @@ def _normalize_rate(exchange_rate) -> Decimal:
     of 0 (or negative) is a data error - silently coercing it to 1 would
     misstate amount_base. Reject it loudly instead (F-auth: fail closed).
     """
-    if exchange_rate is None or (isinstance(exchange_rate, str) and not exchange_rate.strip()):
+    if exchange_rate is None or (
+        isinstance(exchange_rate, str) and not exchange_rate.strip()
+    ):
         return Decimal("1")
     rate = _to_decimal(exchange_rate)
-    if rate <= 0:
-        from sqlalchemy.exc import IntegrityError  # noqa: F401  (kept for parity)
+    if not rate.is_finite() or rate <= 0:
         raise ValueError(f"exchange_rate must be > 0, got {exchange_rate!r}")
+    rate = rate.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+    if rate <= 0:
+        raise ValueError("exchange_rate is below the supported precision")
     return rate
 
 
@@ -140,7 +148,9 @@ def _posting_tenant(tenant_id: int | None) -> int:
     scoped_tenant = _current_tenant_id()
     tid = tenant_id if tenant_id is not None else scoped_tenant
     if type(tid) is not int or tid <= 0:
-        raise ValueError("tenant_id is required to post a GL entry outside a tenant request")
+        raise ValueError(
+            "tenant_id is required to post a GL entry outside a tenant request"
+        )
     if scoped_tenant is not None and scoped_tenant != tid:
         raise ValueError("The ledger company does not match the active tenant")
     return tid
@@ -192,6 +202,7 @@ def _normalize_lines(
     lines: list[dict],
     rate: Decimal,
     *,
+    tenant_id: int,
     ensure_accounts: bool = True,
     missing_message=None,
     unknown_account_message=None,
@@ -243,8 +254,15 @@ def _normalize_lines(
         if not getattr(account, "is_active", True):
             raise ValueError(f"GL account {account.code} is inactive")
 
-        debit = _quantize_3(_to_decimal(ln.get("debit", 0)))
-        credit = _quantize_3(_to_decimal(ln.get("credit", 0)))
+        try:
+            debit = Decimal(str(ln.get("debit") or 0))
+            credit = Decimal(str(ln.get("credit") or 0))
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise ValueError("GL line: invalid debit or credit amount") from exc
+        if not debit.is_finite() or not credit.is_finite():
+            raise ValueError("GL line: debit and credit must be finite")
+        debit = _quantize_3(debit)
+        credit = _quantize_3(credit)
 
         if debit < Decimal("0") or credit < Decimal("0"):
             raise ValueError("GL line: debit/credit must be >= 0")
@@ -267,6 +285,28 @@ def _normalize_lines(
                 party_id=int(raw_party) if raw_party is not None else None,
             )
         )
+
+    parties = {item.party_id for item in normalized if item.party_id is not None}
+    if parties:
+        from models import Customer
+
+        owned = {
+            party_id
+            for (party_id,) in db.session.query(Customer.id).filter(
+                Customer.id.in_(parties), Customer.tenant_id == tenant_id
+            )
+        }
+        if parties != owned:
+            raise ValueError("Journal parties must belong to the posting tenant.")
+
+    if total_debit == total_credit:
+        # Round the whole journal consistently. Keep transaction amounts intact,
+        # assigning any base residual to the largest line on the deficient side.
+        residual = -sum((item.amount_base for item in normalized), Decimal("0"))
+        if residual:
+            side = "debit" if residual > 0 else "credit"
+            balancing_line = max(normalized, key=lambda item: getattr(item, side))
+            balancing_line.amount_base += residual
 
     return normalized, total_debit, total_credit
 
@@ -635,10 +675,13 @@ class GLService:
         return count
 
     @staticmethod
-    def get_payment_debit_account(method: str | None) -> str:
-        m = (method or "").strip()
-        role = _PAYMENT_METHOD_ROLES.get(m, AccountRole.CASH)
-        return AccountResolver.resolve(role)
+    def get_payment_debit_account(method: str | None, *, tenant_id=None) -> str:
+        method = (method or "cash").strip().lower()
+        if method not in _PAYMENT_METHOD_ROLES:
+            raise ValueError(f"Unsupported GL payment method: {method}")
+        return AccountResolver.resolve(
+            _PAYMENT_METHOD_ROLES[method], tenant_id=tenant_id
+        )
 
     @staticmethod
     def get_customer_credit_account(customer: Any) -> str:
@@ -652,9 +695,12 @@ class GLService:
         without changing the control account mapping.
         """
         ctype = getattr(customer, "customer_type", None)
+        tenant_id = getattr(customer, "tenant_id", None)
         if ctype == "partner":
-            return AccountResolver.resolve(AccountRole.PARTNERS_CURRENT)
-        return AccountResolver.resolve(AccountRole.AR_CONTROL)
+            return AccountResolver.resolve(
+                AccountRole.PARTNERS_CURRENT, tenant_id=tenant_id
+            )
+        return AccountResolver.resolve(AccountRole.AR_CONTROL, tenant_id=tenant_id)
 
     @staticmethod
     def post_entry(
@@ -697,18 +743,24 @@ class GLService:
 
         # Idempotency: when a caller supplies a key, return the existing entry
         # rather than posting a duplicate (e.g. double-submitted payment).
-        if idempotency_key:
-            existing = GLJournalEntry.query.filter_by(
-                idempotency_key=str(idempotency_key)[:120],
-                tenant_id=tid,
-            ).first()
-            if existing is not None:
-                return existing
-
         try:
+            entry_number = None
+            if idempotency_key:
+                idempotency_key = str(idempotency_key)[:120]
+                # Take the same transaction lock every journal allocator uses
+                # before checking the key, including at the year boundary.
+                entry_number = _unique_entry_number()
+                existing = GLJournalEntry.query.filter_by(
+                    idempotency_key=idempotency_key,
+                    tenant_id=tid,
+                ).first()
+                if existing is not None:
+                    return existing
+
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
+                tenant_id=tid,
                 ensure_accounts=True,
                 unknown_account_message=lambda raw: (
                     f"GL account '{raw}' not found while posting '{description}'"
@@ -721,7 +773,7 @@ class GLService:
 
             _assert_period_open(effective_date, tid)
 
-            entry_number = _unique_entry_number()
+            entry_number = entry_number or _unique_entry_number()
 
             entry = GLJournalEntry(
                 entry_number=entry_number,
@@ -776,7 +828,9 @@ class GLService:
             raise
 
     @staticmethod
-    def post_import_adjustments(entries, *, tenant_id: int, currency: str, created_by: int):
+    def post_import_adjustments(
+        entries, *, tenant_id: int, currency: str, created_by: int
+    ):
         """Post one balanced, audited journal per stock movement in one transaction."""
         if not entries:
             return []
@@ -789,43 +843,76 @@ class GLService:
         effective_date = datetime.now(timezone.utc)
         _assert_period_open(effective_date, tenant_id)
         codes = {line["account"] for _, _, lines in entries for line in lines}
-        accounts = {account.code: account for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()}
+        accounts = {
+            account.code: account
+            for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()
+        }
         if codes - accounts.keys():
             GLService.ensure_core_accounts()
-            accounts = {account.code: account for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()}
+            accounts = {
+                account.code: account
+                for account in GLAccount.query.filter(GLAccount.code.in_(codes)).all()
+            }
         if codes - accounts.keys():
             raise ValueError("Required stock adjustment GL accounts are unavailable.")
 
-        numbers = allocate_transactional_numbers("JE", GLJournalEntry, "entry_number", len(entries))
+        numbers = allocate_transactional_numbers(
+            "JE", GLJournalEntry, "entry_number", len(entries)
+        )
         rate = Decimal("1")
         posted = []
         for start in range(0, len(entries), 50):
             check_tool_deadline()
             batch = []
-            for number, (movement_id, description, lines) in zip(numbers[start:start + 50], entries[start:start + 50]):
+            for number, (movement_id, description, lines) in zip(
+                numbers[start : start + 50], entries[start : start + 50]
+            ):
                 normalized, debit, credit = _normalize_lines(
-                    [{**line, "account": accounts[line["account"]]} for line in lines], rate,
+                    [{**line, "account": accounts[line["account"]]} for line in lines],
+                    rate,
+                    tenant_id=tenant_id,
                 )
                 if debit != credit:
                     raise ValueError("Stock adjustment GL entry is unbalanced.")
                 entry = GLJournalEntry(
-                    entry_number=number, entry_date=effective_date, description=description,
-                    reference_type="stock_adjustment", reference_id=movement_id, entry_type="auto",
-                    currency=currency, exchange_rate=rate, total_debit=debit, total_credit=credit,
-                    is_posted=True, created_by=created_by, tenant_id=tenant_id,
+                    entry_number=number,
+                    entry_date=effective_date,
+                    description=description,
+                    reference_type="stock_adjustment",
+                    reference_id=movement_id,
+                    entry_type="auto",
+                    currency=currency,
+                    exchange_rate=rate,
+                    total_debit=debit,
+                    total_credit=credit,
+                    is_posted=True,
+                    created_by=created_by,
+                    tenant_id=tenant_id,
                 )
                 db.session.add(entry)
-                db.session.add_all(GLJournalLine(
-                    entry=entry, account=item.account, description=item.description or description,
-                    debit=item.debit, credit=item.credit, amount_base=item.amount_base,
-                    tenant_id=tenant_id,
-                ) for item in normalized)
+                db.session.add_all(
+                    GLJournalLine(
+                        entry=entry,
+                        account=item.account,
+                        description=item.description or description,
+                        debit=item.debit,
+                        credit=item.credit,
+                        amount_base=item.amount_base,
+                        party_id=item.party_id,
+                        tenant_id=tenant_id,
+                    )
+                    for item in normalized
+                )
                 batch.append((entry, normalized))
             db.session.flush()
             for entry, normalized in batch:
                 audit = JournalEntryAudit.record(
-                    entry.id, JournalEntryAudit.ACTION_CREATE, new_values=_audit_payload(entry, normalized),
-                    reason=f"ترحيل قيد: {entry.description}", performed_by=created_by, fallback_entry=entry,
+                    entry.id,
+                    JournalEntryAudit.ACTION_CREATE,
+                    new_values=_audit_payload(entry, normalized),
+                    reason=f"ترحيل قيد: {entry.description}",
+                    performed_by=created_by,
+                    fallback_entry=entry,
                 )
                 audit.tenant_id = tenant_id
                 posted.append(entry)
@@ -868,6 +955,7 @@ class GLService:
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
+                tenant_id=tid,
                 ensure_accounts=False,
                 unknown_account_message=lambda raw: f"Account {raw} not found",
             )
@@ -908,6 +996,7 @@ class GLService:
                         credit=item.credit,
                         amount_base=item.amount_base,
                         description=item.description or description,
+                        party_id=item.party_id,
                         tenant_id=tid,
                     )
                 )
@@ -955,6 +1044,7 @@ class GLService:
             normalized, total_debit, total_credit = _normalize_lines(
                 lines,
                 rate,
+                tenant_id=tid,
                 ensure_accounts=True,
                 unknown_account_message=lambda raw: f"الحساب {raw} غير موجود",
             )
@@ -1055,9 +1145,11 @@ class GLService:
         """
         ref_type = kwargs.get("reference_type", reference_type)
         ref_id = kwargs.get("reference_id", reference_id)
+        notes = kwargs.get("notes")
         if ref_type is not None and ref_id is not None:
+            tenant_id = _posting_tenant(kwargs.get("tenant_id"))
             entries = GLJournalEntry.query.filter_by(
-                reference_type=ref_type, reference_id=ref_id
+                reference_type=ref_type, reference_id=ref_id, tenant_id=tenant_id
             ).all()
             if not entries:
                 return []
@@ -1076,6 +1168,7 @@ class GLService:
                     description=description or f"Reversal of {ent.entry_number}",
                     entry_date=entry_date,
                     created_by=created_by,
+                    notes=notes,
                 )
                 reversed_entries.append(rev)
             if len(reversed_entries) == 1:
@@ -1100,10 +1193,12 @@ class GLService:
             raise TypeError(
                 "GLService.reverse_entry: first argument must be an id or GLJournalEntry"
             )
+        _posting_tenant(entry.tenant_id)
         return entry.reverse_entry(
             description=description,
             entry_date=entry_date,
             created_by=created_by,
+            notes=notes,
         )
 
     reverse_journal_entry = reverse_entry

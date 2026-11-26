@@ -156,6 +156,7 @@ def _clearing_lines(ch):
     return entry, list(entry.lines)
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestChequeFxSignMatrix:
     def test_incoming_appreciation_is_gain_credit_fx_gain(self, db, owner_user):
         ch = _fx_cheque(db, "incoming")  # booked 100*3.6 = 360
@@ -453,6 +454,7 @@ class TestBuildRevaluationDraft:
             FXRevaluationService.build_revaluation(rates={"USD": Decimal("0")})
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestPostRevaluation:
     def test_commit_posts_balanced_entry_with_audit_fields(
         self, db, owner_user, usd_sale

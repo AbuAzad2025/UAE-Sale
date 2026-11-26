@@ -44,18 +44,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from extensions import db
 from services.currency_service import CurrencyService
 
-try:
-    from services.account_resolution import AccountResolver, AccountRole
-except Exception:  # pragma: no cover - الوحدة تُسلَّم بالتوازي
-    AccountRole = None  # type: ignore[assignment,misc]
-    AccountResolver = None  # type: ignore[assignment,misc]
-
-FALLBACK_ACCOUNT_CODES = {
-    "AR_CONTROL": "1130",
-    "AP_CONTROL": "2110",
-    "FX_GAIN": "4400",
-    "FX_LOSS": "6900",
-}
+from services.account_resolution import AccountResolver, AccountRole
 
 MONEY_QUANTUM = Decimal("0.01")
 ZERO = Decimal("0.00")
@@ -78,17 +67,6 @@ def _dec(value):
         return Decimal(str(value))
     except Exception:
         return Decimal("0")
-
-
-def _resolve_account(role_value, fallback_code):
-    try:
-        if AccountRole is not None and AccountResolver is not None:
-            code = AccountResolver.resolve(AccountRole(role_value))
-            if code:
-                return code
-    except Exception:
-        pass
-    return FALLBACK_ACCOUNT_CODES.get(role_value, fallback_code)
 
 
 def _clamp_non_negative(value):
@@ -451,10 +429,15 @@ class FXRevaluationService:
         ap_balances = FXRevaluationService.collect_open_ap_balances(as_of=as_of)
         currencies = sorted(set(ar_balances) | set(ap_balances))
 
-        ar_code = _resolve_account("AR_CONTROL", FALLBACK_ACCOUNT_CODES["AR_CONTROL"])
-        ap_code = _resolve_account("AP_CONTROL", FALLBACK_ACCOUNT_CODES["AP_CONTROL"])
-        gain_code = _resolve_account("FX_GAIN", FALLBACK_ACCOUNT_CODES["FX_GAIN"])
-        loss_code = _resolve_account("FX_LOSS", FALLBACK_ACCOUNT_CODES["FX_LOSS"])
+        codes = AccountResolver.resolve_codes(
+            AccountRole.AR_CONTROL,
+            AccountRole.AP_CONTROL,
+            AccountRole.FX_GAIN,
+            AccountRole.FX_LOSS,
+        )
+        ar_code, ap_code, gain_code, loss_code = (
+            codes[role] for role in ("AR_CONTROL", "AP_CONTROL", "FX_GAIN", "FX_LOSS")
+        )
 
         period_key = FXRevaluationService.period_key(as_of)
         fiscal_period = FXRevaluationService.fiscal_period(as_of)

@@ -119,6 +119,7 @@ def _make_quotation(
     )
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestQuotationService:
     def test_create_quotation_calculates_totals(
         self, db, owner_user, test_customer, test_product, warehouse
@@ -157,7 +158,18 @@ class TestQuotationService:
     def test_convert_to_sale_creates_linked_sale(
         self, db, owner_user, test_customer, test_product, warehouse, open_fiscal_period
     ):
+        from models import StockMovement
+
         stock_before = test_product.current_stock
+        db.session.add(
+            StockMovement(
+                product_id=test_product.id,
+                warehouse_id=warehouse.id,
+                quantity=stock_before,
+                movement_type="adjustment",
+            )
+        )
+        db.session.flush()
         q = _make_quotation(db, owner_user, test_customer, test_product, warehouse)
         sale = QuotationService.convert_to_sale(q.id, owner_user.id)
 
@@ -198,8 +210,12 @@ class TestPurchaseOrderService:
         from models import Tenant
 
         tenant = Tenant(
-            name="Purchasing", name_ar="المشتريات", slug="purchasing",
-            enable_tax=True, default_tax_rate=Decimal("16"), default_currency="ILS",
+            name="Purchasing",
+            name_ar="المشتريات",
+            slug="purchasing",
+            enable_tax=True,
+            default_tax_rate=Decimal("16"),
+            default_currency="ILS",
         )
         db.session.add(tenant)
         db.session.flush()
@@ -283,6 +299,7 @@ class TestPurchaseOrderService:
         for record in (owner_user, test_product, supplier, warehouse):
             record.tenant_id = tenant.id
         db.session.commit()
+
         def create_and_receive():
             po = PurchaseOrderService.create_po(
                 supplier_id=supplier.id,
@@ -509,6 +526,7 @@ class TestStockTransferService:
             StockTransferService.receive_transfer(transfer.id, owner_user.id)
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestStockTakeService:
     def test_snapshot_and_complete_computes_variance(
         self, db, owner_user, test_product, warehouse
@@ -594,6 +612,7 @@ class TestDunningService:
         assert summary["total_overdue"] == 100.0
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestRecurringExpenseService:
     def test_process_due_expenses_advances_template_only_when_due(self, db, owner_user):
         cat = ExpenseCategory(name="إيجار شهري")
@@ -674,7 +693,9 @@ BALANCED_LINES = [
 def ledger_company(db):
     from models import Tenant
 
-    company = Tenant(name="Journal test company", name_ar="شركة اختبار القيود", slug="journal-test")
+    company = Tenant(
+        name="Journal test company", name_ar="شركة اختبار القيود", slug="journal-test"
+    )
     db.session.add(company)
     db.session.commit()
     return company
@@ -683,7 +704,10 @@ def ledger_company(db):
 @pytest.fixture
 def posted_entry(db, gl, owner_user, ledger_company):
     entry = AdvancedJournalEntryManager.create_entry_with_validation(
-        description="قيد مرحل", lines=BALANCED_LINES, created_by=owner_user.id, tenant_id=ledger_company.id,
+        description="قيد مرحل",
+        lines=BALANCED_LINES,
+        created_by=owner_user.id,
+        tenant_id=ledger_company.id,
     )
     db.session.commit()
     return entry
@@ -692,13 +716,17 @@ def posted_entry(db, gl, owner_user, ledger_company):
 @pytest.fixture
 def draft_entry(db, gl, owner_user, ledger_company):
     entry = AdvancedJournalEntryManager.create_entry_with_validation(
-        description="قيد مبدئي", lines=BALANCED_LINES, created_by=owner_user.id,
-        tenant_id=ledger_company.id, is_posted=False,
+        description="قيد مبدئي",
+        lines=BALANCED_LINES,
+        created_by=owner_user.id,
+        tenant_id=ledger_company.id,
+        is_posted=False,
     )
     db.session.commit()
     return entry
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestAdvancedJournalManagerCreation:
     def test_validated_entry_created_with_audit(self, db, gl, owner_user):
         entry = AdvancedJournalEntryManager.create_entry_with_validation(
@@ -973,6 +1001,7 @@ class TestAdvancedJournalManagerHelpers:
         draft_entry.total_credit = Decimal("280")
         assert draft_entry.get_balance_status() == "major_imbalance"
 
+    @pytest.mark.usefixtures("posting_tenant")
     def test_customer_fixture_still_usable_for_ledger_flow(
         self, db, gl, owner_user, test_customer
     ):

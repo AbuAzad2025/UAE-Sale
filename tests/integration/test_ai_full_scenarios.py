@@ -70,7 +70,10 @@ class TestChatShortcuts:
 
 
 class TestServiceLayerEndToEnd:
-    def test_product_sale_payment_flow(self, db, owner_user):
+    def test_product_sale_payment_flow(self, db, owner_user, posting_tenant):
+        from models.tenant_scope import set_current_tenant_id
+
+        set_current_tenant_id(posting_tenant.id)
         # F1/F2: منتج بلا تكلفة لا يمكن بيعه — لذا يُنشأ بتكلفة.
         p = cmd.create_product("فلتر E2E", "E2E-001", 100.0, 20, cost_price=40.0)
         assert p.id is not None
@@ -83,7 +86,10 @@ class TestServiceLayerEndToEnd:
         )
         assert pay.id is not None
 
-    def test_expense_and_supplier_flow(self, db, owner_user):
+    def test_expense_and_supplier_flow(self, db, owner_user, posting_tenant):
+        from models.tenant_scope import set_current_tenant_id
+
+        set_current_tenant_id(posting_tenant.id)
         s = cmd.create_supplier("مورد E2E", phone="0500000002")
         assert s.id is not None
         e = cmd.create_expense("قرطاسية E2E", 75.0, owner_user.id)

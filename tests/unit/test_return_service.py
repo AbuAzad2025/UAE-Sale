@@ -12,6 +12,7 @@ def _get_sale_line(sale):
     return SaleLine.query.filter_by(sale_id=sale.id).first()
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestCreateReturn:
     @pytest.mark.parametrize(
         "inclusive,rate,discount,expected_refund",

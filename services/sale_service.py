@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from flask import current_app
 from extensions import db
 from models import Sale, SaleLine, Payment
+from services.account_resolution import AccountResolver, DEFAULT_ROLE_MAP
 from services.stock_service import StockService
 from services.costing_service import CostingService
 from services.currency_service import CurrencyService
@@ -12,37 +13,14 @@ from utils.helpers import generate_number
 from utils.errors import ValidationError
 
 FALLBACK_ACCOUNTS = {
-    "AR_CONTROL": "1130",
-    "PARTNER_CURRENT": "3350",
-    "MERCHANTS_PAYABLE": "2115",
-    "SALES_REVENUE": "4100",
-    "SHIPPING_REVENUE": "4300",
-    "DISCOUNTS_GIVEN": "5200",
-    "TAX_PAYABLE": "2130",
-    "VAT_INPUT": "1141",
-    "VAT_OUTPUT": "2131",
-    "COGS": "5100",
-    "INVENTORY": "1140",
+    **DEFAULT_ROLE_MAP,
+    "PARTNER_CURRENT": DEFAULT_ROLE_MAP["PARTNERS_CURRENT"],
 }
 
 
-def resolve_account(role_name):
-    """Resolve an account code through the central AccountResolver contract.
-
-    Falls back to today's literal codes when services.account_resolution
-    (Agent1) is not importable or does not define the role yet.
-    """
-    try:
-        from services.account_resolution import AccountRole, AccountResolver
-
-        role = getattr(AccountRole, role_name, None)
-        if role is not None:
-            code = AccountResolver.resolve(role)
-            if code:
-                return str(code)
-    except Exception:
-        pass
-    return FALLBACK_ACCOUNTS.get(role_name)
+def resolve_account(role_name, tenant_id=None):
+    role = "PARTNERS_CURRENT" if role_name == "PARTNER_CURRENT" else role_name
+    return AccountResolver.resolve(role, tenant_id=tenant_id)
 
 
 def _warehouse_stock_is_authoritative(product):
@@ -74,7 +52,7 @@ def _warehouse_stock_is_authoritative(product):
     return abs(movements_total - current_stock) <= Decimal("0.001")
 
 
-def merchant_receivable_codes():
+def merchant_receivable_codes(tenant_id=None):
     """Non-standard AR buckets used for merchant/partner invoices.
 
     Since F37, NEW merchant invoices post to the AR control ('1130') via
@@ -87,7 +65,7 @@ def merchant_receivable_codes():
     """
     codes = []
     for role_name in ("MERCHANTS_PAYABLE", "PARTNER_CURRENT"):
-        code = resolve_account(role_name)
+        code = resolve_account(role_name, tenant_id=tenant_id)
         if code and code not in codes:
             codes.append(str(code))
     return codes
@@ -442,14 +420,7 @@ class SaleService:
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
-            ar_account = resolve_account("AR_CONTROL")
-            if customer.customer_type == "partner":
-                ar_account = resolve_account("PARTNER_CURRENT")
-            elif customer.customer_type == "merchant":
-                try:
-                    ar_account = GLService.get_customer_credit_account(customer)
-                except Exception:
-                    ar_account = resolve_account("AR_CONTROL")
+            ar_account = GLService.get_customer_credit_account(customer)
 
             _partner_id = (
                 customer.id
@@ -604,8 +575,15 @@ class SaleService:
 
         exchange_rate_decimal = Decimal(str(exchange_rate))
         amount_base = (amount_decimal * exchange_rate_decimal).quantize(
-            Decimal("0.001"), rounding=ROUND_HALF_UP
+            Decimal("0.01" if payment_method == "cheque" else "0.001"),
+            rounding=ROUND_HALF_UP,
         )
+        if payment_method == "cheque":
+            if (
+                amount_decimal != amount_decimal.quantize(Decimal("0.01"))
+                or amount_base <= 0
+            ):
+                raise ValidationError("مبلغ الشيك يجب أن يكون موجبًا وبمنزلتين عشريتين.")
 
         payment = Payment(
             payment_number=payment_number,
@@ -642,7 +620,7 @@ class SaleService:
                 currency=currency,
                 exchange_rate=exchange_rate_decimal,
                 amount_base=amount_base,
-                issue_date=sale.sale_date.date(),  # تاريخ الإصدار = تاريخ الفاتورة
+                issue_date=payment.payment_date.date(),
                 due_date=cheque_date,  # تاريخ الاستحقاق
                 bank_name=bank_name,
                 status="pending",
@@ -656,7 +634,9 @@ class SaleService:
         try:
             GLService.ensure_core_accounts()
 
-            debit_account = GLService.get_payment_debit_account(payment_method)
+            debit_account = GLService.get_payment_debit_account(
+                payment_method, tenant_id=sale.tenant_id
+            )
 
             credit_account = GLService.get_customer_credit_account(sale.customer)
             _partner_id = (
@@ -664,31 +644,42 @@ class SaleService:
                 if getattr(sale.customer, "customer_type", None) == "partner"
                 else None
             )
+            settlement = amount_base if payment_method == "cheque" else amount_decimal
 
             lines = [
                 {
                     "account": debit_account,
-                    "debit": amount_decimal,
+                    "debit": settlement,
                     "description": f"Payment for Sale {sale.sale_number} ({payment_method})",
                     **({"party_id": _partner_id} if _partner_id else {}),
                 },
                 {
                     "account": credit_account,  # Accounts Receivable
-                    "credit": amount_decimal,
+                    "credit": settlement,
                     "description": f"Payment Received {payment.payment_number}",
                     **({"party_id": _partner_id} if _partner_id else {}),
                 },
             ]
 
-            GLService.post_entry(
+            entry = GLService.post_entry(
                 lines,
                 description=f"Payment {payment.payment_number}",
                 reference_type="Payment",
                 reference_id=payment.id,
-                currency=currency,
-                exchange_rate=exchange_rate_decimal,
+                currency=CurrencyService.get_base_currency()
+                if payment_method == "cheque"
+                else currency,
+                exchange_rate=1
+                if payment_method == "cheque"
+                else exchange_rate_decimal,
+                entry_date=payment.payment_date,
+                tenant_id=sale.tenant_id,
+                created_by=sale.seller_id,
+                idempotency_key=f"Payment:{payment.id}",
             )
-        except Exception as e:
+            if payment_method == "cheque":
+                cheque.gl_journal_entry_id = entry.id
+        except Exception:
             db.session.rollback()
             raise
 

@@ -100,6 +100,9 @@ def _movement_sum(product_id):
 
 
 def _login(client, user, password):
+    from models.tenant_scope import get_current_tenant_id
+
+    tenant_id = get_current_tenant_id()
     client.post(
         "/auth/login",
         data={
@@ -108,6 +111,9 @@ def _login(client, user, password):
         },
         follow_redirects=True,
     )
+    if user.is_owner and tenant_id is not None:
+        with client.session_transaction() as session:
+            session["impersonate_tenant_id"] = tenant_id
 
 
 # =====================================================================
@@ -115,6 +121,7 @@ def _login(client, user, password):
 # =====================================================================
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestStockMovementSign:
     def test_sum_of_movements_equals_current_stock_after_subtract(
         self, client, db, owner_user, fresh_product, two_warehouses, open_fiscal_period
@@ -181,7 +188,7 @@ class TestStockMovementSign:
         inv = GLAccount.query.filter_by(code="1140").first()
         lines = GLJournalLine.query.filter_by(account_id=inv.id).all()
         assert lines, "the inventory account carries no line for the adjustment"
-        assert sum(Decimal(str(l.amount_base)) for l in lines) == Decimal("150")
+        assert sum(Decimal(str(line.amount_base)) for line in lines) == Decimal("150")
 
     def test_gl_failure_rolls_the_stock_back(
         self, db, monkeypatch, fresh_product, two_warehouses
@@ -212,6 +219,7 @@ class TestStockMovementSign:
 # =====================================================================
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestZeroCostGuard:
     def test_require_cost_basis_names_the_product(self, db):
         from services.stock_service import StockService
@@ -302,34 +310,48 @@ class TestZeroCostGuard:
 
 
 class TestWarehouseStockApi:
-    def test_reconciliation_allocates_opening_stock_and_keeps_unit_cost_precision(self, db, owner_user):
+    def test_reconciliation_allocates_opening_stock_and_keeps_unit_cost_precision(
+        self, db, owner_user
+    ):
         from models import Tenant, Warehouse
         from models.tenant_scope import run_in_tenant_context
         from services.gl_service import GLService
         from services.inventory_reconciliation import reconcile_inventory
         from services.stock_service import StockService
 
-        tenant = Tenant(name="Inventory audit", name_ar="تدقيق المخزون", slug="inventory-audit")
+        tenant = Tenant(
+            name="Inventory audit", name_ar="تدقيق المخزون", slug="inventory-audit"
+        )
         db.session.add(tenant)
         db.session.flush()
         warehouse = Warehouse(name="Inventory audit warehouse", tenant_id=tenant.id)
         product = Product(
-            name="Inventory audit item", tenant_id=tenant.id, sku="INVENTORY-AUDIT",
-            current_stock=0, regular_price=2,
+            name="Inventory audit item",
+            tenant_id=tenant.id,
+            sku="INVENTORY-AUDIT",
+            current_stock=0,
+            regular_price=2,
         )
         db.session.add_all([warehouse, product])
         db.session.commit()
 
         def post_opening():
             movement = StockService.add_stock(
-                product.id, Decimal("1000"), warehouse_id=warehouse.id,
-                unit_cost_base=Decimal("1.000125"), reference_type="Product Creation",
+                product.id,
+                Decimal("1000"),
+                warehouse_id=warehouse.id,
+                unit_cost_base=Decimal("1.000125"),
+                reference_type="Product Creation",
             )
             GLService.ensure_core_accounts()
             GLService.post_entry(
-                [{"account": "1140", "debit": Decimal("1000.125")},
-                 {"account": "3100", "credit": Decimal("1000.125")}],
-                reference_type="OpeningStock", reference_id=movement.id, created_by=owner_user.id,
+                [
+                    {"account": "1140", "debit": Decimal("1000.125")},
+                    {"account": "3100", "credit": Decimal("1000.125")},
+                ],
+                reference_type="OpeningStock",
+                reference_id=movement.id,
+                created_by=owner_user.id,
                 tenant_id=tenant.id,
             )
             db.session.commit()
@@ -354,8 +376,12 @@ class TestWarehouseStockApi:
         db.session.commit()
 
         with pytest.raises(ValidationError, match="في هذا المستودع"):
-            StockService.remove_stock(fresh_product.id, Decimal("3"), warehouse_id=other.id)
-        assert StockService.get_warehouse_quantity(fresh_product.id, other.id) == Decimal("2")
+            StockService.remove_stock(
+                fresh_product.id, Decimal("3"), warehouse_id=other.id
+            )
+        assert StockService.get_warehouse_quantity(
+            fresh_product.id, other.id
+        ) == Decimal("2")
         assert fresh_product.current_stock == Decimal("22")
 
     def test_foreign_warehouse_stock_is_the_plain_sum_of_its_movements(
@@ -401,6 +427,7 @@ class TestWarehouseStockApi:
 # =====================================================================
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReturnDiscount:
     def _discounted_sale(self, db, owner_user, test_customer, fresh_product):
         sale = Sale(

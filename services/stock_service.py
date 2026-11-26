@@ -3,6 +3,7 @@ from flask import current_app
 from flask_login import current_user
 from extensions import db
 from models import Product, StockMovement, Warehouse
+from services.account_resolution import AccountResolver, AccountRole
 from services.costing_service import CostingService
 from utils.decorators import get_owned_or_raise
 from utils.errors import ValidationError
@@ -57,7 +58,9 @@ class StockService:
         )
 
     @staticmethod
-    def post_adjustment_gl(product, delta, movement, *, unit_cost_base=None, actor_id=None):
+    def post_adjustment_gl(
+        product, delta, movement, *, unit_cost_base=None, actor_id=None
+    ):
         """Book the GL side of a manual stock adjustment.
 
         routes/products.py::adjust_stock moves current_stock and writes its own
@@ -73,7 +76,11 @@ class StockService:
         from services.gl_service import GLService
 
         delta = Decimal(str(delta))
-        cost = CostingService.current_unit_cost(product) if unit_cost_base is None else Decimal(str(unit_cost_base))
+        cost = (
+            CostingService.current_unit_cost(product)
+            if unit_cost_base is None
+            else Decimal(str(unit_cost_base))
+        )
         value = abs(delta) * cost
         if value <= 0:
             return None
@@ -89,16 +96,23 @@ class StockService:
 
     @staticmethod
     def _adjustment_lines(product, delta, value):
+        accounts = AccountResolver.resolve_codes(
+            AccountRole.INVENTORY,
+            AccountRole.INVENTORY_ADJUSTMENTS,
+            tenant_id=product.tenant_id,
+        )
+        inventory = accounts["INVENTORY"]
+        adjustment = accounts["INVENTORY_ADJUSTMENTS"]
         if delta < 0:
             lines = [
                 {
-                    "account": "5150",
+                    "account": adjustment,
                     "debit": value,
                     "credit": 0,
                     "description": f"Inventory Adjustment (Loss) - {product.name}",
                 },
                 {
-                    "account": "1140",
+                    "account": inventory,
                     "debit": 0,
                     "credit": value,
                     "description": f"Stock Decrease - {product.name}",
@@ -107,13 +121,13 @@ class StockService:
         else:
             lines = [
                 {
-                    "account": "1140",
+                    "account": inventory,
                     "debit": value,
                     "credit": 0,
                     "description": f"Stock Increase - {product.name}",
                 },
                 {
-                    "account": "5150",
+                    "account": adjustment,
                     "debit": 0,
                     "credit": value,
                     "description": f"Inventory Adjustment (Gain) - {product.name}",
@@ -125,14 +139,24 @@ class StockService:
     @staticmethod
     def stage_import_adjustment(product, warehouse, quantity, cost, actor_id):
         """Stage a positive receipt against product and warehouse rows locked by the importer."""
-        if warehouse.tenant_id is None or warehouse.tenant_id != product.tenant_id or quantity <= 0 or cost <= 0:
+        if (
+            warehouse.tenant_id is None
+            or warehouse.tenant_id != product.tenant_id
+            or quantity <= 0
+            or cost <= 0
+        ):
             raise ValueError("Invalid stock import adjustment.")
         CostingService.apply_inbound(product, quantity, cost)
         product.current_stock = (product.current_stock or 0) + quantity
         movement = StockMovement(
-            product_id=product.id, tenant_id=product.tenant_id, warehouse_id=warehouse.id,
-            movement_type="adjustment", quantity=quantity, reference_type="Excel Import",
-            reference_id=product.id, user_id=actor_id,
+            product_id=product.id,
+            tenant_id=product.tenant_id,
+            warehouse_id=warehouse.id,
+            movement_type="adjustment",
+            quantity=quantity,
+            reference_type="Excel Import",
+            reference_id=product.id,
+            user_id=actor_id,
         )
         db.session.add(movement)
         return movement
@@ -142,11 +166,16 @@ class StockService:
         from services.gl_service import GLService
 
         entries = [
-            (movement.id, f"Stock Adjustment - {product.name}",
-             StockService._adjustment_lines(product, quantity, quantity * cost))
+            (
+                movement.id,
+                f"Stock Adjustment - {product.name}",
+                StockService._adjustment_lines(product, quantity, quantity * cost),
+            )
             for product, movement, quantity, cost in adjustments
         ]
-        return GLService.post_import_adjustments(entries, tenant_id=tenant_id, currency=currency, created_by=actor_id)
+        return GLService.post_import_adjustments(
+            entries, tenant_id=tenant_id, currency=currency, created_by=actor_id
+        )
 
     @staticmethod
     def adjust_stock(
@@ -157,6 +186,8 @@ class StockService:
         post_gl=True,
         reference_type=None,
         reference_id=None,
+        *,
+        require_valuation=False,
     ):
         """Adjust stock with an optional GL posting (contract C1).
 
@@ -197,6 +228,8 @@ class StockService:
                 movement=movement,
             )
             if entry is None and Decimal(str(quantity)) != 0:
+                if require_valuation:
+                    raise ValidationError("حدد تكلفة مخزون موجبة قبل تعديل الكمية.")
                 current_app.logger.warning(
                     "Stock adjustment of %s for product #%s produced no GL "
                     "entry: the product has no cost price.",
@@ -242,6 +275,14 @@ class StockService:
         **قبل** الحركة، فتُستدعى هنا **قبل** تعديل ``current_stock``
         بالضبط — عقد واحد مضمون في موضع واحد.
         """
+        connection = db.session.connection()
+        if (
+            connection.dialect.name == "sqlite"
+            and not connection.connection.driver_connection.in_transaction
+        ):
+            # A savepoint with no outer SQLite transaction commits on release.
+            # Start the writer transaction before locking and changing stock.
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
         product = get_owned_or_raise(
             Product,
             product_id,
@@ -266,7 +307,9 @@ class StockService:
                     f"⚠️ المستودع المحدد غير موجود أو غير نشط (ID: {warehouse_id})."
                 )
         else:
-            warehouse = warehouse_query.filter_by(is_main=True).order_by(Warehouse.id).first()
+            warehouse = (
+                warehouse_query.filter_by(is_main=True).order_by(Warehouse.id).first()
+            )
             if not warehouse:
                 warehouse = warehouse_query.order_by(Warehouse.id).first()
 
@@ -473,12 +516,11 @@ class StockService:
         """
         from sqlalchemy import func
 
-        query = (
-            db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
-            .filter(
-                StockMovement.product_id == product_id,
-                StockMovement.warehouse_id == warehouse_id,
-            )
+        query = db.session.query(
+            func.coalesce(func.sum(StockMovement.quantity), 0)
+        ).filter(
+            StockMovement.product_id == product_id,
+            StockMovement.warehouse_id == warehouse_id,
         )
         if tenant_id is not None:
             query = query.filter(StockMovement.tenant_id == tenant_id)
@@ -489,10 +531,9 @@ class StockService:
         """إجمالي رصيد المنتج من الحركات = مجموع بسيط لكل حركاته."""
         from sqlalchemy import func
 
-        query = (
-            db.session.query(func.coalesce(func.sum(StockMovement.quantity), 0))
-            .filter(StockMovement.product_id == product_id)
-        )
+        query = db.session.query(
+            func.coalesce(func.sum(StockMovement.quantity), 0)
+        ).filter(StockMovement.product_id == product_id)
         if tenant_id is not None:
             query = query.filter(StockMovement.tenant_id == tenant_id)
         return Decimal(str(query.scalar() or 0))

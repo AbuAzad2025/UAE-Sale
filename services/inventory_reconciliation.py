@@ -44,39 +44,25 @@ import logging
 from decimal import Decimal
 
 from extensions import db
+from services.account_resolution import AccountResolver, AccountRole
 from services.costing_service import CostingService
 from utils.balance_checker import TOLERANCE, to_decimal
+from utils.money import (
+    qMoney as _q2,
+    qQty as _q3,
+    qUnitCost as _q6,
+    valuation as _valuation,
+)
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_INVENTORY_CONTROL_CODES = ["1140"]
 
-try:  # pragma: no cover - the resolver ships with the GL rollout
-    from services.account_resolution import AccountResolver, AccountRole
-except ImportError:  # pragma: no cover
-    AccountResolver = None  # type: ignore[assignment,misc]
-    AccountRole = None  # type: ignore[assignment,misc]
-
-
-from utils.money import qMoney as _q2, qQty as _q3, qUnitCost as _q6, valuation as _valuation
-
 
 def inventory_control_codes(tenant_id=None):
     """رموز حسابات مراقبة المخزون (مع مراعاة خريطة الأدوار)."""
-    codes = []
-    resolved = None
-    if AccountResolver is not None and AccountRole is not None:
-        try:
-            resolved = AccountResolver.resolve(AccountRole.INVENTORY, tenant_id=tenant_id)
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning(
-                f"AccountResolver failed for INVENTORY ({exc}) — "
-                f"using the literal fallback"
-            )
-    for code in ([resolved] if resolved else []) + DEFAULT_INVENTORY_CONTROL_CODES:
-        if code and str(code) not in codes:
-            codes.append(str(code))
-    return codes
+    resolved = AccountResolver.resolve(AccountRole.INVENTORY, tenant_id=tenant_id)
+    return list(dict.fromkeys([resolved, *DEFAULT_INVENTORY_CONTROL_CODES]))
 
 
 def _movement_quantities(tenant_id=None, product_ids=None, as_of=None):
@@ -123,17 +109,20 @@ def _document_weights(tenant_id=None):
         return query
 
     sales = (
-        scoped(db.session.query(
-            Sale.id,
-            SaleLine.product_id,
-            db.func.coalesce(
-                db.func.sum(
-                    db.func.coalesce(SaleLine.cost_price, 0) * SaleLine.quantity
+        scoped(
+            db.session.query(
+                Sale.id,
+                SaleLine.product_id,
+                db.func.coalesce(
+                    db.func.sum(
+                        db.func.coalesce(SaleLine.cost_price, 0) * SaleLine.quantity
+                    ),
+                    0,
                 ),
-                0,
-            ),
+            ).join(SaleLine, SaleLine.sale_id == Sale.id),
+            Sale,
+            SaleLine,
         )
-        .join(SaleLine, SaleLine.sale_id == Sale.id), Sale, SaleLine)
         .group_by(Sale.id, SaleLine.product_id)
         .all()
     )
@@ -143,11 +132,14 @@ def _document_weights(tenant_id=None):
         )
 
     purchases = (
-        scoped(db.session.query(
-            PurchaseLine.purchase_id,
-            PurchaseLine.product_id,
-            db.func.coalesce(db.func.sum(PurchaseLine.line_total), 0),
-        ), PurchaseLine)
+        scoped(
+            db.session.query(
+                PurchaseLine.purchase_id,
+                PurchaseLine.product_id,
+                db.func.coalesce(db.func.sum(PurchaseLine.line_total), 0),
+            ),
+            PurchaseLine,
+        )
         .group_by(PurchaseLine.purchase_id, PurchaseLine.product_id)
         .all()
     )
@@ -161,29 +153,35 @@ def _document_weights(tenant_id=None):
         for pid, product in scoped(db.session.query(Product.id, Product), Product).all()
     }
     returns = (
-        scoped(db.session.query(
-            ProductReturnLine.return_id,
-            ProductReturnLine.product_id,
-            db.func.coalesce(
-                db.func.sum(db.func.coalesce(ProductReturnLine.quantity, 0)), 0
+        scoped(
+            db.session.query(
+                ProductReturnLine.return_id,
+                ProductReturnLine.product_id,
+                db.func.coalesce(
+                    db.func.sum(db.func.coalesce(ProductReturnLine.quantity, 0)), 0
+                ),
             ),
-        ), ProductReturnLine)
+            ProductReturnLine,
+        )
         .group_by(ProductReturnLine.return_id, ProductReturnLine.product_id)
         .all()
     )
     return_costs = (
-        scoped(db.session.query(
-            ProductReturnLine.return_id,
-            ProductReturnLine.product_id,
-            db.func.coalesce(
-                db.func.sum(
-                    db.func.coalesce(SaleLine.cost_price, 0)
-                    * ProductReturnLine.quantity
+        scoped(
+            db.session.query(
+                ProductReturnLine.return_id,
+                ProductReturnLine.product_id,
+                db.func.coalesce(
+                    db.func.sum(
+                        db.func.coalesce(SaleLine.cost_price, 0)
+                        * ProductReturnLine.quantity
+                    ),
+                    0,
                 ),
-                0,
-            ),
+            ).join(SaleLine, SaleLine.id == ProductReturnLine.sale_line_id),
+            SaleLine,
+            ProductReturnLine,
         )
-        .join(SaleLine, SaleLine.id == ProductReturnLine.sale_line_id), SaleLine, ProductReturnLine)
         .group_by(ProductReturnLine.return_id, ProductReturnLine.product_id)
         .all()
     )
@@ -196,20 +194,32 @@ def _document_weights(tenant_id=None):
             (product_id, to_decimal(cost))
         )
 
-    movements = scoped(db.session.query(StockMovement.id, StockMovement.product_id), StockMovement).all()
+    movements = scoped(
+        db.session.query(StockMovement.id, StockMovement.product_id), StockMovement
+    ).all()
     for movement_id, product_id in movements:
         for source in ("OpeningStock", "stock_adjustment"):
             weights[(source, movement_id)] = [(product_id, Decimal("1"))]
 
-    items = scoped(db.session.query(MaintenanceOrderItem.id, MaintenanceOrderItem.product_id), MaintenanceOrderItem)
+    items = scoped(
+        db.session.query(MaintenanceOrderItem.id, MaintenanceOrderItem.product_id),
+        MaintenanceOrderItem,
+    )
     for item_id, product_id in items:
         weights[("maintenance_item", item_id)] = [(product_id, Decimal("1"))]
 
     returns = scoped(
-        db.session.query(MaintenanceReturnLine.return_id, MaintenanceOrderItem.product_id,
-                         MaintenanceReturnLine.quantity, MaintenanceOrderItem.cost_price)
-        .join(MaintenanceOrderItem, MaintenanceOrderItem.id == MaintenanceReturnLine.order_item_id),
-        MaintenanceReturnLine, MaintenanceOrderItem,
+        db.session.query(
+            MaintenanceReturnLine.return_id,
+            MaintenanceOrderItem.product_id,
+            MaintenanceReturnLine.quantity,
+            MaintenanceOrderItem.cost_price,
+        ).join(
+            MaintenanceOrderItem,
+            MaintenanceOrderItem.id == MaintenanceReturnLine.order_item_id,
+        ),
+        MaintenanceReturnLine,
+        MaintenanceOrderItem,
     )
     for return_id, product_id, qty, cost in returns:
         weights.setdefault(("maintenance_return", return_id), []).append(
@@ -238,7 +248,9 @@ def _gl_inventory_lines(codes, tenant_id=None, as_of=None):
         .filter(GLAccount.code.in_(codes), GLJournalEntry.is_posted.is_(True))
     )
     if tenant_id is not None:
-        query = query.filter(GLJournalLine.tenant_id == tenant_id, GLJournalEntry.tenant_id == tenant_id)
+        query = query.filter(
+            GLJournalLine.tenant_id == tenant_id, GLJournalEntry.tenant_id == tenant_id
+        )
     if as_of is not None:
         query = query.filter(GLJournalEntry.entry_date <= as_of)
 
@@ -324,24 +336,37 @@ def reconcile_inventory(
     if tenant_id is not None:
         warehouse_query = warehouse_query.filter(Warehouse.tenant_id == tenant_id)
     warehouse_names = {warehouse.id: warehouse.name for warehouse in warehouse_query}
-    for product_id, warehouse_id, quantity in _movement_quantities(tenant_id, product_ids, as_of):
+    for product_id, warehouse_id, quantity in _movement_quantities(
+        tenant_id, product_ids, as_of
+    ):
         product = visible_products.get(product_id)
         if product is None:
             continue
         qty = to_decimal(quantity)
-        movement_totals[product_id] = movement_totals.get(product_id, Decimal("0")) + qty
-        warehouse = warehouse_totals.setdefault(warehouse_id, {
-            "warehouse_id": warehouse_id, "warehouse": warehouse_names.get(warehouse_id),
-            "quantity": Decimal("0"), "valuation": Decimal("0"),
-        })
+        movement_totals[product_id] = (
+            movement_totals.get(product_id, Decimal("0")) + qty
+        )
+        warehouse = warehouse_totals.setdefault(
+            warehouse_id,
+            {
+                "warehouse_id": warehouse_id,
+                "warehouse": warehouse_names.get(warehouse_id),
+                "quantity": Decimal("0"),
+                "valuation": Decimal("0"),
+            },
+        )
         warehouse["quantity"] += qty
         warehouse["valuation"] += qty * CostingService.current_unit_cost(product)
         if qty < 0:
-            negative_positions.append({
-                "product_id": product_id, "sku": product.sku,
-                "warehouse_id": warehouse_id, "warehouse": warehouse["warehouse"],
-                "quantity": _q3(qty),
-            })
+            negative_positions.append(
+                {
+                    "product_id": product_id,
+                    "sku": product.sku,
+                    "warehouse_id": warehouse_id,
+                    "warehouse": warehouse["warehouse"],
+                    "quantity": _q3(qty),
+                }
+            )
 
     weights = _document_weights(tenant_id)
     gl_by_product = {}
@@ -438,8 +463,14 @@ def reconcile_inventory(
         "gl_difference": _q2(gl_difference),
         "unattributed_gl_balance": _q2(unattributed),
         "warehouses": [
-            {**row, "quantity": _q3(row["quantity"]), "valuation": _q2(row["valuation"])}
-            for row in sorted(warehouse_totals.values(), key=lambda row: row["warehouse_id"])
+            {
+                **row,
+                "quantity": _q3(row["quantity"]),
+                "valuation": _q2(row["valuation"]),
+            }
+            for row in sorted(
+                warehouse_totals.values(), key=lambda row: row["warehouse_id"]
+            )
         ],
         "negative_warehouse_positions": negative_positions,
         # Per-product GL amounts are an approximate allocation: GL lines that

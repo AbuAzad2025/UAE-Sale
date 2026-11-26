@@ -13,6 +13,7 @@ Overrides are stored in the existing JSON `custom_settings` column of
 AccountRole *value*, e.g. {"CASH": "1121", "AR_CONTROL": "1140"}.
 """
 
+import json
 from enum import Enum
 
 
@@ -163,16 +164,25 @@ class AccountResolver:
     @staticmethod
     def _custom_map(key):
         """Read a JSON dict override from system settings (read-only, no writes)."""
-        try:
-            from models.system_settings import SystemSettings
+        from models.system_settings import SystemSettings
 
-            settings = SystemSettings.query.filter_by(is_active=True).first()
-            if not settings:
-                return {}
-            value = settings.get_custom_setting(key, None)
-        except Exception:
+        settings = (
+            SystemSettings.query.filter_by(is_active=True)
+            .order_by(SystemSettings.id)
+            .first()
+        )
+        if settings is None or not settings.custom_settings:
             return {}
-        return value if isinstance(value, dict) else {}
+        try:
+            custom = json.loads(settings.custom_settings)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Invalid JSON in system account settings") from exc
+        if not isinstance(custom, dict):
+            raise ValueError("System account settings must be a JSON object")
+        value = custom.get(key, {})
+        if not isinstance(value, dict):
+            raise ValueError(f"Account mapping {key!r} must be a JSON object")
+        return value
 
     @staticmethod
     def resolve(role, tenant_id=None):
@@ -181,22 +191,44 @@ class AccountResolver:
         Precedence: tenant map > global map > DEFAULT_ROLE_MAP.
         Raises ValueError for unknown roles.
         """
-        role = AccountResolver._coerce_role(role)
+        from flask import has_app_context
+        from models.tenant_scope import get_current_tenant_id
 
-        if tenant_id is not None:
+        role = AccountResolver._coerce_role(role)
+        if tenant_id is None:
+            tenant_id = get_current_tenant_id()
+        if tenant_id is not None and type(tenant_id) is not int:
+            raise ValueError("The account mapping tenant must be an integer")
+        if not has_app_context():
+            if tenant_id is not None and tenant_id > 0:
+                raise RuntimeError(
+                    "A tenant account map requires an application context"
+                )
+            # Pure calculations without a tenant use the seeded chart.
+            return DEFAULT_ROLE_MAP[role.value]
+
+        if tenant_id is not None and tenant_id > 0:
             tenant_map = AccountResolver._custom_map(
                 TENANT_MAP_KEY_FMT.format(tenant_id=tenant_id)
             )
-            code = tenant_map.get(role.value)
-            if code:
-                return str(code)
+            if role.value in tenant_map:
+                return AccountResolver._configured_code(role, tenant_map[role.value])
 
         global_map = AccountResolver._custom_map(GLOBAL_MAP_KEY)
-        code = global_map.get(role.value)
-        if code:
-            return str(code)
+        if role.value in global_map:
+            return AccountResolver._configured_code(role, global_map[role.value])
 
         return DEFAULT_ROLE_MAP[role.value]
+
+    @staticmethod
+    def _configured_code(role, code):
+        if (
+            type(code) not in (str, int)
+            or not str(code).strip()
+            or len(str(code).strip()) > 20
+        ):
+            raise ValueError(f"Invalid account code configured for {role.value}")
+        return str(code).strip()
 
     @staticmethod
     def get_account(role, tenant_id=None):
@@ -221,9 +253,6 @@ class AccountResolver:
         related resolutions together (cash-flow statements, for example)
         so the code list lives in ONE place.
 
-        NOTE: services/cash_flow_service.py still hardcodes the codes
-        '1110', '1120', '6100', '3100', '3300' and '2210' and MUST be
-        migrated to this resolver (see the P0 report).
         """
         return {
             AccountResolver._coerce_role(role).value: AccountResolver.resolve(

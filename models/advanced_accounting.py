@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
 
@@ -174,40 +175,140 @@ class AdvancedExpense(TenantScopedMixin, db.Model):
         """الحصول على المبلغ الإجمالي مع الضرائب"""
         return self.amount_base + self.tax_amount + self.customs_amount
 
+    def post_expense(self):
+        """Recognize the expense and credit settlement or supplier liabilities."""
+        from services.account_resolution import AccountResolver, AccountRole
+        from services.currency_service import CurrencyService
+        from services.gl_service import GLService
+
+        if self.gl_journal_entry_id is not None:
+            original = self.gl_journal_entry
+            if (
+                original is None
+                or original.tenant_id != self.tenant_id
+                or (original.reference_type, original.reference_id)
+                != ("AdvancedExpense", self.id)
+                or original.is_reversed
+            ):
+                raise ValueError("Invalid prior journal for this advanced expense.")
+            return original
+        if self.category is None or not self.category.is_active:
+            raise ValueError("An active expense category is required.")
+        amount, tax, customs, paid = (
+            Decimal(str(value or 0))
+            for value in (
+                self.amount_base,
+                self.tax_amount,
+                self.customs_amount,
+                self.paid_amount,
+            )
+        )
+        if (
+            not all(
+                value.is_finite() and value >= 0
+                for value in (amount, tax, customs, paid)
+            )
+            or amount <= 0
+        ):
+            raise ValueError("Invalid advanced expense amounts.")
+        total = amount + tax + customs
+        if self.payment_status not in ("pending", "overdue", "partial", "paid"):
+            raise ValueError("Invalid advanced expense payment status.")
+        is_approved = not self.requires_approval or self.approval_status == "approved"
+        if self.payment_status == "paid":
+            paid = total
+        if self.payment_status == "partial" and not 0 < paid < total:
+            raise ValueError(
+                "A partial payment amount must be between zero and the expense total."
+            )
+        if self.payment_status in ("pending", "overdue"):
+            paid = Decimal("0")
+
+        lines = [
+            {
+                "account": self.category.gl_account_code
+                or AccountResolver.resolve(
+                    AccountRole.MISC_EXPENSE, tenant_id=self.tenant_id
+                ),
+                "debit": total,
+            }
+        ]
+        if paid:
+            if not is_approved or self.payment_method not in (
+                "cash",
+                "bank_transfer",
+                "card",
+                "credit_card",
+                "e_wallet",
+            ):
+                raise ValueError(
+                    "An approved expense and a settled payment method are required."
+                )
+            method = (
+                "card" if self.payment_method == "credit_card" else self.payment_method
+            )
+            lines.append(
+                {
+                    "account": GLService.get_payment_debit_account(
+                        method, tenant_id=self.tenant_id
+                    ),
+                    "credit": paid,
+                }
+            )
+        if paid < total:
+            lines.append(
+                {
+                    "account": AccountResolver.resolve(
+                        AccountRole.AP_CONTROL, tenant_id=self.tenant_id
+                    ),
+                    "credit": total - paid,
+                }
+            )
+
+        entry = GLService.post_entry(
+            lines,
+            description=f"Advanced expense {self.expense_number}",
+            reference_type="AdvancedExpense",
+            reference_id=self.id,
+            currency=CurrencyService.get_base_currency(),
+            entry_date=self.expense_date,
+            tenant_id=self.tenant_id,
+            created_by=self.created_by,
+            is_posted=is_approved,
+            idempotency_key=f"advanced-expense:{self.id}",
+        )
+        self.paid_amount = paid
+        self.gl_journal_entry_id = entry.id
+        return entry
+
     def reverse_expense(self, reason, reversed_by_user):
         """عكس المصروف"""
         if self.is_reversed:
             raise ValueError("المصروف معكوس مسبقاً")
 
+        from services.gl_service import GLService
+
+        original = self.gl_journal_entry
+        if (
+            original is None
+            or not original.is_posted
+            or original.tenant_id != self.tenant_id
+            or original.reference_type != "AdvancedExpense"
+            or original.reference_id != self.id
+        ):
+            raise ValueError("لا يوجد قيد مرحّل مرتبط بهذا المصروف.")
+        reversal = GLService.reverse_entry(
+            original,
+            description=f"عكس مصروف {self.expense_number}",
+            created_by=reversed_by_user.id,
+            notes=reason,
+        )
         self.is_reversed = True
         self.reversed_at = datetime.now(timezone.utc)
         self.reversed_by = reversed_by_user.id
         self.reversal_reason = reason
 
-        from services.gl_service import GLService
-
-        lines = [
-            {
-                "account_code": self.category.gl_account_code,
-                "debit": 0,
-                "credit": self.amount_base,
-                "description": f"عكس مصروف {self.description_ar}",
-            },
-            {
-                "account_code": "1110",  # صندوق
-                "debit": self.amount_base,
-                "credit": 0,
-                "description": f"استرداد مصروف {self.expense_number}",
-            },
-        ]
-
-        GLService.create_manual_entry(
-            description=f"عكس مصروف {self.expense_number}",
-            lines=lines,
-            entry_date=datetime.now().date(),
-            created_by=reversed_by_user.id,
-            notes=f"سبب العكس: {reason}",
-        )
+        return reversal
 
 
 class TaxCalculationRule(TenantScopedMixin, db.Model):

@@ -72,7 +72,7 @@ class TestCreate:
     def test_get_renders_form(self, client, login_owner):
         assert client.get("/cheques/create").status_code == 200
 
-    def test_post_creates_and_redirects(self, client, login_owner, test_customer):
+    def test_post_creates_and_redirects(self, client, posting_owner, test_customer):
         from models import GLAccount as _GLAcc, GLJournalEntry as _GLEntry
 
         db.session.refresh(test_customer)
@@ -150,7 +150,7 @@ class TestLifecycleActions:
         assert pending_cheque.status == "deposited"
         assert pending_cheque.deposit_date is not None
 
-    def test_clear_action(self, client, login_owner, pending_cheque):
+    def test_clear_action(self, client, posting_owner, pending_cheque):
         client.post(f"/cheques/{pending_cheque.id}/deposit")
         resp = client.post(
             f"/cheques/{pending_cheque.id}/clear",
@@ -161,7 +161,7 @@ class TestLifecycleActions:
         db.session.refresh(pending_cheque)
         assert pending_cheque.status == "cleared"
 
-    def test_bounce_action(self, client, login_owner, pending_cheque):
+    def test_bounce_action(self, client, posting_owner, pending_cheque):
         resp = client.post(
             f"/cheques/{pending_cheque.id}/bounce",
             data={"bounce_reason": "لا رصيد"},
@@ -272,7 +272,7 @@ class TestHttpInterfaceBalanceAdjustment:
     """اختبارات واجهة HTTP لتعديل الأرصدة عند الارتداد/الإلغاء"""
 
     def test_bounce_via_http_updates_customer_balance(
-        self, client, login_owner, pending_cheque, test_customer
+        self, client, posting_owner, pending_cheque, test_customer
     ):
         """ارتداد الشيك عبر HTTP يحدث رصيد العميل"""
         db.session.refresh(test_customer)
@@ -304,7 +304,9 @@ class TestHttpInterfaceBalanceAdjustment:
         db.session.refresh(test_customer)
         assert test_customer.balance == balance_before - Decimal("800.00")
 
-    def test_bounce_via_http_updates_status(self, client, login_owner, pending_cheque):
+    def test_bounce_via_http_updates_status(
+        self, client, posting_owner, pending_cheque
+    ):
         """ارتداد الشيك عبر HTTP يحدث الحالة"""
         client.post(f"/cheques/{pending_cheque.id}/deposit", follow_redirects=True)
         client.post(
@@ -316,7 +318,7 @@ class TestHttpInterfaceBalanceAdjustment:
         assert pending_cheque.status == "bounced"
         assert pending_cheque.bounce_reason == "لا رصيد"
 
-    def test_clear_via_http_works(self, client, login_owner, pending_cheque):
+    def test_clear_via_http_works(self, client, posting_owner, pending_cheque):
         """صرف الشيك عبر HTTP يعمل"""
         client.post(f"/cheques/{pending_cheque.id}/deposit", follow_redirects=True)
         client.post(

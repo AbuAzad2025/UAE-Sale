@@ -69,7 +69,7 @@ if IS_POSTGRES:
 
 from app import create_app  # noqa: E402
 from extensions import db as _db  # noqa: E402
-from models import (
+from models import (  # noqa: E402
     User,
     Role,
     Permission,
@@ -78,7 +78,7 @@ from models import (
     ProductCategory,
     Sale,
     SaleLine,
-)  # noqa: E402
+)
 
 
 @pytest.fixture(scope="session")
@@ -176,6 +176,33 @@ def db(app):
                 _db.engine.dispose()
             except Exception:
                 pass
+
+
+@pytest.fixture
+def posting_tenant(db):
+    from datetime import date
+    from models import Tenant
+    from models.tenant_scope import get_current_tenant_id, set_current_tenant_id
+    from services.fiscal_period_guard import ensure_current_period
+
+    company = Tenant(
+        name="Posting test",
+        name_ar="الفحص",
+        slug="posting-test",
+        default_currency="ILS",
+        enable_tax=False,
+        default_tax_rate=Decimal("0"),
+    )
+    db.session.add(company)
+    db.session.flush()
+    previous = get_current_tenant_id()
+    set_current_tenant_id(company.id)
+    try:
+        ensure_current_period(date.today().year, tenant_id=company.id)
+        db.session.commit()
+        yield company
+    finally:
+        set_current_tenant_id(previous)
 
 
 @pytest.fixture(scope="function")

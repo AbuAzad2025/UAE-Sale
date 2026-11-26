@@ -14,7 +14,8 @@ from models import Product, StockMovement, Warehouse
 from services.stock_service import StockService
 from utils.decorators import permission_required, get_owned_or_404
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from werkzeug.exceptions import HTTPException
 
 warehouse_bp = Blueprint("warehouse", __name__, url_prefix="/warehouse")
 
@@ -124,9 +125,7 @@ def index():
     total_products = len(all_products)
     out_count = sum(1 for p in all_products if (p.current_stock or 0) <= 0)
     low_count = sum(
-        1
-        for p in all_products
-        if (p.current_stock or 0) > 0 and p.is_low_stock()
+        1 for p in all_products if (p.current_stock or 0) > 0 and p.is_low_stock()
     )
     good_count = total_products - out_count - low_count
 
@@ -341,10 +340,10 @@ def create_warehouse():  # noqa: C901
             flash(f'✓ تم إنشاء المستودع {warehouse_type} "{name}" بنجاح', "success")
             return redirect(url_for("warehouse.list_warehouses"))
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            flash(f"خطأ في إنشاء المستودع: حدث خطأ غير متوقع", "error")
+            flash("خطأ في إنشاء المستودع: حدث خطأ غير متوقع", "error")
             return render_template(
                 "warehouse/create_warehouse.html",
                 parent_warehouses=parent_warehouses,
@@ -392,10 +391,10 @@ def delete_warehouse(id):
             db.session.commit()
             flash(f'تم حذف المستودع "{warehouse.name}" بنجاح', "success")
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
-        flash(f"فشل الحذف: حدث خطأ غير متوقع", "danger")
+        flash("فشل الحذف: حدث خطأ غير متوقع", "danger")
 
     return redirect(url_for("warehouse.list_warehouses"))
 
@@ -410,12 +409,10 @@ def add_stock(product_id):
         notes = request.form.get("notes", "").strip()
         warehouse_id = request.form.get("warehouse_id", type=int)
 
-        if quantity <= 0:
+        if not quantity.is_finite() or quantity <= 0:
             return jsonify(
                 {"success": False, "message": "الكمية يجب أن تكون أكبر من صفر"}
             ), 400
-
-        product.current_stock = (product.current_stock or Decimal("0")) + quantity
 
         if not warehouse_id:
             warehouse = Warehouse.query.filter_by(is_active=True, is_main=True).first()
@@ -425,16 +422,14 @@ def add_stock(product_id):
                 return jsonify({"success": False, "message": "لا يوجد مستودع نشط"}), 400
             warehouse_id = warehouse.id
 
-        movement = StockMovement(
-            product_id=product_id,
+        StockService.adjust_stock(
+            product_id,
+            quantity,
             warehouse_id=warehouse_id,
-            movement_type="adjustment",
-            quantity=quantity,
-            user_id=current_user.id,
             notes=notes or "إضافة كمية يدوية",
+            reference_type="Manual Adjustment",
+            require_valuation=True,
         )
-
-        db.session.add(movement)
         db.session.commit()
 
         return jsonify(
@@ -445,6 +440,13 @@ def add_stock(product_id):
             }
         )
 
-    except Exception as e:
+    except HTTPException:
+        raise
+    except (InvalidOperation, ValueError) as e:
         db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500
+        message = str(e) if isinstance(e, ValueError) else "الكمية غير صالحة."
+        return jsonify({"success": False, "message": message}), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to add stock and post its valuation")
+        return jsonify({"success": False, "message": "تعذّر إضافة المخزون."}), 500

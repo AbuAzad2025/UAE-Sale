@@ -147,23 +147,20 @@ class PaymentService:
         if fx_amount == Decimal("0"):
             return None
 
-        try:
-            from services.account_resolution import AccountResolver, AccountRole
-        except Exception:  # pragma: no cover
-            AccountResolver = None
-            AccountRole = None
-
-        def _role(name, fallback):
-            try:
-                if AccountResolver is not None and AccountRole is not None:
-                    return AccountResolver.resolve(getattr(AccountRole, name))
-            except Exception:
-                pass
-            return fallback
+        from services.account_resolution import AccountResolver, AccountRole
 
         ar_account = GLService.get_customer_credit_account(sale.customer)
-        fx_gain_account = _role("FX_GAIN", "4400")
-        fx_loss_account = _role("FX_LOSS", "6900")
+        party_id = (
+            sale.customer_id
+            if getattr(sale.customer, "customer_type", None) == "partner"
+            else None
+        )
+        fx_gain_account = AccountResolver.resolve(
+            AccountRole.FX_GAIN, tenant_id=sale.tenant_id
+        )
+        fx_loss_account = AccountResolver.resolve(
+            AccountRole.FX_LOSS, tenant_id=sale.tenant_id
+        )
 
         if fx_amount > Decimal("0"):
             lines = [
@@ -175,6 +172,7 @@ class PaymentService:
                 {
                     "account": ar_account,
                     "credit": fx_amount,
+                    "party_id": party_id,
                     "description": f"فرق صرف على الذمم المدينة - سند {receipt.receipt_number}",
                 },
             ]
@@ -184,6 +182,7 @@ class PaymentService:
                 {
                     "account": ar_account,
                     "debit": gain,
+                    "party_id": party_id,
                     "description": f"فرق صرف على الذمم المدينة - سند {receipt.receipt_number}",
                 },
                 {
@@ -201,6 +200,7 @@ class PaymentService:
             reference_id=receipt.id,
             currency=CurrencyService.get_base_currency(),
             exchange_rate=1,
+            tenant_id=sale.tenant_id,
         )
 
     @staticmethod
@@ -469,6 +469,7 @@ class PaymentService:
                     cheque_number=cheque_number,
                     cheque_bank_number=cheque_number,  # نفس رقم الشيك
                     cheque_type="incoming",
+                    receipt_id=receipt.id,
                     customer_id=customer.id,
                     amount=Decimal(str(amount)),
                     currency=currency,
@@ -493,7 +494,7 @@ class PaymentService:
             else:
                 GLService.ensure_core_accounts()
                 payment_account = GLService.get_payment_debit_account(
-                    receipt.payment_method
+                    receipt.payment_method, tenant_id=customer.tenant_id
                 )
                 credit_account = GLService.get_customer_credit_account(customer)
 
@@ -507,7 +508,9 @@ class PaymentService:
                         "account": credit_account,
                         "credit": receipt.amount,
                         "description": f"سند قبض {receipt.receipt_number}",
-                        "party_id": customer.id if customer.customer_type == "partner" else None,
+                        "party_id": customer.id
+                        if customer.customer_type == "partner"
+                        else None,
                     },
                 ]
                 entry = GLService.post_entry(
@@ -677,7 +680,7 @@ class PaymentService:
         للرصيد ولا مسار واحد للخدمة. الآن كل شيء يمرّ من هنا:
           * سند صرف (Payment) بقيمة **موجبة** واتجاه ``outgoing`` — أثره
             على رصيد العميل يأتي من الاشتقاق (سند صادر بلا فاتورة ⇒
-            يُخصم من رصيد العميل)، والقيدان الموجبان للنقد هما ما
+            يزيد الجانب المدين من رصيد العميل)، والقيدان الموجبان للنقد هما ما
             يفرضه قيد قاعدة البيانات (amount/amount_base > 0)،
           * قيد محاسبي متوازن: مدين الذمم المدينة / دائن الصندوق أو
             البنك (بعملة السند وسعره)،
@@ -703,6 +706,10 @@ class PaymentService:
 
         if customer is None:
             raise ValidationError("العميل غير موجود")
+        if payment_method == "cheque":
+            raise ValidationError(
+                "أنشئ سند صرف شيك يتضمن بيانات الشيك من شاشة السندات."
+            )
 
         amount_decimal = _dec(amount)
         if amount_decimal <= Decimal("0"):
@@ -746,7 +753,9 @@ class PaymentService:
         try:
             GLService.ensure_core_accounts()
             ar_account = GLService.get_customer_credit_account(customer)
-            cash_account = GLService.get_payment_debit_account(payment_method or "cash")
+            cash_account = GLService.get_payment_debit_account(
+                payment_method or "cash", tenant_id=customer.tenant_id
+            )
             _partner_id = (
                 customer.id
                 if getattr(customer, "customer_type", None) == "partner"

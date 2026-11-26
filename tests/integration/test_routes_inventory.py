@@ -200,7 +200,7 @@ class TestProductsCreate:
 
 class TestProductsEditDelete:
     def test_price_change_persists_with_movement(
-        self, client, login_owner, db, test_product
+        self, client, posting_owner, db, test_product
     ):
         wh = _make_warehouse()
         resp = client.post(
@@ -256,7 +256,7 @@ class TestProductsEditDelete:
 
 class TestProductsAdjustStock:
     def test_add_increases_stock_and_writes_movement(
-        self, client, login_owner, db, owner_user, test_product
+        self, client, posting_owner, db, owner_user, test_product
     ):
         _make_warehouse()
         resp = client.post(
@@ -282,7 +282,7 @@ class TestProductsAdjustStock:
         assert movement.quantity == Decimal("7.5")
         assert movement.user_id == owner_user.id
 
-    def test_set_rewrites_stock(self, client, login_owner, db, test_product):
+    def test_set_rewrites_stock(self, client, posting_owner, db, test_product):
         _make_warehouse()
         resp = client.post(
             f"/products/{test_product.id}/adjust-stock",
@@ -594,7 +594,7 @@ class TestWarehouseCrud:
 
 class TestWarehouseAddStock:
     def test_add_updates_product_and_writes_movement(
-        self, client, login_owner, db, owner_user, test_product
+        self, client, posting_owner, db, owner_user, test_product
     ):
         other = _make_warehouse(name="Other WH", code="WH-OTHER-01", is_main=False)
         resp = client.post(
@@ -621,7 +621,7 @@ class TestWarehouseAddStock:
         assert movement.notes == "استلام يدوي"
 
     def test_add_without_warehouse_falls_back_to_main(
-        self, client, login_owner, db, test_product
+        self, client, posting_owner, db, test_product
     ):
         main = _make_warehouse(is_main=True)
         _make_warehouse(name="Branch WH", code="WH-BR-01", is_main=False)

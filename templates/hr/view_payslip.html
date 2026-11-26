@@ -18,6 +18,10 @@
           <div class="col-md-4">
             <p><strong>{{ t('Period') }}:</strong> {{ payslip.pay_period_start.strftime('%Y-%m-%d') if payslip.pay_period_start else '' }} {{ t('to') }} {{ payslip.pay_period_end.strftime('%Y-%m-%d') if payslip.pay_period_end else '' }}</p>
             <p><strong>{{ t('Pay Date') }}:</strong> {{ payslip.pay_date.strftime('%Y-%m-%d') if payslip.pay_date else '' }}</p>
+            {% if payslip.disbursed_on %}
+              <p><strong>{{ 'تاريخ الصرف الفعلي' if current_language == 'ar' else 'Actual disbursement date' }}</strong> {{ payslip.disbursed_on.isoformat() }}</p>
+              <p><strong>{{ t('Payment Method') }}</strong> {{ t('Bank Transfer') if payslip.payment_method == 'bank_transfer' else t('Cash') }}</p>
+            {% endif %}
           </div>
           <div class="col-md-4 text-center">
             <h2 class="text-success mb-0">{{ "{:,.2f}".format(payslip.net_salary|float) }} {{ base_currency_name }}</h2>
@@ -90,6 +94,13 @@
           {% elif payslip.status == 'approved' %}
           <form method="POST" action="{{ url_for('hr.mark_payslip_paid', id=payslip.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="disbursed-on">{{ 'تاريخ الصرف الفعلي' if current_language == 'ar' else 'Actual disbursement date' }}</label>
+            <input id="disbursed-on" type="date" name="disbursed_on" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}" min="{{ payslip.pay_period_start.isoformat() }}" required>
+            <label for="payroll-method">{{ t('Payment Method') }}</label>
+            <select id="payroll-method" name="payment_method" required>
+              <option value="cash">{{ t('Cash') }}</option>
+              <option value="bank_transfer">{{ t('Bank Transfer') }}</option>
+            </select>
             <button type="submit" class="btn btn-primary" onclick='return confirm({{ t('Record Payment Confirm')|tojson }})'>
               <i class="fas fa-money-bill-wave mr-2"></i>{{ t('Record Payment') }}
             </button>

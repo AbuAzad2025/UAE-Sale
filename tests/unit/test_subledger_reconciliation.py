@@ -9,13 +9,15 @@ All money math is Decimal; tolerance boundary is |delta| ≤ 0.01 inclusive.
 
 from decimal import Decimal
 
-from models import Customer, Purchase, Sale, Supplier
+import pytest
+
+from models import Customer, GLJournalEntry, Purchase, Sale, Supplier
 from services.gl_service import GLService
 from services.subledger_reconciliation import SubLedgerReconciliation
 
 
 def test_control_respects_tenant_and_posted_status(db, owner_user):
-    from models import Tenant
+    from models import GLAccount, SystemSettings, Tenant
     from utils.balance_checker import get_control_account_balance
 
     tenants = [
@@ -26,16 +28,33 @@ def test_control_respects_tenant_and_posted_status(db, owner_user):
     db.session.flush()
     first, second = tenants
     GLService.ensure_core_accounts()
+    remapped = GLAccount(code="2119", name="Supplier control", type="liability")
+    db.session.add(remapped)
+    SystemSettings.get_current().set_custom_setting(
+        f"gl_role_map:{second.id}", {"AP_CONTROL": remapped.code}
+    )
     for tenant, posted, amount in (
-        (first, True, 30), (first, False, 60), (second, True, 100)
+        (first, True, 30),
+        (first, False, 60),
+        (second, True, 100),
     ):
         GLService.post_entry(
-            [{"account": "1140", "debit": amount}, {"account": "2110", "credit": amount}],
-            is_posted=posted, tenant_id=tenant.id, created_by=owner_user.id,
+            [
+                {"account": "1140", "debit": amount},
+                {
+                    "account": remapped.code if tenant == second else "2110",
+                    "credit": amount,
+                },
+            ],
+            is_posted=posted,
+            tenant_id=tenant.id,
+            created_by=owner_user.id,
         )
     db.session.commit()
     assert get_control_account_balance(["2110"], tenant_id=first.id) == Decimal("30")
-    assert SubLedgerReconciliation.reconcile_payables(tenant_id=second.id)["control_balance"] == Decimal("100")
+    assert SubLedgerReconciliation.reconcile_payables(tenant_id=second.id)[
+        "control_balance"
+    ] == Decimal("100")
 
 
 # ─────────────────────────── helpers ───────────────────────────
@@ -112,6 +131,7 @@ def _sync_supplier_columns(supplier, purchases_total, paid_total):
 # ─────────────────────────── AR section ───────────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReceivablesReconciliation:
     def test_perfect_books_ar_balanced(self, db, owner_user, test_customer):
         """Invoice leg + receipt leg posted ⇒ all three ledgers agree."""
@@ -330,6 +350,7 @@ class TestReceivablesReconciliation:
 # ─────────────────────────── AP mirror ───────────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestPayablesReconciliation:
     def test_perfect_books_ap_balanced(self, db, owner_user):
         """Purchase leg + payment leg posted ⇒ all three sides agree on 2115+2110."""
@@ -451,6 +472,7 @@ class TestPayablesReconciliation:
 # ─────────────────────────── cross-section ───────────────────────────
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestReconciliationSuite:
     def test_reconcile_all_returns_both_sections(self, db):
         reports = SubLedgerReconciliation.reconcile_all()
@@ -512,6 +534,7 @@ class TestReconciliationSuite:
         assert report["balanced"] is False
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestChequeBounceSubledgerReconciliation:
     """اختبارات مطابقة الذمم الفرعية بعد ارتداد الشيك"""
 
@@ -615,7 +638,8 @@ class TestChequeBounceSubledgerReconciliation:
         cheque = self._create_outgoing_cheque(db, owner_user)
         supplier = cheque.supplier
         db.session.refresh(supplier)
-        balance_before = supplier.total_purchases_aed or Decimal("0")
+        balance_before = supplier.get_balance_aed()
+        purchases_before = supplier.total_purchases_aed
 
         # إصدار الشيك
         ChequeAccountingIntegration.issue_cheque(cheque.id, issued_by=owner_user.id)
@@ -627,5 +651,9 @@ class TestChequeBounceSubledgerReconciliation:
         )
         db.session.refresh(supplier)
 
-        # التحقق من أن رصيد المورد انخفض بمبلغ الشيك
-        assert supplier.total_purchases_aed == balance_before - Decimal("1000.00")
+        assert supplier.total_purchases_aed == purchases_before
+        assert supplier.get_balance_aed() == balance_before
+        original = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
+        reversal = db.session.get(GLJournalEntry, cheque.gl_bounce_entry_id)
+        assert original.reversed_entry_id == reversal.id
+        assert reversal.reversed_entry_id == original.id

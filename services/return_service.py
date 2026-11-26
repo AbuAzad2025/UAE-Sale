@@ -147,7 +147,6 @@ class ReturnService:
                         str(product_cost)
                     ) > Decimal("0"):
                         cost_price = Decimal(str(product_cost))
-                        cost_basis_source = "product_current_cost"
                         review_flags.append(
                             f"سطر البيع {sale_line.id}: لا توجد تكلفة موثّقة "
                             f"(cost_price = {line_cost}) — عُكس القيد بتكلفة "
@@ -279,6 +278,7 @@ class ReturnService:
             # an already-base-valued cost by the rate (3.65x overstatement).
             if cost_gl_lines:
                 from services.currency_service import CurrencyService as _CS
+
                 GLService.post_entry(
                     lines=cost_gl_lines,
                     description=f"Sales Return Cost Reversal {product_return.return_number} for Sale {sale.sale_number}",
@@ -302,7 +302,9 @@ class ReturnService:
             ar_part_base = refund_base - cash_out_base
             if cash_out_base > 0:
                 _ar_acct = GLService.get_customer_credit_account(sale.customer)
-                _cash_acct = GLService.get_payment_debit_account("cash")
+                _cash_acct = GLService.get_payment_debit_account(
+                    "cash", tenant_id=sale.tenant_id
+                )
                 _refund_party = (
                     sale.customer.id
                     if getattr(sale.customer, "customer_type", None) == "partner"

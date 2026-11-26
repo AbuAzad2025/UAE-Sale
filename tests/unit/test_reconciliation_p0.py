@@ -18,6 +18,7 @@ Reconciliation P0 — مطابقة الذمم والتقارير مع مصدر �
 """
 
 from datetime import date, datetime, timedelta
+import pytest
 from decimal import Decimal
 
 
@@ -114,6 +115,7 @@ def _item(report, code):
 # ═════════════════════════ AR — المصدر الواحد ═════════════════════════
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestARReconciliationUsesSingleSource:
     def test_ar_matches_derive_customer_balance_with_opening_return_and_receipt(
         self, db, owner_user, test_customer
@@ -214,6 +216,7 @@ class TestARReconciliationUsesSingleSource:
 # ═════════════════════════ AP — المصدر الواحد ═════════════════════════
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestAPReconciliationUsesSingleSource:
     def test_ap_matches_derive_supplier_totals(self, db, owner_user):
         """مورد برصيد افتتاحي + دفعة على مستوى المورد:
@@ -315,6 +318,7 @@ class TestAPReconciliationUsesSingleSource:
 # ═════════════════ شيك وارد معلّق — بند تسوية لا كسر ═════════════════
 
 
+@pytest.mark.usefixtures("posting_tenant")
 class TestPendingChequeIsReconcilingItem:
     def test_pending_incoming_cheque_is_reconciling_item_not_break(
         self, db, owner_user, test_customer

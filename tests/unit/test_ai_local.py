@@ -215,7 +215,7 @@ class TestExternalEndpointsFailSafe:
         assert resp.status_code == 200
         body = resp.get_json()
         assert "response" in body and body["response"]
-        assert body["ai_mode"] == "groq"
+        assert body["ai_mode"] == "local"
         assert body["ai_enabled"] is True
 
     def test_ask_genius_requires_question(self, client, ai_analyst):

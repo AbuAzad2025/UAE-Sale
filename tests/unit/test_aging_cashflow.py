@@ -179,7 +179,7 @@ def _gl_pair(debit_code, credit_code, amount, entry_date=None):
 
 
 @pytest.fixture
-def gl_scenario(db):
+def gl_scenario(db, posting_tenant):
     # Beginning cash: bank funded before period
     _gl_pair("1120", "3100", 1000, PERIOD_START - timedelta(days=30))
     # Within period: owner adds capital via cash, withdraws, loan flows

@@ -1,47 +1,9 @@
-from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal
+
 from extensions import db
 from models.cheque import Cheque
-from models.gl import GLAccount, GLJournalEntry
-from services.gl_service import GLService
+from models.gl import GLJournalEntry, GLJournalLine
 from utils.decorators import get_owned_or_404
-
-_MONEY_Q3 = Decimal("0.001")
-
-
-def _coerce_decimal(value) -> Decimal:
-    """Coerce boundary input to Decimal without ever going through float."""
-    if isinstance(value, Decimal):
-        return value
-    if value is None:
-        return Decimal("0")
-    try:
-        return Decimal(str(value).strip() or "0")
-    except (InvalidOperation, ValueError, AttributeError):
-        return Decimal("0")
-
-
-def _quantize_3(value: Decimal) -> Decimal:
-    return _coerce_decimal(value).quantize(_MONEY_Q3, rounding=ROUND_HALF_UP)
-
-
-try:
-    from services.account_resolution import AccountResolver, AccountRole
-except Exception:  # pragma: no cover - resolver ships in parallel
-    AccountRole = None  # type: ignore[assignment,misc]
-    AccountResolver = None  # type: ignore[assignment,misc]
-
-
-def _resolve_role_code(role_value, fallback_code):
-    """Resolve an AccountRole to its live code, falling back to the literal."""
-    try:
-        if AccountRole is not None and AccountResolver is not None:
-            code = AccountResolver.resolve(AccountRole(role_value))
-            if code:
-                return str(code)
-    except Exception:
-        pass
-    return fallback_code
 
 
 class ChequeAccountingIntegration:
@@ -63,37 +25,14 @@ class ChequeAccountingIntegration:
         "exchange_loss": "FX_LOSS",
     }
 
-    CHEQUE_DEFAULT_CODES = {
-        "incoming_under_collection": "1150",
-        "outgoing_deferred": "2120",
-        "bank_account": "1120",
-        "cash_account": "1110",
-        "accounts_receivable": "1130",
-        "accounts_payable": "2110",
-        "bank_charges": "6950",
-        "exchange_gain": "4400",
-        "exchange_loss": "6900",
-    }
-
     @classmethod
     def cheque_accounts(cls, tenant_id=None):
-        """Resolve the cheque account codes for the current tenant.
-
-        Falls back to the seeded default codes when the resolver cannot
-        answer, so a tenant with no custom mapping still gets a working
-        (and correct) statement.
-        """
         from services.account_resolution import AccountResolver
 
-        resolved = {}
-        for key, role in cls.CHEQUE_ROLES.items():
-            code = None
-            try:
-                code = AccountResolver.resolve(role, tenant_id=tenant_id)
-            except Exception:
-                code = None
-            resolved[key] = code or cls.CHEQUE_DEFAULT_CODES[key]
-        return resolved
+        return {
+            key: AccountResolver.resolve(role, tenant_id=tenant_id)
+            for key, role in cls.CHEQUE_ROLES.items()
+        }
 
     class _Accounts:
         """Tenant-aware view of the cheque account codes.
@@ -129,376 +68,109 @@ class ChequeAccountingIntegration:
         return cheque.amount_base or Decimal("0")
 
     @staticmethod
-    def receive_cheque(cheque_id, received_by=None):
-        """تسجيل استلام شيك وارد مع القيود المحاسبية"""
+    def _locked_cheque(cheque_id):
         cheque = get_owned_or_404(Cheque, cheque_id)
-
-        if cheque.cheque_type != "incoming":
-            raise ValueError("هذا الشيك ليس شيك وارد")
-
-        if cheque.status != "pending":
-            raise ValueError("الشيك ليس في حالة معلق")
-
-        try:
-            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
-            lines = []
-
-            lines.append(
-                {
-                    "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                        "incoming_under_collection"
-                    ],
-                    "debit": amount_base,
-                    "credit": 0,
-                    "description": f"استلام شيك وارد رقم {cheque.cheque_bank_number} من {cheque.customer.name if cheque.customer else 'غير محدد'}",
-                }
-            )
-
-            lines.append(
-                {
-                    "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                        "accounts_receivable"
-                    ],
-                    "debit": 0,
-                    "credit": amount_base,
-                    "description": f"تسوية ذمم مدينة - شيك رقم {cheque.cheque_bank_number}",
-                }
-            )
-
-            entry = GLService.create_manual_entry(
-                description=f"استلام شيك وارد رقم {cheque.cheque_bank_number}",
-                lines=lines,
-                entry_date=datetime.now().date(),
-                reference_type="cheque_receive",
-                reference_id=cheque.id,
-                created_by=received_by,
-            )
-
-            cheque.status = "deposited"
-            cheque.gl_journal_entry_id = entry.id
-            cheque.updated_at = datetime.now(timezone.utc)
-
-            db.session.flush()
-
-            return entry
-
-        except Exception as e:
-            db.session.rollback()
-            raise Exception(f"فشل في تسجيل استلام الشيك: {str(e)}")
+        db.session.refresh(cheque, with_for_update=True)
+        return cheque
 
     @staticmethod
-    def issue_cheque(cheque_id, issued_by=None):
-        """تسجيل إصدار شيك صادر مع القيود المحاسبية"""
-        cheque = get_owned_or_404(Cheque, cheque_id)
-
-        if cheque.cheque_type != "outgoing":
-            raise ValueError("هذا الشيك ليس شيك صادر")
-
-        if cheque.status != "pending":
-            raise ValueError("الشيك ليس في حالة معلق")
-
-        try:
-            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
-            lines = []
-
-            lines.append(
-                {
-                    "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                        "accounts_payable"
-                    ],
-                    "debit": amount_base,
-                    "credit": 0,
-                    "description": f"تسوية ذمم دائنة - شيك رقم {cheque.cheque_bank_number}",
-                }
+    def _original_entry(cheque):
+        if not cheque.gl_journal_entry_id:
+            raise ValueError("The cheque has no posted issuance or receipt journal.")
+        entry = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
+        if (
+            not entry
+            or entry.tenant_id != cheque.tenant_id
+            or not entry.is_posted
+            or entry.is_reversed
+        ):
+            raise ValueError(
+                "The cheque journal is not a valid posted entry for this tenant."
             )
-
-            lines.append(
-                {
-                    "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                        "outgoing_deferred"
-                    ],
-                    "debit": 0,
-                    "credit": amount_base,
-                    "description": f"إصدار شيك صادر رقم {cheque.cheque_bank_number} لـ {cheque.supplier.name if cheque.supplier else 'غير محدد'}",
-                }
-            )
-
-            entry = GLService.create_manual_entry(
-                description=f"إصدار شيك صادر رقم {cheque.cheque_bank_number}",
-                lines=lines,
-                entry_date=cheque.issue_date or datetime.now().date(),
-                reference_type="cheque_issue",
-                reference_id=cheque.id,
-                created_by=issued_by,
-            )
-
-            cheque.status = "deposited"
-            cheque.gl_journal_entry_id = entry.id
-            cheque.updated_at = datetime.now(timezone.utc)
-
-            db.session.flush()
-
+        expected = (
+            "cheque_receive" if cheque.cheque_type == "incoming" else "cheque_issue"
+        )
+        if (entry.reference_type, entry.reference_id) == (expected, cheque.id):
             return entry
+        from models import Payment, Receipt
 
-        except Exception as e:
-            db.session.rollback()
-            raise Exception(f"فشل في تسجيل إصدار الشيك: {str(e)}")
-
-    @staticmethod
-    def clear_cheque(cheque_id, cleared_by=None, bank_charges=0, exchange_gain_loss=0):  # noqa: C901
-        """تسجيل صرف شيك مع القيود المحاسبية"""
-        cheque = get_owned_or_404(Cheque, cheque_id)
-
-        if cheque.status not in ["deposited"]:
-            raise ValueError("الشيك ليس في حالة يمكن صرفه")
-
-        try:
-            amount_base = _quantize_3(
-                ChequeAccountingIntegration._ensure_amount_base(cheque)
+        document_model = {"Payment": Payment, "Receipt": Receipt}.get(
+            entry.reference_type
+        )
+        source = (
+            db.session.get(document_model, entry.reference_id)
+            if document_model and entry.reference_id
+            else None
+        )
+        if (
+            source is None
+            or source.tenant_id != cheque.tenant_id
+            or source.cheque_id != cheque.id
+        ):
+            raise ValueError(
+                "The journal does not belong to the cheque or its voucher."
             )
-            bank_charges = _quantize_3(_coerce_decimal(bank_charges))
-            exchange_gain_loss = _quantize_3(_coerce_decimal(exchange_gain_loss))
-            bank_charges_account = _resolve_role_code("BANK_CHARGES", "6950")
-            fx_gain_account = _resolve_role_code("FX_GAIN", "4400")
-            fx_loss_account = _resolve_role_code("FX_LOSS", "6900")
-            lines = []
+        return entry
 
-            if cheque.cheque_type == "incoming":
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "bank_account"
-                        ],
-                        "debit": _quantize_3(
-                            amount_base - bank_charges + exchange_gain_loss
-                        ),
-                        "credit": 0,
-                        "description": f"صرف شيك وارد رقم {cheque.cheque_bank_number}",
-                    }
+    @classmethod
+    def receive_cheque(cls, cheque_id, received_by=None):
+        cheque = cls._locked_cheque(cheque_id)
+        if cheque.cheque_type != "incoming" or cheque.status != "pending":
+            raise ValueError("The cheque is not a pending incoming cheque.")
+        cls._ensure_amount_base(cheque)
+        cheque.receive_cheque(actor_id=received_by)
+        entry = cls._original_entry(cheque)
+        cheque.deposit_cheque()
+        db.session.flush()
+        return entry
+
+    @classmethod
+    def issue_cheque(cls, cheque_id, issued_by=None):
+        cheque = cls._locked_cheque(cheque_id)
+        if cheque.cheque_type != "outgoing" or cheque.status != "pending":
+            raise ValueError("The cheque is not a pending outgoing cheque.")
+        cls._ensure_amount_base(cheque)
+        cheque.issue_cheque(actor_id=issued_by)
+        entry = cls._original_entry(cheque)
+        cheque.deposit_cheque()
+        db.session.flush()
+        return entry
+
+    @classmethod
+    def clear_cheque(
+        cls, cheque_id, cleared_by=None, bank_charges=0, exchange_gain_loss=0
+    ):
+        from services.currency_service import CurrencyService
+
+        cheque = cls._locked_cheque(cheque_id)
+        if cheque.status != "deposited" or cheque.gl_clearing_entry_id:
+            raise ValueError("The cheque must be deposited and uncleared.")
+        cls._original_entry(cheque)
+        gain = Decimal(str(exchange_gain_loss))
+        if not gain.is_finite():
+            raise ValueError("Invalid cheque exchange adjustment.")
+        rate = None
+        if gain:
+            if cheque.currency == CurrencyService.get_base_currency():
+                raise ValueError(
+                    "A base-currency cheque cannot have an exchange adjustment."
                 )
+            book = cls._ensure_amount_base(cheque)
+            actual = book + gain if cheque.cheque_type == "incoming" else book - gain
+            rate = actual / Decimal(str(cheque.amount))
+        cheque.clear_cheque(
+            clearance_exchange_rate=rate, actor_id=cleared_by, bank_charges=bank_charges
+        )
+        db.session.flush()
+        return db.session.get(GLJournalEntry, cheque.gl_clearing_entry_id)
 
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "incoming_under_collection"
-                        ],
-                        "debit": 0,
-                        "credit": amount_base,
-                        "description": f"صرف شيك تحت التحصيل رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-                if bank_charges > 0:
-                    lines.append(
-                        {
-                            "account_code": bank_charges_account,  # مصروفات بنكية (BANK_CHARGES)
-                            "debit": bank_charges,
-                            "credit": 0,
-                            "description": f"رسوم بنك - شيك رقم {cheque.cheque_bank_number}",
-                        }
-                    )
-
-                if exchange_gain_loss != 0:
-                    if exchange_gain_loss > 0:
-                        lines.append(
-                            {
-                                "account_code": fx_gain_account,
-                                "debit": 0,
-                                "credit": exchange_gain_loss,
-                                "description": f"ربح صرف - شيك رقم {cheque.cheque_bank_number}",
-                            }
-                        )
-                    else:
-                        lines.append(
-                            {
-                                "account_code": fx_loss_account,
-                                "debit": abs(exchange_gain_loss),
-                                "credit": 0,
-                                "description": f"خسارة صرف - شيك رقم {cheque.cheque_bank_number}",
-                            }
-                        )
-
-            elif cheque.cheque_type == "outgoing":
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "outgoing_deferred"
-                        ],
-                        "debit": amount_base,
-                        "credit": 0,
-                        "description": f"صرف شيك مؤجل الدفع رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "bank_account"
-                        ],
-                        "debit": 0,
-                        "credit": _quantize_3(
-                            amount_base + bank_charges - exchange_gain_loss
-                        ),
-                        "description": f"صرف شيك صادر رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-                if bank_charges > 0:
-                    lines.append(
-                        {
-                            "account_code": bank_charges_account,  # مصروفات بنكية (BANK_CHARGES)
-                            "debit": bank_charges,
-                            "credit": 0,
-                            "description": f"رسوم بنك - شيك رقم {cheque.cheque_bank_number}",
-                        }
-                    )
-
-                if exchange_gain_loss != 0:
-                    if exchange_gain_loss > 0:
-                        lines.append(
-                            {
-                                "account_code": fx_gain_account,
-                                "debit": 0,
-                                "credit": exchange_gain_loss,
-                                "description": f"ربح صرف - شيك رقم {cheque.cheque_bank_number}",
-                            }
-                        )
-                    else:
-                        lines.append(
-                            {
-                                "account_code": fx_loss_account,
-                                "debit": abs(exchange_gain_loss),
-                                "credit": 0,
-                                "description": f"خسارة صرف - شيك رقم {cheque.cheque_bank_number}",
-                            }
-                        )
-
-            entry = GLService.create_manual_entry(
-                description=f"صرف شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}",
-                lines=lines,
-                entry_date=cheque.cleared_date or datetime.now().date(),
-                reference_type="cheque_clear",
-                reference_id=cheque.id,
-                created_by=cleared_by,
-            )
-
-            cheque.status = "cleared"
-            cheque.cleared_date = datetime.now().date()
-            cheque.gl_clearing_entry_id = entry.id
-            cheque.updated_at = datetime.now(timezone.utc)
-
-            db.session.flush()
-
-            return entry
-
-        except Exception as e:
-            db.session.rollback()
-            raise Exception(f"فشل في تسجيل صرف الشيك: {str(e)}")
-
-    @staticmethod
-    def bounce_cheque(cheque_id, bounced_by=None, bounce_reason=None):
-        """تسجيل ارتداد شيك مع القيود المحاسبية"""
-        cheque = get_owned_or_404(Cheque, cheque_id)
-
-        if cheque.status not in ["deposited"]:
-            raise ValueError("الشيك ليس في حالة يمكن ارتداده")
-
-        try:
-            amount_base = ChequeAccountingIntegration._ensure_amount_base(cheque)
-            lines = []
-
-            if cheque.cheque_type == "incoming":
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "accounts_receivable"
-                        ],
-                        "debit": amount_base,
-                        "credit": 0,
-                        "description": f"استرداد ذمم مدينة - شيك مرتد رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "incoming_under_collection"
-                        ],
-                        "debit": 0,
-                        "credit": amount_base,
-                        "description": f"شيك مرتد رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-            elif cheque.cheque_type == "outgoing":
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "outgoing_deferred"
-                        ],
-                        "debit": amount_base,
-                        "credit": 0,
-                        "description": f"شيك صادر مرتد رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-                lines.append(
-                    {
-                        "account_code": ChequeAccountingIntegration.CHEQUE_ACCOUNTS[
-                            "accounts_payable"
-                        ],
-                        "debit": 0,
-                        "credit": amount_base,
-                        "description": f"استرداد ذمم دائنة - شيك مرتد رقم {cheque.cheque_bank_number}",
-                    }
-                )
-
-            entry = GLService.create_manual_entry(
-                description=f"ارتداد شيك {cheque.type_ar} رقم {cheque.cheque_bank_number}",
-                lines=lines,
-                entry_date=datetime.now().date(),
-                reference_type="cheque_bounce",
-                reference_id=cheque.id,
-                created_by=bounced_by,
-                notes=f"سبب الارتداد: {bounce_reason or 'غير محدد'}",
-            )
-
-            cheque.status = "bounced"
-            cheque.bounced_date = datetime.now().date()
-            cheque.bounce_reason = bounce_reason
-            cheque.gl_bounce_entry_id = entry.id
-            cheque.updated_at = datetime.now(timezone.utc)
-
-            db.session.flush()
-
-            from models.payment import Payment, Receipt
-
-            linked_receipt = Receipt.query.filter_by(cheque_id=cheque.id).first()
-            if linked_receipt is not None:
-                linked_receipt.reject_receipt(bounce_reason or "ارتداد شيك")
-
-            linked_payment = Payment.query.filter_by(cheque_id=cheque.id).first()
-            if linked_payment is not None:
-                linked_payment.reject_payment(bounce_reason or "ارتداد شيك")
-
-            if cheque.cheque_type == "incoming" and cheque.customer_id:
-                from models.customer import recompute_customer_balance
-
-                recompute_customer_balance(cheque.customer_id)
-            elif cheque.cheque_type == "outgoing" and cheque.supplier_id:
-                from models import Supplier as _Supp
-
-                # total_purchases_aed is derived from confirmed purchases
-                # (see derive_supplier_totals) — never mutate it from a cheque.
-                # Supplier stats are recomputed by the purchase/payment hooks.
-
-            db.session.flush()
-
-            return entry
-
-        except Exception as e:
-            db.session.rollback()
-            raise Exception(f"فشل في تسجيل ارتداد الشيك: {str(e)}")
+    @classmethod
+    def bounce_cheque(cls, cheque_id, bounced_by=None, bounce_reason=None):
+        cheque = cls._locked_cheque(cheque_id)
+        cls._original_entry(cheque)
+        cheque.bounce_cheque(bounce_reason or "Cheque returned", actor_id=bounced_by)
+        db.session.flush()
+        return db.session.get(GLJournalEntry, cheque.gl_bounce_entry_id)
 
     @staticmethod
     def get_cheque_accounting_summary(cheque_id):  # noqa: C901
@@ -518,62 +190,49 @@ class ChequeAccountingIntegration:
             "account_impact": [],
         }
 
-        if cheque.gl_journal_entry_id:
-            entry = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
-            if entry:
-                summary["journal_entries"].append(
-                    {
-                        "type": "receive"
-                        if cheque.cheque_type == "incoming"
-                        else "issue",
-                        "entry_number": entry.entry_number,
-                        "date": entry.entry_date.isoformat(),
-                        "description": entry.description,
-                    }
-                )
-
-        if cheque.gl_clearing_entry_id:
-            entry = db.session.get(GLJournalEntry, cheque.gl_clearing_entry_id)
-            if entry:
-                summary["journal_entries"].append(
-                    {
-                        "type": "clear",
-                        "entry_number": entry.entry_number,
-                        "date": entry.entry_date.isoformat(),
-                        "description": entry.description,
-                    }
-                )
-
-        if cheque.gl_bounce_entry_id:
-            entry = db.session.get(GLJournalEntry, cheque.gl_bounce_entry_id)
-            if entry:
-                summary["journal_entries"].append(
-                    {
-                        "type": "bounce",
-                        "entry_number": entry.entry_number,
-                        "date": entry.entry_date.isoformat(),
-                        "description": entry.description,
-                    }
-                )
-
-        accounts_affected = set()
-        for entry_info in summary["journal_entries"]:
+        accounts = {}
+        for kind, entry_id in (
+            (
+                "receive" if cheque.cheque_type == "incoming" else "issue",
+                cheque.gl_journal_entry_id,
+            ),
+            ("clear", cheque.gl_clearing_entry_id),
+            ("bounce", cheque.gl_bounce_entry_id),
+        ):
+            if entry_id is None:
+                continue
             entry = GLJournalEntry.query.filter_by(
-                entry_number=entry_info["entry_number"]
-            ).first()
-            if entry:
-                for line in entry.lines:
-                    accounts_affected.add(line.account.code)
+                id=entry_id, tenant_id=cheque.tenant_id
+            ).one()
+            summary["journal_entries"].append(
+                {
+                    "type": kind,
+                    "entry_number": entry.entry_number,
+                    "date": entry.entry_date.isoformat(),
+                    "description": entry.description,
+                }
+            )
+            for line in entry.lines:
+                accounts[line.account_id] = line.account
 
-        for account_code in accounts_affected:
-            account = GLAccount.query.filter_by(code=account_code).first()
-            if account:
-                summary["account_impact"].append(
-                    {
-                        "code": account.code,
-                        "name": account.full_name,
-                        "balance": float(account.get_balance()),
-                    }
+        for account in sorted(accounts.values(), key=lambda account: account.code):
+            balance = (
+                db.session.query(db.func.sum(GLJournalLine.amount_base))
+                .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
+                .filter(
+                    GLJournalEntry.tenant_id == cheque.tenant_id,
+                    GLJournalEntry.is_posted.is_(True),
+                    GLJournalLine.account_id == account.id,
                 )
+                .scalar()
+                or 0
+            )
+            summary["account_impact"].append(
+                {
+                    "code": account.code,
+                    "name": account.full_name,
+                    "balance": float(balance if account.is_debit_nature else -balance),
+                }
+            )
 
         return summary

@@ -30,6 +30,7 @@ from models import GLAccount, GLJournalEntry, GLJournalLine, Payment, Receipt, E
 CASH_FLOW_ROLE_MAP = {
     "CASH": "CASH",
     "BANK": "BANK",
+    "BANK_SAVINGS": "BANK_SAVINGS",
     "SALARY_EXPENSE": "SALARY_EXPENSE",
     "CAPITAL": "CAPITAL",
     "OWNER_DRAWS": "OWNER_DRAWS",
@@ -60,12 +61,9 @@ def _parse_date(value):
 
 def _current_tenant_id():
     """معرّف المستأجر الحالي (None = بلا سياق مستأجر)."""
-    try:
-        from models.tenant_scope import get_current_tenant_id
+    from models.tenant_scope import get_current_tenant_id
 
-        return get_current_tenant_id()
-    except Exception:
-        return None
+    return get_current_tenant_id()
 
 
 def resolve_cash_flow_accounts(tenant_id=None):
@@ -100,7 +98,9 @@ class CashFlowService:
     def cash_account_codes(tenant_id=None):
         """أكواد حسابات النقدية (الصندوق + البنك) عبر AccountResolver."""
         resolved = resolve_cash_flow_accounts(tenant_id=tenant_id)
-        return (resolved["CASH"], resolved["BANK"])
+        return tuple(
+            dict.fromkeys(resolved[role] for role in ("CASH", "BANK", "BANK_SAVINGS"))
+        )
 
     @staticmethod
     def account_code(role_name, tenant_id=None):
@@ -276,12 +276,18 @@ class CashFlowService:
             (
                 and_(
                     GLAccount.code == account_codes["PARTNERS_CURRENT"],
-                    GLJournalEntry.reference_type.in_(("Payment", "Receipt", "Sale", "ProductReturn")),
+                    GLJournalEntry.reference_type.in_(
+                        ("Payment", "Receipt", "Sale", "ProductReturn")
+                    ),
                 ),
                 "operating",
             ),
             (GLAccount.code.in_(account_codes["FIXED_ASSETS"]), "investing"),
-            ((GLAccount.type == "equity") | (GLAccount.code == account_codes["LOANS"]), "financing"),
+            (
+                (GLAccount.type == "equity")
+                | (GLAccount.code == account_codes["LOANS"]),
+                "financing",
+            ),
             else_="operating",
         )
 
@@ -338,10 +344,14 @@ class CashFlowService:
             from utils.i18n import get_current_language
 
             acct_name = (
-                row.account_name_ar
-                if get_current_language() == "ar"
-                else row.account_name
-            ) or row.account_name_ar or row.account_name
+                (
+                    row.account_name_ar
+                    if get_current_language() == "ar"
+                    else row.account_name
+                )
+                or row.account_name_ar
+                or row.account_name
+            )
             label = f"{row.account_code} - {acct_name}"
             sections[section][label] = (
                 sections[section].get(label, Decimal("0")) + amount
@@ -404,18 +414,31 @@ class CashFlowService:
 
         as_of = _parse_date(as_of) or date.today()
         tenant_id = _current_tenant_id()
-        roles = (AccountRole.CASH, AccountRole.BANK, AccountRole.UNDER_COLLECTION,
-                 AccountRole.DEFERRED_CHEQUES_PAYABLE)
+        roles = (
+            AccountRole.CASH,
+            AccountRole.BANK,
+            AccountRole.BANK_SAVINGS,
+            AccountRole.UNDER_COLLECTION,
+            AccountRole.DEFERRED_CHEQUES_PAYABLE,
+        )
         codes = AccountResolver.resolve_codes(*roles, tenant_id=tenant_id)
-        accounts = {account.code: account for account in GLAccount.query.filter(
-            GLAccount.code.in_(codes.values())
-        )}
+        accounts = {
+            account.code: account
+            for account in GLAccount.query.filter(GLAccount.code.in_(codes.values()))
+        }
         cash = accounts.get(codes["CASH"])
-        bank = accounts.get(codes["BANK"])
-        pending = db.session.query(Cheque.cheque_type, func.sum(Cheque.amount_base)).filter(
-            Cheque.is_active.is_(True),
-            Cheque.status.in_(("pending", "deposited", "under_collection", "overdue")),
-        ).group_by(Cheque.cheque_type).all()
+        bank_codes = {codes["BANK"], codes["BANK_SAVINGS"]} - {codes["CASH"]}
+        pending = (
+            db.session.query(Cheque.cheque_type, func.sum(Cheque.amount_base))
+            .filter(
+                Cheque.is_active.is_(True),
+                Cheque.status.in_(
+                    ("pending", "deposited", "under_collection", "overdue")
+                ),
+            )
+            .group_by(Cheque.cheque_type)
+            .all()
+        )
         outstanding = dict(pending)
         cheques = []
         for direction, role in (
@@ -426,17 +449,26 @@ class CashFlowService:
             account = accounts.get(code)
             ledger = account.get_balance() if account else Decimal("0")
             register = CashFlowService._dec(outstanding.get(direction))
-            cheques.append({
-                "direction": direction,
-                "code": code,
-                "register": register,
-                "ledger": ledger,
-                "difference": ledger - register,
-            })
+            cheques.append(
+                {
+                    "direction": direction,
+                    "code": code,
+                    "register": register,
+                    "ledger": ledger,
+                    "difference": ledger - register,
+                }
+            )
         return {
             "as_of": as_of,
             "cash": cash.get_balance(as_of_date=as_of) if cash else Decimal("0"),
-            "bank": bank.get_balance(as_of_date=as_of) if bank else Decimal("0"),
+            "bank": sum(
+                (
+                    accounts[code].get_balance(as_of_date=as_of)
+                    for code in bank_codes
+                    if code in accounts
+                ),
+                Decimal("0"),
+            ),
             "cheques": cheques,
         }
 

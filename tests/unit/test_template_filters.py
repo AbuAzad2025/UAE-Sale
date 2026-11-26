@@ -284,14 +284,21 @@ class TestReportPageSmoke:
         )
         db.session.add(entry)
         db.session.flush()
-        for acc, debit, credit in [(rev, 0, 100), (exp, 300, 0)]:
+        from services.cash_flow_service import CashFlowService
+        from services.gl_service import GLService
+
+        GLService.ensure_core_accounts()
+        cash = GLAccount.query.filter_by(
+            code=CashFlowService.account_code("CASH")
+        ).one()
+        for acc, debit, credit in [(rev, 0, 100), (exp, 300, 0), (cash, 0, 200)]:
             db.session.add(
                 GLJournalLine(
                     entry_id=entry.id,
                     account_id=acc.id,
                     debit=Decimal(debit),
                     credit=Decimal(credit),
-                    amount_base=Decimal(debit or credit),
+                    amount_base=Decimal(debit - credit),
                 )
             )
         db.session.commit()

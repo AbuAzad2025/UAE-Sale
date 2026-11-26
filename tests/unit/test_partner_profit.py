@@ -16,12 +16,18 @@ import pytest
 from models import Customer, GLJournalEntry, GLJournalLine, ProductPartner, SaleLine
 
 
-@pytest.fixture
-def gl_accounts(app):
-    with app.app_context():
-        from services.gl_service import GLService
+@pytest.fixture(autouse=True)
+def tax_policy(db, posting_tenant):
+    posting_tenant.enable_tax = True
+    posting_tenant.default_tax_rate = Decimal("0")
+    db.session.commit()
 
-        GLService.ensure_core_accounts()
+
+@pytest.fixture
+def gl_accounts(db):
+    from services.gl_service import GLService
+
+    GLService.ensure_core_accounts()
 
 
 @pytest.fixture
@@ -132,7 +138,7 @@ class TestProductPartnerShares:
 
         lines = _partner_lines(db, partner_customer.id).all()
         assert lines, "يجب أن تُرحَّل حصة الشريك مع الفاتورة نفسها"
-        net_owed = sum(l.credit - l.debit for l in lines)
+        net_owed = sum(line.credit - line.debit for line in lines)
         assert net_owed == Decimal("35.000")  # (200 - 60) * 25%
 
         entry = (
@@ -158,13 +164,13 @@ class TestProductPartnerShares:
         )
         db.session.commit()
 
-        sale = _make_sale(
+        _make_sale(
             db, owner_user, test_customer, test_product, qty="1", price="40", cost="100"
         )
 
         lines = _partner_lines(db, partner_customer.id).all()
         assert lines
-        net_owed = sum(l.credit - l.debit for l in lines)
+        net_owed = sum(line.credit - line.debit for line in lines)
         # الخسارة تُحسم من الشريك: جاري الشريك مدين (ينقص رصيده الجاري)
         assert net_owed == Decimal("-30.000")
 
@@ -188,7 +194,7 @@ class TestProductPartnerShares:
         SaleService.cancel_sale(sale)
 
         still_active = _partner_lines(db, partner_customer.id).all()
-        net = sum(l.credit - l.debit for l in still_active)
+        net = sum(line.credit - line.debit for line in still_active)
         assert net == Decimal("0.000")
 
     def test_partial_return_reverses_proportionally(
@@ -217,7 +223,8 @@ class TestProductPartnerShares:
         )
 
         net = sum(
-            l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all()
+            line.credit - line.debit
+            for line in _partner_lines(db, partner_customer.id).all()
         )
         # رُجِع نصف السطر: يبقى نصف الحصة (نصف الـ 140 التشريحية)
         assert net == Decimal("17.500")
@@ -304,9 +311,11 @@ class TestCompanyPartnerDistribution:
         assert entry is not None
         assert entry.total_debit == entry.total_credit == Decimal("1000.000")
 
-        partner_lines = [l for l in entry.lines if l.party_id == company_partner.id]
+        partner_lines = [
+            line for line in entry.lines if line.party_id == company_partner.id
+        ]
         assert partner_lines and all(
-            l.credit == Decimal("250.000") for l in partner_lines
+            line.credit == Decimal("250.000") for line in partner_lines
         )
 
         # نفس الفترة لا تُرحَّل مرتين
@@ -325,8 +334,10 @@ class TestCompanyPartnerDistribution:
         assert row["net_payout"] == Decimal("150.000")
 
         entry = pp.post_partner_distributions(None, None)
-        partner_lines = [l for l in entry.lines if l.party_id == company_partner.id]
-        assert all(l.credit == Decimal("150.000") for l in partner_lines)
+        partner_lines = [
+            line for line in entry.lines if line.party_id == company_partner.id
+        ]
+        assert all(line.credit == Decimal("150.000") for line in partner_lines)
 
     def test_loss_is_allocated_between_partners(
         self, db, app, company_partner, gl_accounts
@@ -344,10 +355,12 @@ class TestCompanyPartnerDistribution:
         entry = pp.post_partner_distributions(None, None)
         assert entry is not None
         assert entry.total_debit == entry.total_credit == Decimal("600.000")
-        partner_lines = [l for l in entry.lines if l.party_id == company_partner.id]
+        partner_lines = [
+            line for line in entry.lines if line.party_id == company_partner.id
+        ]
         # الخسارة تُحمَّل على الشريك: مدين 3350
         assert partner_lines and all(
-            l.debit == Decimal("150.000") for l in partner_lines
+            line.debit == Decimal("150.000") for line in partner_lines
         )
 
     def test_partner_percentages_above_100_rejected(self, db, app, gl_accounts):
@@ -403,7 +416,7 @@ class TestDualRoleAndBoundaries:
         )
         db.session.commit()
 
-        sale = SaleService.create_sale(
+        SaleService.create_sale(
             customer=test_customer,
             seller=owner_user,
             lines_data=[
@@ -432,14 +445,17 @@ class TestDualRoleAndBoundaries:
         assert row["total_entitlement"] == Decimal("61.250")
 
         entry = pp.post_partner_distributions(None, None)
-        partner_lines = [l for l in entry.lines if l.party_id == partner_customer.id]
+        partner_lines = [
+            line for line in entry.lines if line.party_id == partner_customer.id
+        ]
         assert partner_lines and all(
-            l.credit == Decimal("26.250") for l in partner_lines
+            line.credit == Decimal("26.250") for line in partner_lines
         )
 
         # إجمالي ما استحقه الشريك (قيد المنتج + قيد الشركة) — كل أساس مستقل
         total_current = sum(
-            l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all()
+            line.credit - line.debit
+            for line in _partner_lines(db, partner_customer.id).all()
         )
         assert total_current == Decimal("61.250")
 
@@ -477,7 +493,8 @@ class TestDualRoleAndBoundaries:
             user_exchange_rate="1",
         )
         net_owed = sum(
-            l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all()
+            line.credit - line.debit
+            for line in _partner_lines(db, partner_customer.id).all()
         )
         assert net_owed == Decimal("35.000")  # (100-30) * 50%
 
@@ -705,7 +722,8 @@ class TestInclusiveVatProductShare:
             tax_inclusive=True,
         )
         net_owed = sum(
-            l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all()
+            line.credit - line.debit
+            for line in _partner_lines(db, partner_customer.id).all()
         )
         # net 100 - cost 30 = 70 → 25% = 17.5
         assert net_owed == Decimal("17.500")
@@ -745,7 +763,8 @@ class TestInclusiveVatProductShare:
             tax_inclusive=True,
         )
         net_owed = sum(
-            l.credit - l.debit for l in _partner_lines(db, partner_customer.id).all()
+            line.credit - line.debit
+            for line in _partner_lines(db, partner_customer.id).all()
         )
         # لا ضريبة على السطر الصفري: 100 - 10 = 90 → 100% = 90
         assert net_owed == Decimal("90.000")
@@ -994,7 +1013,9 @@ class TestPartnerProfitEdges:
         )
         assert entry is not None
         draw_lines = [
-            l for l in entry.lines if l.description and "مسحوبات" in l.description
+            line
+            for line in entry.lines
+            if line.description and "مسحوبات" in line.description
         ]
         assert draw_lines
 
@@ -1070,10 +1091,10 @@ class TestPartnerProfitEdges:
             db.session.commit()
 
         _revenue()
-        pp.main(["--preview"])
+        pp.main(["--preview", "--tenant", str(company_partner.tenant_id)])
         out = capsys.readouterr().out
         assert "شريك الشركة" in out
-        pp.main(["--distribute"])
+        pp.main(["--distribute", "--tenant", str(company_partner.tenant_id)])
         out = capsys.readouterr().out
         assert "Distributed" in out
 

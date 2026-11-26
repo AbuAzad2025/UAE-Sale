@@ -436,7 +436,9 @@ class LeaveRequest(TenantScopedMixin, db.Model):
                 "sick": emp.sick_leave_balance,
                 "personal": emp.personal_leave_balance,
             }.get(lt.code)
-            if balance is not None and Decimal(str(self.days)) > Decimal(str(balance or 0)):
+            if balance is not None and Decimal(str(self.days)) > Decimal(
+                str(balance or 0)
+            ):
                 raise ValueError("الرصيد المتبقي من الإجازة غير كافٍ لاعتماد هذا الطلب")
         self.status = "approved"
         self.approved_by_id = user_id
@@ -502,6 +504,8 @@ class Payslip(TenantScopedMixin, db.Model):
     pay_period_start = db.Column(db.Date, nullable=False)
     pay_period_end = db.Column(db.Date, nullable=False)
     pay_date = db.Column(db.Date, nullable=False)
+    disbursed_on = db.Column(db.Date, nullable=True)
+    payment_method = db.Column(db.String(20), nullable=True)
 
     base_salary = db.Column(db.Numeric(15, 3), default=0)
     housing_allowance = db.Column(db.Numeric(15, 3), default=0)

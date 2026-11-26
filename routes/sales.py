@@ -237,10 +237,10 @@ def create():  # noqa: C901
             flash("✅ تم إنشاء الفاتورة بنجاح!", "success")
             return redirect(url_for("sales.view", id=sale.id))
 
-        except ValueError as e:
+        except ValueError:
             current_app.logger.exception("handler failed")
             flash(
-                f"⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.",
+                "⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.",
                 "danger",
             )
         except Exception as e:
@@ -480,16 +480,17 @@ def edit(id):
                 _plug = -_signed
                 if abs(_plug - d_total) > _Dec("0.01"):
                     raise ValueError("تسوية الخصم غير متسقة محاسبياً.")
-                _ar = _resolve_account("AR_CONTROL")
-                if sale.customer:
-                    if sale.customer.customer_type == "partner":
-                        _ar = _resolve_account("PARTNER_CURRENT")
-                    elif sale.customer.customer_type == "merchant":
-                        _ar = _GLService.get_customer_credit_account(sale.customer)
+                _ar = _GLService.get_customer_credit_account(sale.customer)
+                party_id = (
+                    sale.customer_id
+                    if getattr(sale.customer, "customer_type", None) == "partner"
+                    else None
+                )
                 if _plug >= 0:
                     _adj.append(
                         {
                             "account": _ar,
+                            "party_id": party_id,
                             "debit": _plug,
                             "description": f"تسوية ذمم {sale.sale_number}",
                         }
@@ -498,6 +499,7 @@ def edit(id):
                     _adj.append(
                         {
                             "account": _ar,
+                            "party_id": party_id,
                             "credit": -_plug,
                             "description": f"تسوية ذمم {sale.sale_number}",
                         }
@@ -544,9 +546,9 @@ def cancel(id):
 
         flash("✅ تم إلغاء الفاتورة بنجاح!", "success")
 
-    except ValueError as e:
+    except ValueError:
         current_app.logger.exception("handler failed")
-        flash(f"⚠️ تعذر الإلغاء: حدث خطأ غير متوقع", "danger")
+        flash("⚠️ تعذر الإلغاء: حدث خطأ غير متوقع", "danger")
     except Exception as e:
         current_app.logger.error(f"Sale cancel error: {e}")
         flash("❌ حدث خطأ في إلغاء الفاتورة. يرجى المحاولة مرة أخرى.", "danger")

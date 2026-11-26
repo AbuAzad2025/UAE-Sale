@@ -1,31 +1,43 @@
-"""Supplier 'Al Nizal / Hi Cable' carries its real delivery-note identity."""
-import os
-os.environ.setdefault('PYTHONIOENCODING','utf-8')
+"""The supplier edit form shows the stored delivery-note identity."""
+
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from models import Supplier
 
-def test_supplier_real_identity_in_ui():
-    """Regression: supplier 1 must display the real delivery-note details."""
-    with sync_playwright() as p:
-        b = p.chromium.launch(headless=True)
-        pg = b.new_page(viewport={'width':1280,'height':800})
-        pg.goto('http://localhost:8001/auth/login')
-        pg.wait_for_load_state('load')
-        pg.fill('input[name="username"]', 'samarkand_manager')
-        pg.fill('input[name="password"]', 'Test-samarqand-2026!')
-        pg.locator('button[type="submit"]').first.click()
-        pg.wait_for_load_state('load')
-        pg.goto('http://localhost:8001/suppliers/1/edit')
-        pg.wait_for_load_state('load')
-        vals = {
-            'name': "شركة هاي كيبل للحلول الذكية",
-            'name_en': "Hi Cable Company for Smart Solutions",
-            'phone': "0592053262",
-            'tax_number': "562335687",
-            'address': "رام الله - الماصيون",
-        }
-        for name, expected in vals.items():
-            actual = pg.locator(f'[name="{name}"]').first.input_value()
-            assert actual == expected, (name, actual, expected)
-        b.close()
+
+def test_supplier_identity_in_edit_form(client, login_owner, db):
+    fields = {
+        "name": "مورد اختبار الطباعة",
+        "name_en": "Delivery Note Fixture",
+        "phone": "0590001234",
+        "tax_number": "TAX-FIXTURE-123",
+        "address": "عنوان اختباري",
+    }
+    supplier = Supplier(**fields)
+    db.session.add(supplier)
+    db.session.commit()
+    path = f"/suppliers/{supplier.id}/edit"
+    response = client.get(path)
+    assert response.status_code == 200
+
+    with sync_playwright() as playwright:
+        channel = (
+            "chromium" if Path(playwright.chromium.executable_path).exists() else "chrome"
+        )
+        browser = playwright.chromium.launch(headless=True, channel=channel)
+        try:
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            page.route("**/*", lambda route: route.abort())
+            page.route(
+                "http://supplier.test" + path,
+                lambda route: route.fulfill(
+                    status=200, content_type="text/html", body=response.data
+                ),
+            )
+            page.goto("http://supplier.test" + path)
+            for name, expected in fields.items():
+                assert page.locator(f'[name="{name}"]').first.input_value() == expected
+        finally:
+            browser.close()

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from extensions import db
+from utils.decorators import tx
 
 PERMISSION_MAP = {
     "create_customer": "manage_customers",
@@ -73,14 +74,23 @@ def _require_tenant_id():
     return tenant_id
 
 
-def _ai_audit(table_name, record_id, changes=None, action="create", *, commit=True, actor_id=None):
+def _ai_audit(
+    table_name, record_id, changes=None, action="create", *, commit=True, actor_id=None
+):
     """Phase 3: سجل تدقيق لكل إجراء AI (fail-closed داخل معاملة الكاتب)."""
     try:
         from utils.helpers import create_audit_log
 
         payload = dict(changes or {})
         payload.setdefault("via", "ai_assistant")
-        create_audit_log(action, table_name, record_id, changes=payload, commit=commit, actor_id=actor_id)
+        create_audit_log(
+            action,
+            table_name,
+            record_id,
+            changes=payload,
+            commit=commit,
+            actor_id=actor_id,
+        )
     except Exception:
         if not commit:
             raise
@@ -114,7 +124,9 @@ def create_customer(name, phone=None, address=None, *, commit=True, actor_id=Non
     )
     db.session.add(customer)
     db.session.flush()
-    _ai_audit("customers", customer.id, {"name": name}, commit=commit, actor_id=actor_id)
+    _ai_audit(
+        "customers", customer.id, {"name": name}, commit=commit, actor_id=actor_id
+    )
     return customer
 
 
@@ -261,18 +273,27 @@ def record_payment(customer_id, amount, method, direction, user_id, payment_type
 def _default_expense_category():
     from models.expense import ExpenseCategory
 
-    category = ExpenseCategory.query.filter_by(is_active=True).first()
+    category = ExpenseCategory.query.filter_by(name="عام").one_or_none()
     if category is None:
         category = ExpenseCategory(name="عام", name_ar="عام", is_active=True)
         db.session.add(category)
         db.session.flush()
+    elif not category.is_active:
+        raise ValueError("The default expense category is inactive.")
     return category
 
 
+@tx
 def create_expense(description, amount, user_id):
     from models.expense import Expense
+    from services.currency_service import CurrencyService
+    from services.expense_gl import build_expense_gl_lines
+    from services.gl_service import GLService
 
-    amount = abs(amount)
+    tenant_id = _require_tenant_id()
+    amount = Decimal(str(amount))
+    if not tenant_id or not amount.is_finite() or amount <= 0:
+        raise ValueError("A company and a positive expense amount are required.")
     category = _default_expense_category()
 
     expense = Expense(
@@ -281,14 +302,32 @@ def create_expense(description, amount, user_id):
         description_ar=description,
         amount=amount,
         amount_base=amount,
+        currency=CurrencyService.get_base_currency(),
+        exchange_rate=1,
         category_id=category.id,
         payment_method="cash",
         user_id=user_id,
+        tenant_id=tenant_id,
     )
     db.session.add(expense)
     db.session.flush()
+    GLService.post_entry(
+        build_expense_gl_lines(expense),
+        description=f"Expense {expense.expense_number}",
+        reference_type="Expense",
+        reference_id=expense.id,
+        currency=expense.currency,
+        entry_date=expense.expense_date,
+        created_by=user_id,
+        tenant_id=tenant_id,
+        idempotency_key=f"ai-expense:{expense.id}",
+    )
     _ai_audit(
-        "expenses", expense.id, {"description": description, "amount": str(amount)}
+        "expenses",
+        expense.id,
+        {"description": description, "amount": str(amount)},
+        commit=False,
+        actor_id=user_id,
     )
     return expense
 
@@ -326,10 +365,14 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
     tenant_id = _require_tenant_id()
     if tenant_id is None:
         raise ValueError("اختر الشركة قبل تسجيل فاتورة شراء.")
-    product = Product.query.filter_by(id=product_id, tenant_id=tenant_id, is_active=True).first()
+    product = Product.query.filter_by(
+        id=product_id, tenant_id=tenant_id, is_active=True
+    ).first()
     if product is None:
         raise ValueError("المنتج غير موجود")
-    supplier = Supplier.query.filter_by(id=supplier_id, tenant_id=tenant_id, is_active=True).first()
+    supplier = Supplier.query.filter_by(
+        id=supplier_id, tenant_id=tenant_id, is_active=True
+    ).first()
     if supplier is None:
         raise ValueError("المورد غير موجود")
     warehouse = (
@@ -378,8 +421,11 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
         StockService.process_purchase_lines(purchase, warehouse.id)
         post_purchase_entry(purchase)
         _ai_audit(
-            "purchases", purchase.id, {"supplier_id": supplier_id, "product_id": product_id},
-            commit=False, actor_id=user_id,
+            "purchases",
+            purchase.id,
+            {"supplier_id": supplier_id, "product_id": product_id},
+            commit=False,
+            actor_id=user_id,
         )
         db.session.commit()
     except Exception:
@@ -388,26 +434,54 @@ def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
     return purchase
 
 
+@tx
 def create_cheque(cheque_number, amount, due_date, cheque_type, user_id):
     from datetime import date
     from models.cheque import Cheque
+    from services.currency_service import CurrencyService
 
-    _require_tenant_id()  # Phase 3: tenant_id إلزامي
+    tenant_id = _require_tenant_id()
+    amount = Decimal(str(amount))
+    issue_date = date.today()
+    if isinstance(due_date, str):
+        due_date = date.fromisoformat(due_date)
+    if isinstance(due_date, datetime):
+        due_date = due_date.date()
+    if not tenant_id or not amount.is_finite() or amount <= 0:
+        raise ValueError("A company and a positive cheque amount are required.")
+    if amount != amount.quantize(Decimal("0.01")):
+        raise ValueError("Cheque amounts support at most two decimal places.")
+    if not isinstance(due_date, date) or due_date < issue_date:
+        raise ValueError("The cheque due date must be on or after issuance.")
     cheque = Cheque(
         cheque_number=cheque_number,
         cheque_bank_number=cheque_number,
         bank_name="بنك افتراضي",
         amount=amount,
-        issue_date=date.today(),
+        currency=CurrencyService.get_base_currency(),
+        exchange_rate=1,
+        issue_date=issue_date,
         due_date=due_date,
         cheque_type=cheque_type,
         status="pending",
         user_id=user_id,
         is_active=True,
+        tenant_id=tenant_id,
     )
+    cheque.calculate_amount_base()
     db.session.add(cheque)
     db.session.flush()
-    _ai_audit("cheques", cheque.id, {"number": cheque_number, "amount": str(amount)})
+    if cheque_type == "incoming":
+        cheque.receive_cheque()
+    else:
+        cheque.issue_cheque()
+    _ai_audit(
+        "cheques",
+        cheque.id,
+        {"number": cheque_number, "amount": str(amount)},
+        commit=False,
+        actor_id=user_id,
+    )
     return cheque
 
 

@@ -117,7 +117,7 @@ Azad ERP is a comprehensive business management system designed for small to med
 | **PDF/Export** | WeasyPrint, openpyxl |
 | **Testing** | pytest — see [Testing](#testing) for current counts |
 | **CI/CD** | GitHub Actions — 8 green jobs in `ci.yml`, plus `e2e.yml` and `alembic_roundtrip.yml` |
-| **Deployment** | Render (container + persistent disk via `DATA_DIR=/data`); see [DEPLOYMENT.md](DEPLOYMENT.md) |
+| **Deployment** | Render (container + persistent disk via `DATA_DIR=/data`); see [DEPLOYMENT.md](docs/production/DEPLOYMENT.md) |
 
 ---
 
@@ -187,11 +187,11 @@ The master key seed comes from `MASTER_KEY_SEED`, else `instance/master_seed`, e
 
 ## 📦 Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
+See [DEPLOYMENT.md](docs/production/DEPLOYMENT.md) for detailed deployment instructions.
 
 ### Render (current deployment target)
 
-The repository ships `render.yaml` (web service + PostgreSQL + 1 GB persistent disk mounted at `/data`) and a `Procfile` (gunicorn). Backups and uploads live on the persistent disk via `DATA_DIR=/data` so they survive redeploys. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full guide.
+The repository ships `render.yaml` (web service + PostgreSQL + 1 GB persistent disk mounted at `/data`) and a `Procfile` (gunicorn). Backups and uploads live on the persistent disk via `DATA_DIR=/data` so they survive redeploys. See [DEPLOYMENT.md](docs/production/DEPLOYMENT.md) for the full guide.
 
 1. Create the services from `render.yaml` (or use the Render dashboard)
 2. Set `SECRET_KEY`, `OWNER_PASSWORD`, and `MASTER_KEY_SEED` (`sync: false` — set them manually)
@@ -225,19 +225,26 @@ Expected response (five checks — `nowpayments` may be a warning before the vau
 
 ## 📚 Documentation
 
+Documentation is split into production-facing and development-only material.
+
+### Production documentation (`docs/production/`)
+
 | Document | Description |
 |----------|-------------|
-| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | **Complete user guide** (Arabic + English) — all modules |
-| [docs/TECHNICAL_STATUS.md](docs/TECHNICAL_STATUS.md) | **Authoritative current-state report** — architecture, isolation, security, finance, CI, deployment |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment guide (Render + local dev) |
-| [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Migration chain & golden rules |
-| [CHANGELOG.md](CHANGELOG.md) | Version history & current-state notes |
+| [USER_GUIDE.md](docs/production/USER_GUIDE.md) | **Complete user guide** (Arabic + English) — all modules |
+| [DEPLOYMENT.md](docs/production/DEPLOYMENT.md) | Deployment guide (Render + local operations) |
+| [FULL_USER_GUIDE.md](docs/production/FULL_USER_GUIDE.md) | Machine-readable public guide consumed by the local AI assistant |
+| [OWNER_USER_GUIDE.md](docs/production/OWNER_USER_GUIDE.md) | Machine-readable owner-only guide consumed by the local AI assistant |
 | [.env.example](.env.example) | Environment variables reference |
 
-> `FULL_USER_GUIDE.md` and `OWNER_USER_GUIDE.md` at the repo root are the
-> machine-readable guides consumed by the AI assistant (`ai_knowledge/guide_loader.py`);
-> the human-facing guide is `docs/USER_GUIDE.md`. Older per-topic audit reports were
-> consolidated into `docs/TECHNICAL_STATUS.md` (2026-11-18).
+### Development documentation (`docs/development/`)
+
+| Document | Description |
+|----------|-------------|
+| [TECHNICAL_STATUS.md](docs/development/TECHNICAL_STATUS.md) | Authoritative technical state — architecture, isolation, security, finance, CI |
+| [MIGRATIONS.md](docs/development/MIGRATIONS.md) | Migration chain & golden rules |
+| [CHANGELOG.md](docs/development/CHANGELOG.md) | Version history & current-state notes |
+| [LOCAL_AGENT_CONTEXT.md](docs/development/LOCAL_AGENT_CONTEXT.md) | Local agent context architecture |
 
 ### Key Directories
 
@@ -304,7 +311,7 @@ All CI workflows are green: `ci.yml` (8 jobs: lint, security-scan, verify-boot, 
 
 ### Security Features
 
-- **Load-time tenant isolation**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria()`) filters all ~79 registered tenant-scoped tables — including `session.get()`, relationships, aliases and paginated queries. A `before_flush` guard stamps/validates `tenant_id` on writes. Platform rows (roles, tax rulesets, fiscal periods) stay visible via an `OR tenant_id IS NULL` criterion. See [docs/TECHNICAL_STATUS.md](docs/TECHNICAL_STATUS.md).
+- **Load-time tenant isolation**: `do_orm_execute` + `with_loader_criteria` (`install_tenant_loader_criteria()`) filters all ~79 registered tenant-scoped tables — including `session.get()`, relationships, aliases and paginated queries. A `before_flush` guard stamps/validates `tenant_id` on writes. Platform rows (roles, tax rulesets, fiscal periods) stay visible via an `OR tenant_id IS NULL` criterion. See [docs/development/TECHNICAL_STATUS.md](docs/development/TECHNICAL_STATUS.md).
 - **Role-based access control**: Granular permissions per role (27 seeded codes)
 - **Feature gates (package enforcement)**: `install_feature_gate()` on `api`, `ai`, `ledger` (`gl`), `reports`, `maintenance`, `api_enhanced`, `api_analytics`, `graphql`. Disabled feature → 403; verification failure → 503 (fail-closed); infra endpoints exempt. `enable_api` defaults to **False**; other `enable_*` flags default True.
 - **Audit trail**: All financial transactions logged (append-only, soft-delete via `b41`)

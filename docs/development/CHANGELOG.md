@@ -253,4 +253,4 @@ Full maintenance module for garage/workshop management with strict tenant isolat
 
 ---
 
-*For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).*
+*For detailed deployment instructions, see [DEPLOYMENT.md](../production/DEPLOYMENT.md).*

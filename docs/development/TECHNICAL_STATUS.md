@@ -166,7 +166,7 @@
 - الأصول المُعدّة: `render.yaml` (خدمة web + PostgreSQL + قرص دائم 1 GB على `/data`)
   و`Procfile` (gunicorn). النسخ الاحتياطية والملفات المرفوعة على القرص الدائم.
 - المتغيرات ذات `sync: false` (`SECRET_KEY`, `OWNER_PASSWORD`, `MASTER_KEY_SEED`)
-  تُضبط يدوياً. التفاصيل: [DEPLOYMENT.md](../DEPLOYMENT.md).
+  تُضبط يدوياً. التفاصيل: [DEPLOYMENT.md](../production/DEPLOYMENT.md).
 
 ---
 
@@ -175,5 +175,5 @@
 وحّدت هذه المرجع كل التقارير القديمة وألغيتها: تقارير البنية/العزل/الأدوار/المسارات/
 تدقيق الكود/حالة الصيانة. كما حُذفت أدلة المستخدم غير المستخدمة وخطة الشحنات
 القديمة (منفّذة). المراجع العملية المعتمدة: [README.md](../README.md)،
-[DEPLOYMENT.md](../DEPLOYMENT.md)، [MIGRATIONS.md](MIGRATIONS.md)،
-[CHANGELOG.md](../CHANGELOG.md)، وهذا التقرير.
+[DEPLOYMENT.md](../production/DEPLOYMENT.md)، [MIGRATIONS.md](MIGRATIONS.md)،
+[CHANGELOG.md](CHANGELOG.md)، وهذا التقرير.

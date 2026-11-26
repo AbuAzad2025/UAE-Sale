@@ -5,7 +5,7 @@ Guide Loader — مصدر واحد للحقيقة لدليل المستخدم
 يريد المساعد أن يشرح النظام بدقة، بدون дублирование من قواعد المعرفة
 القديمة (user_guide.py / system_knowledge.py المتناقضة).
 
-هذا الموديول يقرأ ملفي Markdown من جذر المشروع:
+هذا الموديول يقرأ ملفي Markdown من docs/production/:
 - FULL_USER_GUIDE.md  → دليل عام آمن للجميع
 - OWNER_USER_GUIDE.md → دليل المالك — للمالك فقط
 
@@ -81,8 +81,12 @@ class GuideLoader:
         self._base_dir = (
             Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
         )
-        self._public_path = self._base_dir / "FULL_USER_GUIDE.md"
-        self._owner_path = self._base_dir / "OWNER_USER_GUIDE.md"
+        self._public_path = (
+            self._base_dir / "docs" / "production" / "FULL_USER_GUIDE.md"
+        )
+        self._owner_path = (
+            self._base_dir / "docs" / "production" / "OWNER_USER_GUIDE.md"
+        )
         self._cache: dict[str, tuple[float, list[GuideSection]]] = {}
         self._loaded = True
 

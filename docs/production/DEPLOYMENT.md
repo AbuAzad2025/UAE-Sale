@@ -150,7 +150,7 @@ flask db current
 `migrations/` أو `models/` — أي أن الترحيلات مُختبرة على Postgres لا على SQLite.
 
 > **الرأس الحالي: `c12_bot_commands`**. سلسلة الترحيلات
-> الكاملة موثّقة في [docs/MIGRATIONS.md](docs/MIGRATIONS.md). من الترحيلات
+> الكاملة موثّقة في [docs/MIGRATIONS.md](../development/MIGRATIONS.md). من الترحيلات
 > الحديثة المهمة: `b41_audit_log_soft_delete`, `b42_role_tenant_unique`,
 > `b44_product_return_tenant_id`, `b47_roles_drop_name_unique`,
 > `b48_maint_child_tenant` (أضاف `tenant_id` لجداول الصيانة الفرعية),

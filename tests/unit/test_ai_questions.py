@@ -49,6 +49,19 @@ def test_local_guidance_ignores_external_credentials_and_client_override(client,
         assert result["ai_mode"] == "local" and result["response"]
 
 
+def test_relative_period_year(db, owner_user):
+    from services.ai_questions import answer
+
+    result = answer("كم عدد المبيعات هذه السنة؟", owner_user)
+    assert result is not None
+    assert "هذا العام" in result
+
+    src = open(os.path.join(ROOT, "routes", "ai.py"), encoding="utf-8").read()
+    assert "services.ai_cache_tenant" in src
+    assert "make_key" in src
+    assert "can_see_costs" in src
+
+
 def test_question_detection():
     assert is_question("كم عدد المبيعات اليوم؟")
     assert is_question("how many customers?")

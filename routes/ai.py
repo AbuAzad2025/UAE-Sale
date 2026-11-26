@@ -9,7 +9,15 @@ import threading
 import time
 import uuid
 from decimal import Decimal, InvalidOperation
-from flask import Blueprint, request, jsonify, render_template, current_app, abort, url_for
+from flask import (
+    Blueprint,
+    request,
+    jsonify,
+    render_template,
+    current_app,
+    abort,
+    url_for,
+)
 from flask_login import login_required, current_user
 from extensions import csrf, db
 from flask_wtf.csrf import validate_csrf as validate_csrf_token
@@ -806,7 +814,9 @@ def chat():
         preferences = {}
     dialect = preferences.get("dialect")
     context = {
-        "dialect": dialect if dialect in ("formal", "palestinian", "gulf") else "palestinian",
+        "dialect": dialect
+        if dialect in ("formal", "palestinian", "gulf")
+        else "palestinian",
         "beginners_mode": preferences.get("beginners_mode") is True,
     }
 
@@ -820,7 +830,11 @@ def chat():
     context["force_local"] = True
 
     from services import assistant_actions
-    from services.ai_questions import COMPANY_SELECTION_REQUIRED, answer as grounded_answer, is_sales_question
+    from services.ai_questions import (
+        COMPANY_SELECTION_REQUIRED,
+        answer as grounded_answer,
+        is_sales_question,
+    )
 
     key = request.headers.get("Idempotency-Key")
     if not key:
@@ -830,7 +844,40 @@ def chat():
         return _assistant_response(structured)
 
     follow_up_topic = data.get("follow_up_topic")
-    grounded = grounded_answer(message, current_user, follow_up_topic=follow_up_topic, enforce_company_scope=True)
+    from services.ai_cache_tenant import (
+        enabled as _cache_enabled,
+        get as _cache_get,
+        make_key as _cache_key,
+        set_value as _cache_set,
+    )
+
+    _tenant_id = getattr(current_user, "tenant_id", None)
+    _can_see_costs = bool(getattr(current_user, "can_see_costs", lambda: False)())
+    try:
+        from utils.i18n import get_current_language
+
+        _locale = get_current_language()
+    except Exception:
+        _locale = "ar"
+    _cache_k = _cache_key(
+        tenant_id=_tenant_id,
+        user_id=getattr(current_user, "id", None),
+        can_see_costs=_can_see_costs,
+        locale=_locale,
+        message=message,
+        follow_up_topic=follow_up_topic,
+    )
+    if _cache_enabled():
+        _cached = _cache_get(_cache_k)
+        if _cached is not None:
+            return jsonify(_cached)
+
+    grounded = grounded_answer(
+        message,
+        current_user,
+        follow_up_topic=follow_up_topic,
+        enforce_company_scope=True,
+    )
     if grounded:
         sales_question = is_sales_question(message, follow_up_topic)
         tool = "sales_summary" if sales_question else "business_data_read"
@@ -843,6 +890,12 @@ def chat():
         }
         if sales_question and grounded != COMPANY_SELECTION_REQUIRED:
             result["follow_up_topic"] = "sales"
+        if (
+            _cache_enabled()
+            and "صلاحية" not in grounded
+            and grounded != COMPANY_SELECTION_REQUIRED
+        ):
+            _cache_set(_cache_k, result)
         return jsonify(result)
 
     formal = assistant_actions.formal_action(message, current_user)
@@ -916,14 +969,20 @@ def _enqueue_bot_message(message, *, command=None):
         return jsonify(error="The queued ERP agent is currently disabled."), 503
     actor = Actor.authenticated(current_user, _scope(current_user))
     try:
-        event = MessageEvent.receive(request.headers.get("Idempotency-Key"), message, actor, command=command)
+        event = MessageEvent.receive(
+            request.headers.get("Idempotency-Key"), message, actor, command=command
+        )
         row = submit(event)
     except IdempotencyConflict as error:
         return jsonify(error=str(error)), 409
     except ValueError as error:
         return jsonify(error=str(error)), 400
     location = url_for("ai.get_bot_event", event_id=row.id)
-    return jsonify(id=row.id, status=row.status, status_url=location), 202, {"Location": location}
+    return (
+        jsonify(id=row.id, status=row.status, status_url=location),
+        202,
+        {"Location": location},
+    )
 
 
 @ai_bp.route("/chat/events/<uuid:event_id>", methods=["GET"])
@@ -941,7 +1000,9 @@ def get_bot_event(event_id):
     result = dict(row.result) if row.result else None
     action_id = (result.get("data") or {}).get("action_id") if result else None
     if action_id and result.get("outcome") in {"proposed", "timeout", "queue_expired"}:
-        result["confirm_url"] = url_for("ai.enqueue_assistant_confirmation", action_id=action_id)
+        result["confirm_url"] = url_for(
+            "ai.enqueue_assistant_confirmation", action_id=action_id
+        )
         result["queued_confirmation"] = True
     if result and (result.get("data") or {}).get("follow_up_topic") == "sales":
         result["follow_up_topic"] = "sales"
@@ -959,10 +1020,16 @@ def active_bot_events():
     from services.assistant_actions import _scope
 
     actor = Actor.authenticated(current_user, _scope(current_user))
-    response = jsonify(events=[
-        {"id": event_id, "status": status, "status_url": url_for("ai.get_bot_event", event_id=event_id)}
-        for event_id, status in active(actor)
-    ])
+    response = jsonify(
+        events=[
+            {
+                "id": event_id,
+                "status": status,
+                "status_url": url_for("ai.get_bot_event", event_id=event_id),
+            }
+            for event_id, status in active(actor)
+        ]
+    )
     response.cache_control.no_store = True
     return response
 
@@ -987,7 +1054,9 @@ def collect_assistant_details(action_id, step):
     data = request.get_json(silent=True)
     message = data.get("message") if isinstance(data, dict) else None
     if not isinstance(message, str) or not message.strip() or len(message) > 4000:
-        return jsonify({"response": "أدخل بيانات خطوة أمر الشراء في نص لا يتجاوز 4000 حرف."}), 400
+        return jsonify(
+            {"response": "أدخل بيانات خطوة أمر الشراء في نص لا يتجاوز 4000 حرف."}
+        ), 400
     return _assistant_response(collect(action_id, step, message.strip(), current_user))
 
 
@@ -1402,7 +1471,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_customer",
                         data,
@@ -1411,7 +1480,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء العميل:**
+                    return """❌ **خطأ في إنشاء العميل:**
 
 حدث خطأ غير متوقع
 
@@ -1563,7 +1632,7 @@ def _process_user_action(message, user):  # noqa: C901
 🤖 اكتب رقم الخيار أو اكتب "عودة"
 
 🤖 المصدر: النظام المحلي الذكي"""
-                    except Exception as e:
+                    except Exception:
                         train_local_ai(
                             "create_product",
                             data,
@@ -1572,14 +1641,14 @@ def _process_user_action(message, user):  # noqa: C901
 
                         del conversation_context[user_id]
                         current_app.logger.exception("AI handler failed")
-                        return f"""❌ **خطأ في إنشاء المنتج:**
+                        return """❌ **خطأ في إنشاء المنتج:**
 
 حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "منتج" ثم "1"
 
 🤖 المصدر: النظام المحلي الذكي"""
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_product",
                         data,
@@ -1588,7 +1657,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء المنتج:**
+                    return """❌ **خطأ في إنشاء المنتج:**
 
 حدث خطأ غير متوقع
 
@@ -1812,7 +1881,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 اكتب "عودة" للعودة"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_sale",
                         data,
@@ -1821,7 +1890,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء الفاتورة:**
+                    return """❌ **خطأ في إنشاء الفاتورة:**
 
 حدث خطأ غير متوقع
 
@@ -1962,7 +2031,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "receive_payment",
                         data,
@@ -1971,7 +2040,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في تسجيل الدفعة:**
+                    return """❌ **خطأ في تسجيل الدفعة:**
 
 حدث خطأ غير متوقع
 
@@ -2111,7 +2180,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "give_payment",
                         data,
@@ -2120,7 +2189,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في تسجيل الدفعة:**
+                    return """❌ **خطأ في تسجيل الدفعة:**
 
 حدث خطأ غير متوقع
 
@@ -2238,7 +2307,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_expense",
                         data,
@@ -2247,7 +2316,7 @@ def _process_user_action(message, user):  # noqa: C901
 
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء المصروف:**
+                    return """❌ **خطأ في إنشاء المصروف:**
 
 حدث خطأ غير متوقع
 
@@ -2390,7 +2459,7 @@ def _process_user_action(message, user):  # noqa: C901
                     )
 
                     del conversation_context[user_id]
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_supplier",
                         data,
@@ -2398,7 +2467,7 @@ def _process_user_action(message, user):  # noqa: C901
                     )
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء المورد:** حدث خطأ غير متوقع
+                    return """❌ **خطأ في إنشاء المورد:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مورد" ثم "1"
 
@@ -2553,7 +2622,7 @@ def _process_user_action(message, user):  # noqa: C901
                 except Exception:
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء المشتريات:** حدث خطأ غير متوقع
+                    return """❌ **خطأ في إنشاء المشتريات:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مشتريات" ثم "1"
 
@@ -2691,7 +2760,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_cheque",
                         data,
@@ -2699,7 +2768,7 @@ def _process_user_action(message, user):  # noqa: C901
                     )
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء الشيك:** حدث خطأ غير متوقع
+                    return """❌ **خطأ في إنشاء الشيك:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "شيك" ثم "1"
 
@@ -2925,7 +2994,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
+                except Exception:
                     train_local_ai(
                         "create_user",
                         data,
@@ -2933,7 +3002,7 @@ def _process_user_action(message, user):  # noqa: C901
                     )
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
-                    return f"""❌ **خطأ في إنشاء المستخدم:** حدث خطأ غير متوقع
+                    return """❌ **خطأ في إنشاء المستخدم:** حدث خطأ غير متوقع
 
 💡 **حاول مرة أخرى:** اكتب "مستخدم" ثم "1"
 
@@ -3896,9 +3965,9 @@ http://localhost:5000/ai/assistant
 
         return None
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
-        return f"❌ خطأ في التنفيذ: حدث خطأ غير متوقع"
+        return "❌ خطأ في التنفيذ: حدث خطأ غير متوقع"
 
 
 @ai_bp.route("/guide", methods=["GET"])
@@ -3958,12 +4027,14 @@ def assistant_page():
             "ai/assistant.html",
             ai_enabled=AIService.is_enabled(),
             warehouses=warehouses,
-            assistant_company=db.session.get(Tenant, tenant_id) if tenant_id is not None else None,
+            assistant_company=db.session.get(Tenant, tenant_id)
+            if tenant_id is not None
+            else None,
             current_user=current_user,
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
-        return f"Error: حدث خطأ غير متوقع", 500
+        return "Error: حدث خطأ غير متوقع", 500
 
 
 @ai_bp.route("/config", methods=["GET", "POST"])
@@ -4061,17 +4132,31 @@ def upload_excel():
 
     file = request.files.get("file")
     if not file or not file.filename:
-        return jsonify(success=False, response="اختر ملف Excel أولًا.", error="اختر ملف Excel أولًا."), 400
+        return jsonify(
+            success=False, response="اختر ملف Excel أولًا.", error="اختر ملف Excel أولًا."
+        ), 400
     if not file.filename.lower().endswith(".xlsx"):
-        return jsonify(success=False, response="احفظ الملف بصيغة XLSX للاستيراد.", error="احفظ الملف بصيغة XLSX للاستيراد."), 400
+        return jsonify(
+            success=False,
+            response="احفظ الملف بصيغة XLSX للاستيراد.",
+            error="احفظ الملف بصيغة XLSX للاستيراد.",
+        ), 400
 
     raw_warehouse = request.form.get("warehouse_id")
     warehouse_id = request.form.get("warehouse_id", type=int)
     if raw_warehouse and (warehouse_id is None or not 0 < warehouse_id <= 2147483647):
-        return jsonify(success=False, response="رقم المستودع غير صالح.", error="رقم المستودع غير صالح."), 400
+        return jsonify(
+            success=False,
+            response="رقم المستودع غير صالح.",
+            error="رقم المستودع غير صالح.",
+        ), 400
     content = file.stream.read(MAX_FILE_BYTES + 1)
     if len(content) > MAX_FILE_BYTES:
-        return jsonify(success=False, response="حجم الملف يتجاوز 5 ميغابايت.", error="حجم الملف يتجاوز 5 ميغابايت."), 413
+        return jsonify(
+            success=False,
+            response="حجم الملف يتجاوز 5 ميغابايت.",
+            error="حجم الملف يتجاوز 5 ميغابايت.",
+        ), 413
 
     if request.form.get("agent_queue") == "1":
         from base64 import b64encode
@@ -4081,13 +4166,20 @@ def upload_excel():
             f"Excel: {file.filename} | SHA-256: {sha256(content).hexdigest()} | warehouse: {warehouse_id}",
             command={
                 "tool": "prepare_stock_import",
-                "arguments": {"content": b64encode(content).decode("ascii"), "warehouse_id": warehouse_id},
+                "arguments": {
+                    "content": b64encode(content).decode("ascii"),
+                    "warehouse_id": warehouse_id,
+                },
             },
         )
 
     return _assistant_response(
         propose_import(
-            file.filename, content, warehouse_id, request.headers.get("Idempotency-Key"), current_user
+            file.filename,
+            content,
+            warehouse_id,
+            request.headers.get("Idempotency-Key"),
+            current_user,
         )
     )
 
@@ -4226,7 +4318,9 @@ def business_insights():
                 message = _en[message]
             elif "منتج بمخزون منخفض" in message:
                 prefix = re.search(r"\d+", message)
-                message = f"{prefix.group(0) if prefix else ''} products are low on stock"
+                message = (
+                    f"{prefix.group(0) if prefix else ''} products are low on stock"
+                )
             elif "عميل لديهم ذمم" in message:
                 prefix = re.search(r"\d+", message)
                 message = f"{prefix.group(0) if prefix else ''} customers have balances over 1000"
@@ -4260,7 +4354,7 @@ def learning_status():
     try:
         insights = learning_system.get_learning_insights()
         return jsonify({"success": True, "learning_insights": insights})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4273,7 +4367,7 @@ def evolve_knowledge():
     try:
         evolution = learning_system.evolve_knowledge()
         return jsonify({"success": True, "evolution": evolution})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4286,7 +4380,7 @@ def improvement_status():
     try:
         status = self_improvement.get_improvement_status()
         return jsonify({"success": True, "improvement_status": status})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4299,7 +4393,7 @@ def auto_improve():
     try:
         improvements = self_improvement.auto_improve()
         return jsonify({"success": True, "improvements": improvements})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4312,7 +4406,7 @@ def improvement_progress():
     try:
         progress = self_improvement.track_progress()
         return jsonify({"success": True, "progress": progress})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4333,7 +4427,7 @@ def set_improvement_goal():
 
         result = self_improvement.set_improvement_goal(area, target_score, timeframe)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4346,7 +4440,7 @@ def global_insights():
     try:
         insights = global_connector.get_global_insights()
         return jsonify({"success": True, "global_insights": insights})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4359,7 +4453,7 @@ def update_global_expertise():
     try:
         updates = expertise_updater.update_expertise()
         return jsonify({"success": True, "expertise_updates": updates})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4389,7 +4483,7 @@ def performance_analysis():
                 },
             }
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4402,7 +4496,7 @@ def get_customer_balance(customer_name):
     try:
         result = system_integrator.get_customer_balance(customer_name)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4415,7 +4509,7 @@ def analyze_customer_debt(customer_id):
     try:
         result = data_analyzer.analyze_customer_debt(customer_id)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4428,7 +4522,7 @@ def get_product_stock(product_name):
     try:
         result = system_integrator.get_product_stock(product_name)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4449,7 +4543,7 @@ def get_system_summary():
                 "financial": financial_result.get("financial", {}),
             }
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4462,7 +4556,7 @@ def search_system_data(search_term):
     try:
         result = system_integrator.search_data(search_term)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4483,7 +4577,10 @@ def add_customer():
     if len(source) > 4000:
         return jsonify({"error": "Customer request exceeds 4000 characters"}), 400
     result = propose_customer(
-        source, **customer, key=request.headers.get("Idempotency-Key"), user=current_user
+        source,
+        **customer,
+        key=request.headers.get("Idempotency-Key"),
+        user=current_user,
     )
     return _assistant_response(result)
 
@@ -4497,7 +4594,7 @@ def analyze_sales_performance():
         period_days = request.args.get("period", 30, type=int)
         result = data_analyzer.analyze_sales_performance(period_days)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4511,7 +4608,7 @@ def analyze_product_performance():
         product_id = request.args.get("product_id", type=int)
         result = data_analyzer.analyze_product_performance(product_id)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4524,7 +4621,7 @@ def get_financial_ratios():
     try:
         result = data_analyzer.get_financial_ratios()
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4545,7 +4642,7 @@ def add_knowledge_website():
 
         result = knowledge_expander.add_website(url, category, description)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4567,7 +4664,7 @@ def add_knowledge_document():
 
         result = knowledge_expander.add_document(content, title, category, description)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4586,7 +4683,7 @@ def search_knowledge():
 
         result = knowledge_expander.search_knowledge(query, category)
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4599,7 +4696,7 @@ def get_knowledge_summary():
     try:
         result = knowledge_expander.get_knowledge_summary()
         return jsonify(result)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"}), 500
 
@@ -4612,7 +4709,7 @@ def neural_status():
     try:
         status = AIService.get_neural_status()
         return jsonify({"success": True, "status": status})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4627,7 +4724,7 @@ def automotive_ecu_code(code):
         diagnosis = ecu_expert.diagnose_code(code.upper())
 
         return jsonify({"success": True, "diagnosis": diagnosis})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4642,7 +4739,7 @@ def automotive_sensor(sensor):
         info = ecu_expert.get_sensor_info(sensor)
 
         return jsonify({"success": True, "sensor_info": info})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4665,7 +4762,7 @@ def external_sources():
                 "catalog": LEARNING_SOURCES_CATALOG,
             }
         )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4695,7 +4792,7 @@ def ask_genius():
         )
 
         return jsonify({"success": True, "result": result})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4723,7 +4820,7 @@ def quick_calc():
         result = AIService.quick_calculate(formula, **params)
 
         return jsonify({"success": result.get("success", False), "result": result})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})
 
@@ -4750,6 +4847,6 @@ def transformers_understand():
         understanding = AIService.understand_with_transformers(text)
 
         return jsonify({"success": True, "understanding": understanding})
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("AI handler failed")
         return jsonify({"success": False, "error": "حدث خطأ غير متوقع"})

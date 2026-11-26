@@ -83,17 +83,21 @@ def extract_entities(message: str) -> dict:
         "product_name": None,
         "supplier_name": None,
         "expense_description": None,
+        "relative_dates": [],
+        "currencies": [],
+        "invoice_numbers": [],
+        "cheque_numbers": [],
     }
 
     for m in re.finditer(
-        r"(\d+(?:,\d+)*(?:\.\d+)?)\s*(درهم|دولار|ريال|aed|usd|sar)?", norm
+        r"(\d+(?:,\d+)*(?:\.\d+)?)\s*(درهم|دولار|ريال|شيقل|aed|usd|sar|ils)?", norm
     ):
         try:
             ents["numbers"].append(float(m.group(1).replace(",", "")))
         except ValueError:
             continue
     for m in re.finditer(
-        r"(\d+(?:,\d+)*(?:\.\d+)?)\s*(درهم|دولار|ريال|aed|usd|sar)", norm
+        r"(\d+(?:,\d+)*(?:\.\d+)?)\s*(درهم|دولار|ريال|شيقل|aed|usd|sar|ils)", norm
     ):
         ents["amounts"].append(
             {"value": float(m.group(1).replace(",", "")), "currency": m.group(2)}
@@ -103,6 +107,15 @@ def extract_entities(message: str) -> dict:
 
     for m in re.finditer(r"(\+?(?:971|0)5\d{7,8})", norm.replace(" ", "")):
         ents["phones"].append(m.group(1))
+
+    for m in re.finditer(
+        r"(?:فاتورة|invoice|inv)[\s#:-]*([A-Za-z0-9-]{3,20})", text, re.IGNORECASE
+    ):
+        ents["invoice_numbers"].append(m.group(1))
+    for m in re.finditer(
+        r"(?:شيك|cheque|check)[\s#:-]*([A-Za-z0-9-]{3,20})", text, re.IGNORECASE
+    ):
+        ents["cheque_numbers"].append(m.group(1))
 
     for m in re.finditer(r"\b([A-Za-z0-9]{2,4}[-\w]{2,12})\b", text):
         token = m.group(1)
@@ -158,12 +171,41 @@ def extract_entities(message: str) -> dict:
         if raw and len(raw) >= 3 and not raw.lower().startswith(("جديد", "جديده")):
             ents["expense_description"] = raw
             break
-    if "اليوم" in norm or "اليوم" in text:
-        ents["relative_dates"].append(
-            "today"
-        ) if "relative_dates" in ents else ents.__setitem__("relative_dates", ["today"])
-    if "أمس" in text or "امس" in norm:
-        ents.setdefault("relative_dates", []).append("yesterday")
+    _rd = ents.setdefault("relative_dates", [])
+    low_norm = norm
+    low_text = text.lower()
+    if "اليوم" in norm or "today" in low_text:
+        _rd.append("today")
+    if "أمس" in text or "امس" in norm or "yesterday" in low_text:
+        _rd.append("yesterday")
+    if (
+        "هذا الأسبوع" in text
+        or "هذا الاسبوع" in norm
+        or "this week" in low_text
+        or "this week" in low_text
+    ):
+        _rd.append("this_week")
+    if "الأسبوع الماضي" in text or "الاسبوع الماضي" in norm or "last week" in low_text:
+        _rd.append("last_week")
+    if "هذا الشهر" in text or "هذا الشهر" in norm or "this month" in low_text:
+        _rd.append("this_month")
+    if "الشهر الماضي" in text or "الشهر الماضي" in norm or "last month" in low_text:
+        _rd.append("last_month")
+    if (
+        "هذه السنة" in text
+        or "هذا العام" in text
+        or "this year" in low_text
+        or "current year" in low_text
+    ):
+        _rd.append("this_year")
+    if "السنة الماضية" in text or "العام الماضي" in text or "last year" in low_text:
+        _rd.append("last_year")
+    # currencies
+    _cur = ents.setdefault("currencies", [])
+    for c in ("شيقل", "ILS", "ils", "درهم", "AED", "aed", "دولار", "USD", "usd"):
+        if c in text or c in norm or c.lower() in low_text:
+            if c not in _cur:
+                _cur.append(c)
     return ents
 
 

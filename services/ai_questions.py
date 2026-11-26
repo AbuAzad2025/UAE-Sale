@@ -20,8 +20,24 @@ from bot_core.gateway import normalize as normalize_prompt
 from services.ai_normalize import normalize
 
 QUESTION_WORDS = (
-    "كم", "عدد", "إجمالي", "مجموع", "كيف", "ماذا", "ما هو", "هل ",
-    "أفضل", "أي", "؟", "?", "how many", "what is", "total", "count", "status", "top",
+    "كم",
+    "عدد",
+    "إجمالي",
+    "مجموع",
+    "كيف",
+    "ماذا",
+    "ما هو",
+    "هل ",
+    "أفضل",
+    "أي",
+    "؟",
+    "?",
+    "how many",
+    "what is",
+    "total",
+    "count",
+    "status",
+    "top",
 )
 
 SUMMARY_PERMISSIONS = {
@@ -43,7 +59,14 @@ _SUMMARY_PATTERNS = {
 
 def summary_kind(message: str) -> str | None:
     prompt = normalize_prompt(message).strip(" .!?؟")
-    return next((kind for kind, pattern in _SUMMARY_PATTERNS.items() if re.fullmatch(pattern, prompt)), None)
+    return next(
+        (
+            kind
+            for kind, pattern in _SUMMARY_PATTERNS.items()
+            if re.fullmatch(pattern, prompt)
+        ),
+        None,
+    )
 
 
 def business_summary(kind: str, tenant_id: int | None) -> str:
@@ -62,32 +85,48 @@ def business_summary(kind: str, tenant_id: int | None) -> str:
 
     scope = "في الشركة الحالية"
     if kind == "customers":
-        count = db.session.scalar(select(func.count(Customer.id)).where(
-            Customer.tenant_id == tenant_id, Customer.is_active.is_(True),
-        ))
+        count = db.session.scalar(
+            select(func.count(Customer.id)).where(
+                Customer.tenant_id == tenant_id,
+                Customer.is_active.is_(True),
+            )
+        )
         return f"العملاء النشطون {scope}: {count}."
     if kind == "inventory":
-        count, low = db.session.execute(select(
-            func.count(Product.id), func.count(Product.id).filter(Product.current_stock <= Product.min_stock_alert),
-        ).where(Product.tenant_id == tenant_id, Product.is_active.is_(True))).one()
+        count, low = db.session.execute(
+            select(
+                func.count(Product.id),
+                func.count(Product.id).filter(
+                    Product.current_stock <= Product.min_stock_alert
+                ),
+            ).where(Product.tenant_id == tenant_id, Product.is_active.is_(True))
+        ).one()
         return f"المخزون {scope}: {count} صنف نشط، منها {low} عند حد التنبيه أو أقل."
     if kind == "expenses":
         today = date.today()
         first = today.replace(day=1)
         next_month = (first + timedelta(days=32)).replace(day=1)
-        count, total = db.session.execute(select(func.count(Expense.id), func.sum(Expense.amount_base)).where(
-            Expense.tenant_id == tenant_id, Expense.expense_date >= datetime.combine(first, datetime.min.time()),
-            Expense.expense_date < datetime.combine(next_month, datetime.min.time()),
-        )).one()
+        count, total = db.session.execute(
+            select(func.count(Expense.id), func.sum(Expense.amount_base)).where(
+                Expense.tenant_id == tenant_id,
+                Expense.expense_date >= datetime.combine(first, datetime.min.time()),
+                Expense.expense_date
+                < datetime.combine(next_month, datetime.min.time()),
+            )
+        ).one()
         return f"مصروفات هذا الشهر {scope}: {count} عملية بقيمة {_money(total)} {CurrencyService.get_base_currency()}."
     if kind == "cheques":
-        count = db.session.scalar(select(func.count(Cheque.id)).where(Cheque.tenant_id == tenant_id))
+        count = db.session.scalar(
+            select(func.count(Cheque.id)).where(Cheque.tenant_id == tenant_id)
+        )
         return f"الشيكات المسجلة {scope}: {count}."
     if kind == "fiscal_periods":
-        opened, closed = db.session.execute(select(
-            func.count(FiscalPeriod.id).filter(FiscalPeriod.is_closed.is_(False)),
-            func.count(FiscalPeriod.id).filter(FiscalPeriod.is_closed.is_(True)),
-        ).where(FiscalPeriod.tenant_id == tenant_id)).one()
+        opened, closed = db.session.execute(
+            select(
+                func.count(FiscalPeriod.id).filter(FiscalPeriod.is_closed.is_(False)),
+                func.count(FiscalPeriod.id).filter(FiscalPeriod.is_closed.is_(True)),
+            ).where(FiscalPeriod.tenant_id == tenant_id)
+        ).one()
         return f"الفترات المالية {scope}: {opened} مفتوحة و{closed} مغلقة."
     raise ValueError("Unknown business summary")
 
@@ -97,8 +136,12 @@ def is_question(message: str) -> bool:
     return any(word in text for word in QUESTION_WORDS)
 
 
-_SALES_TERMS = re.compile(r"\b(?:المبيعات|مبيعات|المبيع|مبيع|بعنا|sales)\b|\b(?:فاتوره بيع|فواتير البيع|invoices?)\b")
-_NON_SALES_INVOICES = re.compile(r"\b(?:مشتريات|purchase|purchases)\s+invoices?\b|\binvoices? for purchases\b")
+_SALES_TERMS = re.compile(
+    r"\b(?:المبيعات|مبيعات|المبيع|مبيع|بعنا|sales)\b|\b(?:فاتوره بيع|فواتير البيع|invoices?)\b"
+)
+_NON_SALES_INVOICES = re.compile(
+    r"\b(?:مشتريات|purchase|purchases)\s+invoices?\b|\binvoices? for purchases\b"
+)
 _SALES_COMPARISON = re.compile(r"\b(?:قارن|مقارنه|compare|versus|vs)\b")
 _SALES_SUMMARY = re.compile(r"\b(?:حلل|تحليل|ملخص|قديش|كم|اجمالي|summary|analyze)\b")
 _SALES_NON_QUERY = re.compile(
@@ -118,11 +161,16 @@ _SALES_PERIODS = (
     (r"هذا الاسبوع|هالاسبوع|الاسبوع الحالي|this week", "هذا الأسبوع"),
     (r"(?:اخر )?7 (?:ايام|days)|(?:اخر )?(?:ال)?اسبوع|week", "آخر 7 أيام"),
     (r"(?:اخر |last )?30 (?:يوما?|days)", "آخر 30 يوماً"),
+    (r"هذا العام|هذه السنه|this year|current year", "هذا العام"),
 )
 _SALES_PERIOD_RE = re.compile(
-    r"\b(?:و?ب|و)?(?P<period>" + "|".join(pattern for pattern, _ in _SALES_PERIODS) + r")\b"
+    r"\b(?:و?ب|و)?(?P<period>"
+    + "|".join(pattern for pattern, _ in _SALES_PERIODS)
+    + r")\b"
 )
-_SALES_FOLLOW_UP = re.compile(rf"(?:و\s*|طيب\s+|what about\s+|and\s+)?{_SALES_PERIOD_RE.pattern}")
+_SALES_FOLLOW_UP = re.compile(
+    rf"(?:و\s*|طيب\s+|what about\s+|and\s+)?{_SALES_PERIOD_RE.pattern}"
+)
 _PRECEDING_SALES_PERIOD = re.compile(
     r"(?:و\s*|طيب\s+)?(?:ما )?قبل(?:ها| ذلك)|(?:and )?(?:the )?(?:period )?before that"
 )
@@ -189,18 +237,30 @@ def _sales_answer(query, Sale, message, *, period=None, resolved_periods=None):
         ),
         "هذا الأسبوع": (week_start, tomorrow),
         "الأسبوع الماضي": (week_start - timedelta(days=7), week_start),
-        "الأسبوع الذي قبل الماضي": (week_start - timedelta(days=14), week_start - timedelta(days=7)),
+        "الأسبوع الذي قبل الماضي": (
+            week_start - timedelta(days=14),
+            week_start - timedelta(days=7),
+        ),
         "آخر 7 أيام": (tomorrow - timedelta(days=7), tomorrow),
         "آخر 30 يوماً": (tomorrow - timedelta(days=30), tomorrow),
-        "السبعة أيام السابقة": (tomorrow - timedelta(days=14), tomorrow - timedelta(days=7)),
-        "الثلاثون يوماً السابقة": (tomorrow - timedelta(days=60), tomorrow - timedelta(days=30)),
+        "هذا العام": (date(today.year, 1, 1), tomorrow),
+        "السبعة أيام السابقة": (
+            tomorrow - timedelta(days=14),
+            tomorrow - timedelta(days=7),
+        ),
+        "الثلاثون يوماً السابقة": (
+            tomorrow - timedelta(days=60),
+            tomorrow - timedelta(days=30),
+        ),
     }
     periods = [period] if period in windows else []
     if is_preceding_sales_period(message) and not periods:
         return "أي فترة تقصد؟ اكتب الفترة التي تريد معرفة مبيعاتها."
     for match in _SALES_PERIOD_RE.finditer(text):
         label = next(
-            label for pattern, label in _SALES_PERIODS if re.fullmatch(pattern, match["period"])
+            label
+            for pattern, label in _SALES_PERIODS
+            if re.fullmatch(pattern, match["period"])
         )
         if label not in periods:
             periods.append(label)
@@ -216,6 +276,8 @@ def _sales_answer(query, Sale, message, *, period=None, resolved_periods=None):
         if periods and periods[0] not in baseline:
             return "حدّد فترتين للمقارنة. مثلاً: قارن مبيعات اليوم وأمس."
         periods = periods + [baseline[periods[0]]] if periods else ["اليوم", "أمس"]
+    if not periods and any(w in text for w in ("سنه", "عام", "year")):
+        periods = ["هذا العام"]
     if not periods:
         periods = ["آخر 30 يوماً"]
     if resolved_periods is not None:
@@ -229,21 +291,27 @@ def _sales_answer(query, Sale, message, *, period=None, resolved_periods=None):
         end = datetime.combine(end_day, datetime.min.time())
         rows = (
             query.filter(Sale.sale_date >= start, Sale.sale_date < end)
-            .with_entities(Sale.currency, func.count(Sale.id), func.sum(Sale.total_amount))
+            .with_entities(
+                Sale.currency, func.count(Sale.id), func.sum(Sale.total_amount)
+            )
             .group_by(Sale.currency)
             .order_by(Sale.currency)
             .all()
         )
         count = sum(row[1] for row in rows)
         invoice_counts.append(count)
-        values = " · ".join(f"{_money(total)} {currency}" for currency, _, total in rows)
+        values = " · ".join(
+            f"{_money(total)} {currency}" for currency, _, total in rows
+        )
         totals = f" بقيمة {values}" if values else ""
         results.append(f"المبيعات {label}: {count} فاتورة{totals}.")
 
     if len(invoice_counts) == 2:
         first, second = invoice_counts
         results.append(f"الفرق في عدد الفواتير بين الفترتين: {abs(first - second)}.")
-    return "📊 " + "\n".join(results) + "\nالمصدر: فواتير المبيعات المؤكدة من سجلات شركتك."
+    return (
+        "📊 " + "\n".join(results) + "\nالمصدر: فواتير المبيعات المؤكدة من سجلات شركتك."
+    )
 
 
 def _allowed(user, *permissions):
@@ -281,6 +349,9 @@ def _period(query, model, column, message, user):
     if "أسبوع" in text or "اسبوع" in text or "week" in text:
         start = datetime.now() - timedelta(days=7)
         return query.filter(column >= start), "آخر 7 أيام"
+    if "سنة" in text or "عام" in text or "year" in text:
+        start = datetime.combine(date(today.year, 1, 1), datetime.min.time())
+        return query.filter(column >= start), "هذا العام"
     start = datetime.now() - timedelta(days=30)
     return query.filter(column >= start), "آخر 30 يوماً"
 
@@ -289,7 +360,9 @@ def _money(value):
     return f"{(Decimal(str(value or 0))):,.2f}"
 
 
-def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: bool = False):
+def answer(
+    message: str, user, *, follow_up_topic=None, enforce_company_scope: bool = False
+):
     """Return a grounded Arabic answer string, or None when not a data question."""
     sales_question = is_sales_question(message, follow_up_topic)
     summary = summary_kind(message)
@@ -343,9 +416,12 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             q = Sale.query.filter(Sale.status == "confirmed", Sale.balance_due > 0)
             q = _scope(q, Sale, user)
             count = q.count()
-            total = db.session.query(func.sum(Sale.balance_due)).select_from(Sale).filter(
-                Sale.id.in_(q.with_entities(Sale.id))
-            ).scalar()
+            total = (
+                db.session.query(func.sum(Sale.balance_due))
+                .select_from(Sale)
+                .filter(Sale.id.in_(q.with_entities(Sale.id)))
+                .scalar()
+            )
             return (
                 f"💰 الذمم المدينة (مستحقات العملاء): {count} فاتورة بقيمة {_money(total)} شيقل. "
                 "الأرقام من بيانات شركتك."
@@ -381,7 +457,9 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
                 start = end - timedelta(days=30)
                 cf = CashFlowService.generate_cash_flow(start, end)
                 net = cf.get("net_change_in_cash", 0)
-                op_total = (cf.get("operating_activities") or {}).get("net_cash_from_operating", 0)
+                op_total = (cf.get("operating_activities") or {}).get(
+                    "net_cash_from_operating", 0
+                )
                 return (
                     "💵 التدفق النقدي (آخر 30 يوماً): "
                     f"صافي التغيير {_money(net)} شيقل، "
@@ -403,25 +481,33 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             rows = q.order_by(Product.current_stock.asc()).limit(8).all()
             if not rows:
                 return "✅ لا توجد منتجات تحت حد التنبيه حالياً."
-            lines = [f"- {p.name} (المخزون: {p.current_stock} {p.unit or ''})" for p in rows]
+            lines = [
+                f"- {p.name} (المخزون: {p.current_stock} {p.unit or ''})" for p in rows
+            ]
             return "⚠️ منتجات بمخزون منخفض:\n" + "\n".join(lines)
 
         # --- top customers -----------------------------------------------
-        if any(w in text for w in ("أفضل", "top")) and any(w in text for w in ("عميل", "عملاء", "customer")):
+        if any(w in text for w in ("أفضل", "top")) and any(
+            w in text for w in ("عميل", "عملاء", "customer")
+        ):
             if not _allowed(user, "view_reports"):
                 return _denied("view_reports")
             from models import Customer
-            q = (
-                db.session.query(
-                    Sale.customer_id,
-                    func.sum(Sale.total_amount).label("revenue"),
-                    func.count(Sale.id).label("invoices"),
-                )
-                .filter(Sale.status == "confirmed")
-            )
-            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+
+            q = db.session.query(
+                Sale.customer_id,
+                func.sum(Sale.total_amount).label("revenue"),
+                func.count(Sale.id).label("invoices"),
+            ).filter(Sale.status == "confirmed")
+            if not getattr(user, "is_owner", False) and getattr(
+                user, "tenant_id", None
+            ):
                 q = q.filter(Sale.tenant_id == user.tenant_id)
-            q = q.group_by(Sale.customer_id).order_by(func.sum(Sale.total_amount).desc()).limit(5)
+            q = (
+                q.group_by(Sale.customer_id)
+                .order_by(func.sum(Sale.total_amount).desc())
+                .limit(5)
+            )
             rows = q.all()
             if not rows:
                 return "🏆 أفضل 5 عملاء (حسب المبيعات): لا توجد مبيعات مؤكدة لترتيب العملاء."
@@ -433,19 +519,25 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             return "🏆 أفضل 5 عملاء (حسب المبيعات):\n" + "\n".join(lines)
 
         # --- top products -------------------------------------------------
-        if any(w in text for w in ("أفضل", "top")) and ("منتج" in text or "product" in text):
+        if any(w in text for w in ("أفضل", "top")) and (
+            "منتج" in text or "product" in text
+        ):
             if not _allowed(user, "view_reports"):
                 return _denied("view_reports")
-            q = (
-                db.session.query(
-                    SaleLine.product_id,
-                    func.sum(SaleLine.quantity).label("qty"),
-                    func.sum(SaleLine.line_total).label("revenue"),
-                )
+            q = db.session.query(
+                SaleLine.product_id,
+                func.sum(SaleLine.quantity).label("qty"),
+                func.sum(SaleLine.line_total).label("revenue"),
             )
-            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+            if not getattr(user, "is_owner", False) and getattr(
+                user, "tenant_id", None
+            ):
                 q = q.filter(SaleLine.tenant_id == user.tenant_id)
-            q = q.group_by(SaleLine.product_id).order_by(func.sum(SaleLine.quantity).desc()).limit(5)
+            q = (
+                q.group_by(SaleLine.product_id)
+                .order_by(func.sum(SaleLine.quantity).desc())
+                .limit(5)
+            )
             rows = q.all()
             if not rows:
                 return "🏆 أفضل 5 منتجات (حسب الكمية): لا توجد مبيعات مؤكدة لترتيب المنتجات."
@@ -478,11 +570,14 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             low = q.filter(Product.current_stock <= Product.min_stock_alert).count()
             tail = ""
             if _allowed(user, "view_costs"):
-                value = db.session.query(
-                    func.sum(Product.current_stock * Product.cost_price)
-                ).select_from(Product).filter(
-                    Product.id.in_(q.with_entities(Product.id))
-                ).scalar()
+                value = (
+                    db.session.query(
+                        func.sum(Product.current_stock * Product.cost_price)
+                    )
+                    .select_from(Product)
+                    .filter(Product.id.in_(q.with_entities(Product.id)))
+                    .scalar()
+                )
                 tail = f" بقيمة {_money(value)} شيقل بالتكلفة."
             return (
                 f"📦 المخزون: {total} منتجاً نشطاً، {low} تحت حد التنبيه.{tail} "
@@ -491,12 +586,18 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
 
         # --- purchases ----------------------------------------------------
         if any(w in text for w in ("مشتري", "مورد", "purchase", "supplier")):
-            if not _allowed(user, "manage_purchases", "manage_suppliers", "view_reports"):
+            if not _allowed(
+                user, "manage_purchases", "manage_suppliers", "view_reports"
+            ):
                 return _denied("manage_purchases", "view_reports")
             if "مورد" in text or "supplier" in text:
-                count = _scope(Supplier.query.filter_by(is_active=True), Supplier, user).count()
+                count = _scope(
+                    Supplier.query.filter_by(is_active=True), Supplier, user
+                ).count()
                 return f"🚚 الموردون المسجلون في شركتك: {count} مورداً."
-            q, label = _period(Purchase.query, Purchase, Purchase.purchase_date, message, user)
+            q, label = _period(
+                Purchase.query, Purchase, Purchase.purchase_date, message, user
+            )
             count = _scope(q, Purchase, user).count()
             return f"🛒 المشتريات {label}: {count} فاتورة في شركتك."
 
@@ -504,7 +605,9 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
         if any(w in text for w in ("دفع", "تحصيل", "سند", "payment", "receipt")):
             if not _allowed(user, "manage_payments", "view_ledger"):
                 return _denied("manage_payments", "view_ledger")
-            q, label = _period(Payment.query, Payment, Payment.payment_date, message, user)
+            q, label = _period(
+                Payment.query, Payment, Payment.payment_date, message, user
+            )
             count = _scope(q, Payment, user).count()
             return f"💳 السندات {label}: {count} سنداً مسجلاً في شركتك."
 
@@ -518,12 +621,17 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
         if "مصروف" in text or "expense" in text:
             if not _allowed(user, "manage_expenses", "view_ledger"):
                 return _denied("manage_expenses", "view_ledger")
-            q, label = _period(Expense.query, Expense, Expense.expense_date, message, user)
+            q, label = _period(
+                Expense.query, Expense, Expense.expense_date, message, user
+            )
             q = _scope(q, Expense, user)
             count = q.count()
-            total = db.session.query(func.sum(Expense.amount)).select_from(Expense).filter(
-                Expense.id.in_(q.with_entities(Expense.id))
-            ).scalar()
+            total = (
+                db.session.query(func.sum(Expense.amount))
+                .select_from(Expense)
+                .filter(Expense.id.in_(q.with_entities(Expense.id)))
+                .scalar()
+            )
             return f"💸 المصروفات {label}: {count} عملية بقيمة {_money(total)} شيقل."
 
         # --- HR -----------------------------------------------------------
@@ -538,7 +646,9 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             if not _allowed(user, "manage_users"):
                 return _denied("manage_users")
             q = User.query.filter_by(is_active=True)
-            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+            if not getattr(user, "is_owner", False) and getattr(
+                user, "tenant_id", None
+            ):
                 q = q.filter(User.tenant_id == user.tenant_id)
             return f"👤 المستخدمون النشطون في شركتك: {q.count()} حساباً."
 
@@ -547,7 +657,9 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
             if not _allowed(user, "manage_ledger", "view_ledger"):
                 return _denied("view_ledger")
             q = FiscalPeriod.query
-            if not getattr(user, "is_owner", False) and getattr(user, "tenant_id", None):
+            if not getattr(user, "is_owner", False) and getattr(
+                user, "tenant_id", None
+            ):
                 q = q.filter(FiscalPeriod.tenant_id == user.tenant_id)
             closed = q.filter_by(is_closed=True).count()
             opened = q.filter_by(is_closed=False).count()
@@ -555,6 +667,7 @@ def answer(message: str, user, *, follow_up_topic=None, enforce_company_scope: b
 
     except Exception as _exc:
         import traceback
+
         traceback.print_exc()
         if sales_question:
             from flask import current_app

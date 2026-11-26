@@ -115,7 +115,7 @@
       </div>
       <div class="info-box">
         <h3> {{ t("Invoice Details") }}</h3>
-        <p><strong>{{ t("Date") }}:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') }}</p>
+        <p><strong>{{ t("Date") }}:</strong> {{ sale.sale_date.strftime('%Y-%m-%d') if sale.sale_date else '-' }}</p>
         <p><strong>{{ t("Status") }}:</strong> <span style="color: #28a745"> {{ t("Completed") }}</span></p>
       </div>
     </div>

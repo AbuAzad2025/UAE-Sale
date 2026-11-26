@@ -65,7 +65,6 @@ def handle_ai_service_error(error: AIServiceError):
     ), 500
 
 
-@permission_required("view_reports")
 def _validate_csrf_token():
     """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
 
@@ -756,38 +755,37 @@ def exchange_rate(currency):
 @login_required
 @permission_required("view_products")
 def search_market_price(product_id):
-    """API: البحث عن سعر القطعة في الأسواق العالمية"""
+    """API: البحث عن سعر القطعة في الأسواق العالمية (disabled stub)."""
     from models import Product
 
     product = get_owned_or_404(Product, product_id)
 
     return jsonify(
         {
-            "success": True,
+            "success": False,
             "product": product.name,
-            "message": "ميزة البحث العالمي قيد التطوير",
-            "suggestions": [],
+            "message": "Feature not implemented",
         }
-    )
+    ), 501
 
 
 @ai_bp.route("/find-compatible/<int:product_id>", methods=["GET"])
 @login_required
 @permission_required("view_products")
 def find_compatible(product_id):
-    """API: البحث عن السيارات المتوافقة"""
+    """API: البحث عن السيارات المتوافقة (disabled stub)."""
     from models import Product
 
     product = get_owned_or_404(Product, product_id)
 
     return jsonify(
         {
-            "success": True,
+            "success": False,
             "product": product.name,
-            "message": "ميزة البحث عن المركبات المتوافقة قيد التطوير",
+            "message": "Feature not implemented",
             "compatible_vehicles": [],
         }
-    )
+    ), 501
 
 
 @ai_bp.route("/chat", methods=["POST"])

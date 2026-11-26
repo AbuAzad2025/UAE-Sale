@@ -10,6 +10,8 @@ from flask import (
     Response,
     request,
     session,
+    current_app,
+    send_from_directory,
 )
 from flask_login import current_user
 
@@ -208,6 +210,16 @@ def sitemap():
     xml_content += "</urlset>"
 
     return Response(xml_content, mimetype="application/xml")
+
+
+@public_bp.route("/fa1a7d72cb4a93c48220f22fbac1b76d.txt")
+def indexnow_key():
+    """IndexNow ownership key, served from the domain root (Bing/Yandex)."""
+    return send_from_directory(
+        current_app.static_folder,
+        "fa1a7d72cb4a93c48220f22fbac1b76d.txt",
+        mimetype="text/plain",
+    )
 
 
 @public_bp.route("/robots.txt")

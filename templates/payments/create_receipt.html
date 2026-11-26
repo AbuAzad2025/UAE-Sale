@@ -60,7 +60,7 @@
 {% block content %}
 {% set submitted = form_data if form_data is defined else None %}
 {% set selected_customer_id = submitted.get('customer_id') if submitted and submitted.get('customer_id') else (preselected_customer.id if preselected_customer else '') %}
-{% set selected_currency = submitted.get('currency') if submitted and submitted.get('currency') else (purchase.currency if purchase else sale.currency if sale else 'ILS') %}
+{% set selected_currency = submitted.get('currency') if submitted and submitted.get('currency') else (base_currency if purchase else sale.currency if sale else 'ILS') %}
 {% set selected_payment_method = submitted.get('payment_method') if submitted and submitted.get('payment_method') else 'cash' %}
 {% set selected_ewallet = submitted.get('ewallet_name') if submitted and submitted.get('ewallet_name') else '' %}
 {% if sale %}
@@ -177,11 +177,11 @@
               <i class="fas fa-money-bill-wave text-success"></i> {{ t('Amount') }} 
               <span class="text-danger">*</span>
             </label>
-            <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" 
+            <input type="number" name="amount" id="amount" class="form-control" step="{{ '0.001' if purchase else '0.01' }}" min="{{ '0.001' if purchase else '0.01' }}"
                    value="{{ submitted.get('amount') if submitted and submitted.get('amount') else (suggested_amount if suggested_amount else '') }}" 
                    data-suggested-amount="{{ suggested_amount if suggested_amount else '' }}"
                    placeholder="0.00" required>
-            {% if suggested_amount %}
+            {% if suggested_amount and not purchase %}
             <small class="form-text text-info">
               <i class="fas fa-info-circle"></i> {{ t('Suggested amount based on customer debts') }}
             </small>
@@ -214,7 +214,7 @@
             
             <input type="number" name="exchange_rate" id="exchange_rate" 
                    class="form-control" step="0.000001" min="0.000001"
-                   value="{% if purchase %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}">
+                   value="{% if purchase and selected_currency == purchase.currency %}{{ purchase.exchange_rate }}{% elif sale %}{{ sale.exchange_rate }}{% else %}1{% endif %}">
             <small class="form-text text-muted" id="exchange_rate_hint">
               <i class="fas fa-info-circle"></i> {{ t('The exchange rate is updated automatically when the currency changes - it can be edited manually.') }}
             </small>
@@ -440,11 +440,6 @@ $(document).ready(function() {
   
   if (window.PaymentFieldsManager) {
     PaymentFieldsManager.initSelector('#payment_method', '#paymentFieldsContainer');
-  }
-  
-  var suggestedAmount = $('#amount').data('suggested-amount');
-  if (suggestedAmount) {
-    $('#amount').val(suggestedAmount);
   }
   
   $('#payment_method').on('change', function() {

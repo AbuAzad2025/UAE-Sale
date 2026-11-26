@@ -106,15 +106,38 @@ class TestSupplierService:
 
 class TestPurchaseService:
     def test_create_stocks_up(self, db, owner):
-        s = cmd.create_supplier("مورد مشتريات")
-        p = cmd.create_product(
-            "قطعة شراء", regular_price=Decimal("5"), current_stock=Decimal("0")
-        )
-        pu = cmd.create_purchase(s.id, p.id, Decimal("3"), Decimal("4"), owner.id)
-        assert pu.id and pu.total_amount == Decimal("12")
-        from models import Product
+        from models import GLJournalEntry, Product, StockMovement, Tenant, Warehouse
+        from models.tenant_scope import run_in_tenant_context
 
+        tenant = Tenant(
+            name="Purchasing", name_ar="المشتريات", slug="purchasing", default_currency="ILS",
+            enable_tax=True, default_tax_rate=Decimal("16"), tax_inclusive=False,
+        )
+        db.session.add(tenant)
+        db.session.flush()
+        owner.tenant_id = tenant.id
+        warehouse = Warehouse(name="Receiving", code="RECV", tenant_id=tenant.id)
+        db.session.add(warehouse)
+        db.session.commit()
+
+        def create():
+            supplier = cmd.create_supplier("مورد مشتريات")
+            product = cmd.create_product("قطعة شراء", regular_price=Decimal("5"))
+            purchase = cmd.create_purchase(supplier.id, product.id, Decimal("3"), Decimal("4"), owner.id)
+            return supplier, product, purchase
+
+        supplier, p, pu = run_in_tenant_context(tenant.id, create)
+        assert pu.total_amount == Decimal("13.920")
+        assert pu.tax_amount == Decimal("1.920")
+        assert pu.currency == "ILS" and pu.warehouse_id == warehouse.id
         assert Product.query.get(p.id).current_stock == Decimal("3")
+        movement = StockMovement.query.filter_by(reference_type="Purchase", reference_id=pu.id).one()
+        assert movement.warehouse_id == warehouse.id
+        entry = GLJournalEntry.query.filter_by(reference_type="Purchase", reference_id=pu.id).one()
+        assert entry.is_posted and entry.tenant_id == tenant.id
+        assert entry.total_debit == entry.total_credit == pu.amount_base
+        assert pu.supplier_id == supplier.id
+        assert any(line.account.code == "2110" and line.credit == pu.amount_base for line in entry.lines)
 
 
 class TestChequeService:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from flask import (
     Blueprint,
@@ -12,7 +12,7 @@ from flask import (
     abort,
 )
 from flask_login import login_required, current_user
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from extensions import db
 from models import Receipt, Customer, InvoiceSettings, Supplier
@@ -1575,24 +1575,48 @@ def delete_payment(id):
 @permission_required("manage_payments")
 def create_payment(purchase_id):  # noqa: C901
     """إنشاء سند صرف لفاتورة مشتريات"""
-    from models import Purchase, Payment, Supplier
+    from models import Cheque, Purchase, Payment, Supplier
+    from utils.errors import ValidationError
     from utils.helpers import generate_number
 
     purchase = get_owned_or_404(Purchase, purchase_id)
+    if request.method == "POST":
+        # Lock the invoice before checking its available balance. Lock only
+        # the header because Purchase loads line rows using an outer join.
+        db.session.execute(
+            select(Purchase.id)
+            .where(Purchase.id == purchase.id, Purchase.tenant_id == purchase.tenant_id)
+            .with_for_update()
+        ).scalar_one()
+        db.session.refresh(purchase, ["amount_base", "paid_amount", "status"])
+    if purchase.status != "confirmed":
+        flash("يمكن إنشاء سند صرف لفاتورة شراء مؤكدة فقط.", "warning")
+        return redirect(url_for("purchases.view", id=purchase_id))
     supplier = (
         get_owned_or_404(Supplier, purchase.supplier_id)
         if purchase.supplier_id
         else None
     )
 
-    paid_amount = purchase.get_paid_amount()
-
-    balance = float(purchase.amount_base or 0) - float(paid_amount)
-    suggested_amount = balance if balance > 0 else 0
+    reserved = db.session.scalar(
+        select(func.coalesce(func.sum(Payment.amount_base), 0))
+        .join(Cheque, Payment.cheque_id == Cheque.id)
+        .where(
+            Payment.purchase_id == purchase.id,
+            Payment.tenant_id == purchase.tenant_id,
+            Payment.direction == "outgoing",
+            Payment.payment_confirmed.is_(False),
+            Cheque.tenant_id == purchase.tenant_id,
+            Cheque.is_active.is_(True),
+            Cheque.status.in_(("pending", "under_collection", "deposited")),
+        )
+    )
+    balance = (purchase.amount_base or Decimal("0")) - purchase.get_paid_amount() - reserved
+    suggested_amount = max(balance, Decimal("0"))
 
     if request.method == "POST":
         try:
-            amount = request.form.get("amount", type=float)
+            amount = request.form.get("amount", "")
             payment_method_value = (request.form.get("payment_method") or "").strip()
             if not payment_method_value:
                 flash("يرجى اختيار طريقة الدفع.", "warning")
@@ -1605,7 +1629,7 @@ def create_payment(purchase_id):  # noqa: C901
                     form_data=request.form,
                 )
             notes = request.form.get("notes", "")
-            exchange_rate = request.form.get("exchange_rate", type=float, default=1.0)
+            exchange_rate = Decimal(request.form.get("exchange_rate") or "1")
             try:
                 _base_curr_pay = CurrencyService.get_base_currency()
             except Exception:
@@ -1632,11 +1656,16 @@ def create_payment(purchase_id):  # noqa: C901
 
             amount_decimal = Decimal(str(amount))
             exchange_rate_decimal = Decimal(str(exchange_rate))
+            if any(
+                not value.is_finite() or value <= 0
+                for value in (amount_decimal, exchange_rate_decimal)
+            ):
+                raise ValidationError("المبلغ وسعر الصرف يجب أن يكونا أكبر من صفر.")
             amount_base = (amount_decimal * exchange_rate_decimal).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
+                Decimal("0.001"), rounding=ROUND_HALF_UP
             )
             # balance is BASE currency; validate the BASE amount against it.
-            if amount_base <= 0 or amount_base > Decimal(str(balance)):
+            if amount_base <= 0 or amount_base > balance:
                 flash(
                     "المبلغ غير صحيح. تأكد من إدخال مبلغ ضمن الرصيد المتبقي.", "danger"
                 )
@@ -1644,8 +1673,17 @@ def create_payment(purchase_id):  # noqa: C901
                     url_for("payments.create_payment", purchase_id=purchase_id)
                 )
 
+            parsed_cheque_date = None
+            if payment_method_value == "cheque":
+                cheque_number = (cheque_number or "").strip()
+                bank_name = (bank_name or "").strip()
+                if not cheque_number or not cheque_date or not bank_name:
+                    raise ValidationError("رقم الشيك وتاريخ الاستحقاق واسم البنك مطلوبة.")
+                parsed_cheque_date = datetime.strptime(cheque_date, "%Y-%m-%d").date()
+
             payment_number = generate_number("PAY", Payment, "payment_number")
             payment = Payment(
+                tenant_id=purchase.tenant_id,
                 payment_number=payment_number,
                 supplier_id=purchase.supplier_id,
                 supplier_name=purchase.supplier_name,
@@ -1683,20 +1721,9 @@ def create_payment(purchase_id):  # noqa: C901
             db.session.add(payment)
             db.session.flush()
 
-            if payment_method_value == "cheque" and cheque_number:
-                from models import Cheque
-
-                # Form dates arrive as strings; Date columns need real date
-                # objects or later status checks/clearance break.
-                parsed_cheque_date = None
-                if cheque_date:
-                    try:
-                        parsed_cheque_date = datetime.strptime(
-                            cheque_date, "%Y-%m-%d"
-                        ).date()
-                    except ValueError:
-                        parsed_cheque_date = None
+            if payment_method_value == "cheque":
                 cheque = Cheque(
+                    tenant_id=purchase.tenant_id,
                     cheque_number=cheque_number,
                     cheque_bank_number=cheque_number,
                     cheque_type="outgoing",
@@ -1714,10 +1741,12 @@ def create_payment(purchase_id):  # noqa: C901
                 db.session.add(cheque)
                 db.session.flush()
                 payment.cheque_id = cheque.id
-                payment.payment_confirmed = False
+                payment.cheque_number = cheque_number
+                payment.cheque_date = parsed_cheque_date
 
             try:
                 from services.gl_service import GLService
+                from services.account_resolution import AccountResolver, AccountRole
 
                 GLService.ensure_core_accounts()
                 # Accounting convention (matches Cheque._create_clearing_journal_entry):
@@ -1733,7 +1762,9 @@ def create_payment(purchase_id):  # noqa: C901
                     settlement_account = "1120"
                 lines = [
                     {
-                        "account": "2110",
+                        "account": AccountResolver.resolve(
+                            AccountRole.AP_CONTROL, tenant_id=purchase.tenant_id
+                        ),
                         "debit": payment.amount,
                         "description": f"سداد للمورد {payment.supplier_name}",
                     },
@@ -1751,6 +1782,8 @@ def create_payment(purchase_id):  # noqa: C901
                     idempotency_key=f"Payment:{payment.id}",
                     currency=payment.currency,
                     exchange_rate=payment.exchange_rate,
+                    created_by=current_user.id,
+                    tenant_id=purchase.tenant_id,
                 )
             except Exception:
                 # Never record a payment without a balanced GL entry.
@@ -1764,24 +1797,21 @@ def create_payment(purchase_id):  # noqa: C901
                     url_for("payments.create_payment", purchase_id=purchase_id)
                 )
 
+            create_audit_log("create", "payments", payment.id, commit=False)
             db.session.commit()
 
             flash("تم إنشاء سند الصرف بنجاح", "success")
             return redirect(url_for("purchases.view", id=purchase_id))
 
-        except Exception as e:
+        except ValidationError as exc:
+            db.session.rollback()
+            flash(str(exc), "danger")
+        except (InvalidOperation, ValueError):
+            db.session.rollback()
+            flash("تحقق من المبلغ وسعر الصرف وتاريخ الاستحقاق.", "danger")
+        except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
-            try:
-                from utils.errors import ValidationError
-
-                if isinstance(e, ValidationError):
-                    flash(str(e), "danger")
-                    return redirect(
-                        url_for("payments.create_payment", purchase_id=purchase_id)
-                    )
-            except ImportError:
-                pass
             flash("حدث خطأ: حدث خطأ غير متوقع", "danger")
 
     return render_template(

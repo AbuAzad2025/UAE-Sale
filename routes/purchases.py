@@ -14,7 +14,6 @@ from models import Purchase, PurchaseLine, Product, Supplier, Warehouse
 from models import InvoiceSettings
 from services.stock_service import StockService
 from services.currency_service import CurrencyService
-from services.gl_service import GLService
 from services import due_date_service
 from utils.decorators import permission_required, get_owned_or_404
 from routes.ledger import reverse_or_purge_gl_entries
@@ -246,20 +245,9 @@ def create():  # noqa: C901
 
             StockService.process_purchase_lines(purchase, warehouse_id_val)
 
-            GLService.ensure_core_accounts()
+            from services.purchase_gl import post_purchase_entry
 
-            from services.purchase_gl import build_purchase_gl_lines
-
-            lines = build_purchase_gl_lines(purchase)
-
-            GLService.post_entry(
-                lines,
-                description=f"Purchase {purchase.purchase_number}",
-                reference_type="Purchase",
-                reference_id=purchase.id,
-                currency=purchase.currency,
-                exchange_rate=purchase.exchange_rate,
-            )
+            post_purchase_entry(purchase)
 
             if supplier:
                 try:
@@ -381,7 +369,7 @@ def edit(id):
             from decimal import Decimal as _D
 
             from services.costing_service import CostingService
-            from services.purchase_gl import build_purchase_gl_lines
+            from services.purchase_gl import post_purchase_entry
 
             # Cost basis BEFORE the change (for the inventory-value correction).
             old_costs = [
@@ -427,14 +415,10 @@ def edit(id):
                     purchase.id,
                     description=f"عكس فاتورة شراء {purchase.purchase_number} (تعديل الضريبة)",
                 )
-                gl_lines = build_purchase_gl_lines(purchase)
-                GLService.post_entry(
-                    gl_lines,
+                post_purchase_entry(
+                    purchase,
                     description=f"Purchase {purchase.purchase_number} (ضريبة معدّلة)",
-                    reference_type="Purchase",
-                    reference_id=purchase.id,
-                    currency=purchase.currency,
-                    exchange_rate=purchase.exchange_rate,
+                    actor_id=current_user.id,
                 )
 
                 # Stock valuation follows the invoice's net-of-VAT cost.

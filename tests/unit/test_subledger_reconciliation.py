@@ -14,6 +14,30 @@ from services.gl_service import GLService
 from services.subledger_reconciliation import SubLedgerReconciliation
 
 
+def test_control_respects_tenant_and_posted_status(db, owner_user):
+    from models import Tenant
+    from utils.balance_checker import get_control_account_balance
+
+    tenants = [
+        Tenant(name="First tenant", name_ar="الشركة الأولى", slug="first-tenant"),
+        Tenant(name="Second tenant", name_ar="الشركة الثانية", slug="second-tenant"),
+    ]
+    db.session.add_all(tenants)
+    db.session.flush()
+    first, second = tenants
+    GLService.ensure_core_accounts()
+    for tenant, posted, amount in (
+        (first, True, 30), (first, False, 60), (second, True, 100)
+    ):
+        GLService.post_entry(
+            [{"account": "1140", "debit": amount}, {"account": "2110", "credit": amount}],
+            is_posted=posted, tenant_id=tenant.id, created_by=owner_user.id,
+        )
+    db.session.commit()
+    assert get_control_account_balance(["2110"], tenant_id=first.id) == Decimal("30")
+    assert SubLedgerReconciliation.reconcile_payables(tenant_id=second.id)["control_balance"] == Decimal("100")
+
+
 # ─────────────────────────── helpers ───────────────────────────
 
 

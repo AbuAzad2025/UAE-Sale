@@ -313,56 +313,78 @@ def create_supplier(name, phone=None, email=None, address=None, tax_number=None)
 
 
 def create_purchase(supplier_id, product_id, quantity, unit_cost, user_id):
+    from models import Tenant, Warehouse
     from models.purchase import Purchase, PurchaseLine
     from models.product import Product
     from models.supplier import Supplier
+    from services.currency_service import CurrencyService
+    from services.due_date_service import due_date_for_purchase
+    from services.purchase_gl import post_purchase_entry
+    from services.stock_service import StockService
+    from services.tax_engine import resolve
 
-    _require_tenant_id()  # Phase 3: tenant_id إلزامي
-    product = Product.query.get(product_id)
+    tenant_id = _require_tenant_id()
+    if tenant_id is None:
+        raise ValueError("اختر الشركة قبل تسجيل فاتورة شراء.")
+    product = Product.query.filter_by(id=product_id, tenant_id=tenant_id, is_active=True).first()
     if product is None:
         raise ValueError("المنتج غير موجود")
+    supplier = Supplier.query.filter_by(id=supplier_id, tenant_id=tenant_id, is_active=True).first()
+    if supplier is None:
+        raise ValueError("المورد غير موجود")
+    warehouse = (
+        Warehouse.query.filter_by(tenant_id=tenant_id, is_active=True)
+        .order_by(Warehouse.is_main.desc(), Warehouse.id)
+        .first()
+    )
+    if warehouse is None:
+        raise ValueError("لا يوجد مستودع نشط لاستلام المشتريات.")
 
-    supplier = Supplier.query.get(supplier_id)
-    total = unit_cost * quantity
+    quantity, unit_cost = Decimal(str(quantity)), Decimal(str(unit_cost))
+    if any(not value.is_finite() or value <= 0 for value in (quantity, unit_cost)):
+        raise ValueError("يجب أن تكون الكمية وتكلفة الوحدة أكبر من صفر.")
 
+    tenant = db.session.get(Tenant, tenant_id)
+    tax_rate, tax_inclusive = resolve(tenant)
+    purchase_date = datetime.now(timezone.utc)
     purchase = Purchase(
+        tenant_id=tenant_id,
         purchase_number=_number(Purchase, "purchase_number", "PUR"),
         supplier_id=supplier_id,
-        supplier_name=supplier.name if supplier else None,
-        total_amount=total,
-        amount_base=total,
+        supplier_name=supplier.name,
+        warehouse_id=warehouse.id,
+        purchase_date=purchase_date,
+        due_date=due_date_for_purchase(purchase_date, supplier=supplier),
+        currency=tenant.default_currency or CurrencyService.get_base_currency(),
+        exchange_rate=Decimal("1"),
+        discount_amount=Decimal("0"),
+        tax_rate=tax_rate,
+        tax_inclusive=tax_inclusive,
         user_id=user_id,
         status="confirmed",
     )
-    db.session.add(purchase)
-    db.session.flush()
-
     item = PurchaseLine(
-        purchase_id=purchase.id,
+        tenant_id=tenant_id,
         product_id=product_id,
         quantity=quantity,
         unit_cost=unit_cost,
-        line_total=total,
     )
-    db.session.add(item)
-    db.session.flush()
-
-    from services.stock_service import StockService
-
-    StockService.create_movement(
-        product_id=product_id,
-        quantity=quantity,
-        movement_type="purchase",
-        reference_type="Purchase",
-        reference_id=purchase.id,
-        notes=f"شراء (AI): {purchase.purchase_number}",
-        unit_cost_base=unit_cost,
-    )
-
-    db.session.flush()
-    _ai_audit(
-        "purchases", purchase.id, {"supplier_id": supplier_id, "product_id": product_id}
-    )
+    item.calculate_line_total()
+    purchase.lines.append(item)
+    purchase.calculate_totals()
+    try:
+        db.session.add(purchase)
+        db.session.flush()
+        StockService.process_purchase_lines(purchase, warehouse.id)
+        post_purchase_entry(purchase)
+        _ai_audit(
+            "purchases", purchase.id, {"supplier_id": supplier_id, "product_id": product_id},
+            commit=False, actor_id=user_id,
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     return purchase
 
 

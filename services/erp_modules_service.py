@@ -496,21 +496,9 @@ class PurchaseOrderService:
 
         StockService.process_purchase_lines(purchase, po.warehouse_id)
 
-        from services.purchase_gl import build_purchase_gl_lines
-        from services.gl_service import GLService
+        from services.purchase_gl import post_purchase_entry
 
-        GLService.ensure_core_accounts()
-        gl_lines = build_purchase_gl_lines(purchase)
-        GLService.post_entry(
-            gl_lines,
-            description=f"Purchase {purchase.purchase_number}",
-            reference_type="Purchase",
-            reference_id=purchase.id,
-            currency=purchase.currency,
-            exchange_rate=purchase.exchange_rate,
-            created_by=user_id,
-            tenant_id=po.tenant_id,
-        )
+        post_purchase_entry(purchase)
 
         db.session.flush()
         return purchase

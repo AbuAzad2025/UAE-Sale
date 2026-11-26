@@ -31,7 +31,7 @@ def to_decimal(value):
     return d
 
 
-def get_control_account_balance(account_codes):
+def get_control_account_balance(account_codes, *, tenant_id=None):
     """
     Signed net balance (base currency) for the given GL control account codes.
 
@@ -46,7 +46,7 @@ def get_control_account_balance(account_codes):
     from sqlalchemy import func
 
     from extensions import db
-    from models import GLAccount, GLJournalLine
+    from models import GLAccount, GLJournalEntry, GLJournalLine
 
     codes = [str(c) for c in (account_codes or []) if c]
     if not codes:
@@ -60,12 +60,19 @@ def get_control_account_balance(account_codes):
 
     total = Decimal("0")
     for acc in accounts:
-        raw_net = (
+        lines = (
             db.session.query(func.coalesce(func.sum(GLJournalLine.amount_base), 0))
-            .filter(GLJournalLine.account_id == acc.id)
-            .scalar()
+            .join(GLJournalEntry, GLJournalEntry.id == GLJournalLine.entry_id)
+            .filter(
+                GLJournalLine.account_id == acc.id,
+                GLJournalEntry.is_posted.is_(True),
+            )
         )
-        net = to_decimal(raw_net)
+        if tenant_id is not None:
+            lines = lines.filter(
+                GLJournalEntry.tenant_id == tenant_id, GLJournalLine.tenant_id == tenant_id
+            )
+        net = to_decimal(lines.scalar())
         total += net if acc.type in ("asset", "expense") else -net
 
     # Single canonical rounding for every control-account balance in the

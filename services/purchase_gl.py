@@ -157,3 +157,19 @@ def build_purchase_gl_lines(purchase):
             }
         )
     return lines
+
+
+def post_purchase_entry(purchase, *, description=None, actor_id=None):
+    from services.gl_service import GLService
+
+    GLService.ensure_core_accounts()
+    return GLService.post_entry(
+        build_purchase_gl_lines(purchase),
+        description=description or f"Purchase {purchase.purchase_number}",
+        reference_type="Purchase",
+        reference_id=purchase.id,
+        currency=purchase.currency,
+        exchange_rate=purchase.exchange_rate,
+        created_by=actor_id if actor_id is not None else purchase.user_id,
+        tenant_id=purchase.tenant_id,
+    )

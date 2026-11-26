@@ -2479,8 +2479,6 @@ def _process_user_action(message, user):  # noqa: C901
                     data["unit_price"] = float(
                         message.strip().replace("درهم", "").strip()
                     )
-                    total_amount = data["unit_price"] * data["quantity"]
-
                     from services import ai_commands as cmd
 
                     purchase = cmd.create_purchase(
@@ -2491,12 +2489,6 @@ def _process_user_action(message, user):  # noqa: C901
                         user.id,
                     )
 
-                    train_local_ai(
-                        "create_purchase",
-                        data,
-                        {"success": True, "purchase_id": purchase.id},
-                    )
-
                     del conversation_context[user_id]
 
                     return f"""✅ **تم إنشاء المشتريات بنجاح!**
@@ -2505,9 +2497,10 @@ def _process_user_action(message, user):  # noqa: C901
 - المورد: {data["supplier_name"]}
 - المنتج: {data["product_name"]}
 - الكمية: {data["quantity"]}
-- سعر الشراء: {data["unit_price"]} درهم
-- المجموع: {total_amount} درهم
-- رقم المشتريات: #{purchase.id}
+- سعر الوحدة: {data["unit_price"]} {purchase.currency}
+- الضريبة: {purchase.tax_amount:,.3f} {purchase.currency}
+- المجموع: {purchase.total_amount:,.3f} {purchase.currency}
+- رقم المشتريات: {purchase.purchase_number}
 
 💡 **ماذا تريد أن تفعل الآن؟**
 1️⃣ إضافة مشتريات أخرى
@@ -2518,12 +2511,7 @@ def _process_user_action(message, user):  # noqa: C901
 
 🤖 المصدر: النظام المحلي الذكي"""
 
-                except Exception as e:
-                    train_local_ai(
-                        "create_purchase",
-                        data,
-                        {"success": False, "error": "حدث خطأ غير متوقع"},
-                    )
+                except Exception:
                     del conversation_context[user_id]
                     current_app.logger.exception("AI handler failed")
                     return f"""❌ **خطأ في إنشاء المشتريات:** حدث خطأ غير متوقع

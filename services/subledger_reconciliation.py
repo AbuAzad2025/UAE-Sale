@@ -149,7 +149,7 @@ def _q2(value):
     return Decimal(value).quantize(Decimal("0.01"))
 
 
-def _ar_debit_normal_balance(account_codes):
+def _ar_debit_normal_balance(account_codes, tenant_id=None):
     """Σ(debit − credit) across the AR control scope (base currency).
 
     Merchant ('2115') and partner ('3350') buckets are DEBITED by the sale
@@ -169,6 +169,16 @@ def _ar_debit_normal_balance(account_codes):
     from models import GLJournalEntry
     from sqlalchemy import and_
 
+    posted = db.session.query(GLJournalEntry.id).filter(GLJournalEntry.is_posted.is_(True))
+    if tenant_id is not None:
+        posted = posted.filter(GLJournalEntry.tenant_id == tenant_id)
+    line_filters = [
+        GLJournalLine.account_id == GLAccount.id,
+        GLJournalLine.entry_id.in_(posted),
+    ]
+    if tenant_id is not None:
+        line_filters.append(GLJournalLine.tenant_id == tenant_id)
+
     # Join posted entries only so drafts cannot distort the control balance;
     # the outer join is kept so a missing CoA account is still reported.
     rows = (
@@ -178,14 +188,7 @@ def _ar_debit_normal_balance(account_codes):
         )
         .outerjoin(
             GLJournalLine,
-            and_(
-                GLJournalLine.account_id == GLAccount.id,
-                GLJournalLine.entry_id.in_(
-                    db.session.query(GLJournalEntry.id).filter(
-                        GLJournalEntry.is_posted.is_(True)
-                    )
-                ),
-            ),
+            and_(*line_filters),
         )
         .filter(GLAccount.code.in_(wanted))
         .group_by(GLAccount.code)
@@ -349,10 +352,10 @@ class SubLedgerReconciliation:
                     f"expected={expected} stored={stored} delta={delta}"
                 )
 
-        control_balance = _ar_debit_normal_balance(codes)
+        control_balance = _ar_debit_normal_balance(codes, tenant_id)
 
         breakdown = [
-            {"account_code": code, "balance": _q2(_ar_debit_normal_balance([code]))}
+            {"account_code": code, "balance": _q2(_ar_debit_normal_balance([code], tenant_id))}
             for code in codes
         ]
 
@@ -389,7 +392,7 @@ class SubLedgerReconciliation:
             _reconciling_item(
                 "partner_current_shares",
                 "حصص الشركاء على الحساب الجاري (3350) — ضمن حسابات ضبط AR",
-                abs(_ar_debit_normal_balance(["3350"])),
+                abs(_ar_debit_normal_balance(["3350"], tenant_id)),
                 1,
                 "توزيع أرباح الشركاء يُقيَّد دائناً على 3350 وهو داخل نطاق "
                 "ضبط الذمم، بينما ذمم العملاء لا تتضمن حصة الشريك.",
@@ -486,10 +489,10 @@ class SubLedgerReconciliation:
                     f"expected={expected} stored={stored} delta={delta}"
                 )
 
-        control_balance = get_control_account_balance(codes)
+        control_balance = get_control_account_balance(codes, tenant_id=tenant_id)
 
         breakdown = [
-            {"account_code": code, "balance": _q2(get_control_account_balance([code]))}
+            {"account_code": code, "balance": _q2(get_control_account_balance([code], tenant_id=tenant_id))}
             for code in codes
         ]
 

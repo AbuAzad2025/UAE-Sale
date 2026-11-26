@@ -433,7 +433,11 @@ def execute_plan(plan, user, confirmed: bool = False) -> dict:
             )
             return {
                 "executed": True,
-                "response": f"✅ تم تسجيل مشتريات #{getattr(pur, 'id', '?')} من {supp.name}.",
+                "response": (
+                    f"✅ سُجلت فاتورة الشراء {pur.purchase_number} من {supp.name}. "
+                    f"الإجمالي {pur.total_amount:,.3f} {pur.currency} "
+                    f"والضريبة {pur.tax_amount:,.3f} {pur.currency}."
+                ),
                 "needs_clarification": False,
             }
 

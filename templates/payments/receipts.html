@@ -126,7 +126,7 @@
         <tr>
           <td>
             <strong>{{ item.number }}</strong>
-            {% if item.type == 'receipt' %}
+            {% if item.direction == 'incoming' %}
               <br><small class="text-muted">{{ t('Receipt Voucher') }}</small>
             {% else %}
               <br><small class="text-muted">{{ t('Payment Voucher') }}</small>
@@ -149,7 +149,7 @@
             {% endif %}
           </td>
           <td>
-            {% if item.type == 'receipt' %}
+            {% if item.direction == 'incoming' %}
               <span class="badge badge-success">
                 <i class="fas fa-arrow-down mr-1"></i>{{ t('Receipt') }}
               </span>

@@ -397,11 +397,12 @@ class CashFlowService:
         }
 
     @staticmethod
-    def treasury_snapshot():
-        """Current book balances and the cheque register's outstanding control amounts."""
+    def treasury_snapshot(as_of=None):
+        """Dated cash and bank balances alongside the current cheque register."""
         from models import Cheque
         from services.account_resolution import AccountResolver, AccountRole
 
+        as_of = _parse_date(as_of) or date.today()
         tenant_id = _current_tenant_id()
         roles = (AccountRole.CASH, AccountRole.BANK, AccountRole.UNDER_COLLECTION,
                  AccountRole.DEFERRED_CHEQUES_PAYABLE)
@@ -409,31 +410,34 @@ class CashFlowService:
         accounts = {account.code: account for account in GLAccount.query.filter(
             GLAccount.code.in_(codes.values())
         )}
-        balances = {
-            role.value: accounts[code].get_balance() if code in accounts else Decimal("0")
-            for role, code in ((role, codes[role.value]) for role in roles)
-        }
+        cash = accounts.get(codes["CASH"])
+        bank = accounts.get(codes["BANK"])
         pending = db.session.query(Cheque.cheque_type, func.sum(Cheque.amount_base)).filter(
             Cheque.is_active.is_(True),
             Cheque.status.in_(("pending", "deposited", "under_collection", "overdue")),
         ).group_by(Cheque.cheque_type).all()
         outstanding = dict(pending)
+        cheques = []
+        for direction, role in (
+            ("incoming", AccountRole.UNDER_COLLECTION),
+            ("outgoing", AccountRole.DEFERRED_CHEQUES_PAYABLE),
+        ):
+            code = codes[role.value]
+            account = accounts.get(code)
+            ledger = account.get_balance() if account else Decimal("0")
+            register = CashFlowService._dec(outstanding.get(direction))
+            cheques.append({
+                "direction": direction,
+                "code": code,
+                "register": register,
+                "ledger": ledger,
+                "difference": ledger - register,
+            })
         return {
-            "cash": balances["CASH"], "bank": balances["BANK"],
-            "cheques": [
-                {
-                    "direction": direction,
-                    "code": codes[role.value],
-                    "register": amount,
-                    "ledger": balances[role.value],
-                    "difference": balances[role.value] - amount,
-                }
-                for direction, role in (
-                    ("incoming", AccountRole.UNDER_COLLECTION),
-                    ("outgoing", AccountRole.DEFERRED_CHEQUES_PAYABLE),
-                )
-                for amount in (CashFlowService._dec(outstanding.get(direction)),)
-            ],
+            "as_of": as_of,
+            "cash": cash.get_balance(as_of_date=as_of) if cash else Decimal("0"),
+            "bank": bank.get_balance(as_of_date=as_of) if bank else Decimal("0"),
+            "cheques": cheques,
         }
 
     @staticmethod

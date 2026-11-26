@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Receipt Voucher') }} #{{ receipt.receipt_number }}{% endblock %}
+{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Receipt Voucher') if receipt.direction == 'incoming' else t('Payment Voucher') }} #{{ receipt.payment_number if is_payment else receipt.receipt_number }}{% endblock %}
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center flex-wrap">
   <div>

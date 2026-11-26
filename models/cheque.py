@@ -215,10 +215,14 @@ class Cheque(TenantScopedMixin, db.Model):
             from services.gl_service import GLService
 
             try:
+                customer = self.customer
                 credit_account = (
-                    GLService.get_customer_credit_account(self.customer)
+                    GLService.get_customer_credit_account(customer)
                     if self.customer_id
                     else _resolve_account("AR_CONTROL", "1130", self.tenant_id)
+                )
+                partner_id = (
+                    customer.id if customer and customer.customer_type == "partner" else None
                 )
                 lines = [
                     {
@@ -232,6 +236,7 @@ class Cheque(TenantScopedMixin, db.Model):
                         "debit": 0,
                         "credit": self.amount_base,
                         "description": f"استلام شيك من عميل - رقم {self.cheque_bank_number}",
+                        "party_id": partner_id,
                     },
                 ]
 
@@ -528,8 +533,9 @@ class Cheque(TenantScopedMixin, db.Model):
             lines = []
 
             if self.cheque_type == "incoming":
+                customer = self.customer
                 ar_account = (
-                    GLService.get_customer_credit_account(self.customer)
+                    GLService.get_customer_credit_account(customer)
                     if self.customer_id
                     else "1130"
                 )
@@ -539,6 +545,7 @@ class Cheque(TenantScopedMixin, db.Model):
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"ارتداد شيك رقم {self.cheque_bank_number} - إرجاع الدين",
+                        "party_id": customer.id if customer and customer.customer_type == "partner" else None,
                     }
                 )
                 lines.append(
@@ -620,8 +627,9 @@ class Cheque(TenantScopedMixin, db.Model):
         try:
             lines = []
             if self.cheque_type == "incoming":
+                customer = self.customer
                 ar_account = (
-                    GLService.get_customer_credit_account(self.customer)
+                    GLService.get_customer_credit_account(customer)
                     if self.customer_id
                     else "1130"
                 )
@@ -631,6 +639,7 @@ class Cheque(TenantScopedMixin, db.Model):
                         "debit": self.amount_base,
                         "credit": 0,
                         "description": f"إلغاء شيك وارد رقم {self.cheque_bank_number}",
+                        "party_id": customer.id if customer and customer.customer_type == "partner" else None,
                     },
                     {
                         "account": "1150",

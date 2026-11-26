@@ -1,11 +1,76 @@
 """Unit tests for PaymentService — سندات القبض والتوزيع."""
 
 from decimal import Decimal
+from datetime import date, timedelta
 
 import pytest
 
 from models import Receipt, Cheque, Sale
 from services.payment_service import PaymentService
+
+
+@pytest.mark.parametrize("method", ["cash", "cheque"])
+def test_partner_receipt_assigns_control_line_to_partner(db, owner_user, method):
+    from models import Customer, GLJournalEntry, Tenant
+    from models.tenant_scope import run_in_tenant_context
+    from services.account_resolution import AccountResolver, AccountRole
+
+    tenant = Tenant(
+        name="Collections", name_ar="التحصيل", slug="collections", default_currency="ILS"
+    )
+    db.session.add(tenant)
+    db.session.commit()
+
+    def check():
+        partner = Customer(name="Partner", customer_type="partner", tenant_id=tenant.id)
+        db.session.add(partner)
+        db.session.flush()
+        receipt = PaymentService.create_receipt({
+            "customer_id": partner.id, "user_id": owner_user.id, "amount": Decimal("50"),
+            "payment_method": method, "currency": "ILS", "allocate_to_sales": {},
+            "user_exchange_rate": Decimal("1"),
+            "cheque_number": "TEST-PARTNER", "bank_name": "Test bank",
+            "cheque_date": (date.today() + timedelta(days=1)).isoformat(),
+        })
+        if method == "cheque":
+            entry = db.session.get(GLJournalEntry, receipt.cheque.gl_journal_entry_id)
+        else:
+            entry = GLJournalEntry.query.filter_by(reference_type="Receipt", reference_id=receipt.id).one()
+        control = AccountResolver.resolve(AccountRole.PARTNERS_CURRENT, tenant_id=tenant.id)
+        line, = [line for line in entry.lines if line.account.code == control]
+        assert line.credit == Decimal("50")
+        assert line.party_id == partner.id
+        assert all(other.party_id is None for other in entry.lines if other.id != line.id)
+
+    run_in_tenant_context(tenant.id, check)
+
+
+def test_sale_payment_is_recorded_as_incoming(db, owner_user):
+    from models import Customer, GLJournalEntry, Tenant
+    from models.tenant_scope import run_in_tenant_context
+    from services.sale_service import SaleService
+
+    tenant = Tenant(name="Sales", name_ar="المبيعات", slug="sales", default_currency="ILS")
+    db.session.add(tenant)
+    db.session.commit()
+
+    def check():
+        customer = Customer(name="Customer", tenant_id=tenant.id)
+        db.session.add(customer)
+        db.session.flush()
+        sale = Sale(
+            sale_number="SALE-CASH-TEST", customer_id=customer.id, seller_id=owner_user.id,
+            tenant_id=tenant.id, status="confirmed", currency="ILS",
+            total_amount=Decimal("100"), amount_base=Decimal("100"),
+        )
+        db.session.add(sale)
+        db.session.flush()
+        payment = SaleService.create_payment_for_sale(sale, Decimal("35.60"), "cash", "ILS")
+        entry = GLJournalEntry.query.filter_by(reference_type="Payment", reference_id=payment.id).one()
+        assert payment.direction == "incoming"
+        assert entry.total_debit == entry.total_credit == Decimal("35.60")
+
+    run_in_tenant_context(tenant.id, check)
 
 
 @pytest.fixture

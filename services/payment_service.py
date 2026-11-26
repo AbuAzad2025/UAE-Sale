@@ -507,6 +507,7 @@ class PaymentService:
                         "account": credit_account,
                         "credit": receipt.amount,
                         "description": f"سند قبض {receipt.receipt_number}",
+                        "party_id": customer.id if customer.customer_type == "partner" else None,
                     },
                 ]
                 entry = GLService.post_entry(

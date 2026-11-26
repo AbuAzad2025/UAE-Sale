@@ -523,11 +523,16 @@ def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
     def check():
         GLService.ensure_core_accounts()
 
-        def post(debit, credit, amount, reference_type=None):
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+        ensure_current_period(tomorrow.year, tenant_id=tenant.id)
+
+        def post(debit, credit, amount, reference_type=None, posting_day=today):
             return GLService.post_entry(
                 [{"account": debit, "debit": amount}, {"account": credit, "credit": amount}],
                 tenant_id=tenant.id, created_by=owner_user.id,
                 reference_type=reference_type,
+                entry_date=datetime.combine(posting_day, datetime.min.time()),
             )
         post("1110", "3100", 100)
         post("1140", "2110", 50)
@@ -549,5 +554,13 @@ def test_treasury_uses_cash_journals_and_ties_cheque_controls(db, owner_user):
             (Decimal("20"), Decimal("20"), Decimal("0")),
             (Decimal("0"), Decimal("0"), Decimal("0")),
         ]
+        post("6100", "1110", 120, "Payslip", tomorrow)
+        current = CashFlowService.treasury_snapshot()
+        previous = CashFlowService.treasury_snapshot(today - timedelta(days=1))
+        future = CashFlowService.treasury_snapshot(tomorrow.isoformat())
+        assert current["as_of"] == today and current["cash"] == Decimal("100")
+        assert previous["cash"] == previous["bank"] == 0
+        assert future["cash"] == Decimal("-20") and future["bank"] == 10
+        assert future["cheques"] == current["cheques"]
 
     run_in_tenant_context(tenant.id, check)

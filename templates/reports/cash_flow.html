@@ -61,7 +61,10 @@
 {% if treasury is defined %}
 <section class="card mb-4" aria-labelledby="treasury-book-title">
   <div class="card-body">
-    <h2 class="h5" id="treasury-book-title">{{ 'أرصدة الخزينة الحالية في الدفاتر' if current_language == 'ar' else 'Current treasury book balances' }}</h2>
+    <h2 class="h5" id="treasury-book-title">
+      {{ 'أرصدة الخزينة حتى' if current_language == 'ar' else 'Treasury book balances as of' }}
+      <time datetime="{{ treasury.as_of.isoformat() }}" dir="ltr">{{ treasury.as_of.isoformat() }}</time>
+    </h2>
     <div class="row mb-2">
       <div class="col-sm-6 mb-2">
         <div>{{ 'الصندوق' if current_language == 'ar' else 'Cash on hand' }}</div>
@@ -75,7 +78,7 @@
     <div class="table-responsive">
       <table class="table table-sm mb-0">
         <thead><tr>
-          <th scope="col">{{ 'الشيكات المفتوحة' if current_language == 'ar' else 'Outstanding cheques' }}</th>
+          <th scope="col">{{ 'الشيكات المفتوحة حسب حالة السجل الحالية' if current_language == 'ar' else 'Outstanding cheques by current register status' }}</th>
           <th scope="col">{{ 'سجل الشيكات' if current_language == 'ar' else 'Cheque register' }}</th>
           <th scope="col">{{ 'دفتر الأستاذ' if current_language == 'ar' else 'General ledger' }}</th>
           <th scope="col">{{ 'الفرق' if current_language == 'ar' else 'Difference' }}</th>

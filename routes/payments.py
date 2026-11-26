@@ -425,7 +425,7 @@ def receipts():
                 "amount_base": payment.amount_base,
                 "direction": payment.direction,
                 "type": "payment",
-                "customer_name": None,
+                "customer_name": payment.customer.name if payment.customer else None,
                 "supplier_name": payment.supplier_name,
                 "payment_method": payment.payment_method,
                 "payment_confirmed": payment.payment_confirmed,

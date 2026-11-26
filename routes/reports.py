@@ -1,4 +1,5 @@
 from utils.feature_guards import install_feature_gate
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 from flask import (
@@ -368,6 +369,7 @@ def partner_statement(partner_id):
         transactions.append({
             "date": payment.payment_date,
             "type": "payment",
+            "direction": payment.direction,
             "reference": payment.payment_number or f"PMT-{payment.id}",
             "debit": debit_amount,
             "credit": credit_amount,
@@ -1625,7 +1627,7 @@ def cash_flow():
     from services.cash_flow_service import CashFlowService
 
     date_from = request.args.get("date_from", "", type=str)
-    date_to = request.args.get("date_to", "", type=str)
+    date_to = request.args.get("date_to", "", type=str).strip() or date.today().isoformat()
 
     report = CashFlowService.generate_gl_cash_flow(date_from, date_to)
 
@@ -1643,7 +1645,7 @@ def cash_flow():
         cash_ending=report["cash_ending"],
         cash_ending_computed=report["cash_ending_computed"],
         tie_out=report["tie_out"],
-        treasury=CashFlowService.treasury_snapshot(),
+        treasury=CashFlowService.treasury_snapshot(report["period_end"]),
         date_from=date_from,
         date_to=date_to,
     )
@@ -2524,7 +2526,7 @@ def export_cash_flow():
 
     fmt = request.args.get("format", "xlsx")
     date_from = request.args.get("date_from", "", type=str)
-    date_to = request.args.get("date_to", "", type=str)
+    date_to = request.args.get("date_to", "", type=str).strip() or date.today().isoformat()
 
     _audit_export(
         "cash_flow", fmt, filters={"date_from": date_from, "date_to": date_to}

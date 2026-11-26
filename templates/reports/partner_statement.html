@@ -71,7 +71,11 @@
           {% for txn in transactions %}
           <tr>
             <td>{{ txn.date.strftime('%Y-%m-%d') if txn.date else '-' }}</td>
-            <td>{{ t('Sale Share') if txn.type == 'sale_share' else t('Payment') }}</td>
+            <td>
+              {% if txn.type == 'sale_share' %}{{ t('Sale Share') }}
+              {% elif txn.type == 'payment' and txn.direction == 'incoming' %}{{ t('Receipt') }}
+              {% else %}{{ t('Payment') }}{% endif %}
+            </td>
             <td>{{ txn.reference }}</td>
             <td>{{ txn.description }}</td>
             <td class="text-danger">{{ "{:,.2f}".format(txn.debit) if txn.debit else '0.00' }}</td>

@@ -3,7 +3,7 @@
 <head>
   <base href="{{ request.script_root }}/">
   <meta charset="utf-8">
-  <title>{% block title %}{% if current_user.is_authenticated and current_user.is_owner %}{{ config.COMPANY_NAME_AR or config.COMPANY_NAME }}{% else %}{{ (current_tenant.name_ar if current_tenant else None) or config.COMPANY_NAME_AR }}{% endif %}{% endblock %}</title>
+  <title>{% block title %}{% if current_user.is_authenticated and current_user.is_owner and not is_impersonating %}{{ config.COMPANY_NAME_AR or config.COMPANY_NAME }}{% else %}{{ (current_tenant.name_ar if current_tenant else None) or config.COMPANY_NAME_AR }}{% endif %}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {# CSP is enforced via the HTTP response header in app.py (after_request).
@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   
-  <meta name="description" content="{% block meta_description %}{{ config.COMPANY_NAME_AR if current_user.is_authenticated and current_user.is_owner else ((current_tenant.name_ar if current_tenant else None) or t('Azad')) }} - {{ t("Integrated warehouse, sales and purchases management system with advanced AI") }}{% endblock %}">
+  <meta name="description" content="{% block meta_description %}{{ config.COMPANY_NAME_AR if current_user.is_authenticated and current_user.is_owner and not is_impersonating else ((current_tenant.name_ar if current_tenant else None) or t('Azad')) }} - {{ t("Integrated warehouse, sales and purchases management system with advanced AI") }}{% endblock %}">
   <meta name="keywords" content="{% block meta_keywords %}{{ t("Warehouse Management System, Accounting Software, E-Invoices, Sales Management, Inventory Management, AI, UAE, Dubai, Abu Dhabi") }}{% endblock %}">
   <meta name="author" content="{{ t("Azad Smart Systems") }}">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
@@ -155,7 +155,7 @@
 </head>
 
 
-{% set _tenant_logo = url_for('static', filename='img/azad_logo.png') if (current_user.is_authenticated and current_user.is_owner) else (url_for('static', filename='img/tenants/samarkand_logo.png') if current_tenant and current_tenant.id == 2 else url_for('static', filename='img/azad_logo.png')) %}
+{% set _tenant_logo = url_for('static', filename='img/azad_logo.png') if (current_user.is_authenticated and current_user.is_owner and not is_impersonating) else (url_for('static', filename='img/tenants/samarkand_logo.png') if current_tenant and current_tenant.id == 2 else url_for('static', filename='img/azad_logo.png')) %}
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
@@ -1145,7 +1145,7 @@
   <footer class="main-footer main-footer-azad">
     <div class="footer-container">
       <div class="footer-inline">
-        {% if current_tenant and not (current_user.is_authenticated and current_user.is_owner) %}
+        {% if current_tenant and not (current_user.is_authenticated and current_user.is_owner and not is_impersonating) %}
         <div class="footer-col footer-tenant">
           <img src="{{ _tenant_logo }}" alt="logo" class="footer-logo">
           <div class="footer-col-body">

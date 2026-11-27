@@ -204,10 +204,14 @@ def amount_in_words(amount, currency_code="AED", lang="ar"):
         value = Decimal(str(amount or 0))
     except Exception:
         value = Decimal("0")
-    value = value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    units = _CURRENCY_NAMES.get((currency_code or "").upper())
+    code = (currency_code or "").upper()
+    minor_digits = 3 if code in {"KWD", "BHD", "OMR", "TND", "JOD"} else 2
+    step = Decimal(1).scaleb(-minor_digits)
+    factor = Decimal(10) ** minor_digits
+    value = value.quantize(step, rounding=ROUND_HALF_UP)
+    units = _CURRENCY_NAMES.get(code)
     whole = int(value)
-    fraction = int((value - Decimal(whole)) * Decimal("100"))
+    fraction = int((value - Decimal(whole)) * factor)
 
     if lang == "en":
         unit = units[2] if units else (currency_code or "Currency")

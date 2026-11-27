@@ -900,6 +900,9 @@ def _customer_statement(id, *, export=False):
         return datetime.combine(trans_date, datetime.min.time())
 
     transactions.sort(key=_transaction_date_key)
+    # Keep the full chronological history before narrowing by type/period so
+    # the balance brought forward includes every source document.
+    full_transactions = list(transactions)
 
     if transaction_type in {
         "sale",
@@ -928,7 +931,7 @@ def _customer_statement(id, *, export=False):
     )
     opening_balance = Decimal("0")
     if date_from:
-        for row in transactions:
+        for row in full_transactions:
             if _row_day(row) < date_from:
                 opening_balance += Decimal(str(row["debit"])) - Decimal(str(row["credit"]))
         transactions = [
@@ -944,7 +947,9 @@ def _customer_statement(id, *, export=False):
         trans["balance"] = running_balance
 
     if export:
-        return _export_customer_statement(customer, transactions)
+        return _export_customer_statement(
+            customer, transactions, opening_balance, running_balance
+        )
 
     system_balance = derive_customer_balance(id)
 
@@ -1135,8 +1140,8 @@ def statement_export(id):
     return _customer_statement(id, export=True)
 
 
-def _export_customer_statement(customer, transactions):
-    """Export the same filtered and chronologically ordered rows as the statement."""
+def _export_customer_statement(customer, transactions, opening_balance=0, final_balance=0):
+    """Export the same filtered rows plus brought-forward and totals context."""
     import io
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
@@ -1165,6 +1170,13 @@ def _export_customer_statement(customer, transactions):
                 row["balance"],
             ]
         )
+    if opening_balance:
+        ws.append(["-", "opening", "-", "رصيد مرحّل من الفترات السابقة",
+                   0, 0, float(opening_balance)])
+    ws.append(["-", "total", "-", "صافي الحركات المعروضة",
+               float(sum(float(r["debit"]) for r in transactions)),
+               float(sum(float(r["credit"]) for r in transactions)),
+               float(final_balance)])
 
     # Style
     for cell in ws[5]:

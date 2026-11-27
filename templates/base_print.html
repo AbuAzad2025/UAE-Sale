@@ -33,6 +33,8 @@
     .document .receipt-header,
     .document .invoice-header,
     .document .purchase-header,
+    .document .quotation-header,
+    .document .st-head,
     .document .header {
       position: relative;
       padding-inline: 125px;
@@ -59,7 +61,7 @@
       font-size: 12px;
       font-weight: 800;
       line-height: 1.2;
-      color: #075c2e;
+      color: {{ settings.header_color or '#007A3D' }};
       letter-spacing: 0;
     }
     .tenant-brand-logo {
@@ -222,6 +224,9 @@
         max-width: none !important;
         height: auto !important;
         min-height: 0 !important;
+        overflow: visible !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       .page-wrapper { background: white; }
 
@@ -231,6 +236,8 @@
       .document .receipt-header,
       .document .invoice-header,
       .document .purchase-header,
+      .document .quotation-header,
+      .document .st-head,
       .document .header {
         position: fixed !important;
         top: 0 !important;
@@ -240,13 +247,19 @@
       }
       .document .receipt-footer,
       .document .invoice-footer,
+      .document .quotation-footer,
+      .document .st-foot,
       .document .footer {
         position: fixed !important;
         bottom: var(--repeat-azad-h, 0px) !important;
         left: 0 !important;
         right: 0 !important;
+        padding-inline: 80px !important;
         z-index: 50 !important;
       }
+      .document .receipt { width: 100% !important; max-width: 100% !important; }
+      main { padding: 0 !important; display: block !important; }
+      body.preview-mode .document { box-shadow: none !important; margin: 0 !important; }
       .document .azad_invoice_footer {
         position: fixed !important;
         bottom: 0 !important;
@@ -480,7 +493,7 @@
 
     /* Company name stacked above the logo, in the header's inline-start slot */
     function injectTenantBrand() {
-      const heads = document.querySelectorAll('.document .receipt-header, .document .invoice-header, .document .purchase-header, .document .header');
+      const heads = document.querySelectorAll('.document .receipt-header, .document .invoice-header, .document .purchase-header, .document .quotation-header, .document .st-head, .document .header');
       heads.forEach(function (h) {
         if (h.querySelector('.tenant-brand')) return;
         var box = document.createElement('div');
@@ -560,13 +573,23 @@
     function prepareRepeatingHeaderFooter() {
       const doc = document.querySelector('.document');
       if (!doc) return;
-      const head = doc.querySelector('.receipt-header, .invoice-header, .purchase-header, .header');
-      const foot = doc.querySelector('.receipt-footer, .invoice-footer, .footer');
+      const head = doc.querySelector('.receipt-header, .invoice-header, .purchase-header, .quotation-header, .st-head, .header');
+      const foot = doc.querySelector('.receipt-footer, .invoice-footer, .quotation-footer, .st-foot, .footer');
       const azad = doc.querySelector('.azad_invoice_footer');
       const azadH = azad ? Math.ceil(azad.getBoundingClientRect().height) : 0;
-      doc.style.setProperty('--repeat-head-h', head ? Math.ceil(head.getBoundingClientRect().height) + 'px' : '0px');
+      const headH = head ? Math.ceil(head.getBoundingClientRect().height) : 0;
+      const footH = (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0)
+        + (foot && azad && foot.contains(azad) ? 0 : azadH);
+      doc.style.setProperty('--repeat-head-h', headH + 'px');
       doc.style.setProperty('--repeat-azad-h', azadH + 'px');
-      doc.style.setProperty('--repeat-foot-h', (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0) + azadH + 'px');
+      doc.style.setProperty('--repeat-foot-h', footH + 'px');
+      let marginStyle = document.getElementById('azad-print-page-margin');
+      if (!marginStyle) {
+        marginStyle = document.createElement('style');
+        marginStyle.id = 'azad-print-page-margin';
+        document.head.appendChild(marginStyle);
+      }
+      marginStyle.textContent = '@media print { @page { size: A4 {{ settings.orientation or 'portrait' }}; margin: 5mm; margin-top: ' + headH + 'px; margin-bottom: ' + footH + 'px; } }';
     }
     window.addEventListener('beforeprint', prepareRepeatingHeaderFooter);
     document.addEventListener('DOMContentLoaded', prepareRepeatingHeaderFooter);

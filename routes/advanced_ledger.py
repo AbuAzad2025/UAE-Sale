@@ -35,31 +35,51 @@ advanced_ledger_bp = Blueprint(
 @permission_required("view_ledger")
 def professional_printing():
     """نظام الطباعة الاحترافي"""
-    trial_balance_data = []
-    accounts = (
-        GLAccount.query.filter_by(is_active=True, is_header=False).limit(20).all()
+    from models.gl import GLJournalEntry, GLJournalLine
+    from models.tenant_scope import get_current_tenant_id
+    from models.invoice_settings import InvoiceSettings
+    from utils.invoice_header import with_tenant_header
+
+    tid = get_current_tenant_id()
+    line_query = (
+        db.session.query(
+            GLJournalLine.account_id,
+            GLJournalLine.debit,
+            GLJournalLine.credit,
+        )
+        .join(GLJournalEntry, GLJournalEntry.id == GLJournalLine.entry_id)
+        .filter(GLJournalEntry.is_posted.is_(True))
     )
+    if tid is not None:
+        line_query = line_query.filter(GLJournalEntry.tenant_id == tid)
+    totals = {}
+    for account_id, debit, credit in line_query.all():
+        row = totals.setdefault(account_id, [Decimal("0"), Decimal("0")])
+        row[0] += Decimal(str(debit or 0))
+        row[1] += Decimal(str(credit or 0))
 
-    total_debit = total_credit = 0
+    trial_balance_data = []
+    total_debit = total_credit = Decimal("0")
+    for account in GLAccount.query.filter_by(is_active=True, is_header=False).all():
+        debit, credit = totals.get(account.id, (Decimal("0"), Decimal("0")))
+        if debit or credit:
+            trial_balance_data.append({"account": account, "debit": debit, "credit": credit})
+            total_debit += debit
+            total_credit += credit
 
-    for account in accounts:
-        balance = account.get_balance()
-        if balance != 0:
-            trial_balance_data.append(
-                {
-                    "account": account,
-                    "debit": balance if balance > 0 else 0,
-                    "credit": abs(balance) if balance < 0 else 0,
-                }
-            )
-            total_debit += balance if balance > 0 else 0
-            total_credit += abs(balance) if balance < 0 else 0
+    try:
+        tenant = db.session.get(__import__("models").Tenant, tid) if tid else None
+        settings = with_tenant_header(InvoiceSettings.get_active(), tenant)
+    except Exception:
+        settings = None
 
     return render_template(
         "ledger/professional_printing.html",
         trial_balance_data=trial_balance_data,
         total_debit=total_debit,
         total_credit=total_credit,
+        settings=settings,
+        report_number="TB-" + date.today().strftime("%Y%m%d"),
         date_from=date.today() - timedelta(days=30),
         date_to=date.today(),
         date=date,

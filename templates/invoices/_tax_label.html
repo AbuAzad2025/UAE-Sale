@@ -7,5 +7,5 @@
 {%- elif sale.tax_inclusive -%}
 {{ t("Tax Included in Total") }} ({{ sale.tax_rate }}%)
 {%- else -%}
-{{ t("Additional Tax") }} ({{ sale.tax_rate }}%)
+{{ t("VAT") }} ({{ sale.tax_rate }}%)
 {%- endif -%}

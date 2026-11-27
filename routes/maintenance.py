@@ -669,14 +669,15 @@ def _maintenance_receipt_as_sales_receipt(order, receipt):
             receipt_number=receipt.receipt_no,
             receipt_date=receipt.posted_at or receipt.created_at,
             user=NS(full_name=(cashier.full_name or cashier.username) if cashier else '-'),
-            amount_base=receipt.amount or 0,
+            amount_base=getattr(receipt, 'amount_base', None) or receipt.amount or 0,
             amount=receipt.amount or 0,
-            currency=order.currency or 'AED',
+            currency=getattr(receipt, 'currency', None) or order.currency or 'AED',
             payment_method=method_map.get(receipt.payment_method, 'cash'),
             notes=None,
             get_source_info=lambda: NS(
                 number=order.order_no,
                 date=order.received_at.strftime('%Y-%m-%d') if order.received_at else '',
+                amount=receipt.amount or 0,
             ),
         ),
         party=NS(
@@ -706,11 +707,15 @@ def print_receipt(id):
     from config import Config
     from utils.i18n import t as _t
     ctx = _print_context(order, "maintenance_receipt", receipt.id)
+    from utils.amount_in_words import amount_in_words as _aiw
+    _base = getattr(receipt, "amount_base", None) or getattr(receipt, "amount", 0) or 0
+    _cur = getattr(receipt, "currency", None) or getattr(order, "currency", None) or "AED"
+    ctx["amount_words_ar"] = _aiw(_base, _cur, "ar")
+    ctx["amount_words_en"] = _aiw(_base, _cur, "en")
     ctx['settings'].active_template = 'modern'
     return render_template(
         "receipts/modern.html",
         **_maintenance_receipt_as_sales_receipt(order, receipt),
-        base_currency=order.currency or 'AED',
         current_year=__import__('datetime').datetime.now().year,
         back_url=url_for("maintenance.view_order", id=order.id),
         **ctx,
@@ -759,11 +764,15 @@ def _maintenance_invoice_as_sale(order):
         currency=order.currency or 'AED',
         subtotal=inv.subtotal or 0,
         discount_total=inv.discount_total or 0,
+        discount_amount=inv.discount_total or 0,
+        shipping_cost=0,
         tax_amount=inv.tax_amount or 0,
         total_amount=inv.total_amount or 0,
         tax_treatment='standard',
         tax_inclusive=bool(getattr(order, 'tax_inclusive', False)),
         tax_rate=rate,
+        status='confirmed',
+        payment_status='paid' if (inv.total_amount or 0) > 0 and not getattr(order, 'balance_due', 0) else 'unpaid',
         payments=[],
     )
 

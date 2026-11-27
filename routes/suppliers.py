@@ -402,7 +402,7 @@ def _statement_transactions(supplier):
         .all()
     )
     payments = (
-        Payment.query.filter_by(supplier_id=supplier.id)
+        Payment.query.filter_by(supplier_id=supplier.id, payment_confirmed=True)
         .order_by(Payment.payment_date.asc())
         .all()
     )
@@ -464,7 +464,21 @@ def _statement_transactions(supplier):
         })
     rows.sort(key=lambda t: (t["date"] or datetime.min).replace(tzinfo=None)
               if getattr(t["date"], "tzinfo", None) else (t["date"] or datetime.min))
-    balance = 0.0
+    opening = float(supplier.get_opening_balance_base() or 0)
+    if opening:
+        opening_date = supplier.opening_balance_date
+        rows.insert(0, {
+            "date": opening_date,
+            "type": "opening",
+            "reference": "-",
+            "debit": 0.0,
+            "credit": opening,
+            "description": "رصيد افتتاحي",
+            "status": "confirmed",
+            "url": "",
+            "details": {},
+        })
+    balance = -opening
     for t in rows:
         balance += t["debit"] - t["credit"]
         t["balance"] = balance
@@ -519,8 +533,8 @@ def statement_print(id):
         back_url=url_for("suppliers.statement", id=supplier.id),
         back_label=_t("Back to statement"),
         transactions=transactions,
-        total_purchases=float(sum(t["credit"] for t in transactions if t["description"] == "فاتورة شراء")),
-        total_payments=float(sum(t["debit"] for t in transactions)),
+        total_purchases=total_purchases,
+        total_payments=total_payments,
         final_balance=final_balance,
         now=datetime.now,
     )

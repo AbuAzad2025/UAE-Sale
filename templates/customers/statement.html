@@ -44,7 +44,7 @@ body.preview-mode .card { max-width: 210mm; margin: 0 auto; background: #fff; pa
 body.preview-mode .print-only { display: block !important; }
 body.preview-mode .print-summary { display: flex !important; }
 body.preview-mode .print-signatures { display: flex !important; }
-body.preview-mode .statement-table { direction: rtl !important; table-layout: auto !important; font-size: 8.5pt; }
+body.preview-mode .statement-table { direction: rtl !important; width: 100% !important; table-layout: fixed !important; font-size: 8pt !important; }
 body.preview-mode .statement-table th, body.preview-mode .statement-table td { padding: 3pt; font-size: 8pt; }
 body.preview-mode tr.detail-row, body.preview-mode .toggle-details { display: none !important; }
 body.preview-mode .statement-letterhead {
@@ -54,7 +54,7 @@ body.preview-mode .statement-letterhead .pl-brand { display: flex; align-items: 
 body.preview-mode .statement-letterhead img { max-height: 40pt; max-width: 84pt; object-fit: contain; }
 body.preview-mode .pl-name { font-size: 11pt; font-weight: 800; }
 body.preview-mode .pl-address { font-size: 7.5pt; color: #555; }
-body.preview-mode .pl-title { text-align: center; font-size: 15pt; font-weight: 800; margin: 7pt 0; }
+body.preview-mode .pl-title { text-align: center; font-size: 12pt; font-weight: 800; margin: 6pt 0; overflow-wrap: anywhere; }
 body.preview-mode .pl-meta { display: flex !important; justify-content: space-between; gap: 10pt; font-size: 8pt; }
 body.preview-mode .statement-table thead th {
   white-space: normal !important; text-align: right !important;
@@ -63,6 +63,14 @@ body.preview-mode .statement-table thead th {
 }
 body.preview-mode .statement-table th:last-child,
 body.preview-mode .statement-table td:last-child { display: none !important; }
+body.preview-mode .statement-table thead tr:first-child { display: none !important; }
+body.preview-mode .statement-table th:nth-child(1), body.preview-mode .statement-table td:nth-child(1) { width: 16% !important; }
+body.preview-mode .statement-table th:nth-child(2), body.preview-mode .statement-table td:nth-child(2) { width: 40% !important; }
+body.preview-mode .statement-table th:nth-child(3), body.preview-mode .statement-table td:nth-child(3) { width: 14% !important; }
+body.preview-mode .statement-table th:nth-child(4), body.preview-mode .statement-table td:nth-child(4) { width: 14% !important; }
+body.preview-mode .statement-table th:nth-child(5), body.preview-mode .statement-table td:nth-child(5) { width: 16% !important; }
+body.preview-mode .statement-table .transaction-meta,
+body.preview-mode .statement-table .payment-chip { display: none !important; }
 body.preview-mode .card-body, body.preview-mode .table-responsive { padding: 0 !important; }
 body.preview-mode .final-balance-display { border: 1pt solid #c2c7d1; }
 .opening-balance-row td { background: #eef4ef; font-weight: 700; }
@@ -305,11 +313,11 @@ table.statement-table thead th {
   .statement-letterhead img { max-height: 40pt; max-width: 84pt; object-fit: contain; }
   .pl-name { font-size: 11pt; font-weight: 800; }
   .pl-address { font-size: 7.5pt; color: #555; }
-  .pl-title { text-align: center; font-size: 15pt; font-weight: 800; margin: 7pt 0; }
+  .pl-title { text-align: center; font-size: 12pt; font-weight: 800; margin: 6pt 0; overflow-wrap: anywhere; }
   .pl-meta { display: flex !important; justify-content: space-between; gap: 10pt; font-size: 8pt; }
   .statement-table {
     direction: rtl !important; width: 100% !important;
-    table-layout: auto !important; font-size: 8pt !important;
+    table-layout: fixed !important; font-size: 7.6pt !important;
   }
   .statement-table thead { display: table-header-group; }
   .statement-table thead th {
@@ -323,6 +331,14 @@ table.statement-table thead th {
     text-align: right !important; white-space: normal !important;
   }
   .statement-table th:last-child, .statement-table td:last-child { display: none !important; }
+  .statement-table thead tr:first-child { display: none !important; }
+  .statement-table th:nth-child(1), .statement-table td:nth-child(1) { width: 16% !important; }
+  .statement-table th:nth-child(2), .statement-table td:nth-child(2) { width: 40% !important; }
+  .statement-table th:nth-child(3), .statement-table td:nth-child(3) { width: 14% !important; }
+  .statement-table th:nth-child(4), .statement-table td:nth-child(4) { width: 14% !important; }
+  .statement-table th:nth-child(5), .statement-table td:nth-child(5) { width: 16% !important; }
+  .statement-table td { overflow-wrap: anywhere !important; }
+  .statement-table .transaction-meta, .statement-table .payment-chip { display: none !important; }
   .statement-table td.amount-cell, .statement-table th.amount-cell {
     direction: ltr !important; text-align: right !important;
   }
@@ -339,7 +355,7 @@ table.statement-table thead th {
   }
   .print-signatures span { display: inline-block; border-top: .6pt solid #333; padding-top: 3pt; min-width: 120pt; }
   .print-watermark {
-    position: fixed; top: 48%; left: 28%; font-size: 54pt; font-weight: 900;
+    position: fixed; top: 64%; left: 36%; font-size: 34pt; font-weight: 900;
     color: rgba(0, 90, 54, .035); transform: rotate(-28deg); z-index: -1;
   }
   .print-footer {

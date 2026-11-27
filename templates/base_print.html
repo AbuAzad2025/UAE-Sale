@@ -2,6 +2,7 @@
 <html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block print_title %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
   {# Tenant brand header inputs (logo + RTL-aware monogram) #}
@@ -406,6 +407,15 @@
     }
   </style>
   {% block extra_print_css %}{% endblock %}
+  <style>
+    @media screen and (max-width: 767px) {
+      .print-body .page-wrapper { min-width: 0; max-width: 100%; }
+      .print-body .selector-wrapper, .print-body .template-buttons { flex-wrap: wrap; }
+      .print-body .selector-wrapper { max-width: 100%; box-sizing: border-box; }
+      .print-body .page-wrapper > main { min-width: 0; overflow-x: auto; justify-content: safe center !important; }
+      .print-body .document { flex-shrink: 0; }
+    }
+  </style>
 </head>
 <body class="print-body{% if request.args.get('preview') %} preview-mode{% endif %}">
   <div class="page-wrapper">

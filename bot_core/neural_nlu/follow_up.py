@@ -22,7 +22,7 @@ _EXAMPLES = {
         "show their latest invoice", "what is this customer's last invoice",
     ),
     "get_invoice_status": (
-        "كم بقي عليها", "كم باقي على الفاتورة", "شو ضل عليها", "هل هي مدفوعة", "هل تسددت",
+        "وكم المتبقي عليها", "كم المتبقي عليها", "كم بقي عليها", "كم باقي على الفاتورة", "شو ضل عليها", "هل هي مدفوعة", "هل تسددت",
         "كم المستحق عليها", "كم باقي منها", "كم بقي", "قديش ضل عليها", "هل الفاتورة مسددة", "شو حالة دفعها",
         "how much is left on it", "is it paid", "outstanding balance on this invoice",
     ),

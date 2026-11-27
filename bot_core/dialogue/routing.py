@@ -15,7 +15,7 @@ from services.ai_questions import (
 )
 
 _PATTERNS = (
-    ("get_customer_balance", re.compile(r"^(?:(?:كم )?رصيد(?: العميل)?|customer balance)(?=$|[ :؟?])")),
+    ("get_customer_balance", re.compile(r"^(?:(?:(?:ما|شو|كم) )?رصيد(?: العميل)?|customer balance)(?=$|[ :؟?])")),
     ("check_stock", re.compile(r"^(?:(?:كم )?مخزون(?: الصنف| المنتج)?|(?:check )?stock)(?=$|[ :؟?])")),
     ("get_invoice_status", re.compile(
         r"^(?:(?:(?:ما|شو) )?حال[ةه] (?:ال)?فاتور[ةه]|invoice status|"
@@ -141,7 +141,17 @@ def decide(event: MessageEvent, prior: Dialogue | None, *, context: InteractionC
                 follow_up = _contextual_read(event.raw_input, context)
                 if follow_up is not None:
                     return follow_up
-            return _decision(tool, value.rstrip("؟?").rstrip() if tool != "draft_customer" else value)
+            if tool != "draft_customer":
+                value = value.rstrip("؟?").strip()
+                if tool == "get_invoice_status":
+                    compound = re.fullmatch(r"([\w#./-]+)\s+و(?:من (?:هو )?|ما اسم )(?:العميل|الزبون)", value)
+                    if compound:
+                        value = compound[1]
+                if tool in {"check_stock", "get_customer_balance"}:
+                    by_number = re.fullmatch(r"رقم\s+#?([0-9]{1,10})", normalize(value))
+                    if by_number:
+                        value = "#" + by_number[1]
+            return _decision(tool, value)
     sales_context = prior is not None and prior.topic == "sales_report"
     if sales_context and is_preceding_sales_period(event.raw_input):
         periods = prior.slots.get("periods", [])

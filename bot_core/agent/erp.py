@@ -144,7 +144,9 @@ _PAYMENT_LABEL = {"paid": "مدفوعة", "partial": "مدفوعة جزئيًا"
 
 
 def _invoice_rows(actor: Actor):
-    return select(Sale.id, Sale.sale_number, Sale.status, Sale.payment_status, Sale.balance_due, Sale.customer_id).where(
+    return select(Sale.id, Sale.sale_number, Sale.status, Sale.payment_status, Sale.balance_due, Sale.customer_id, Customer.name.label("customer_name")).outerjoin(
+        Customer, (Customer.id == Sale.customer_id) & (Customer.tenant_id == Sale.tenant_id)
+    ).where(
         Sale.tenant_id == actor.tenant_id, Sale.is_active.is_(True),
     )
 
@@ -160,6 +162,8 @@ def _invoice_result(match, actor: Actor, *, prefix: str = "") -> ToolResult:
     status = _SALE_LABEL.get(match.status, "غير محددة")
     payment = _PAYMENT_LABEL.get(match.payment_status, "غير محددة")
     detail = f"الفاتورة {match.sale_number} {status} وحالة السداد {payment}."
+    if match.customer_name and not prefix:
+        detail += f" العميل: {match.customer_name}."
     if match.status == "confirmed" and match.balance_due is not None:
         base = db.session.scalar(select(Tenant.default_currency).where(Tenant.id == actor.tenant_id))
         currency = base or "بالعملة الأساسية"

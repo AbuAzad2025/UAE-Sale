@@ -1,0 +1,34 @@
+@media screen and (max-width: 767px) {
+  .content-wrapper .page-header-layout,
+  .content-header .col-sm-6 > .d-flex,
+  .content-wrapper .btn-group.quick-nav {
+    flex-wrap: wrap;
+    max-width: 100%;
+    gap: .375rem;
+  }
+  .content-header .page-title-host,
+  .content-header .breadcrumb {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .content-wrapper .btn-group.quick-nav > .btn {
+    min-width: 0;
+    flex: 1 1 8rem;
+    white-space: normal;
+  }
+  .content .card-body:has(> table),
+  .content .card-body:has(> .dataTables_wrapper),
+  .content div:has(> .luxury-table) {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+@media screen and (max-width: 767px) {
+  .content .row > [class*="col-"] { min-width: 0; }
+  .content .btn { white-space: normal; overflow-wrap: anywhere; }
+  .content .card-header, .content .card-body { min-width: 0; }
+  .content .role-perm-form .d-flex { flex-wrap: wrap; gap: .375rem; }
+  .content .role-perm-form small { max-width: 100%; overflow-wrap: anywhere; }
+  .mobile-report-content { max-width: 100%; overflow-x: auto; }
+}

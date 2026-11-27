@@ -48,7 +48,10 @@
 
         @media (max-width: 768px) {
             .guide-container { flex-direction: column; }
-            .sidebar { position: static; }
+            .sidebar { position: static; flex-basis: auto; }
+            .section { padding: 20px; overflow-wrap: anywhere; }
+            table.roles { table-layout: fixed; }
+            table.roles th, table.roles td { padding: 8px; }
         }
     </style>
 </head>

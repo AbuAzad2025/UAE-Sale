@@ -61,3 +61,14 @@
 .lang-switcher.on-light .lang-pill.active i {
     color: #ffffff !important;
 }
+
+@media (max-width: 640px) {
+    .lang-switcher {
+        position: relative;
+        inset: auto;
+        width: fit-content;
+        margin: 8px auto;
+        background: #183659;
+    }
+    .lang-pill { display: inline-flex; align-items: center; min-height: 44px; }
+}

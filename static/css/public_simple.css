@@ -141,3 +141,14 @@ body { font-family: 'Tajawal', sans-serif; background: #040914; color: #f8fafc; 
 .feature-card .feature-icon { font-size: 2.5rem; color: var(--gulf-gold); margin-bottom: 15px; }
 .feature-card h3 { font-size: 1.2rem; margin-bottom: 10px; }
 .feature-card p { color: rgba(255,255,255,0.75); line-height: 1.7; font-size: 0.95rem; }
+
+@media (max-width: 640px) {
+    .navbar { flex-wrap: wrap; justify-content: center; gap: 8px 16px; padding: 12px 16px; text-align: center; }
+    .navbar > div { max-width: 100%; }
+    .navbar a { display: inline-flex; align-items: center; min-height: 44px; margin: 0 6px; }
+    .page-container { margin: 32px auto; padding-inline: 16px; overflow-wrap: anywhere; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: clamp(1.75rem, 8vw, 2.5rem); }
+    .contact-grid, .features-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .contact-card, .feature-card, .info-card { padding: 20px; }
+}

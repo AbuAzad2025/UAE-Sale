@@ -179,9 +179,14 @@ def test_worker_rechecks_permissions_before_resolving_entities(app, db, client, 
     db.session.add(company)
     db.session.flush()
     seller_user.tenant_id = company.id
-    seller_user.role.permissions.clear()
+    from models import Permission
+
+    reports = Permission.query.filter_by(code="view_reports").one()
+    seller_user.role.permissions.append(reports)
     db.session.commit()
     event = _enqueue(client, "رصيد عميل لا يجب البحث عنه")
+    seller_user.role.permissions[:] = [reports]
+    db.session.commit()
     _due(db.session, event["id"])
     assert work_one(app, AgentRunner(build_registry()), StateManager())
     result = client.get(event["status_url"]).get_json()["result"]
@@ -290,6 +295,10 @@ def test_customer_invoice_and_stock_follow_ups_use_scoped_live_records(app, db, 
         assert result["outcome"] == outcome and expected in result["message"], (message, result)
         return result["message"]
 
+    reply("ما حالة الفاتورة CTX-INV ومن هو العميل؟", "العميل: عميل السياق")
+    reply("وكم المتبقي عليها؟", "40.00 AED")
+    reply(f"كم مخزون الصنف رقم {product_id}؟", "صنف السياق")
+    reply("ما رصيد العميل عميل السياق؟", "رصيد عميل السياق")
     reply(f"كم رصيد العميل #{customer_id}؟", "رصيد عميل السياق")
     reply("ما آخر فاتورة له؟", "CTX-INV")
     reply("قديش ضل عليها؟", "40.00 AED")

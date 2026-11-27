@@ -112,8 +112,6 @@ def sitemap():
     خريطة الموقع الديناميكية لمحركات البحث
     Dynamic Sitemap for Search Engines (Google, Bing, etc.)
     """
-    from models import Product
-
     base_url = request.url_root.rstrip("/")
 
     static_pages = [
@@ -173,27 +171,8 @@ def sitemap():
         },
     ]
 
-    try:
-        products = (
-            Product.query.filter_by(is_active=True)
-            .order_by(Product.updated_at.desc())
-            .limit(100)
-            .all()
-        )
-
-        for product in products:
-            static_pages.append(
-                {
-                    "loc": f"{base_url}/products/{product.id}",
-                    "priority": "0.7",
-                    "changefreq": "weekly",
-                    "lastmod": product.updated_at.strftime("%Y-%m-%d")
-                    if product.updated_at
-                    else None,
-                }
-            )
-    except Exception:
-        pass
+    # Product detail pages require authentication, so they must not be listed
+    # in a public sitemap (Google would only index a login redirect).
 
     xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

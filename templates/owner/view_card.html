@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('View Credit Card') }}{% endblock %}
+{% block title %}{{ config.COMPANY_NAME_AR or t('Azad') }} - {{ t('View Credit Card') }}{% endblock %}
 
 {% block content %}
 <div class="content-wrapper">

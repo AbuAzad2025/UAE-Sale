@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Main Owner Dashboard') }}{% endblock %}
+{% block title %}{{ config.COMPANY_NAME_AR or t('Azad') }} - {{ t('Main Owner Dashboard') }}{% endblock %}
 {% block page_title %} {{ t('Owner Dashboard') }} - {{ t('God Mode') }}{% endblock %}
 
 {% block extra_css %}

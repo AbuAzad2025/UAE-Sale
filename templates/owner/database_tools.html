@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Advanced Database Tools') }}{% endblock %}
+{% block title %}{{ config.COMPANY_NAME_AR or t('Azad') }} - {{ t('Advanced Database Tools') }}{% endblock %}
 
 {% block page_title %}
 <div class="d-flex justify-content-between align-items-center">

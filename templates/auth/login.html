@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ t('Azad Smart Systems Company') }} - {{ t('Login') }}</title>
+  {% set _login_title = (current_tenant.name_ar if current_language == 'ar' else (current_tenant.name_en or current_tenant.name)) if current_tenant else t('Azad Smart Systems Company') %}
+  <title>{{ _login_title }} - {{ t('Login') }}</title>
   <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">

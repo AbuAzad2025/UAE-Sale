@@ -302,8 +302,8 @@ table.statement-table thead th {
   }
   .print-signatures span { display: inline-block; border-top: .6pt solid #333; padding-top: 3pt; min-width: 120pt; }
   .print-watermark {
-    position: fixed; top: 34%; left: 16%; font-size: 68pt; font-weight: 900;
-    color: rgba(0, 90, 54, .06); transform: rotate(-28deg); z-index: -1;
+    position: fixed; top: 48%; left: 28%; font-size: 54pt; font-weight: 900;
+    color: rgba(0, 90, 54, .035); transform: rotate(-28deg); z-index: -1;
   }
   .print-footer {
     position: fixed; bottom: 0; left: 0; right: 0;
@@ -364,7 +364,7 @@ table.statement-table thead th {
   <div class="pl-title">{{ t('Detailed Account Statement') if current_language == 'en' else 'كشف حساب مفصل' }} — {{ customer.name }}</div>
   <div class="pl-meta">
     <div>{{ t('Customer No.') if current_language == 'en' else 'رقم العميل' }}: {{ customer.id }}<br>{{ t('Phone') }}: {{ customer.phone or '-' }}</div>
-    <div>{{ t('Period') }}: {% if active_filters.date_from %}{{ active_filters.date_from }}{% else %}{{ t('from the beginning') }}{% endif %} — {% if active_filters.date_to %}{{ active_filters.date_to }}{% else %}{{ t('today') }}{% endif %}<br>{{ t('Transaction Type') }}: {{ (statement_type.ar if current_language != 'en' else statement_type.en) or t('All Transactions') }}</div>
+    <div>{{ t('Period') }}: {% if active_filters.date_from %}{{ active_filters.date_from }}{% else %}{{ t('from the beginning') }}{% endif %} — {% if active_filters.date_to %}{{ active_filters.date_to }}{% else %}{{ 'اليوم' if current_language != 'en' else 'today' }}{% endif %}<br>{{ t('Transaction Type') }}: {{ (statement_type.ar if current_language != 'en' else statement_type.en) or t('All Transactions') }}</div>
     <div class="js-print-date"></div>
   </div>
 </div>

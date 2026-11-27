@@ -11,7 +11,7 @@
   {% set _mono = ((_hwords[0][:2] if _hwords else 'A')|upper) %}
   {% set _brand_display = (_hwords|join(' ') if _hwords else _hname) %}
   {% if settings and settings.show_logo and settings.logo_url %}
-    {% set _logo_src = settings.logo_url if settings.logo_url.startswith(('https://','http://','/')) else url_for('static', filename=settings.logo_url) %}
+    {% set _logo_src = settings.logo_url if settings.logo_url.startswith(('https://','http://','/')) else url_for('static', filename=settings.logo_url[7:] if settings.logo_url.startswith('static/') else settings.logo_url) %}
   {% else %}
     {% set _logo_src = none %}
   {% endif %}

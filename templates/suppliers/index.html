@@ -19,6 +19,7 @@
 /* Keep the supplier table readable on desktop: give names room and stop the
    action buttons from being clipped at the left edge of RTL layouts. */
 #suppliersTable { table-layout: fixed; }
+#suppliersTable th, #suppliersTable td { box-sizing: border-box; padding: 8px 6px !important; }
 #suppliersTable th:nth-child(1), #suppliersTable td:nth-child(1) { width: 190px; }
 #suppliersTable th:nth-child(2), #suppliersTable td:nth-child(2) { width: 90px; }
 #suppliersTable th:nth-child(3), #suppliersTable td:nth-child(3) { width: 70px; }

@@ -1,4 +1,6 @@
 @media screen and (max-width: 767px) {
+  .content .row { margin-left: 0; margin-right: 0; width: 100%; }
+  .content .row > [class*="col-"] { padding-left: 8px; padding-right: 8px; }
   .content-wrapper .page-header-layout,
   .content-header .col-sm-6 > .d-flex,
   .content-wrapper .btn-group.quick-nav {

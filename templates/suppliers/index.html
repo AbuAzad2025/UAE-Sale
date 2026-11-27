@@ -16,6 +16,21 @@
 
 {% block extra_css %}
 <style>
+/* Keep the supplier table readable on desktop: give names room and stop the
+   action buttons from being clipped at the left edge of RTL layouts. */
+#suppliersTable { table-layout: fixed; }
+#suppliersTable th:nth-child(1), #suppliersTable td:nth-child(1) { width: 190px; }
+#suppliersTable th:nth-child(2), #suppliersTable td:nth-child(2) { width: 90px; }
+#suppliersTable th:nth-child(3), #suppliersTable td:nth-child(3) { width: 70px; }
+#suppliersTable th:nth-child(4), #suppliersTable td:nth-child(4) { width: 100px; }
+#suppliersTable th:nth-child(5), #suppliersTable td:nth-child(5) { width: 70px; }
+#suppliersTable th:nth-child(6), #suppliersTable td:nth-child(6) { width: 100px; }
+#suppliersTable th:nth-child(7), #suppliersTable td:nth-child(7) { width: 100px; }
+#suppliersTable th:nth-child(8), #suppliersTable td:nth-child(8) { width: 130px; }
+#suppliersTable td:first-child > div { min-width: 0; }
+#suppliersTable td:first-child strong { display: block; overflow-wrap: anywhere; }
+#suppliersTable .btn-group { flex-wrap: nowrap; }
+#suppliersTable .btn-group .btn { padding-left: .35rem; padding-right: .35rem; }
 .supplier-card {
   transition: all 0.3s ease;
   border-radius: 12px;

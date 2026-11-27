@@ -30,6 +30,15 @@
 <style>
 .print-only { display: none !important; }
 
+.clean-statement { display: none; }
+.clean-table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse; direction: rtl; font-size: 8pt; }
+.clean-table th, .clean-table td { border: .5pt solid #444 !important; padding: 3pt 4pt !important; text-align: right; overflow-wrap: anywhere; }
+.clean-table thead { display: table-header-group; }
+.clean-table thead th { background: #eef2f5 !important; font-size: 8pt; font-weight: 700; }
+.clean-table .num { direction: ltr; text-align: right; }
+.clean-table .open-row td { background: #eef4ef; font-weight: 700; }
+.clean-table tfoot td { background: #f1f4f6; font-weight: 800; }
+
 .preview-bar { display: none; }
 body.preview-mode .preview-bar {
   display: flex !important; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
@@ -42,6 +51,8 @@ body.preview-mode .no-print, body.preview-mode .statement-actions { display: non
 body.preview-mode .content-wrapper { margin: 0 !important; padding: 56px 20px 30px !important; background: #e9edf2 !important; }
 body.preview-mode .card { max-width: 210mm; margin: 0 auto; background: #fff; padding: 14mm 10mm !important; box-shadow: 0 10px 34px rgba(0,0,0,.18); }
 body.preview-mode .print-only { display: block !important; }
+body.preview-mode #statement-table, body.preview-mode .statement-table { display: none !important; }
+body.preview-mode .clean-statement { display: block !important; }
 body.preview-mode .print-summary { display: flex !important; }
 body.preview-mode .print-signatures { display: flex !important; }
 body.preview-mode .statement-table { direction: rtl !important; width: 100% !important; table-layout: fixed !important; font-size: 8pt !important; }
@@ -295,6 +306,8 @@ table.statement-table thead th {
 }
 
 @media print {
+  #statement-table, .statement-table { display: none !important; }
+  .clean-statement { display: block !important; }
   @page { size: A4 portrait; margin: 12mm 10mm 16mm; }
   .main-sidebar, .main-header, .main-footer, .content-header,
   .no-print, .preview-bar, button, .btn, .statement-actions, .contentinfo,
@@ -747,6 +760,43 @@ table.statement-table thead th {
 </div>
 {% endif %}
 
+
+<div class="print-only clean-statement">
+  <table class="clean-table">
+    <thead>
+      <tr>
+        <th style="width:16%">{{ t('Date') }}</th>
+        <th style="width:40%">{{ t('Description') }}</th>
+        <th style="width:14%">{{ t('Debit') }} ({{ base_currency }})</th>
+        <th style="width:14%">{{ t('Credit') }} ({{ base_currency }})</th>
+        <th style="width:16%">{{ t('Balance') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if opening_balance is defined and (opening_balance|float) != 0 %}
+      <tr class="open-row">
+        <td colspan="4">{{ t('Balance brought forward') if current_language == 'en' else 'رصيد مرحّل من الفترات السابقة' }}</td>
+        <td class="num">{{ '{:,.2f}'.format(opening_balance) }}</td>
+      </tr>
+      {% endif %}
+      {% for trans in transactions %}
+      <tr>
+        <td>{{ trans.date.strftime('%Y-%m-%d') if trans.date else '-' }}</td>
+        <td>{{ trans.description }}{% if trans.reference and trans.reference != '-' %}<br><span style="font-size:7pt;color:#555;">{{ trans.reference }}</span>{% endif %}</td>
+        <td class="num">{{ '{:,.2f}'.format(trans.debit) }}</td>
+        <td class="num">{{ '{:,.2f}'.format(trans.credit) }}</td>
+        <td class="num">{{ '{:,.2f}'.format(trans.balance) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">{{ t('Net of displayed transactions') if current_language == 'en' else 'صافي الحركات المعروضة' }}</td>
+        <td class="num">{{ '{:,.2f}'.format(final_balance|default(0)) }} {{ base_currency }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
 <div class="print-only print-watermark">{{ current_tenant.name_ar if current_tenant else config.COMPANY_NAME_AR }}</div>
 <div class="print-only print-summary">
   <div>{{ t('Total Debit') if current_language == 'en' else 'إجمالي المدين' }}<strong>{{ '{:,.2f}'.format((transactions|sum(attribute='debit')) if transactions else 0) }} {{ base_currency }}</strong></div>

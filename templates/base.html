@@ -155,7 +155,7 @@
 </head>
 
 
-{% set _tenant_logo = url_for('static', filename='img/azad_logo.png') if (current_user.is_authenticated and current_user.is_owner and not is_impersonating) else (url_for('static', filename='img/tenants/samarkand_logo.png') if current_tenant and current_tenant.id == 2 else url_for('static', filename='img/azad_logo.png')) %}
+{% set _tenant_logo = url_for('static', filename='img/azad_logo.png') if (current_user.is_authenticated and current_user.is_owner and not is_impersonating) else ((current_tenant.logo_url if current_tenant and current_tenant.logo_url else url_for('static', filename='img/azad_logo.png'))) %}
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 

@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {% set _login_title = (current_tenant.name_ar if current_language == 'ar' else (current_tenant.name_en or current_tenant.name)) if current_tenant else t('Azad Smart Systems Company') %}
-  <title>{{ _login_title }} - {{ t('Login') }}</title>
+  <title>{{ config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME }} - {{ t('Login') }}</title>
   <link rel="icon" href="{{ url_for('static', filename='img/azad_favicon.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
@@ -111,7 +110,7 @@
       <footer class="login-footer">
         <div class="login-footer-company">
           <i class="fas fa-building" aria-hidden="true"></i>
-          {% set _login_company = (current_tenant.name_ar if current_language == 'ar' else (current_tenant.name_en or current_tenant.name)) if current_tenant else None %}{{ _login_company or (config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME) }}
+          {{ config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME }}
         </div>
         <div class="login-footer-dev">
           {{ t('Developed by Eng. Ahmad Ghannam') }}

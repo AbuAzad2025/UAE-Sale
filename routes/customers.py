@@ -449,43 +449,8 @@ def _customer_statement(id, *, export=False):
         WriteOff.status == "posted",
     )
 
-    if date_from:
-        sales_query = sales_query.filter(func.date(Sale.sale_date) >= date_from)
-        payments_query = payments_query.filter(
-            func.date(Payment.payment_date) >= date_from
-        )
-        returns_query = returns_query.filter(
-            func.date(ProductReturn.return_date) >= date_from
-        )
-        receipts_query = receipts_query.filter(
-            func.date(Receipt.receipt_date) >= date_from
-        )
-        writeoffs_query = writeoffs_query.filter(
-            func.coalesce(WriteOff.posted_at, WriteOff.created_at) >= date_from
-        )
-
-    if date_to:
-        sales_query = sales_query.filter(func.date(Sale.sale_date) <= date_to)
-        payments_query = payments_query.filter(
-            func.date(Payment.payment_date) <= date_to
-        )
-        returns_query = returns_query.filter(
-            func.date(ProductReturn.return_date) <= date_to
-        )
-        cheques_query = (
-            cheques_query.filter(
-                func.coalesce(Cheque.issue_date, Cheque.created_at) <= date_to
-            )
-            if hasattr(Cheque, "created_at")
-            else cheques_query
-        )
-        receipts_query = receipts_query.filter(
-            func.date(Receipt.receipt_date) <= date_to
-        )
-        writeoffs_query = writeoffs_query.filter(
-            func.coalesce(WriteOff.posted_at, WriteOff.created_at) <= date_to
-        )
-
+    # Period filtering is applied to assembled transactions below so that
+    # balances brought forward can be derived from the full history.
     sales = sales_query.order_by(Sale.sale_date).all()
     payments = payments_query.order_by(Payment.payment_date).all()
     returns = returns_query.order_by(ProductReturn.return_date).all()
@@ -507,11 +472,7 @@ def _customer_statement(id, *, export=False):
     opening = customer.get_opening_balance_base()
     opening_date = customer.opening_balance_date
     opening_day = opening_date.isoformat() if opening_date else ""
-    if (
-        opening
-        and (not date_from or opening_day >= date_from)
-        and (not date_to or opening_day <= date_to)
-    ):
+    if opening:
         transactions.append(
             {
                 "date": opening_date,
@@ -678,8 +639,6 @@ def _customer_statement(id, *, export=False):
     for movement in maintenance_receivable_movements(id):
         movement_date = movement["date"]
         day = movement_date.date().isoformat() if movement_date else ""
-        if (date_from and day < date_from) or (date_to and day > date_to):
-            continue
         transactions.append(
             {
                 **movement,
@@ -957,7 +916,29 @@ def _customer_statement(id, *, export=False):
             trans for trans in transactions if trans["type"] == transaction_type
         ]
 
-    running_balance = Decimal("0")
+    # ---- chronological order + balance carried into the selected period ----
+    def _row_day(row):
+        value = row.get("date")
+        if hasattr(value, "date"):
+            return value.date().isoformat()
+        return value.isoformat() if value else ""
+
+    transactions = sorted(
+        transactions, key=lambda row: (_row_day(row), str(row.get("reference", "")))
+    )
+    opening_balance = Decimal("0")
+    if date_from:
+        for row in transactions:
+            if _row_day(row) < date_from:
+                opening_balance += Decimal(str(row["debit"])) - Decimal(str(row["credit"]))
+        transactions = [
+            row for row in transactions
+            if _row_day(row) >= date_from and (not date_to or _row_day(row) <= date_to)
+        ]
+    elif date_to:
+        transactions = [row for row in transactions if _row_day(row) <= date_to]
+
+    running_balance = opening_balance
     for trans in transactions:
         running_balance += Decimal(str(trans["debit"])) - Decimal(str(trans["credit"]))
         trans["balance"] = running_balance
@@ -1027,6 +1008,7 @@ def _customer_statement(id, *, export=False):
         customer=customer,
         transactions=transactions,
         final_balance=running_balance,
+        opening_balance=opening_balance,
         system_balance=system_balance,
         filters={
             "date_from": date_from or "",

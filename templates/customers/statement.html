@@ -29,6 +29,25 @@
 {% block extra_css %}
 <style>
 .print-only { display: none !important; }
+
+.preview-bar { display: none; }
+body.preview-mode .preview-bar {
+  display: flex !important; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  align-items: center; justify-content: space-between; padding: 8px 18px;
+  background: #0f2338; color: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+body.preview-mode .main-sidebar, body.preview-mode .main-header,
+body.preview-mode .content-header, body.preview-mode .main-footer,
+body.preview-mode .no-print, body.preview-mode .statement-actions { display: none !important; }
+body.preview-mode .content-wrapper { margin: 0 !important; padding: 56px 20px 30px !important; background: #e9edf2 !important; }
+body.preview-mode .card { max-width: 210mm; margin: 0 auto; background: #fff; padding: 14mm 10mm !important; box-shadow: 0 10px 34px rgba(0,0,0,.18); }
+body.preview-mode .print-only { display: block !important; }
+body.preview-mode .print-summary { display: flex !important; }
+body.preview-mode .print-signatures { display: flex !important; }
+body.preview-mode .statement-table { direction: rtl !important; table-layout: auto !important; font-size: 8.5pt; }
+body.preview-mode .statement-table th, body.preview-mode .statement-table td { padding: 3pt; font-size: 8pt; }
+body.preview-mode tr.detail-row, body.preview-mode .toggle-details { display: none !important; }
+.opening-balance-row td { background: #eef4ef; font-weight: 700; }
 table.statement-table thead th {
   white-space: nowrap;
   background: #e4e7f0;
@@ -252,7 +271,7 @@ table.statement-table thead th {
 @media print {
   @page { size: A4 portrait; margin: 12mm 10mm 16mm; }
   .main-sidebar, .main-header, .main-footer, .content-header,
-  .no-print, button, .btn, .statement-actions, .contentinfo,
+  .no-print, .preview-bar, button, .btn, .statement-actions, .contentinfo,
   tr.detail-row, .toggle-details { display: none !important; }
   .print-only { display: block !important; }
   body { background: #fff !important; color: #111 !important; font-size: 9pt; }
@@ -314,12 +333,23 @@ table.statement-table thead th {
 {% endblock %}
 
 {% block content %}
+
+<div class="preview-bar">
+  <strong>{{ t('Print Preview') if current_language == 'en' else 'معاينة الطباعة' }}</strong>
+  <div>
+    <button type="button" class="btn btn-light btn-sm" onclick="window.print()">{{ t('Print') }}</button>
+    <button type="button" class="btn btn-outline-light btn-sm" onclick="document.body.classList.remove('preview-mode')">{{ t('Close') if current_language == 'en' else 'إغلاق' }}</button>
+  </div>
+</div>
 {% set active_filters = filters if filters is defined else {'date_from': '', 'date_to': '', 'transaction_type': 'all'} %}
 
 <div class="statement-actions d-flex flex-wrap justify-content-between align-items-center mb-3">
   <div class="mb-2">
     <button onclick="window.print()" class="btn btn-secondary btn-sm">
       <i class="fas fa-print mr-2"></i>{{ t('Print') }}
+    </button>
+    <button type="button" onclick="document.body.classList.add('preview-mode')" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-eye mr-2"></i>{{ t('Print Preview') if current_language == 'en' else 'معاينة الطباعة' }}
     </button>
     {% if current_user.has_permission('manage_customers') %}
     <a href="{{ url_for('customers.view', id=customer.id) }}" class="btn btn-info btn-sm">
@@ -343,6 +373,11 @@ table.statement-table thead th {
         <option value="{{ code }}" {% if active_filters.transaction_type == code %}selected{% endif %}>{{ meta.en if current_language == 'en' else meta.ar }}</option>
         {% endfor %}
       </select>
+    </div>
+    <div class="form-group mx-1 mb-2">
+      <button type="button" class="btn btn-light btn-sm" onclick="setStatementPeriod('month')">{{ t('This month') if current_language == 'en' else 'هذا الشهر' }}</button>
+      <button type="button" class="btn btn-light btn-sm" onclick="setStatementPeriod('last')">{{ t('Last month') if current_language == 'en' else 'الشهر الماضي' }}</button>
+      <button type="button" class="btn btn-light btn-sm" onclick="setStatementPeriod('year')">{{ t('This year') if current_language == 'en' else 'هذه السنة' }}</button>
     </div>
     <div class="form-group mx-1 mb-2">
       <button type="submit" class="btn btn-primary btn-sm">{{ t('Apply') }}</button>
@@ -423,6 +458,13 @@ table.statement-table thead th {
           </tr>
         </thead>
         <tbody>
+          {% if opening_balance is defined and (opening_balance|float) != 0 %}
+          <tr class="opening-balance-row">
+            <td colspan="4" class="text-right">{{ t('Balance brought forward') if current_language == 'en' else 'رصيد مرحّل من الفترات السابقة' }}</td>
+            <td class="amount-cell">{{ '{:,.2f}'.format(opening_balance) }} {{ base_currency }}</td>
+            <td colspan="2"></td>
+          </tr>
+          {% endif %}
           {% if transactions %}
             {% for trans in transactions %}
               {% set detail_id = 'details-' ~ loop.index %}
@@ -687,6 +729,17 @@ table.statement-table thead th {
   <span class="js-print-date"></span>
 </div>
 <script>
+function setStatementPeriod(kind) {
+  var now = new Date();
+  var from = new Date(now.getFullYear(), now.getMonth(), 1);
+  var to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  if (kind === 'last') { from = new Date(now.getFullYear(), now.getMonth() - 1, 1); to = new Date(now.getFullYear(), now.getMonth(), 0); }
+  if (kind === 'year') { from = new Date(now.getFullYear(), 0, 1); to = now; }
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  document.getElementById('date_from').value = iso(from);
+  document.getElementById('date_to').value = iso(to);
+  document.getElementById('date_from').form.submit();
+}
 document.addEventListener('DOMContentLoaded', function () {
   var d = new Date().toLocaleString('ar-EG', {dateStyle:'medium', timeStyle:'short'});
   document.querySelectorAll('.js-print-date').forEach(function (e) { e.textContent = d; });

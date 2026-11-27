@@ -50,6 +50,7 @@ body.preview-mode .content-header, body.preview-mode .main-footer,
 body.preview-mode .no-print, body.preview-mode .statement-actions { display: none !important; }
 body.preview-mode .content-wrapper { margin: 0 !important; padding: 56px 20px 30px !important; background: #e9edf2 !important; }
 body.preview-mode .card { max-width: 210mm; margin: 0 auto; background: #fff; padding: 14mm 10mm !important; box-shadow: 0 10px 34px rgba(0,0,0,.18); }
+body.preview-mode { min-width: 0 !important; }
 body.preview-mode .print-only { display: block !important; }
 body.preview-mode #statement-table, body.preview-mode .statement-table { display: none !important; }
 body.preview-mode .clean-statement { display: block !important; }
@@ -313,7 +314,9 @@ table.statement-table thead th {
   .no-print, .preview-bar, button, .btn, .statement-actions, .contentinfo,
   tr.detail-row, .toggle-details { display: none !important; }
   .print-only { display: block !important; }
-  body { background: #fff !important; color: #111 !important; font-size: 9pt; }
+  body { background: #fff !important; color: #111 !important; font-size: 9pt;
+    min-width: 0 !important; width: 100% !important; }
+  .wrapper, .content-wrapper, .content, .container-fluid { min-width: 0 !important; width: 100% !important; }
   .content-wrapper { margin: 0 !important; padding: 0 !important; }
   .card, .card-body, .table-responsive {
     border: none !important; box-shadow: none !important;

@@ -246,7 +246,15 @@
           <div class="form-group">
             <label class="font-weight-bold">{{ t("Quantity") }}:</label>
             <input type="number" name="quantity" class="form-control" step="0.001" required>
-            <small class="form-text text-muted">{{ t("Enter a positive value to add or a negative value to deduct") }}</small>
+            <div class="form-group">
+              <label class="font-weight-bold">{{ t("Adjustment Type") }}:</label>
+              <select name="adjustment_type" class="form-control" required>
+                <option value="add">{{ t("Add") }}</option>
+                <option value="subtract">{{ t("Subtract") }}</option>
+                <option value="set">{{ t("Set to value") }}</option>
+              </select>
+              <small class="form-text text-muted">{{ t("Quantity must be positive; choose Add, Subtract or Set") }}</small>
+            </div>
           </div>
           <div class="form-group">
             <label class="font-weight-bold">{{ t("Notes") }}:</label>

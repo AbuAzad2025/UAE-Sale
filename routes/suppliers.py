@@ -462,8 +462,13 @@ def _statement_transactions(supplier):
                 "notes": payment.notes or "",
             },
         })
-    rows.sort(key=lambda t: (t["date"] or datetime.min).replace(tzinfo=None)
-              if getattr(t["date"], "tzinfo", None) else (t["date"] or datetime.min))
+    def _statement_sort_key(row):
+        value = row["date"] or datetime.min
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=None) if value.tzinfo else value
+        return datetime.combine(value, datetime.min.time())
+
+    rows.sort(key=_statement_sort_key)
     opening = float(supplier.get_opening_balance_base() or 0)
     if opening:
         opening_date = supplier.opening_balance_date
@@ -478,7 +483,7 @@ def _statement_transactions(supplier):
             "url": "",
             "details": {},
         })
-    balance = -opening
+    balance = 0.0
     for t in rows:
         balance += t["debit"] - t["credit"]
         t["balance"] = balance

@@ -13,6 +13,15 @@ class GamificationService:
         "large_sale": 20,
         "perfect_sale": 15,
         "fast_payment": 8,
+        "first_sale": 10,
+        "tenth_sale": 25,
+        "hundredth_sale": 100,
+        "daily_login": 2,
+        "week_streak": 10,
+        "month_streak": 40,
+        "low_stock_report": 3,
+        "customer_followup": 3,
+        "task_completed": 5,
     }
 
     BADGES = {

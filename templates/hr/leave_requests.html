@@ -72,7 +72,7 @@
             </form>
             <form method="POST" action="{{ url_for('hr.reject_leave', id=req.id) }}" style="display:inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="rejection_reason" value="{{ t('Rejected by management') }}">
+              <input type="text" name="rejection_reason" class="form-control form-control-sm" required placeholder="{{ t('Reason for rejection') }}">
               <button type="submit" class="btn btn-sm btn-danger" title="{{ t('Reject') }}" onclick='return confirm({{ t('Reject Leave Confirm')|tojson }})'>
                 <i class="fas fa-times"></i>
               </button>

@@ -183,8 +183,11 @@ def login():
             flash("\u062a\u0639\u0630\u0631 \u0627\u0644\u062a\u062d\u0642\u0642 \u0645\u0646 \u062d\u0627\u0644\u0629 \u0627\u0644\u0645\u0624\u0633\u0633\u0629. \u062d\u0627\u0648\u0644 \u0644\u0627\u062d\u0642\u0627\u064b.", "danger")
             return render_template("auth/login.html")
 
+        _lang = session.get("language")
         session.clear()
         login_user(user, remember=remember)
+        if _lang:
+            session["language"] = _lang
         session["last_activity"] = datetime.now().isoformat()
         session.permanent = True
 
@@ -212,7 +215,7 @@ def login():
         create_audit_log("login", "users", user.id)
 
         if getattr(user, "must_change_password", False):
-            return redirect(url_for("users.change_password"))
+            return redirect(url_for("users.change_password", next=next_page or ""))
 
         next_page = request.args.get("next")
         if next_page and next_page.startswith("/") and not next_page.startswith("//"):
@@ -230,10 +233,13 @@ def logout():
     if current_user.is_authenticated:
         create_audit_log("logout", "users", current_user.id)
         logout_user()
+        _lang = session.get("language")
         session.clear()
+        if _lang:
+            session["language"] = _lang
         flash("✅ تم تسجيل الخروج بنجاح. نراك قريباً!", "success")
 
-    return redirect(url_for("public.landing"))
+        return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/payment/create", methods=["POST"])

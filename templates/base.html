@@ -236,6 +236,7 @@
         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-left">
           <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
           <div class="dropdown-divider"></div>
+          <a href="{{ url_for('users.change_password') }}" class="dropdown-item"><i class="fas fa-key mr-2"></i>{{ t('Change Password') }}</a>
           <a href="{{ url_for('auth.logout') }}" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>{{ t('Logout') }}</a>
         </div>
       </li>
@@ -1111,7 +1112,7 @@
       <div class="container-fluid">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            <div id="flash-messages-container" style="margin-bottom: 20px;">
+            <div id="flash-messages-container" role="alert" aria-live="polite" style="margin-bottom: 20px;">
               {% for category, message in messages %}
                 <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-message" 
                      style="font-size: 18px; font-weight: 600; padding: 20px 25px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.2); animation: slideDown 0.4s ease-out; border-left: 5px solid {{ 'var(--success-color)' if category == 'success' else ('var(--danger-color)' if category in ['error', 'danger'] else ('var(--warning-color)' if category == 'warning' else 'var(--info-color)')) }};">

@@ -42,8 +42,8 @@
                 <p><strong>{{ t('Subtotal:') }}</strong> {{ purchase.subtotal }} {{ purchase.currency }}</p>
                 <p><strong>{{ t('Tax:') }}</strong> {{ purchase.tax_amount }} {{ purchase.currency }}</p>
                 <p><strong>{{ t('Total:') }}</strong> {{ purchase.total_amount }} {{ purchase.currency }}</p>
-                <p><strong>{{ t('Paid:') }}</strong> {{ purchase.paid_amount }} {{ base_currency }}</p>
-                <p><strong>{{ t('Remaining:') }}</strong> {{ purchase.balance }} {{ base_currency }}</p>
+                <p><strong>{{ t('Paid:') }}</strong> {{ purchase.get_paid_amount() }} {{ base_currency }}</p>
+                <p><strong>{{ t('Remaining:') }}</strong> {{ '{:,.2f}'.format((purchase.amount_base or 0) - (purchase.get_paid_amount() or 0)) }} {{ base_currency }}</p>
               </div>
             </div>
 
@@ -66,7 +66,7 @@
                   <td>{{ line.quantity }}</td>
                   <td>{{ line.unit_cost }} {{ purchase.currency }}</td>
                   <td>{{ line.discount_percent or 0 }}%</td>
-                  <td>{{ line.total_cost }} {{ purchase.currency }}</td>
+                  <td>{{ '{:,.2f}'.format(line.line_total or 0) }} {{ purchase.currency }}</td>
                 </tr>
                 {% endfor %}
               </tbody>

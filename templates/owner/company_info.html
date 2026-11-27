@@ -18,18 +18,18 @@
           <h2 class="profile-card__name">{{ tenant.name_ar or t('Company Name') }}</h2>
           <p class="profile-card__industry">
             <i class="fas fa-industry"></i>
-            {{ tenant.get_industry_display() if tenant.get_industry_display else t('Field of Work') }}
+            {{ tenant.get_industry(current_language) or t('Field of Work') }}
           </p>
         </div>
       </div>
       <div class="profile-card__body">
         <div class="profile-card__stat">
           <span class="label">{{ t('Business Type') }}</span>
-          <span class="value">{{ tenant.get_business_type_display() if tenant.get_business_type_display else t('Not Specified') }}</span>
+          <span class="value">{{ tenant.get_business_type(current_language) or t('Not Specified') }}</span>
         </div>
         <div class="profile-card__stat">
           <span class="label">{{ t('Country') }}</span>
-          <span class="value">{{ tenant.get_country_display() if tenant.get_country_display else t('Unspecified') }}</span>
+          <span class="value">{{ tenant.country or t('Unspecified') }}</span>
         </div>
         <div class="profile-card__stat">
           <span class="label">{{ t('City') }}</span>

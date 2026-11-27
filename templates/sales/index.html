@@ -324,25 +324,25 @@ $(document).ready(function() {
   }
 
   $('#filterAll').off('click.smartPrint').on('click.smartPrint', function() {
-    table.search('').draw();
+    table.search('').columns().search('').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterPaid').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('{{ t("Paid") }}').draw();
+    table.column(7).search('{{ t("Paid") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterPartial').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('{{ t("Partial") }}').draw();
+    table.column(7).search('{{ t("Partial") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterUnpaid').off('click.smartPrint').on('click.smartPrint', function() {
-    table.column(6).search('{{ t("Due") }}').draw();
+    table.column(7).search('{{ t("Due") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });

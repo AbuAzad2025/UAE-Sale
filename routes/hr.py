@@ -80,9 +80,9 @@ def create_department():
             create_audit_log("create", "departments", dept.id)
             flash(f'✅ تم إنشاء قسم "{dept.name}" بنجاح!', "success")
             return redirect(url_for("hr.departments"))
-        except ValueError:
-            current_app.logger.exception("handler failed")
-            flash("⚠️: حدث خطأ غير متوقع", "danger")
+        except ValueError as exc:
+            current_app.logger.warning("validation failed: %s", exc)
+            flash(f"⚠️: {exc}", "danger")
         except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
@@ -283,6 +283,7 @@ def create_employee():
         "hr/create_employee.html",
         available_users=available_users,
         departments=departments,
+        today=date.today().isoformat(),
     )
 
 
@@ -455,9 +456,9 @@ def create_leave():
             flash("✅ تم تقديم طلب الإجازة بنجاح!", "success")
             return redirect(url_for("hr.leave_requests"))
 
-        except ValueError:
-            current_app.logger.exception("handler failed")
-            flash("⚠️: حدث خطأ غير متوقع", "danger")
+        except ValueError as exc:
+            current_app.logger.warning("validation failed: %s", exc)
+            flash(f"⚠️: {exc}", "danger")
         except Exception:
             db.session.rollback()
             current_app.logger.exception("handler failed")
@@ -485,9 +486,9 @@ def approve_leave(id):
         leave = HRService.approve_leave(id, current_user.id)
         create_audit_log("approve", "leave_requests", leave.id)
         flash("✅ تمت الموافقة على طلب الإجازة", "success")
-    except ValueError:
-        current_app.logger.exception("handler failed")
-        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        current_app.logger.warning("validation failed: %s", exc)
+        flash(f"⚠️: {exc}", "danger")
     except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
@@ -504,9 +505,9 @@ def reject_leave(id):
         leave = HRService.reject_leave(id, current_user.id, reason)
         create_audit_log("reject", "leave_requests", leave.id)
         flash("⚠️ تم رفض طلب الإجازة", "warning")
-    except ValueError:
-        current_app.logger.exception("handler failed")
-        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        current_app.logger.warning("validation failed: %s", exc)
+        flash(f"⚠️: {exc}", "danger")
     except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
@@ -522,9 +523,9 @@ def cancel_leave(id):
         leave = HRService.cancel_leave(id)
         create_audit_log("cancel", "leave_requests", leave.id)
         flash("✅ تم إلغاء طلب الإجازة", "success")
-    except ValueError:
-        current_app.logger.exception("handler failed")
-        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        current_app.logger.warning("validation failed: %s", exc)
+        flash(f"⚠️: {exc}", "danger")
     except Exception:
         db.session.rollback()
         current_app.logger.exception("handler failed")
@@ -652,9 +653,9 @@ def approve_payslip(id):
         db.session.commit()
         create_audit_log("approve", "payslips", payslip.id)
         flash("✅ تم اعتماد كشف الرواتب بنجاح", "success")
-    except ValueError:
-        current_app.logger.exception("handler failed")
-        flash("⚠️: حدث خطأ غير متوقع", "danger")
+    except ValueError as exc:
+        current_app.logger.warning("validation failed: %s", exc)
+        flash(f"⚠️: {exc}", "danger")
     except HTTPException:
         db.session.rollback()
         raise

@@ -34,6 +34,7 @@ from services.maintenance_service import (
     pay_maintenance_supplier,
     ALLOWED_TRANSITIONS,
     BILLABLE_STATUSES,
+    EDITABLE_STATUSES,
 )
 from models.maintenance import (
     MaintenanceOrder,
@@ -216,8 +217,7 @@ def view_order(id):
     transitions = [
         status
         for status in ALLOWED_TRANSITIONS.get(order.status, ())
-        if status != "closed"
-        and (status != "cancelled" or current_user.has_permission("maintenance_close"))
+        if (status != "cancelled" or current_user.has_permission("maintenance_close"))
     ]
     status_history = (
         MaintenanceOrderStatusLog.query.filter_by(maintenance_order_id=order.id)
@@ -232,6 +232,7 @@ def view_order(id):
         transitions=transitions,
         status_history=status_history,
         billable_statuses=BILLABLE_STATUSES,
+        editable_statuses=EDITABLE_STATUSES,
     )
 
 

@@ -2,7 +2,7 @@
 {% block title %}{{ t('Maintenance Order') }} {{ order.order_no }}{% endblock %}
 {% block page_title %}<i class="fas fa-file-contract mr-2"></i>{{ t('Maintenance Order') }}: {{ order.order_no }}{% endblock %}
 {% block content %}
-{% if order.warranty_status == 'under_warranty' %}
+{% if order.warranty_status in ('under_warranty', 'active') %}
 <div class="alert alert-success" role="alert">
   <i class="fas fa-shield-alt mr-2"></i>{{ t('This order is covered by warranty: its value is not charged to the customer, and parts cost is recorded to warranty expense.') }}
 </div>
@@ -191,7 +191,7 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ t('Invoice') }}</h5>
-        {% if not order.invoice and order.status in billable_statuses and order.items or order.services %}
+        {% if not order.invoice and order.status in billable_statuses and (order.items or order.services) and current_user.has_permission('maintenance_close') %}
         <form method="POST" action="{{ url_for('maintenance.create_invoice', id=order.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-sm btn-info"><i class="fas fa-file-invoice mr-1"></i>{{ t('Issue & Post Invoice') }}</button>
@@ -209,7 +209,7 @@
           </span></p>
         {% else %}
         <p class="text-muted mb-0">{{ t('No invoice has been issued for this order yet.') }}
-          {% if order.warranty_status == 'under_warranty' %}{{ t('The order is under warranty, so no customer invoice is issued.') }}{% endif %}</p>
+          {% if order.warranty_status in ('under_warranty', 'active') %}{{ t('The order is under warranty, so no customer invoice is issued.') }}{% endif %}</p>
         {% endif %}
       </div>
     </div>
@@ -327,7 +327,7 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">{{ t('Parts Items') }}</h5>
-        {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
+        {% if order.status in editable_statuses and not order.invoice and current_user.has_permission('maintenance_work') %}
         <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#addItemModal" data-bs-toggle="modal" data-bs-target="#addItemModal" onclick="window.jQuery('#addItemModal').modal('show');return false;"><i class="fas fa-plus mr-1"></i>{{ t('Add Part') }}</button>
         {% endif %}
       </div>
@@ -344,7 +344,7 @@
             <td>{{ "{:,.3f}".format(it.tax_amount or 0) }}</td>
             <td>{{ "{:,.3f}".format(it.line_total or 0) }}</td>
             <td>
-              {% if order.status not in ('closed', 'cancelled') and not order.invoice %}
+              {% if order.status in editable_statuses and not order.invoice %}
               <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#returnModal{{ it.id }}" data-bs-toggle="modal" data-bs-target="#returnModal{{ it.id }}" onclick="window.jQuery(\'#returnModal{{ it.id }}\').modal(\'show\');return false;" title="{{ t('Return part to stock') }}"><i class="fas fa-undo"></i> {{ t('Return') }}</button>
               {% endif %}
             </td>
@@ -362,7 +362,7 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">{{ t('Service Items') }}</h5>
-        {% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_work') %}
+        {% if order.status in editable_statuses and not order.invoice and current_user.has_permission('maintenance_work') %}
         <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#addServiceModal" data-bs-toggle="modal" data-bs-target="#addServiceModal" onclick="window.jQuery('#addServiceModal').modal('show');return false;"><i class="fas fa-plus mr-1"></i>{{ t('Add Service') }}</button>
         {% endif %}
       </div>
@@ -388,7 +388,7 @@
   </div>
 </div>
 
-{% if order.status not in ('closed', 'cancelled') and not order.invoice and current_user.has_permission('maintenance_discount') %}
+{% if order.status in editable_statuses and not order.invoice and current_user.has_permission('maintenance_discount') %}
 <div class="row mt-4">
   <div class="col-12">
     <div class="card">
@@ -474,7 +474,7 @@
 </div>
 {% endif %}
 
-{% if order.status not in ('closed', 'cancelled') and not order.invoice %}
+{% if order.status in editable_statuses and not order.invoice %}
 <div class="modal fade" id="addItemModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -530,7 +530,7 @@
 </div>
 {% endif %}
 
-{% if order.status not in ('closed', 'cancelled') and not order.invoice %}
+{% if order.status in editable_statuses and not order.invoice %}
 <div class="modal fade" id="addServiceModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -580,7 +580,7 @@
 </div>
 {% endif %}
 
-{% if order.status not in ('closed', 'cancelled') and not order.invoice %}
+{% if order.status in editable_statuses and not order.invoice %}
 {% for it in order.items %}
 <div class="modal fade" id="returnModal{{ it.id }}" tabindex="-1">
   <div class="modal-dialog">

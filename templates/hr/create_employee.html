@@ -90,7 +90,7 @@
                 <label>{{ t('Currency') }}</label>
                 <select name="salary_currency" class="form-control select2">
                   {% for code, meta in lookups.get('currencies', []) %}
-                  <option value="{{ code }}" {% if code == 'ILS' %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
+                  <option value="{{ code }}" {% if code == (base_currency or 'AED') %}selected{% endif %}>{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
                   {% endfor %}
                 </select>
               </div>

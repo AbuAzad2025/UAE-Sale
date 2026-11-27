@@ -323,8 +323,8 @@
           <canvas id="growthRateChart"></canvas>
         </div>
         <div class="text-center mt-3">
-          <h3 class="trend-up">+18.5%</h3>
-          <p>{{ t('Excellent growth compared to last year') }}</p>
+          <h3 class="trend-up">—</h3>
+          <p>{{ t('No comparative data for this period') }}</p>
         </div>
       </div>
     </div>
@@ -336,8 +336,8 @@
           <canvas id="liquidityChart"></canvas>
         </div>
         <div class="text-center mt-3">
-          <h3 class="trend-up">2.3</h3>
-          <p>{{ t('Good and healthy liquidity') }}</p>
+          <h3 class="trend-up">—</h3>
+          <p>{{ t('No data for this period') }}</p>
         </div>
       </div>
     </div>
@@ -349,8 +349,8 @@
           <canvas id="roiChart"></canvas>
         </div>
         <div class="text-center mt-3">
-          <h3 class="trend-up">25.7%</h3>
-          <p>{{ t('Excellent return on investment') }}</p>
+          <h3 class="trend-up">—</h3>
+          <p>{{ t('No data for this period') }}</p>
         </div>
       </div>
     </div>
@@ -417,7 +417,7 @@ const expenseDistributionChart = new Chart(expenseDistributionCtx, {
   data: {
     labels: [{{ t('Salaries')|tojson }}, {{ t('Rent')|tojson }}, {{ t('Materials')|tojson }}, {{ t('Electricity')|tojson }}, {{ t('Maintenance')|tojson }}, {{ t('Other')|tojson }}],
     datasets: [{
-      data: [35, 20, 18, 12, 10, 5],
+      data: [],
       backgroundColor: [
         '#667eea',
         '#f5576c',
@@ -485,7 +485,7 @@ new Chart(growthRateCtx, {
   data: {
     labels: ['Q1', 'Q2', 'Q3', 'Q4'],
     datasets: [{
-      data: [12, 15, 18, 22],
+      data: [],
       borderColor: '#43e97b',
       backgroundColor: 'rgba(67, 233, 123, 0.1)',
       fill: true,
@@ -506,7 +506,7 @@ new Chart(liquidityCtx, {
   data: {
     labels: [{{ t('Current')|tojson }}, {{ t('Quick')|tojson }}],
     datasets: [{
-      data: [2.3, 1.8],
+      data: [],
       backgroundColor: ['#4facfe', '#00f2fe']
     }]
   },
@@ -523,7 +523,7 @@ new Chart(roiCtx, {
   type: 'doughnut',
   data: {
     datasets: [{
-      data: [25.7, 74.3],
+      data: [],
       backgroundColor: ['#667eea', '#e0e0e0'],
       borderWidth: 0
     }]

@@ -299,8 +299,9 @@ if (typeof $ !== 'undefined') {
 
 // Replace old flash messages with toasts
 $(document).ready(function() {
-    $('.alert').each(function() {
+    $('#flash-messages-container .alert, .flash-messages .alert, [data-toast]').each(function() {
         const $alert = $(this);
+        if ($alert.find('a, button:not(.close), form').length) return; // keep actionable/inline alerts
         const message = $alert.text().trim();
         let type = 'info';
         

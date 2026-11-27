@@ -330,23 +330,22 @@ $(document).ready(function() {
 
   $('#filterLow').off('click.smartPrint').on('click.smartPrint', function() {
     $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-      const stock = parseFloat(data[5].match(/\d+/)?.[0] || 0);
-      const row = table.row(dataIndex).node();
-      const min = parseFloat($(row).data('min')) || 0;
-      return stock > 0 && stock <= min;
+      const row = $(table.row(dataIndex).node());
+      const stock = parseFloat(row.data('stock'));
+      const min = parseFloat(row.data('min'));
+      return Number.isFinite(stock) && Number.isFinite(min) && stock > 0 && stock <= min;
     });
     table.draw();
-    $.fn.dataTable.ext.search.pop();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterOut').off('click.smartPrint').on('click.smartPrint', function() {
-    $.fn.dataTable.ext.search.push(function(settings, data) {
-      return data[5].includes({{ t('Sold Out')|tojson }});
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+      const stock = parseFloat($(table.row(dataIndex).node()).data('stock'));
+      return Number.isFinite(stock) && stock <= 0;
     });
     table.draw();
-    $.fn.dataTable.ext.search.pop();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });

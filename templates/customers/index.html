@@ -217,31 +217,32 @@ $(document).ready(function() {
   });
 
   $('#filterAll').click(function() {
-    table.search('').draw();
+    table.search('').columns().search('').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterVIP').click(function() {
-    table.search('vip').draw();
+    table.column(2).search('VIP', true, false).draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterMerchant').click(function() {
-    table.search({{ t('Merchant')|tojson }}).draw();
+    table.column(2).search({{ t('Merchant')|tojson }}, true, false).draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterRegular').click(function() {
-    table.search({{ t('Regular')|tojson }}).draw();
+    table.column(2).search({{ t('Regular')|tojson }}, true, false).draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });
 
   $('#filterOverdue').click(function() {
-    table.column(4).search('^[1-9]', true, false).draw();
+    table.search('').columns().search('').draw();
+    table.column(4).search('^-?[1-9]', true, false).draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });

@@ -282,7 +282,7 @@
   ] %}
   {% for icon, label, question in prompts %}
   <div class="col-6 col-md-4 col-xl mb-3">
-    <button type="button" class="ai-feature-card w-100 h-100" data-chat-question="{{ question }}">
+    <button type="button" class="ai-feature-card w-100 h-100" data-chat-question="{{ question if current_language == 'ar' else t(label) }}">
       <span class="ai-feature-icon d-block"><i class="fas {{ icon }}" aria-hidden="true"></i></span>
       <span>{{ ('مقارنة المبيعات' if current_language == 'ar' else 'Compare Sales') if label == 'Compare Sales' else t(label) }}</span>
     </button>

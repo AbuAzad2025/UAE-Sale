@@ -394,14 +394,8 @@
       <a href="{{ url_for('purchases.index') }}" class="btn btn-secondary btn-lg">
         <i class="fas fa-times mr-2"></i> {{ t('Cancel') }}
       </a>
-      <button type="button" class="btn btn-info btn-lg float-left" onclick="calculateTotals();">
+      <button type="button" class="btn btn-info btn-lg" onclick="calculateTotals();">
         <i class="fas fa-calculator mr-2"></i> {{ t('Recalculate') }}
-      </button>
-      <button type="button" class="btn btn-warning btn-lg float-left ml-2" onclick="debugTotals()">
-        <i class="fas fa-bug mr-2"></i> {{ t('Debug') }}
-      </button>
-      <button type="button" class="btn btn-success btn-lg float-left ml-2" onclick="forceCalculate()">
-        <i class="fas fa-bolt mr-2"></i> {{ t('Instant Calculation') }}
       </button>
     </div>
   </form>

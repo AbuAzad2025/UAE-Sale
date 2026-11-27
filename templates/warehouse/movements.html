@@ -101,8 +101,6 @@
             <th><i class="fas fa-box mr-2"></i>{{ t("Product") }}</th>
             <th><i class="fas fa-tag mr-2"></i>{{ t("Movement Type") }}</th>
             <th><i class="fas fa-sort-numeric-down mr-2"></i>{{ t('Quantity') }}</th>
-            <th><i class="fas fa-layer-group mr-2"></i>{{ t("Before") }}</th>
-            <th><i class="fas fa-layer-group mr-2"></i>{{ t("After") }}</th>
             <th><i class="fas fa-link mr-2"></i>{{ t("Reference") }}</th>
             <th><i class="fas fa-sticky-note mr-2"></i>{{ t('Notes') }}</th>
           </tr>
@@ -150,23 +148,14 @@
               {% endif %}
             </td>
             <td>
-              <strong class="{% if movement.movement_type in ['purchase', 'return', 'adjustment'] %}text-success{% else %}text-danger{% endif %}">
-                {% if movement.movement_type in ['purchase', 'return', 'adjustment'] %}+{% else %}-{% endif %}{{ movement.quantity }}
+              <strong class="{% if movement.quantity > 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ movement.quantity }}
               </strong>
             </td>
+            <td class="text-muted">—</td>
             <td>
-              <span class="badge badge-info">
-                {{ movement.product.current_stock|default(0) }}
-              </span>
-            </td>
-            <td>
-              <span class="badge {% if movement.product.current_stock <= 0 %}badge-danger{% elif movement.product.current_stock <= movement.product.min_stock_alert %}badge-warning{% else %}badge-success{% endif %}">
-                {{ movement.product.current_stock|default(0) }}
-              </span>
-            </td>
-            <td>
-              {% if movement.reference %}
-                <code class="bg-light px-2 py-1 rounded">{{ movement.reference }}</code>
+              {% if movement.reference_type %}
+                <code class="bg-light px-2 py-1 rounded">{{ movement.reference_type }} #{{ movement.reference_id }}</code>
               {% else %}
                 <span class="text-muted">-</span>
               {% endif %}
@@ -229,7 +218,7 @@ $(document).ready(function() {
       placeholder: $('#warehouseFilter').data('placeholder') || '{{ t("Select warehouse...") }}',
       allowClear: true,
       width: 'resolve',
-      dir: 'rtl'
+      dir: '{{ "rtl" if current_language == "ar" else "ltr" }}'
     });
   }
 

@@ -600,46 +600,54 @@ def update_integration(service):
     try:
         integration = IntegrationSettings.get_service_config(service)
 
-        integration.enabled = (
-            request.form.get("enabled") == "true" or request.form.get("enabled") == "1"
-        )
+        _enabled = str(request.form.get("enabled", "")).strip().lower()
+        integration.enabled = _enabled in ("true", "1", "on", "yes")
 
-        config_data = {}
+        config_data = integration.get_config() or {}
+
+        def _put(key, default=""):
+            if key in request.form:
+                config_data[key] = request.form.get(key, default)
+
+        def _put_secret(key):
+            value = request.form.get(key, "")
+            if value:  # blank means "keep the stored secret"
+                config_data[key] = value
 
         if service == "whatsapp":
-            config_data = {
-                "api_token": request.form.get("api_token", ""),
-                "phone_number": request.form.get("phone_number", ""),
-                "api_url": request.form.get("api_url", ""),
-                "message_template": request.form.get("message_template", ""),
-            }
+            for key in ("phone_number", "api_url", "message_template"):
+                _put(key)
+            _put_secret("api_token")
 
         elif service == "email":
-            config_data = {
-                "smtp_host": request.form.get("smtp_host", ""),
-                "smtp_port": request.form.get("smtp_port", "587"),
-                "smtp_user": request.form.get("smtp_user", ""),
-                "smtp_password": request.form.get("smtp_password", ""),
-                "smtp_use_tls": request.form.get("smtp_use_tls") == "true"
-                or request.form.get("smtp_use_tls") == "1",
-                "from_email": request.form.get("from_email", ""),
-                "from_name": request.form.get("from_name", ""),
-            }
+            for key in ("smtp_host", "smtp_port", "smtp_user"):
+                _put(key)
+            _put_secret("smtp_password")
+            tls = request.form.get("smtp_use_tls")
+            if tls is None:
+                tls = request.form.get("smtp_encryption")
+            if tls is not None:
+                config_data["smtp_use_tls"] = str(tls).lower() in ("true", "1", "on", "yes", "tls", "starttls")
+                config_data["smtp_encryption"] = tls
+            for key, aliases in (
+                ("from_email", ("from_email", "sender_email")),
+                ("from_name", ("from_name", "sender_name")),
+            ):
+                for alias in aliases:
+                    if alias in request.form:
+                        config_data[key] = request.form.get(alias, "")
+                        break
 
         elif service == "redis":
-            config_data = {
-                "redis_host": request.form.get("redis_host", "localhost"),
-                "redis_port": request.form.get("redis_port", "6379"),
-                "redis_password": request.form.get("redis_password", ""),
-                "redis_db": request.form.get("redis_db", "0"),
-            }
+            for key in ("redis_host", "redis_port", "redis_db"):
+                _put(key)
+            _put_secret("redis_password")
 
         elif service == "currency_api":
-            config_data = {
-                "api_key": request.form.get("api_key", ""),
-                "api_url": request.form.get("api_url", ""),
-                "update_frequency": request.form.get("update_frequency", "daily"),
-            }
+            for key in ("api_provider", "base_currency", "update_frequency"):
+                _put(key)
+            _put_secret("api_key")
+            _put("api_url")
 
         integration.set_config(config_data)
         integration.updated_by = current_user.id
@@ -2206,81 +2214,94 @@ def invoice_settings():
 
     if request.method == "POST":
         try:
-            settings.company_name_ar = request.form.get("company_name_ar", "").strip()
-            settings.company_name_en = request.form.get("company_name_en", "").strip()
+            # Only update fields that the form actually contains.  The owner
+            # settings page intentionally shows a subset of the stored keys;
+            # writing every key would silently wipe hidden settings on save.
+            def _get(key, default=""):
+                if key in request.form:
+                    return request.form.get(key, default)
+                return getattr(settings, key, default)
 
-            settings.address_ar = request.form.get("address_ar", "").strip()
-            settings.address_en = request.form.get("address_en", "").strip()
-            settings.phone_1 = request.form.get("phone_1", "").strip()
-            settings.phone_2 = request.form.get("phone_2", "").strip()
-            settings.email = request.form.get("email", "").strip()
-            settings.website = request.form.get("website", "").strip()
+            def _bool(key):
+                if key in request.form:
+                    return request.form.get(key) == "on"
+                return bool(getattr(settings, key, False))
 
-            settings.tax_number = request.form.get("tax_number", "").strip()
-            settings.commercial_register = request.form.get(
+            settings.company_name_ar = _get("company_name_ar", "").strip()
+            settings.company_name_en = _get("company_name_en", "").strip()
+
+            settings.address_ar = _get("address_ar", "").strip()
+            settings.address_en = _get("address_en", "").strip()
+            settings.phone_1 = _get("phone_1", "").strip()
+            settings.phone_2 = _get("phone_2", "").strip()
+            settings.email = _get("email", "").strip()
+            settings.website = _get("website", "").strip()
+
+            settings.tax_number = _get("tax_number", "").strip()
+            settings.commercial_register = _get(
                 "commercial_register", ""
             ).strip()
-            settings.license_number = request.form.get("license_number", "").strip()
+            settings.license_number = _get("license_number", "").strip()
 
-            settings.bank_name = request.form.get("bank_name", "").strip()
-            settings.bank_account_number = request.form.get(
+            settings.bank_name = _get("bank_name", "").strip()
+            settings.bank_account_number = _get(
                 "bank_account_number", ""
             ).strip()
-            settings.iban = request.form.get("iban", "").strip()
-            settings.swift_code = request.form.get("swift_code", "").strip()
+            settings.iban = _get("iban", "").strip()
+            settings.swift_code = _get("swift_code", "").strip()
 
-            settings.header_color = request.form.get("header_color", "#667eea").strip()
-            settings.accent_color = request.form.get("accent_color", "#764ba2").strip()
-            settings.text_color = request.form.get("text_color", "#333333").strip()
+            settings.header_color = _get("header_color", "#667eea").strip()
+            settings.accent_color = _get("accent_color", "#764ba2").strip()
+            settings.text_color = _get("text_color", "#333333").strip()
 
-            settings.show_logo = request.form.get("show_logo") == "on"
-            settings.logo_position = request.form.get("logo_position", "left")
-            settings.logo_size = request.form.get("logo_size", "medium")
+            settings.show_logo = _bool("show_logo")
+            settings.logo_position = _get("logo_position", "left")
+            settings.logo_size = _get("logo_size", "medium")
 
-            settings.footer_text_ar = request.form.get("footer_text_ar", "").strip()
-            settings.footer_text_en = request.form.get("footer_text_en", "").strip()
-            settings.show_terms = request.form.get("show_terms") == "on"
+            settings.footer_text_ar = _get("footer_text_ar", "").strip()
+            settings.footer_text_en = _get("footer_text_en", "").strip()
+            settings.show_terms = _bool("show_terms")
 
-            settings.terms_conditions_ar = request.form.get(
+            settings.terms_conditions_ar = _get(
                 "terms_conditions_ar", ""
             ).strip()
-            settings.terms_conditions_en = request.form.get(
+            settings.terms_conditions_en = _get(
                 "terms_conditions_en", ""
             ).strip()
-            settings.payment_terms_ar = request.form.get("payment_terms_ar", "").strip()
-            settings.payment_terms_en = request.form.get("payment_terms_en", "").strip()
+            settings.payment_terms_ar = _get("payment_terms_ar", "").strip()
+            settings.payment_terms_en = _get("payment_terms_en", "").strip()
 
-            settings.default_invoice_note_ar = request.form.get(
+            settings.default_invoice_note_ar = _get(
                 "default_invoice_note_ar", ""
             ).strip()
-            settings.default_invoice_note_en = request.form.get(
+            settings.default_invoice_note_en = _get(
                 "default_invoice_note_en", ""
             ).strip()
-            settings.default_receipt_note_ar = request.form.get(
+            settings.default_receipt_note_ar = _get(
                 "default_receipt_note_ar", ""
             ).strip()
-            settings.default_receipt_note_en = request.form.get(
+            settings.default_receipt_note_en = _get(
                 "default_receipt_note_en", ""
             ).strip()
 
-            settings.enable_qr_code = request.form.get("enable_qr_code") == "on"
-            settings.qr_position = request.form.get("qr_position", "bottom-right")
-            settings.enable_watermark = request.form.get("enable_watermark") == "on"
-            settings.watermark_text = request.form.get("watermark_text", "").strip()
+            settings.enable_qr_code = _bool("enable_qr_code")
+            settings.qr_position = _get("qr_position", "bottom-right")
+            settings.enable_watermark = _bool("enable_watermark")
+            settings.watermark_text = _get("watermark_text", "").strip()
 
-            settings.paper_size = request.form.get("paper_size", "A4")
-            settings.orientation = request.form.get("orientation", "portrait")
-            settings.default_language = request.form.get("default_language", "ar")
+            settings.paper_size = _get("paper_size", "A4")
+            settings.orientation = _get("orientation", "portrait")
+            settings.default_language = _get("default_language", "ar")
 
-            settings.show_barcode = request.form.get("show_barcode") == "on"
-            settings.show_page_numbers = request.form.get("show_page_numbers") == "on"
-            settings.show_due_date = request.form.get("show_due_date") == "on"
+            settings.show_barcode = _bool("show_barcode")
+            settings.show_page_numbers = _bool("show_page_numbers")
+            settings.show_due_date = _bool("show_due_date")
 
-            settings.facebook_url = request.form.get("facebook_url", "").strip()
-            settings.instagram_url = request.form.get("instagram_url", "").strip()
-            settings.whatsapp_number = request.form.get("whatsapp_number", "").strip()
+            settings.facebook_url = _get("facebook_url", "").strip()
+            settings.instagram_url = _get("instagram_url", "").strip()
+            settings.whatsapp_number = _get("whatsapp_number", "").strip()
 
-            settings.active_template = request.form.get("active_template", "modern")
+            settings.active_template = _get("active_template", "modern")
 
             if "company_logo" in request.files:
                 logo_file = request.files["company_logo"]

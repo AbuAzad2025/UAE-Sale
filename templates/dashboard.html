@@ -457,6 +457,13 @@ a.hover-card[href*="/reports/sales"] i {
   color: #fff !important;
   text-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
 }
+body a.card.hover-card[href*="/sales/create"] > .card-body,
+body a.card.hover-card[href*="/customers/create"] > .card-body,
+body a.card.hover-card[href*="/products/create"] > .card-body,
+body a.card.hover-card[href*="/reports/sales"] > .card-body {
+  background: transparent !important;
+  color: #fff !important;
+}
 </style>
 {% endblock %}
 

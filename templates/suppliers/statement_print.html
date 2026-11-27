@@ -84,29 +84,29 @@
         </tr>
       </thead>
       <tbody>
-        {% for t in transactions %}
+        {% for tx in transactions %}
         <tr>
-          <td>{{ t.date.strftime('%Y-%m-%d') if t.date else '-' }}</td>
-          <td>{{ t.reference }}</td>
-          <td>{{ t.description }}</td>
-          <td>{{ '{:,.2f}'.format(t.debit) if t.debit else '-' }}</td>
-          <td>{{ '{:,.2f}'.format(t.credit) if t.credit else '-' }}</td>
-          <td><strong>{{ '{:,.2f}'.format(t.balance|abs) }}</strong> <small>({{ t('Credit') if t.balance < 0 else t('Debit') }})</small></td>
+          <td>{{ tx.date.strftime('%Y-%m-%d') if tx.date else '-' }}</td>
+          <td>{{ tx.reference }}</td>
+          <td>{{ tx.description }}</td>
+          <td>{{ '{:,.2f}'.format(tx.debit) if tx.debit else '-' }}</td>
+          <td>{{ '{:,.2f}'.format(tx.credit) if tx.credit else '-' }}</td>
+          <td><strong>{{ '{:,.2f}'.format(tx.balance|abs) }}</strong> <small>({{ t('Credit') if tx.balance < 0 else t('Debit') }})</small></td>
         </tr>
         <tr>
           <td colspan="6" style="background:#fafafa; font-size:7px; padding:4px 7px;">
-            {% if t.type == 'purchase' %}
+            {% if tx.type == 'purchase' %}
               <strong>{{ t('Products') }}:</strong>
-              {% for ln in t.details.lines %}{{ ln.product }} ({{ '{:,.2f}'.format(ln.quantity) }} × {{ '{:,.2f}'.format(ln.unit_cost) }}){% if not loop.last %}، {% endif %}{% endfor %}
-              · <strong>{{ t('Tax') }}:</strong> {{ '{:,.2f}'.format(t.details.tax) }}
-              · <strong>{{ t('Due Date') }}:</strong> {{ t.details.due_date }}
+              {% for ln in tx.details.lines %}{{ ln.product }} ({{ '{:,.2f}'.format(ln.quantity) }} × {{ '{:,.2f}'.format(ln.unit_cost) }}){% if not loop.last %}، {% endif %}{% endfor %}
+              · <strong>{{ t('Tax') }}:</strong> {{ '{:,.2f}'.format(tx.details.tax) }}
+              · <strong>{{ t('Due Date') }}:</strong> {{ tx.details.due_date }}
             {% else %}
-              <strong>{{ t('Method') }}:</strong> {{ t.details.method }}
-              · <strong>{{ t('Status') }}:</strong> {{ t('Confirmed') if t.details.confirmed else t('Pending') }}
-              · <strong>{{ t('Cheque') }}:</strong> {{ t.details.cheque_number }}
-              · <strong>{{ t('Bank/Account') }}:</strong> {{ t.details.bank_name }} / {{ t.details.account_number }}
-              · <strong>{{ t('Due Date') }}:</strong> {{ t.details.due_date }}
-              {% if t.details.notes %}· <strong>{{ t('Notes') }}:</strong> {{ t.details.notes }}{% endif %}
+              <strong>{{ t('Method') }}:</strong> {{ tx.details.method }}
+              · <strong>{{ t('Status') }}:</strong> {{ t('Confirmed') if tx.details.confirmed else t('Pending') }}
+              · <strong>{{ t('Cheque') }}:</strong> {{ tx.details.cheque_number }}
+              · <strong>{{ t('Bank/Account') }}:</strong> {{ tx.details.bank_name }} / {{ tx.details.account_number }}
+              · <strong>{{ t('Due Date') }}:</strong> {{ tx.details.due_date }}
+              {% if tx.details.notes %}· <strong>{{ t('Notes') }}:</strong> {{ tx.details.notes }}{% endif %}
             {% endif %}
           </td>
         </tr>

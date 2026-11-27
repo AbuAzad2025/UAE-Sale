@@ -2474,6 +2474,12 @@ def preview_receipt(template):
         full_name = "المحصل التجريبي"
         username = "collector"
 
+    class SampleParty:
+        label = "العميل"
+        name = "عميل تجريبي"
+        phone = "0501234567"
+        email = "customer@example.com"
+
     class SampleSale:
         sale_number = "S-2025-0001"
         sale_date = datetime.now()
@@ -2522,6 +2528,7 @@ def preview_receipt(template):
             f"receipts/{template}.html",
             receipt=SampleReceipt(),
             settings=settings,
+            party=SampleParty(),
             preview=True,
         )
     except TemplateNotFound:

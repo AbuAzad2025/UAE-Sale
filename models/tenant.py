@@ -115,7 +115,15 @@ class Tenant(db.Model):
 
     @staticmethod
     def get_current():
-        """Get current tenant (single tenant for now, multi-tenant ready)"""
+        """Get the company context used by the owner's company-info page.
+
+        The owner edits the PLATFORM identity there, not a customer tenant.
+        A dedicated inactive platform row (slug ``azad-platform``) holds that
+        identity so it never appears as a customer in tenant-facing pages.
+        """
+        tenant = Tenant.query.filter_by(slug="azad-platform").first()
+        if tenant is not None:
+            return tenant
         tenant = Tenant.query.filter_by(is_active=True).first()
         if not tenant:
             tenant = Tenant(

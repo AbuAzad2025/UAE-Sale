@@ -3,7 +3,7 @@
 <head>
   <base href="{{ request.script_root }}/">
   <meta charset="utf-8">
-  <title>{% block title %}{{ (current_tenant.name_ar if current_tenant else None) or config.COMPANY_NAME_AR }}{% endblock %}</title>
+  <title>{% block title %}{% if current_user.is_authenticated and current_user.is_owner %}{{ config.COMPANY_NAME_AR or config.COMPANY_NAME }}{% else %}{{ (current_tenant.name_ar if current_tenant else None) or config.COMPANY_NAME_AR }}{% endif %}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {# CSP is enforced via the HTTP response header in app.py (after_request).

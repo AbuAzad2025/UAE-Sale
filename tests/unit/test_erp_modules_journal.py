@@ -446,6 +446,11 @@ class TestFiscalPeriodService:
         """A tenant-specific year hides the platform row for the same year."""
         from models.tenant_scope import run_in_tenant_context
 
+        from models import Tenant
+
+        tenant = Tenant(name_ar="فحص", name="Fiscal scope", slug="fiscal-scope")
+        db.session.add(tenant)
+        db.session.flush()
         global_fp = FiscalPeriod(
             name="Global 2036",
             year=2036,
@@ -460,15 +465,15 @@ class TestFiscalPeriodService:
             period_type="annual",
             start_date=date(2036, 1, 1),
             end_date=date(2036, 12, 31),
-            tenant_id=77,
+            tenant_id=tenant.id,
         )
         db.session.add_all([global_fp, tenant_fp])
         db.session.commit()
 
-        rows = run_in_tenant_context(77, FiscalPeriodService.visible_periods)
+        rows = run_in_tenant_context(tenant.id, FiscalPeriodService.visible_periods)
         years_2036 = [p for p in rows if p.year == 2036]
         assert len(years_2036) == 1
-        assert years_2036[0].tenant_id == 77
+        assert years_2036[0].tenant_id == tenant.id
 
 
 class TestStockTransferService:

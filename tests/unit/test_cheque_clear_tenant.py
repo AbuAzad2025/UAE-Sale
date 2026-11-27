@@ -1,4 +1,5 @@
 """Cheque clearance GL posting must carry the cheque's tenant_id."""
+
 import os
 
 
@@ -13,17 +14,15 @@ def test_cheque_clear_passes_tenant_id_to_gl():
     assert "tenant_id=" in block, block
 
 
-def test_cheque_clear_gl_has_balanced_entry(db):
+def test_cheque_clear_gl_has_balanced_entry(db, posting_tenant):
     """Posting a cheque clearance produces a balanced GL entry for its tenant."""
     from decimal import Decimal
     from datetime import date
 
-    from models import set_current_tenant_id
     from models.cheque import Cheque
     from models.gl import GLJournalEntry, GLJournalLine
     from extensions import db as _db
 
-    set_current_tenant_id(2)
     ch = Cheque(
         cheque_number="TEST-CLR-1",
         cheque_bank_number="TEST-CLR-1",
@@ -36,16 +35,16 @@ def test_cheque_clear_gl_has_balanced_entry(db):
         due_date=date.today(),
         bank_name="test",
         status="pending",
-        tenant_id=2,
+        tenant_id=posting_tenant.id,
     )
     _db.session.add(ch)
     _db.session.flush()
     ch.clear_cheque(clearance_date=date.today())
     _db.session.flush()
     entry = GLJournalEntry.query.get(ch.gl_clearing_entry_id)
-    assert entry is not None and entry.tenant_id == 2
+    assert entry is not None and entry.tenant_id == posting_tenant.id
     lines = GLJournalLine.query.filter_by(entry_id=entry.id).all()
-    assert all(ln.tenant_id == 2 for ln in lines)
+    assert all(ln.tenant_id == posting_tenant.id for ln in lines)
     dr = sum((ln.debit or Decimal("0")) for ln in lines)
     cr = sum((ln.credit or Decimal("0")) for ln in lines)
     assert dr == cr, (dr, cr)

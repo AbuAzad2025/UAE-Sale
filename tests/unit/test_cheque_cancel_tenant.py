@@ -1,24 +1,43 @@
-"""Cheque cancellation must post its reversing GL entry with the cheque's tenant."""
-import os
-os.environ.setdefault('PYTHONIOENCODING','utf-8')
+"""Cancelling a posted outgoing cheque preserves a balanced audit trail."""
 
-from app import create_app
+from datetime import date
+from decimal import Decimal
+
+from models import Cheque, GLJournalEntry
 
 
-def test_cancel_reverses_issue_entry_when_executed():
-    app = create_app()
-    with app.app_context():
-        from extensions import db
-        from sqlalchemy import text
-        bad = db.session.execute(text("""
-          SELECT COUNT(*) FROM (
-            SELECT e.id FROM gl_journal_entries e
-            JOIN gl_journal_lines l ON l.entry_id=e.id
-            GROUP BY e.id HAVING ABS(SUM(l.debit)-SUM(l.credit))>0.001
-          ) x
-        """)).scalar()
-        assert bad == 0
-        null_tenant = db.session.execute(text(
-            "SELECT COUNT(*) FROM gl_journal_entries WHERE tenant_id IS NULL"
-        )).scalar()
-        assert null_tenant == 0
+def test_cancel_reverses_issue_entry_when_executed(db, posting_tenant):
+    cheque = Cheque(
+        cheque_number="out-cancel",
+        cheque_bank_number="90001",
+        cheque_type="outgoing",
+        amount=Decimal("125"),
+        amount_base=Decimal("125"),
+        currency="ILS",
+        exchange_rate=1,
+        issue_date=date.today(),
+        due_date=date.today(),
+        bank_name="Test bank",
+        status="pending",
+        tenant_id=posting_tenant.id,
+    )
+    db.session.add(cheque)
+    db.session.flush()
+    cheque.issue_cheque()
+    cheque.cancel_cheque("Cancelled by issuer")
+    db.session.commit()
+    original = db.session.get(GLJournalEntry, cheque.gl_journal_entry_id)
+    reversal = db.session.get(GLJournalEntry, original.reversed_entry_id)
+    assert original.tenant_id == reversal.tenant_id == posting_tenant.id
+    assert (
+        original.total_debit
+        == original.total_credit
+        == reversal.total_debit
+        == reversal.total_credit
+        == Decimal("125")
+    )
+    for line in original.lines:
+        counterpart = next(
+            item for item in reversal.lines if item.account_id == line.account_id
+        )
+        assert (line.debit, line.credit) == (counterpart.credit, counterpart.debit)

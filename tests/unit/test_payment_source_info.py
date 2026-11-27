@@ -1,30 +1,47 @@
-"""Supplier payment receipts must reference the linked purchase invoice."""
-import os
-os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+"""Supplier receipts identify the purchase actually linked to the payment."""
 
-from app import create_app
+from datetime import date
+from decimal import Decimal
 
-
-def test_supplier_payment_shows_purchase_invoice():
-    app = create_app()
-    with app.app_context():
-        from models import set_current_tenant_id, Payment
-        set_current_tenant_id(2)
-        p = Payment.query.filter(Payment.tenant_id == 2, Payment.purchase_id.isnot(None)).first()
-        if not p:
-            return
-        src = p.get_source_info()
-        assert src is not None
-        assert src['number'].startswith('P-'), src
-        assert src['date'] is not None, src
+import pytest
+from models import Payment, Purchase
 
 
-def test_all_purchase_linked_payments_have_date():
-    app = create_app()
-    with app.app_context():
-        from models import set_current_tenant_id, Payment
-        set_current_tenant_id(2)
-        for p in Payment.query.filter_by(tenant_id=2).all():
-            if p.purchase_id:
-                src = p.get_source_info()
-                assert src and src['date'], p.payment_number
+@pytest.fixture
+def linked_payment(db, posting_tenant, owner_user):
+    purchase = Purchase(
+        purchase_number="P-104",
+        purchase_date=date(2026, 3, 5),
+        user_id=owner_user.id,
+        supplier_name="Receipt supplier",
+        total_amount=100,
+        amount_base=100,
+        currency="ILS",
+        exchange_rate=1,
+        status="confirmed",
+    )
+    db.session.add(purchase)
+    db.session.flush()
+    payment = Payment(
+        payment_number="PAY-104",
+        purchase_id=purchase.id,
+        direction="outgoing",
+        payment_type="supplier_payment",
+        payment_method="cash",
+        amount=Decimal("20"),
+        amount_base=20,
+        exchange_rate=1,
+        currency="ILS",
+        payment_confirmed=True,
+    )
+    db.session.add(payment)
+    db.session.commit()
+    return payment
+
+
+def test_supplier_payment_shows_purchase_invoice(linked_payment):
+    assert linked_payment.get_source_info()["number"] == "P-104"
+
+
+def test_all_purchase_linked_payments_have_date(linked_payment):
+    assert linked_payment.get_source_info()["date"] == "2026-03-05"

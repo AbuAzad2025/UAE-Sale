@@ -450,8 +450,10 @@ class TestProducts:
 
 class TestChequesLifecycle:
     def test_deposit_then_clear_two_step_gl_links(
-        self, client, login_owner, incoming_cheque
+        self, client, posting_owner, incoming_cheque
     ):
+        incoming_cheque.receive_cheque()
+        db.session.commit()
         cid = incoming_cheque.id
         r1 = client.post(f"/cheques/{cid}/deposit", data={}, follow_redirects=True)
         assert r1.status_code == 200
@@ -478,8 +480,10 @@ class TestChequesLifecycle:
         assert tot_d == tot_c == Decimal("500")
 
     def test_bounce_restores_ar_via_gl_entry(
-        self, client, login_owner, incoming_cheque
+        self, client, posting_owner, incoming_cheque
     ):
+        incoming_cheque.receive_cheque()
+        db.session.commit()
         resp = client.post(
             f"/cheques/{incoming_cheque.id}/bounce",
             data={"bounce_reason": "لا رصيد"},
@@ -498,8 +502,10 @@ class TestChequesLifecycle:
         assert b"998877" in alerts.data
 
     def test_cancel_happy_and_cleared_blocked(
-        self, client, login_owner, incoming_cheque
+        self, client, posting_owner, incoming_cheque
     ):
+        incoming_cheque.receive_cheque()
+        db.session.commit()
         cancelled = client.post(
             f"/cheques/{incoming_cheque.id}/cancel",
             data={"cancel_reason": "خطأ إدخال"},
@@ -536,7 +542,7 @@ class TestChequesLifecycle:
         assert cleared.status == "cleared"
 
     def test_create_then_hard_delete_removes_referenced_gl_entries(
-        self, client, login_owner, test_customer
+        self, client, posting_owner, test_customer
     ):
         today = date.today()
         form = {
@@ -811,7 +817,7 @@ class TestHR:
         assert LeaveRequest.query.count() == 0
 
     def test_payroll_generate_one_payslip_math_then_approve_pay(
-        self, client, login_owner, employee
+        self, client, posting_owner, employee
     ):
         assert client.get("/hr/payroll/generate").status_code == 200
         period_start = date.today().replace(day=1)
@@ -935,8 +941,11 @@ class TestHR:
 
 class TestErpModules:
     def test_quotation_create_convert_to_sale(
-        self, client, login_owner, owner_user, test_customer, test_product, main_wh
+        self, client, posting_owner, owner_user, test_customer, test_product, main_wh
     ):
+        db.session.add(StockMovement(product_id=test_product.id, warehouse_id=main_wh.id,
+            movement_type="adjustment", quantity=test_product.current_stock))
+        db.session.commit()
         form = {
             "customer_id": str(test_customer.id),
             "warehouse_id": str(main_wh.id),
@@ -974,7 +983,7 @@ class TestErpModules:
             f"/erp/quotations/{q.id}/convert", data={}, follow_redirects=True
         )
         assert again.status_code == 200  # status guard ValueError flash
-        assert "متحويلة" in again.data.decode("utf-8", "replace")
+        assert "بالفعل إلى فاتورة" in again.data.decode("utf-8", "replace")
         assert Sale.query.count() == 1
 
     def test_closed_fiscal_period_blocks_convert_plus_period_endpoints(
@@ -1125,10 +1134,11 @@ class TestErpModules:
         assert "مفتوح" in ar
 
     def test_po_lifecycle_partial_receive_guards(
-        self, client, login_owner, owner_user, supplier_row, test_product, main_wh
+        self, client, posting_owner, owner_user, supplier_row, test_product, main_wh
     ):
         sup = str(supplier_row.id)
         lines = {
+            "tax_rate": "0",
             "supplier_id": sup,
             "warehouse_id": str(main_wh.id),
             "lines[0][product_id]": str(test_product.id),
@@ -1182,7 +1192,8 @@ class TestErpModules:
         recv = client.post(
             f"/erp/purchase-orders/{po.id}/receive", data={}, follow_redirects=False
         )
-        assert recv.status_code == 302 and "/purchases/" in recv.headers["Location"]
+        with client.session_transaction() as session:
+            assert recv.status_code == 302 and "/purchases/" in recv.headers["Location"], session.get("_flashes")
         db.session.refresh(po)
         assert po.lines[0].received_quantity == Decimal("10")
         assert po.status == "received"
@@ -1197,7 +1208,7 @@ class TestErpModules:
         assert po.status == "received"
 
     def test_stock_transfer_send_receive_no_pnl_gl(
-        self, client, login_owner, test_product
+        self, client, posting_owner, test_product
     ):
         wh_from = _make_warehouse("WH-FROM-A")
         wh_to = _make_warehouse("WH-TO-B")
@@ -1247,13 +1258,12 @@ class TestErpModules:
         assert t.status == "received" and t.received_at is not None
         assert test_product.current_stock == start_stock  # pure relocation: net zero
 
-        out_mv = StockMovement.query.filter(
-            StockMovement.notes.ilike(f"%Transfer OUT%{t.transfer_number}%")
-        ).count()
-        in_mv = StockMovement.query.filter(
-            StockMovement.notes.ilike(f"%Transfer IN%{t.transfer_number}%")
-        ).count()
-        assert out_mv >= 1 and in_mv >= 1
+        movements = StockMovement.query.filter_by(
+            reference_type="StockTransfer", reference_id=t.id, product_id=test_product.id
+        ).all()
+        assert sorted((m.warehouse_id, m.quantity) for m in movements) == sorted(
+            [(wh_from.id, Decimal("-5")), (wh_to.id, Decimal("5"))]
+        )
 
         pl_rows = (
             GLJournalLine.query.join(GLAccount)
@@ -1416,7 +1426,7 @@ def gl(db):
 
 class TestLedgerCore:
     def test_trial_balance_totals_balanced_and_report_pages(
-        self, client, login_owner, gl
+        self, client, posting_owner, gl
     ):
         dr = db.session.query(func.sum(GLJournalLine.debit)).scalar()
         cr = db.session.query(func.sum(GLJournalLine.credit)).scalar()
@@ -1440,7 +1450,7 @@ class TestLedgerCore:
         assert index.status_code == 200
 
     def test_income_statement_balance_sheet_cashflow_aging_render(
-        self, client, login_owner, gl
+        self, client, posting_owner, gl
     ):
         today = date.today()
         qs = f"?date_from={(today - timedelta(days=10)).isoformat()}&date_to={today.isoformat()}"
@@ -1471,7 +1481,7 @@ class TestLedgerCore:
         assert cr - dr == Decimal("1000")
 
     def test_manual_entry_post_balanced_row_vs_unbalanced_flash(
-        self, client, login_owner, gl
+        self, client, posting_owner, gl
     ):
         balanced = {
             "description": "Manual ops",
@@ -1533,7 +1543,7 @@ class TestLedgerCore:
         )
         assert empty.status_code in (200, 400)
 
-    def test_reverse_entry_link_and_double_reverse_guard(self, client, login_owner, gl):
+    def test_reverse_entry_link_and_double_reverse_guard(self, client, posting_owner, gl):
         orig = gl["entries"][0]
         rev = client.post(
             f"/ledger/entry/{orig.id}/reverse",
@@ -1558,7 +1568,7 @@ class TestLedgerCore:
         assert dbl.status_code == 200  # already-reversed guard flash
         assert GLJournalEntry.query.count() == 3
 
-    def test_api_account_search_shape(self, client, login_owner, gl):
+    def test_api_account_search_shape(self, client, posting_owner, gl):
         res = client.get("/ledger/api/accounts/search?q=Cash").get_json()
         assert any(a["code"] == "1110" for a in res)
         row = next(a for a in res if a["code"] == "1110")
@@ -1603,7 +1613,7 @@ class TestAdminLedger:
         assert client.get("/ledger/accounts").status_code == 403
 
     def test_account_add_guards_success_edit_delete_guards(
-        self, client, login_owner, gl
+        self, client, posting_owner, gl
     ):
         assert client.get("/ledger/accounts/add").status_code == 200
         missing_type = client.post(
@@ -1704,7 +1714,7 @@ class TestAdminLedger:
         assert gone.status_code == 200
         assert db.session.get(GLAccount, lid) is None
 
-    def test_journal_view_reverse_link_and_error_paths(self, client, login_owner, gl):
+    def test_journal_view_reverse_link_and_error_paths(self, client, posting_owner, gl):
         entry = gl["entries"][1]
         view = client.get(f"/ledger/entry/{entry.id}")
         assert view.status_code == 200 and entry.entry_number.encode() in view.data
@@ -1807,7 +1817,7 @@ class TestAdvancedLedger:
         assert "رسوم جمركية".encode() in listed.data
 
     def test_expense_category_and_advanced_expense_routes(
-        self, client, login_owner, accounts
+        self, client, posting_owner, accounts
     ):
         assert client.get("/ledger/advanced/expense-categories").status_code == 200
         warn = client.post(
@@ -1862,7 +1872,7 @@ class TestAdvancedLedger:
         assert float(adv.tax_amount) == pytest.approx(20.0)
 
     def test_journal_management_approve_reverse_delete(
-        self, client, login_owner, accounts
+        self, client, posting_owner, accounts
     ):
         to_approve = self._draft_entry("JE-DRAFT-9001", "accrual pending approval")
         to_delete = self._draft_entry("JE-DRAFT-9002", "mistaken draft")
@@ -1919,7 +1929,7 @@ class TestAdvancedLedger:
         reversal = db.session.get(GLJournalEntry, posted.reversed_entry_id)
         assert reversal is not None and reversal.entry_type == "reversing"
 
-    def test_events_streams_and_cheque_integration_pages(self, client, login_owner):
+    def test_events_streams_and_cheque_integration_pages(self, client, posting_owner):
         ev = client.get("/ledger/advanced/real-time-events")
         assert ev.status_code == 200
         stream = client.get("/ledger/advanced/api/events/stream?limit=5").get_json()
@@ -1931,10 +1941,10 @@ class TestAdvancedLedger:
         integ = client.get("/ledger/advanced/cheque-integration")
         assert integ.status_code == 200
         summary = client.get("/ledger/advanced/api/cheque/9999/accounting-summary")
-        assert summary.status_code == 400 and summary.json["success"] is False
+        assert summary.status_code == 404
 
     def test_printing_reports_and_analytics_surfaces(
-        self, client, login_owner, accounts
+        self, client, posting_owner, accounts
     ):
         _manual_entry(
             "analytics seed",

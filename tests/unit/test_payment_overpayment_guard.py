@@ -4,17 +4,18 @@ Regression: the pre-insert listener only logged invalid amounts. Now it raises
 ValidationError using a fresh DB-computed balance so multiple / multi-currency
 split payments on one invoice cannot push it past its total.
 """
+
 from decimal import Decimal
 from datetime import date
 
 import pytest
 
 
-def _purchase(db, total=Decimal("1000")):
-    from models import set_current_tenant_id
+@pytest.fixture
+def purchase(db, posting_tenant, owner_user):
+    total = Decimal("1000")
     from models.purchase import Purchase
 
-    set_current_tenant_id(2)
     p = Purchase(
         purchase_number="TEST-OVERPAY",
         supplier_name="test",
@@ -26,18 +27,18 @@ def _purchase(db, total=Decimal("1000")):
         payment_status="unpaid",
         purchase_date=date.today(),
         tax_rate=Decimal("0"),
-        user_id=2,
+        user_id=owner_user.id,
     )
     db.session.add(p)
     db.session.flush()
     return p
 
 
-def test_overpayment_raises(db):
+def test_overpayment_raises(db, purchase):
     from models.payment import Payment
     from utils.errors import ValidationError
 
-    p = _purchase(db)
+    p = purchase
     with pytest.raises(ValidationError):
         pay = Payment(
             payment_number="TEST-PAY-OVER",
@@ -50,16 +51,16 @@ def test_overpayment_raises(db):
             exchange_rate=Decimal("1"),
             amount_base=Decimal("1200"),
             payment_confirmed=True,
-            tenant_id=2,
+            tenant_id=p.tenant_id,
         )
         db.session.add(pay)
         db.session.flush()
 
 
-def test_split_payments_within_balance_ok(db):
+def test_split_payments_within_balance_ok(db, purchase):
     from models.payment import Payment
 
-    p = _purchase(db)
+    p = purchase
     for i, amt in enumerate((Decimal("400"), Decimal("600"))):
         pay = Payment(
             payment_number=f"TEST-PAY-{i}",
@@ -72,7 +73,7 @@ def test_split_payments_within_balance_ok(db):
             exchange_rate=Decimal("1"),
             amount_base=amt,
             payment_confirmed=True,
-            tenant_id=2,
+            tenant_id=p.tenant_id,
         )
         db.session.add(pay)
         db.session.flush()
@@ -81,11 +82,11 @@ def test_split_payments_within_balance_ok(db):
     assert p.payment_status == "paid"
 
 
-def test_uncertified_cheque_does_not_consume_balance(db):
+def test_uncertified_cheque_does_not_consume_balance(db, purchase):
     """An unconfirmed (pending) cheque payment must not count as paid."""
     from models.payment import Payment
 
-    p = _purchase(db)
+    p = purchase
     pay = Payment(
         payment_number="TEST-CHQ-PENDING",
         purchase_id=p.id,
@@ -97,7 +98,7 @@ def test_uncertified_cheque_does_not_consume_balance(db):
         exchange_rate=Decimal("1"),
         amount_base=Decimal("1000"),
         payment_confirmed=False,
-        tenant_id=2,
+        tenant_id=p.tenant_id,
     )
     db.session.add(pay)
     db.session.flush()
@@ -114,7 +115,7 @@ def test_uncertified_cheque_does_not_consume_balance(db):
         exchange_rate=Decimal("1"),
         amount_base=Decimal("1000"),
         payment_confirmed=True,
-        tenant_id=2,
+        tenant_id=p.tenant_id,
     )
     db.session.add(pay2)
     db.session.flush()

@@ -1,4 +1,5 @@
 """Leave types must be seedable independently per tenant (no global name clash)."""
+
 from decimal import Decimal  # noqa: F401  (kept for consistency with suite)
 
 
@@ -7,8 +8,13 @@ def test_default_leave_types_seed_per_tenant(db):
     from models.hr import LeaveType
     from services.hr_service import HRService
 
-    for tid in (2, 3):
-        set_current_tenant_id(tid)
+    from models import Tenant
+
+    for slug in ("leave-a", "leave-b"):
+        tenant = Tenant(name_ar=slug, name=slug, slug=slug)
+        db.session.add(tenant)
+        db.session.flush()
+        set_current_tenant_id(tenant.id)
         HRService.ensure_default_leave_types()
         assert LeaveType.query.filter_by(code="annual").count() == 1
         assert LeaveType.query.count() == 6

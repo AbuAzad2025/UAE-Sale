@@ -1,5 +1,6 @@
 """The supplier edit form shows the stored delivery-note identity."""
 
+import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -23,8 +24,10 @@ def test_supplier_identity_in_edit_form(client, login_owner, db):
     assert response.status_code == 200
 
     with sync_playwright() as playwright:
-        channel = (
-            "chromium" if Path(playwright.chromium.executable_path).exists() else "chrome"
+        channel = os.environ.get("PLAYWRIGHT_BROWSER_CHANNEL") or (
+            "chromium"
+            if Path(playwright.chromium.executable_path).is_file()
+            else "chrome"
         )
         browser = playwright.chromium.launch(headless=True, channel=channel)
         try:

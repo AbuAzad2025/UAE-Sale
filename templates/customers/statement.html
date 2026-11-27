@@ -47,6 +47,24 @@ body.preview-mode .print-signatures { display: flex !important; }
 body.preview-mode .statement-table { direction: rtl !important; table-layout: auto !important; font-size: 8.5pt; }
 body.preview-mode .statement-table th, body.preview-mode .statement-table td { padding: 3pt; font-size: 8pt; }
 body.preview-mode tr.detail-row, body.preview-mode .toggle-details { display: none !important; }
+body.preview-mode .statement-letterhead {
+  border-bottom: 2pt solid #0a5a36; padding-bottom: 6pt; margin-bottom: 9pt;
+}
+body.preview-mode .statement-letterhead .pl-brand { display: flex; align-items: center; gap: 8pt; }
+body.preview-mode .statement-letterhead img { max-height: 40pt; max-width: 84pt; object-fit: contain; }
+body.preview-mode .pl-name { font-size: 11pt; font-weight: 800; }
+body.preview-mode .pl-address { font-size: 7.5pt; color: #555; }
+body.preview-mode .pl-title { text-align: center; font-size: 15pt; font-weight: 800; margin: 7pt 0; }
+body.preview-mode .pl-meta { display: flex !important; justify-content: space-between; gap: 10pt; font-size: 8pt; }
+body.preview-mode .statement-table thead th {
+  white-space: normal !important; text-align: right !important;
+  font-size: 8pt !important; padding: 4pt 3pt !important;
+  background: #eef2f5 !important; color: #111 !important;
+}
+body.preview-mode .statement-table th:last-child,
+body.preview-mode .statement-table td:last-child { display: none !important; }
+body.preview-mode .card-body, body.preview-mode .table-responsive { padding: 0 !important; }
+body.preview-mode .final-balance-display { border: 1pt solid #c2c7d1; }
 .opening-balance-row td { background: #eef4ef; font-weight: 700; }
 table.statement-table thead th {
   white-space: nowrap;

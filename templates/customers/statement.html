@@ -28,6 +28,7 @@
 
 {% block extra_css %}
 <style>
+.print-only { display: none !important; }
 table.statement-table thead th {
   white-space: nowrap;
   background: #e4e7f0;
@@ -249,140 +250,67 @@ table.statement-table thead th {
 }
 
 @media print {
-  @page {
-    size: A4 portrait;
-    margin: 0.5mm;
+  @page { size: A4 portrait; margin: 12mm 10mm 16mm; }
+  .main-sidebar, .main-header, .main-footer, .content-header,
+  .no-print, button, .btn, .statement-actions, .contentinfo,
+  tr.detail-row, .toggle-details { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: #fff !important; color: #111 !important; font-size: 9pt; }
+  .content-wrapper { margin: 0 !important; padding: 0 !important; }
+  .card, .card-body, .table-responsive {
+    border: none !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 !important; overflow: visible !important;
   }
-  .main-sidebar,
-  .main-header,
-  .main-footer,
-  .content-header,
-  .no-print,
-  button,
-  .btn {
-    display: none !important;
+  .statement-letterhead {
+    border-bottom: 2pt solid #0a5a36; padding-bottom: 6pt; margin-bottom: 9pt;
   }
-  .content-wrapper {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  .card {
-    border: none !important;
-    box-shadow: none !important;
-  }
-  body {
-    background: white !important;
-  }
-  .transaction-row.sale-row,
-  .transaction-row.payment-row {
-    background-color: transparent !important;
-  }
-  .toggle-details {
-    display: none !important;
-  }
-  .collapse {
-    display: block !important;
-    height: auto !important;
-    visibility: visible !important;
-  }
-  .invoice-detail-card {
-    page-break-inside: avoid;
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-  .table.statement-table {
-    page-break-inside: auto;
-  }
-  .table-responsive {
-    overflow: visible !important;
-  }
-  .statement-actions {
-    display: none !important;
-  }
-  .contentinfo {
-    display: none !important;
-  }
-  .card-body,
-  .table-responsive {
-    padding: 0 !important;
-  }
-  .payment-chip,
-  .status-badge {
-    background: transparent !important;
-    color: #000 !important;
-    border: 1px solid #000 !important;
-  }
-  .transaction-row.sale-row,
-  .transaction-row.payment-row,
-  .invoice-totals-table td.total-cell,
-  .invoice-totals-table td.balance-cell {
-    background: transparent !important;
-    color: #000 !important;
-  }
-  .final-balance-display {
-    padding: 0.3rem 0.6rem;
-    border-width: 1px;
-  }
-  body {
-    font-size: 7pt;
-  }
+  .statement-letterhead .pl-brand { display: flex; align-items: center; gap: 8pt; }
+  .statement-letterhead img { max-height: 40pt; max-width: 84pt; object-fit: contain; }
+  .pl-name { font-size: 11pt; font-weight: 800; }
+  .pl-address { font-size: 7.5pt; color: #555; }
+  .pl-title { text-align: center; font-size: 15pt; font-weight: 800; margin: 7pt 0; }
+  .pl-meta { display: flex !important; justify-content: space-between; gap: 10pt; font-size: 8pt; }
   .statement-table {
-    table-layout: fixed;
-    font-size: 0.34rem;
+    direction: rtl !important; width: 100% !important;
+    table-layout: auto !important; font-size: 8pt !important;
   }
-  .statement-table th,
-  .statement-table td {
-    padding: 0.16rem 0.2rem;
-    font-size: 0.34rem;
-    border: 0.4pt solid #000;
-  }
+  .statement-table thead { display: table-header-group; }
   .statement-table thead th {
-    font-size: 0.45rem;
+    white-space: normal !important; text-align: right !important;
+    font-size: 8pt !important; padding: 4pt 3pt !important;
+    background: #eef2f5 !important; color: #111 !important;
   }
-  .transaction-row td,
-  .detail-row td {
-    font-size: 0.32rem;
+  .statement-table th, .statement-table td {
+    padding: 3pt 3pt !important; font-size: 8pt !important;
+    border: .5pt solid #444 !important; color: #111 !important;
+    text-align: right !important; white-space: normal !important;
   }
-  .transaction-meta {
-    font-size: 0.28rem;
-    margin-top: 0.05rem;
+  .statement-table th:last-child, .statement-table td:last-child { display: none !important; }
+  .statement-table td.amount-cell, .statement-table th.amount-cell {
+    direction: ltr !important; text-align: right !important;
   }
-  .transaction-meta span {
-    display: block;
-    margin: 0;
+  .transaction-row, .final-balance-row { page-break-inside: avoid; }
+  .final-balance-row td { background: #f1f4f6 !important; font-size: 8.5pt !important; font-weight: 800 !important; }
+  .print-summary {
+    display: flex !important; justify-content: space-between; gap: 8pt;
+    border: .6pt solid #333; padding: 6pt 8pt; margin-top: 9pt; font-size: 8pt;
   }
-  .transaction-meta span + span::before {
-    content: '';
-    margin: 0;
+  .print-summary strong { display: block; font-size: 10pt; margin-top: 2pt; }
+  .print-signatures {
+    display: flex !important; justify-content: space-between;
+    margin-top: 20pt; font-size: 8pt;
   }
-  .status-badge,
-  .payment-chip {
-    font-size: 0.28rem;
-    padding: 0.06rem 0.15rem;
-    border-width: 0.4pt !important;
+  .print-signatures span { display: inline-block; border-top: .6pt solid #333; padding-top: 3pt; min-width: 120pt; }
+  .print-watermark {
+    position: fixed; top: 34%; left: 16%; font-size: 68pt; font-weight: 900;
+    color: rgba(0, 90, 54, .06); transform: rotate(-28deg); z-index: -1;
   }
-  .table.table-sm th,
-  .table.table-sm td,
-  .invoice-totals-table th,
-  .invoice-totals-table td {
-    font-size: 0.28rem;
-    padding: 0.1rem 0.12rem;
-    border: 0.35pt solid #000;
+  .print-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    border-top: .5pt solid #888; padding-top: 3pt;
+    font-size: 7pt; display: flex !important; justify-content: space-between;
   }
-  .invoice-totals-table th,
-  .invoice-totals-table td {
-    font-size: 0.34rem;
-    padding: 0.14rem 0.18rem;
-  }
-  .final-balance-row td {
-    font-size: 0.38rem;
-  }
-  .invoice-detail-card {
-    margin-bottom: 0.3rem;
-  }
-}
-</style>
+}</style>
 {% endblock %}
 
 {% block content %}
@@ -421,6 +349,24 @@ table.statement-table thead th {
       <a href="{{ url_for('customers.statement', id=customer.id) }}" class="btn btn-light btn-sm ml-1">{{ t('Reset') }}</a>
     </div>
   </form>
+</div>
+
+{% set statement_types = dict(lookups.get('statement_filters', [])) %}
+{% set statement_type = statement_types.get(active_filters.transaction_type, {}) %}
+<div class="print-only statement-letterhead">
+  <div class="pl-brand">
+    {% if current_tenant and current_tenant.logo_url %}<img src="{{ current_tenant.logo_url }}" alt="logo">{% endif %}
+    <div>
+      <div class="pl-name">{{ current_tenant.name_ar if current_tenant else config.COMPANY_NAME_AR }}</div>
+      <div class="pl-address">{{ current_tenant.address_ar or current_tenant.address_en if current_tenant else '' }} {% if current_tenant and current_tenant.phone_1 %}| {{ current_tenant.phone_1 }}{% endif %}</div>
+    </div>
+  </div>
+  <div class="pl-title">{{ t('Detailed Account Statement') if current_language == 'en' else 'كشف حساب مفصل' }} — {{ customer.name }}</div>
+  <div class="pl-meta">
+    <div>{{ t('Customer No.') if current_language == 'en' else 'رقم العميل' }}: {{ customer.id }}<br>{{ t('Phone') }}: {{ customer.phone or '-' }}</div>
+    <div>{{ t('Period') }}: {% if active_filters.date_from %}{{ active_filters.date_from }}{% else %}{{ t('from the beginning') }}{% endif %} — {% if active_filters.date_to %}{{ active_filters.date_to }}{% else %}{{ t('today') }}{% endif %}<br>{{ t('Transaction Type') }}: {{ (statement_type.ar if current_language != 'en' else statement_type.en) or t('All Transactions') }}</div>
+    <div class="js-print-date"></div>
+  </div>
 </div>
 
 <div class="card">
@@ -724,5 +670,27 @@ table.statement-table thead th {
   </div>
 </div>
 {% endif %}
+
+<div class="print-only print-watermark">{{ current_tenant.name_ar if current_tenant else config.COMPANY_NAME_AR }}</div>
+<div class="print-only print-summary">
+  <div>{{ t('Total Debit') if current_language == 'en' else 'إجمالي المدين' }}<strong>{{ '{:,.2f}'.format((transactions|sum(attribute='debit')) if transactions else 0) }} {{ base_currency }}</strong></div>
+  <div>{{ t('Total Credit') if current_language == 'en' else 'إجمالي الدائن' }}<strong>{{ '{:,.2f}'.format((transactions|sum(attribute='credit')) if transactions else 0) }} {{ base_currency }}</strong></div>
+  <div>{{ t('Net of displayed transactions') if current_language == 'en' else 'صافي الحركات المعروضة' }}<strong>{{ '{:,.2f}'.format(final_balance|default(0)) }} {{ base_currency }}</strong></div>
+  <div>{{ t('Current Balance') }}<strong>{{ '{:,.2f}'.format(system_balance) }} {{ base_currency }}</strong></div>
+</div>
+<div class="print-only print-signatures">
+  <span>{{ t('Accountant') if current_language == 'en' else 'المحاسب' }}</span>
+  <span>{{ t('Branch Manager') if current_language == 'en' else 'مدير الفرع' }}</span>
+</div>
+<div class="print-only print-footer">
+  <span>{{ current_tenant.name_ar if current_tenant else config.COMPANY_NAME_AR }} — {{ config.COMPANY_NAME }}</span>
+  <span class="js-print-date"></span>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var d = new Date().toLocaleString('ar-EG', {dateStyle:'medium', timeStyle:'short'});
+  document.querySelectorAll('.js-print-date').forEach(function (e) { e.textContent = d; });
+});
+</script>
 {% endblock %}
 

@@ -122,6 +122,7 @@ h3 { font-size: var(--font-size-lg); }
 
 .card::before {
   content: '';
+  pointer-events: none;
   position: absolute;
   top: 0;
   left: 0;
@@ -153,6 +154,7 @@ h3 { font-size: var(--font-size-lg); }
 
 .card-header::before {
   content: '';
+  pointer-events: none;
   position: absolute;
   top: -50%;
   right: -50%;
@@ -528,6 +530,7 @@ h3 { font-size: var(--font-size-lg); }
 
 .stat-card::before {
   content: '';
+  pointer-events: none;
   position: absolute;
   top: 0;
   left: 0;

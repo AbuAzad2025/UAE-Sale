@@ -457,7 +457,7 @@
         <div style="margin-bottom: 15px;">
             <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems - All-in-One Management Software" style="max-height: 50px;">
         </div>
-        <p style="font-size: 0.95rem;">&copy; 2025 {{ config.COMPANY_NAME }}. All rights reserved.</p>
+        <p style="font-size: 0.95rem;">&copy; {{ current_year if current_year is defined else 2026 }} {{ config.COMPANY_NAME }}. All rights reserved.</p>
         <p class="developer" style="font-size: 0.9rem;">{{ config.DEVELOPER_CREDIT }}</p>
         <div style="margin-top: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; font-size: 0.85rem;">
             <span style="color: rgba(255,255,255,0.3);">|</span>

@@ -17,7 +17,6 @@ import logging
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from functools import wraps
-from uuid import uuid4
 
 from extensions import db
 from models.maintenance import (
@@ -204,7 +203,11 @@ def create_maintenance_order(tenant_id, customer_id, received_by, **kwargs):
             warranty_status = "expired"
             color_tag = "#ef4444"  # red
 
-    order_no = f"MN-{date.today().year}-{uuid4().hex.upper()}"
+    # Stable, human-readable document number like the other ERP modules
+    # (MN-2026-0001) instead of an unreadable UUID suffix.
+    from utils.helpers import generate_number
+
+    order_no = generate_number("MN", MaintenanceOrder, "order_no")
 
     order = MaintenanceOrder(
         tenant_id=tenant_id,

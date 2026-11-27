@@ -110,7 +110,7 @@
       <footer class="login-footer">
         <div class="login-footer-company">
           <i class="fas fa-building" aria-hidden="true"></i>
-          {{ config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME }}
+          {% set _login_company = (current_tenant.name_ar if current_language == 'ar' else (current_tenant.name_en or current_tenant.name)) if current_tenant else None %}{{ _login_company or (config.COMPANY_NAME_AR if current_language == 'ar' else config.COMPANY_NAME) }}
         </div>
         <div class="login-footer-dev">
           {{ t('Developed by Eng. Ahmad Ghannam') }}

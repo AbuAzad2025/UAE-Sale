@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Complete user guide: login, sales, purchases, inventory, accounting, payments, reports, HR and technical support.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.base_url }}">
     <title>Azad Smart Systems - Complete User Guide</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
@@ -19,7 +22,7 @@
 
         .guide-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; display: flex; gap: 40px; }
         .sidebar { flex: 0 0 300px; background: white; padding: 25px; border-radius: 15px; height: fit-content; position: sticky; top: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
-        .sidebar h3 { margin-bottom: 20px; color: #2d3748; }
+        .sidebar h2 { margin-bottom: 20px; color: #2d3748; }
         .sidebar ul { list-style: none; }
         .sidebar li { padding: 12px; margin: 5px 0; border-radius: 8px; cursor: pointer; transition: all 0.3s; font-size: 0.95rem; }
         .sidebar li:hover { background: #f7fafc; }
@@ -65,7 +68,7 @@
 
     <div class="guide-container">
         <aside class="sidebar">
-            <h3>Contents</h3>
+            <h2>Contents</h2>
             <ul>
                 <li class="active" onclick="scrollToSection('start')"><i class="fas fa-rocket"></i> Quick Start</li>
                 <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> Login & Roles</li>

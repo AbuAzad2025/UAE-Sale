@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="دليل المستخدم الكامل لنظام سمرقند لإدارة الأعمال: تسجيل الدخول، المبيعات والمشتريات، المخزون، المحاسبة، المدفوعات، التقارير والموارد البشرية.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.base_url }}">
     <title>{{ t('User Guide') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
@@ -22,7 +25,7 @@
         .container { max-width: 1100px; margin: 40px auto; padding: 0 24px; display: grid; grid-template-columns: 280px 1fr; gap: 32px; }
 
         .sidebar { background: #fff; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); height: fit-content; position: sticky; top: 24px; max-height: 85vh; overflow-y: auto; }
-        .sidebar h3 { color: #0f172a; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+        .sidebar h2 { color: #0f172a; margin-bottom: 16px; font-size: 1.1rem; font-weight: 700; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
         .sidebar ul { list-style: none; }
         .sidebar li { padding: 10px 14px; margin: 4px 0; border-radius: 10px; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; color: #475569; display: flex; align-items: center; gap: 10px; }
         .sidebar li:hover { background: #f1f5f9; color: #0f172a; }
@@ -37,7 +40,7 @@
         .content li { margin: 6px 0; color: #475569; }
 
         .step-box { background: #f8fafc; padding: 18px; border-radius: 12px; border-right: 4px solid #0f172a; margin: 12px 0; }
-        .step-box h4 { color: #0f172a; margin-bottom: 8px; font-size: 1rem; }
+        .step-box h3 { color: #0f172a; margin-bottom: 8px; font-size: 1rem; }
 
         .tip { background: #f0fdf4; border-right: 4px solid #22c55e; padding: 14px; border-radius: 10px; margin: 16px 0; color: #166534; }
         .note { background: #fefce8; border-right: 4px solid #eab308; padding: 14px; border-radius: 10px; margin: 16px 0; color: #854d0e; }
@@ -73,7 +76,7 @@
 
 <div class="container">
     <aside class="sidebar">
-        <h3>{{ t('Contents') }}</h3>
+        <h2>{{ t('Contents') }}</h2>
         <ul>
             <li class="active" onclick="scrollToSection('start')"><i class="fas fa-rocket"></i> {{ t('Quick Start') }}</li>
             <li onclick="scrollToSection('login')"><i class="fas fa-sign-in-alt"></i> {{ t('Login') }}</li>
@@ -101,15 +104,15 @@
             <h2><i class="fas fa-rocket"></i> {{ t('Quick Start') }}</h2>
             <p>{{ t('A sales, warehouse and accounting management system — integrated and easy to use.') }}</p>
             <div class="step-box">
-                <h4>{{ t('Step 1:') }} {{ t('Login') }}</h4>
+                <h3>{{ t('Step 1:') }} {{ t('Login') }}</h3>
                 <p>{{ t('Enter your username and password on the login page.') }}</p>
             </div>
             <div class="step-box">
-                <h4>{{ t('Step 2:') }} {{ t('Dashboard') }}</h4>
+                <h3>{{ t('Step 2:') }} {{ t('Dashboard') }}</h3>
                 <p>{{ t("The dashboard appears with today's and this month's revenue statistics.") }}</p>
             </div>
             <div class="step-box">
-                <h4>{{ t('Step 3:') }} {{ t('Create your first sale') }}</h4>
+                <h3>{{ t('Step 3:') }} {{ t('Create your first sale') }}</h3>
                 <p>{{ t('Go to') }} <strong>{{ t('Sales → Create Sale') }}</strong> {{ t('and choose the customer and products.') }}</p>
             </div>
         </section>
@@ -147,7 +150,7 @@
                 <li><strong>{{ t('Print Invoice') }}:</strong> /sales/&lt;id&gt;/print</li>
             </ul>
             <div class="step-box">
-                <h4>{{ t('Create Sale') }}:</h4>
+                <h3>{{ t('Create Sale') }}:</h3>
                 <ol>
                     <li>{{ t('Select the customer') }}</li>
                     <li>{{ t('Add products (quantity, price, discount)') }}</li>

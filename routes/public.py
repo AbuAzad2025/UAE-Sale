@@ -201,6 +201,15 @@ def indexnow_key():
     )
 
 
+@public_bp.route("/google8a1714ed6e039773.html")
+def google_verification():
+    """Google Search Console ownership verification file (root path)."""
+    return Response(
+        "google-site-verification: google8a1714ed6e039773.html",
+        mimetype="text/plain",
+    )
+
+
 @public_bp.route("/robots.txt")
 def robots():
     """

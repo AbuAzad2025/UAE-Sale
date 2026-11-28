@@ -278,10 +278,8 @@ def system_stats():
     db_stats = {}
 
     try:
-        result = db.session.execute(
-            text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public'")
-        )
-        tables = result.fetchall()
+        from sqlalchemy import inspect as _inspect
+        tables = [(name,) for name in _inspect(db.engine).get_table_names()]
 
         allowed = get_allowed_table_names_safe()
         for row in tables:
@@ -299,6 +297,34 @@ def system_stats():
         flash("❌ خطأ في جلب الإحصائيات. يرجى تحديث الصفحة.", "danger")
 
     return render_template("owner/system_stats.html", db_stats=db_stats)
+
+
+@owner_bp.route("/audit-logs/export")
+@login_required
+@owner_required
+def audit_logs_export():
+    """Stream the filtered audit trail as CSV (audited)."""
+    import csv, io
+    from flask import Response
+    q = AuditLog.query
+    action = request.args.get("action")
+    if action:
+        q = q.filter(AuditLog.action == action)
+    table_name = request.args.get("table_name")
+    if table_name:
+        q = q.filter(AuditLog.table_name == table_name)
+    rows = q.order_by(AuditLog.created_at.desc()).limit(10000).all()
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["id", "created_at", "actor", "action", "table_name", "record_id",
+                     "ip_address", "changes", "is_archived"])
+    for log in rows:
+        writer.writerow([log.id, log.created_at, log.user_id, log.action, log.table_name,
+                         log.record_id, log.ip_address, str(log.changes or ""), log.is_archived])
+    create_audit_log("export", "audit_logs", None,
+                     changes={"rows": len(rows), "filters": dict(request.args)})
+    return Response(out.getvalue(), mimetype="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=audit_logs.csv"})
 
 
 @owner_bp.route("/audit-logs")
@@ -1157,6 +1183,10 @@ def browse_table(table_name):
 @login_required
 @owner_required
 def update_row(table_name, row_id):
+    from utils.db_safety import is_protected_table
+    if is_protected_table(table_name):
+        flash("⛔ لا يمكن تعديل الجداول المحمية.", "danger")
+        return redirect(url_for("owner.database_tools"))
     """Securely update one row of an allow-listed table (visual table editor).
 
     Only the table name is validated via validate_table_name(); column names
@@ -1207,6 +1237,11 @@ def update_row(table_name, row_id):
 @login_required
 @owner_required
 def edit_table_data(table_name):
+    if request.method == "POST":
+        from utils.db_safety import is_protected_table
+        if is_protected_table(table_name):
+            flash("⛔ لا يمكن تعديل الجداول المحمية.", "danger")
+            return redirect(url_for("owner.database_tools"))
     """تعديل بيانات الجدول"""
     try:
         validate_table_name(table_name)
@@ -1897,6 +1932,7 @@ def tenant_impersonate(id):
         flash("لا يمكن الدخول لشركة غير نشطة.", "danger")
         return redirect(url_for("owner.tenants_list"))
     session["impersonate_tenant_id"] = tenant.id
+    session["impersonate_owner_id"] = current_user.id
     create_audit_log(
         "impersonate_tenant",
         "tenants",
@@ -1919,6 +1955,7 @@ def tenant_impersonate_exit():
     from flask import session
 
     prev = session.pop("impersonate_tenant_id", None)
+    session.pop("impersonate_owner_id", None)
     if prev is not None:
         create_audit_log(
             "impersonate_exit",
@@ -3112,7 +3149,9 @@ def email_settings():
         settings.smtp_server = request.form.get("smtp_server")
         settings.smtp_port = request.form.get("smtp_port", type=int)
         settings.smtp_username = request.form.get("smtp_username")
-        settings.smtp_password = request.form.get("smtp_password")
+        _pw = request.form.get("smtp_password")
+        if _pw:
+            settings.smtp_password = _pw
         settings.smtp_use_tls = request.form.get("smtp_use_tls") == "on"
         settings.email_from = request.form.get("email_from")
 
@@ -3134,7 +3173,9 @@ def sms_settings():
 
         sms_provider = (request.form.get("sms_provider") or "").strip()
         settings.sms_provider = sms_provider or None
-        settings.sms_api_key = request.form.get("sms_api_key")
+        _sms = request.form.get("sms_api_key")
+        if _sms:
+            settings.sms_api_key = _sms
         settings.sms_sender_name = request.form.get("sms_sender_name")
         settings.sms_enabled = request.form.get("sms_enabled") == "on"
 
@@ -3155,7 +3196,9 @@ def whatsapp_settings():
         settings = SystemSettings.get_current()
 
         settings.whatsapp_api_url = request.form.get("whatsapp_api_url")
-        settings.whatsapp_api_key = request.form.get("whatsapp_api_key")
+        _wa = request.form.get("whatsapp_api_key")
+        if _wa:
+            settings.whatsapp_api_key = _wa
         settings.whatsapp_phone_number = request.form.get("whatsapp_phone_number")
         settings.whatsapp_enabled = request.form.get("whatsapp_enabled") == "on"
 
@@ -3181,14 +3224,19 @@ def notification_templates():
             "reminder_whatsapp": request.form.get("reminder_whatsapp_template"),
         }
 
-        settings.notification_templates = templates
+        import json as _json
+        settings.notification_templates = _json.dumps(templates, ensure_ascii=False)
         db.session.commit()
 
         flash("✅ تم تحديث قوالب الإشعارات", "success")
         return redirect(url_for("owner.notification_templates"))
 
     settings = SystemSettings.get_current()
-    templates = settings.notification_templates or {}
+    import json as _json
+    try:
+        templates = _json.loads(settings.notification_templates or "{}")
+    except Exception:
+        templates = {}
 
     return render_template("owner/notification_templates.html", templates=templates)
 
@@ -3260,6 +3308,9 @@ def verify_backups():
 def data_cleanup():
     if request.method == "POST":
         days = request.form.get("days", 90, type=int)
+    if days is None or not 30 <= days <= 365:
+        flash("⚠️ عدد الأيام يجب أن يكون بين 30 و365.", "danger")
+        return redirect(url_for("owner.data_cleanup"))
         cleanup_type = (request.form.get("cleanup_type") or "").strip()
 
         if not cleanup_type:

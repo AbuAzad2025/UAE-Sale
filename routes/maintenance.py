@@ -465,6 +465,8 @@ def settings():
             color_non_warranty="#ef4444",
             color_unknown="#f59e0b",
         )
+        db.session.add(settings_row)
+        db.session.flush()
 
     if request.method == "POST":
         percent = request.form.get("max_discount_percent", type=float)
@@ -486,6 +488,30 @@ def settings():
         settings_row.allow_engineer_restore_warranty = (
             request.form.get("allow_engineer_restore_warranty") == "on"
         )
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
+        for _c in ("color_warranty", "color_non_warranty", "color_unknown"):
+            if _c in request.form:
+                setattr(settings_row, _c, request.form.get(_c))
         warehouse_id = request.form.get("default_warehouse_id", type=int)
         if warehouse_id:
             warehouse = Warehouse.query.filter_by(

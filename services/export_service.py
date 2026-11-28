@@ -22,7 +22,7 @@ class ExportService:
         writer = csv.writer(str_output)
         writer.writerow(headers)
         for row in data:
-            writer.writerow(row)
+            writer.writerow(["'" + str(c) if isinstance(c, str) and c[:1] in ('=', '+', '-', '@') else c for c in row])
 
         output = BytesIO()
         output.write(b"\xef\xbb\xbf")

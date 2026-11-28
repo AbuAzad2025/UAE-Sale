@@ -76,8 +76,18 @@ def support():
     return render_template("support.html", pay_config=pay_config)
 
 
+def _as_utc(value):
+    if value is None:
+        return value
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20 per minute", methods=["POST"])
+
+
 def login():
     if current_user.is_authenticated:
         if getattr(current_user, "is_owner", False) or current_user.is_super_admin():
@@ -101,10 +111,10 @@ def login():
         if (
             user
             and user.locked_until
-            and user.locked_until > datetime.now(timezone.utc)
+            and _as_utc(user.locked_until) > datetime.now(timezone.utc)
         ):
             remaining = (
-                user.locked_until - datetime.now(timezone.utc)
+                _as_utc(user.locked_until) - datetime.now(timezone.utc)
             ).seconds // 60 + 1
             flash(f"⚠️ حسابك مقفل مؤقتاً. حاول مرة أخرى بعد {remaining} دقيقة.", "danger")
             return render_template("auth/login.html")

@@ -19,6 +19,29 @@
 
 {% block content %}
 
+<div class="row mb-4">
+  {% set kpis = [
+    (t('Sales Today'), "{:,.0f}".format(stats.get('today_sales_amount', 0)), 'sales.index'),
+    (t('Revenue This Month'), "{:,.0f}".format(stats.get('month_sales_amount', 0)), 'reports.sales'),
+    (t('Profit This Month'), "{:,.0f}".format(stats.get('month_profit', 0)), 'reports.sales'),
+    (t('Receivables'), "{:,.0f}".format(stats.get('total_receivables', 0)), 'reports.receivables'),
+    (t('Overdue Invoices'), "{:,.0f}".format(stats.get('overdue_invoices', 0)), 'reports.receivables'),
+    (t('Customers'), "{:,.0f}".format(stats.get('total_customers', 0)), 'customers.index'),
+    (t('Products'), "{:,.0f}".format(stats.get('total_products', 0)), 'products.index'),
+    (t('Inventory Value'), "{:,.0f}".format(stats.get('inventory_value', 0)), 'reports.inventory')
+  ] %}
+  {% for label, value, endpoint in kpis %}
+  <div class="col-6 col-md-4 col-xl-3 mb-3">
+    <a href="{{ url_for(endpoint) }}" class="text-decoration-none">
+      <div class="small-box bg-light hover-lift h-100 mb-0">
+        <div class="inner"><h4 class="mb-0">{{ value }}</h4><p class="mb-0 small text-muted">{{ label }}</p></div>
+        <div class="icon"><i class="fas fa-chart-line"></i></div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
 <div class="d-flex justify-content-end mb-3">
   <a href="{{ url_for('owner.owner_guide') }}" class="btn btn-outline-primary btn-sm">
     <i class="fas fa-book mr-1"></i> {{ t('Owner Guide') }}

@@ -97,8 +97,14 @@ class Config:
         else:
             SECRET_KEY = secrets.token_hex(32)
             try:
-                with open(secret_file, "w", encoding="utf-8") as f:
+                import os as _os
+                fd = _os.open(secret_file, _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC, 0o600)
+                with _os.fdopen(fd, "w", encoding="utf-8") as f:
                     f.write(SECRET_KEY)
+                try:
+                    _os.chmod(secret_file, 0o600)
+                except OSError:
+                    pass
             except Exception:
                 pass
         logging.info(

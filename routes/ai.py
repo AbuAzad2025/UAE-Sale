@@ -4043,8 +4043,8 @@ def config():  # noqa: C901
     if request.method == "POST":
         api_key = request.form.get("api_key", "").strip()
         provider = request.form.get("provider", "groq")
-
-        import re as _re
+        if not api_key and request.form.get("keep_existing_key"):
+            api_key = ""
         if api_key and not _re.fullmatch(r"[A-Za-z0-9._\-]{1,256}", api_key):
             return jsonify({"success": False,
                             "message": "Invalid API key format"}), 400

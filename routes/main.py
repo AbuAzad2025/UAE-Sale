@@ -511,6 +511,8 @@ def company_settings():
     if request.method == "POST":
         try:
             for field in editable:
+                if field not in request.form:
+                    continue  # never wipe fields the form does not render
                 if field in ("enable_tax", "tax_inclusive", "enable_multi_currency"):
                     setattr(tenant, field, request.form.get(field) == "on")
                 elif field == "default_tax_rate":

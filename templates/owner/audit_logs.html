@@ -165,7 +165,7 @@
           <i class="fas fa-history mr-2"></i>{{ t('Detailed Operation Log') }}
         </h3>
         <div class="card-tools">
-          <button type="button" class="btn btn-sm btn-success" onclick="exportLogs()">
+          <button type="button" class="btn btn-sm btn-success" onclick="window.location.href='{{ url_for('owner.audit_logs_export') }}' + window.location.search">
             <i class="fas fa-download mr-1"></i>{{ t('Export') }}
           </button>
         </div>
@@ -274,23 +274,23 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <code class="text-primary">{{ log.entity_type or 'N/A' }}</code>
+                                        <code class="text-primary">{{ log.table_name or '—' }}</code>
                                     </td>
                                     <td class="text-center">
-                                        {% if log.entity_id %}
+                                        {% if log.record_id %}
                                         <span class="badge badge-info">
-                                            #{{ log.entity_id }}
+                                            #{{ log.record_id }}
                                         </span>
                                         {% else %}
                                         <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if log.details %}
+                                        {% if log.changes %}
                                         <small class="text-muted">
                                             <i class="fas fa-file-alt mr-1"></i>
-                                            {{ log.details[:100] }}
-                                            {% if log.details|length > 100 %}...{% endif %}
+                                            {{ log.changes|string }}
+                                            {% if log.changes|string|length > 100 %}...{% endif %}
                                         </small>
                                         {% else %}
                                         <span class="text-muted">-</span>

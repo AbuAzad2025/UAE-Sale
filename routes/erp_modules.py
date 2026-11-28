@@ -360,7 +360,15 @@ def print_quotation(id):
         settings = with_tenant_header(settings, document_tenant(q))
     except ValueError:
         abort(409, description="لا يمكن الطباعة: الشركة المالكة للمستند غير محددة")
-    return render_template("erp/print_quotation.html", quotation=q, settings=settings)
+    return render_template(
+        "erp/print_quotation.html",
+        quotation=q,
+        settings=settings,
+        document_type="quotation",
+        document_id=q.id,
+        available_templates=[("quotation", "Quotation")],
+        current_template="quotation",
+    )
 
 
 @erp_bp.route("/quotations/<int:id>/convert", methods=["POST"])

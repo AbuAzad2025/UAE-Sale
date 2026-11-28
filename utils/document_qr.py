@@ -17,7 +17,7 @@ def qr_data_url(payload: str) -> str:
         version=None,
         error_correction=ERROR_CORRECT_M,
         box_size=5,
-        border=1,
+        border=4,
     )
     qr.add_data(str(payload or ""))
     qr.make(fit=True)

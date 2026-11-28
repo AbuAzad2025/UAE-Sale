@@ -267,10 +267,8 @@
         right: 0 !important;
         z-index: 51 !important;
       }
-      .document {
-        padding-top: var(--repeat-head-h, 0px) !important;
-        padding-bottom: var(--repeat-foot-h, 0px) !important;
-      }
+      /* The fixed header/footer already occupy the @page margins; do not
+       * reserve the same space again as document padding. */
       /* Keep table rows and section blocks intact across page breaks */
       .document tr, .document .info-box, .document .info-card,
       .document .amount-box, .document .notes-section,
@@ -516,7 +514,7 @@
     /* WhatsApp QR in the FOOTER — scannable by a customer holding the paper */
     function injectWhatsAppQR() {
       if (!TENANT_WHATSAPP_QR) return;
-      const foots = document.querySelectorAll('.document .receipt-footer, .document .invoice-footer, .document .footer');
+      const foots = document.querySelectorAll('.document .receipt-footer, .document .invoice-footer, .document .st-foot, .document .footer');
       foots.forEach(function (f) {
         if (f.querySelector('.tenant-wa-qr')) return;
         var box = document.createElement('div');
@@ -578,8 +576,14 @@
       const azad = doc.querySelector('.azad_invoice_footer');
       const azadH = azad ? Math.ceil(azad.getBoundingClientRect().height) : 0;
       const headH = head ? Math.ceil(head.getBoundingClientRect().height) : 0;
-      const footH = (foot ? Math.ceil(foot.getBoundingClientRect().height) : 0)
-        + (foot && azad && foot.contains(azad) ? 0 : azadH);
+      const footRect = foot ? foot.getBoundingClientRect() : null;
+      const waQr = doc.querySelector('.tenant-wa-qr');
+      const waRect = waQr ? waQr.getBoundingClientRect() : null;
+      const footH = Math.max(
+        (footRect ? Math.ceil(footRect.height) : 0)
+          + (foot && azad && foot.contains(azad) ? 0 : azadH),
+        (footRect && waRect ? Math.ceil(waRect.bottom - footRect.top) : 0)
+      );
       doc.style.setProperty('--repeat-head-h', headH + 'px');
       doc.style.setProperty('--repeat-azad-h', azadH + 'px');
       doc.style.setProperty('--repeat-foot-h', footH + 'px');
@@ -589,7 +593,7 @@
         marginStyle.id = 'azad-print-page-margin';
         document.head.appendChild(marginStyle);
       }
-      marginStyle.textContent = '@media print { @page { size: A4 {{ settings.orientation or 'portrait' }}; margin: 5mm; margin-top: ' + headH + 'px; margin-bottom: ' + footH + 'px; } }';
+      marginStyle.textContent = '@media print { @page { size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }}; margin-top: ' + headH + 'px; margin-bottom: ' + footH + 'px; } }';
     }
     window.addEventListener('beforeprint', prepareRepeatingHeaderFooter);
     document.addEventListener('DOMContentLoaded', prepareRepeatingHeaderFooter);

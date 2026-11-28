@@ -709,8 +709,9 @@ def print_receipt(id):
     from utils.i18n import t as _t
     ctx = _print_context(order, "maintenance_receipt", receipt.id)
     from utils.amount_in_words import amount_in_words as _aiw
+    from services.currency_service import CurrencyService
     _base = getattr(receipt, "amount_base", None) or getattr(receipt, "amount", 0) or 0
-    _cur = getattr(receipt, "currency", None) or getattr(order, "currency", None) or "AED"
+    _cur = CurrencyService.get_base_currency()
     ctx["amount_words_ar"] = _aiw(_base, _cur, "ar")
     ctx["amount_words_en"] = _aiw(_base, _cur, "en")
     ctx['settings'].active_template = 'modern'
@@ -787,6 +788,34 @@ def print_invoice(id):
         abort(404)
     from config import Config
     ctx = _print_context(order, "maintenance_invoice", order.invoice.id)
+    from services.currency_service import CurrencyService as _CS
+    from utils.amount_in_words import amount_in_words as _aiw
+    _inv = order.invoice
+    _inv_total = getattr(_inv, "total_amount", 0) or 0
+    _inv_cur = getattr(_inv, "currency", None) or getattr(order, "currency", None) or _CS.get_base_currency()
+    ctx["amount_words_ar"] = _aiw(_inv_total, _inv_cur, "ar")
+    ctx["amount_words_en"] = _aiw(_inv_total, _inv_cur, "en")
+    from services.currency_service import CurrencyService as _CS
+    from utils.amount_in_words import amount_in_words as _aiw
+    _inv = order.invoice
+    _inv_total = getattr(_inv, "total_amount", 0) or 0
+    _inv_cur = getattr(_inv, "currency", None) or getattr(order, "currency", None) or _CS.get_base_currency()
+    ctx["amount_words_ar"] = _aiw(_inv_total, _inv_cur, "ar")
+    ctx["amount_words_en"] = _aiw(_inv_total, _inv_cur, "en")
+    from services.currency_service import CurrencyService as _CS
+    from utils.amount_in_words import amount_in_words as _aiw
+    _inv = order.invoice
+    _inv_total = getattr(_inv, "total_amount", 0) or 0
+    _inv_cur = getattr(_inv, "currency", None) or getattr(order, "currency", None) or _CS.get_base_currency()
+    ctx["amount_words_ar"] = _aiw(_inv_total, _inv_cur, "ar")
+    ctx["amount_words_en"] = _aiw(_inv_total, _inv_cur, "en")
+    from services.currency_service import CurrencyService as _CS
+    from utils.amount_in_words import amount_in_words as _aiw
+    _inv = order.invoice
+    _inv_total = getattr(_inv, "total_amount", 0) or 0
+    _inv_cur = getattr(_inv, "currency", None) or getattr(order, "currency", None) or _CS.get_base_currency()
+    ctx["amount_words_ar"] = _aiw(_inv_total, _inv_cur, "ar")
+    ctx["amount_words_en"] = _aiw(_inv_total, _inv_cur, "en")
     ctx['settings'].active_template = 'modern'
     from utils.i18n import t as _t
     sale = _maintenance_invoice_as_sale(order)

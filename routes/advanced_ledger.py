@@ -41,6 +41,16 @@ def professional_printing():
     from utils.invoice_header import with_tenant_header
 
     tid = get_current_tenant_id()
+    from flask import request as _request
+    from datetime import date as _date
+    _df = (_request.args.get("date_from") or "").strip()
+    _dt = (_request.args.get("date_to") or "").strip()
+    def _parse_date(value):
+        try:
+            return _date.fromisoformat(value) if value else None
+        except ValueError:
+            return None
+    date_from, date_to = _parse_date(_df), _parse_date(_dt)
     line_query = (
         db.session.query(
             GLJournalLine.account_id,
@@ -50,6 +60,26 @@ def professional_printing():
         .join(GLJournalEntry, GLJournalEntry.id == GLJournalLine.entry_id)
         .filter(GLJournalEntry.is_posted.is_(True))
     )
+    if date_from:
+        line_query = line_query.filter(GLJournalEntry.entry_date >= date_from)
+    if date_to:
+        line_query = line_query.filter(GLJournalEntry.entry_date <= date_to)
+    if date_from:
+        line_query = line_query.filter(GLJournalEntry.entry_date >= date_from)
+    if date_to:
+        line_query = line_query.filter(GLJournalEntry.entry_date <= date_to)
+    if date_from:
+        line_query = line_query.filter(GLJournalEntry.entry_date >= date_from)
+    if date_to:
+        line_query = line_query.filter(GLJournalEntry.entry_date <= date_to)
+    if date_from:
+        line_query = line_query.filter(GLJournalEntry.entry_date >= date_from)
+    if date_to:
+        line_query = line_query.filter(GLJournalEntry.entry_date <= date_to)
+    if date_from:
+        line_query = line_query.filter(GLJournalEntry.entry_date >= date_from)
+    if date_to:
+        line_query = line_query.filter(GLJournalEntry.entry_date <= date_to)
     if tid is not None:
         line_query = line_query.filter(GLJournalEntry.tenant_id == tid)
     totals = {}
@@ -79,7 +109,7 @@ def professional_printing():
         total_debit=total_debit,
         total_credit=total_credit,
         settings=settings,
-        report_number="TB-" + date.today().strftime("%Y%m%d"),
+        report_number="TB-" + date.today().strftime("%Y%m%d") + "-" + str(abs(hash((tid, _df, _dt))) % 10000).zfill(4),
         date_from=date.today() - timedelta(days=30),
         date_to=date.today(),
         date=date,

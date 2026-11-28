@@ -158,7 +158,7 @@ $(document).ready(function() {
   body {
     -webkit-print-color-adjust: exact !important;
     font-size: 11pt;
-    direction: rtl;
+    direction: {{ 'rtl' if is_rtl else 'ltr' }};
   }
 
   .main-sidebar,

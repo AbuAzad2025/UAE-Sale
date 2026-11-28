@@ -545,7 +545,7 @@ def _customer_statement(id, *, export=False):
                     else payment.payment_method,
                     "status_ar": payment.status_ar
                     if hasattr(payment, "status_ar")
-                    else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                    else ("confirmed" if payment.payment_confirmed else "pending"),
                     "payment_confirmed": payment.payment_confirmed,
                     "user": payment.user.get_display_name("ar")
                     if payment.user and hasattr(payment.user, "get_display_name")
@@ -856,7 +856,7 @@ def _customer_statement(id, *, export=False):
                 "balance_due": 0,
                 "status": payment.status_ar
                 if hasattr(payment, "status_ar")
-                else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                else ("confirmed" if payment.payment_confirmed else "pending"),
                 "payment": {
                     "id": payment.id,
                     "payment_number": payment.payment_number,
@@ -874,7 +874,7 @@ def _customer_statement(id, *, export=False):
                     "payment_confirmed": payment.payment_confirmed,
                     "status_ar": payment.status_ar
                     if hasattr(payment, "status_ar")
-                    else ("مؤكدة ✅" if payment.payment_confirmed else "معلقة ⏳"),
+                    else ("confirmed" if payment.payment_confirmed else "pending"),
                     "user": payment.user.get_display_name("ar")
                     if payment.user and hasattr(payment.user, "get_display_name")
                     else (payment.user.full_name if payment.user else None),  # noqa: E501

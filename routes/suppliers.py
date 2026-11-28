@@ -402,7 +402,7 @@ def _statement_transactions(supplier):
         .all()
     )
     payments = (
-        Payment.query.filter_by(supplier_id=supplier.id, payment_confirmed=True)
+        Payment.query.filter_by(supplier_id=supplier.id)
         .order_by(Payment.payment_date.asc())
         .all()
     )
@@ -445,8 +445,8 @@ def _statement_transactions(supplier):
             "reference": payment.payment_number or f"PMT-{payment.id}",
             # Supplier statement convention: invoices are CREDIT (we owe them),
             # payments TO the supplier are DEBIT (they reduce what we owe).
-            "debit": float(payment.amount_base or 0) if outgoing else 0,
-            "credit": float(payment.amount_base or 0) if not outgoing else 0,
+            "debit": float(payment.amount_base or 0) if outgoing and payment.payment_confirmed else 0,
+            "credit": float(payment.amount_base or 0) if not outgoing and payment.payment_confirmed else 0,
             "description": f"دفعة ({payment.payment_method})"
                            + (" — شيك قيد الانتظار" if pending_cheque else ""),
             "status": "confirmed" if payment.payment_confirmed else "pending",
@@ -529,17 +529,23 @@ def statement_print(id):
     transactions, purchases, payments, final_balance = _statement_transactions(supplier)
     total_purchases = float(sum(
         t["credit"] for t in transactions if t["type"] == "purchase"))
-    total_payments = float(sum(t["debit"] for t in transactions))
+    total_payments = float(sum(
+        t["debit"] for t in transactions if t["type"] == "payment"))
+    opening_row = next((t for t in transactions if t["type"] == "opening"), None)
+    total_opening = float(opening_row["credit"]) if opening_row else 0.0
 
     return render_template(
         "suppliers/statement_print.html",
         supplier=supplier,
         settings=settings,
+        document_type="supplier_statement",
+        document_id=supplier.id,
         back_url=url_for("suppliers.statement", id=supplier.id),
         back_label=_t("Back to statement"),
         transactions=transactions,
         total_purchases=total_purchases,
         total_payments=total_payments,
+        total_opening=total_opening,
         final_balance=final_balance,
         now=datetime.now,
     )

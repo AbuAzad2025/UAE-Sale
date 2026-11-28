@@ -29,6 +29,11 @@ def with_tenant_header(settings, tenant):
         "show_page_numbers",
         "show_due_date",
         "qr_position",
+        "payment_terms_ar", "payment_terms_en",
+        "footer_text_ar", "footer_text_en",
+        "default_invoice_note_ar", "default_invoice_note_en",
+        "default_receipt_note_ar", "default_receipt_note_en",
+        "terms_conditions_ar", "terms_conditions_en",
     )
     data = {field: getattr(settings, field, None) for field in design_fields}
     fields = (
@@ -48,9 +53,15 @@ def with_tenant_header(settings, tenant):
         "payment_terms_ar",
         "footer_text_ar",
         "default_invoice_note_ar",
+        "default_receipt_note_ar",
         "active_template",
     )
     data.update({field: getattr(tenant, field, None) for field in fields})
+    # Tenant values take precedence only when actually populated.
+    for _k in ("payment_terms_ar", "footer_text_ar", "default_invoice_note_ar",
+               "default_receipt_note_ar"):
+        if not data.get(_k):
+            data[_k] = getattr(settings, _k, None)
     data["company_name_ar"] = tenant.name_ar or tenant.name
     data["company_name_en"] = tenant.name_en or tenant.name
     # Use the Arabic address when present; only fall back to city/country so

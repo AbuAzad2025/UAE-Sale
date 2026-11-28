@@ -321,7 +321,7 @@
     // Body
     html += '<tbody>';
     for (let i = 0; i < data.body.length; i++) {
-      html += 'tr';
+      html += '<tr>';
       for (let j = 0; j < data.body[i].length; j++) {
         html += '<td>' + data.body[i][j] + '</td>';
       }
@@ -347,12 +347,17 @@
     }
 
     const title = opts.title || config.title || document.title;
+    const dir = document.documentElement.getAttribute('dir') || 'ltr';
+    const dir = document.documentElement.getAttribute('dir') || 'ltr';
+    const dir = document.documentElement.getAttribute('dir') || 'ltr';
+    const dir = document.documentElement.getAttribute('dir') || 'ltr';
+    const dir = document.documentElement.getAttribute('dir') || 'ltr';
     
-    win.document.write('<!DOCTYPE html><html dir="rtl"><head><title>' + title + '</title>');
+    win.document.write('<!DOCTYPE html><html dir="' + dir + '"><head><title>' + title + '</title>');
     win.document.write('<style>');
-    win.document.write('body { font-family: "Tajawal", sans-serif; direction: rtl; padding: 20px; }');
+    win.document.write('body { font-family: "Tajawal", sans-serif; direction: ' + dir + '; padding: 20px; }');
     win.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }');
-    win.document.write('th, td { border: 1px solid #dee2e6; padding: 0.75rem; text-align: right; }');
+    win.document.write('th, td { border: 1px solid #dee2e6; padding: 0.75rem; text-align: start; }');
     win.document.write('th { background-color: #f8f9fa; font-weight: bold; }');
     win.document.write('.print-header { text-align: center; margin-bottom: 20px; }');
     win.document.write('.print-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }');
@@ -428,10 +433,10 @@
 
     const css = [
       '@page { size: A4 landscape; margin: 8mm; }',
-      'body { font-size: 9pt; direction: rtl; font-family: "Cairo", "Tahoma", sans-serif; -webkit-print-color-adjust: exact; position: relative; }',
+      'body { font-size: 9pt; direction: ' + (document.documentElement.getAttribute('dir') || 'ltr') + '; font-family: "Cairo", "Tahoma", sans-serif; -webkit-print-color-adjust: exact; position: relative; }',
       'body::before { content: "' + t('Designed by Azad Smart Systems Co.') + '"; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-10deg); font-size: 18pt; color: rgba(108, 117, 125, 0.12); white-space: nowrap; z-index: 0; pointer-events: none; }',
       'table { width: 100% !important; border-collapse: collapse !important; position: relative; z-index: 1; }',
-      'table th, table td { border: 1px solid #dee2e6 !important; padding: 3px 4px !important; text-align: center !important; }',
+      'table th, table td { border: 1px solid #dee2e6 !important; padding: 3px 4px !important; text-align: start !important; }',
       `table thead th { background: ${headerColor} !important; color: #fff !important; font-size: 8.5pt; }`,
       'table tbody td { font-size: 8pt; }',
       'table tbody tr:nth-child(even) { background: #f8f9fa !important; }',

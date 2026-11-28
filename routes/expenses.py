@@ -270,8 +270,8 @@ def print_expense(id):
     from utils.amount_in_words import amount_in_words
     from services.expense_gl import expense_payment_amount
 
-    from flask import current_app
-    base_currency = current_app.config.get("DEFAULT_CURRENCY", "ILS")
+    from services.currency_service import CurrencyService
+    base_currency = CurrencyService.get_base_currency()
     _payment = expense.amount_base
     amount_words_ar = amount_in_words(_payment, base_currency, "ar")
     amount_words_en = amount_in_words(_payment, base_currency, "en")

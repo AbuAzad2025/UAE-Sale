@@ -144,14 +144,14 @@
               <div class="d-flex align-items-center">
                 {% if product.image_url %}
                   <img src="{{ url_for('static', filename=product.image_url) }}" 
-                       class="warehouse-product-img mr-2" alt="{{ product.name }}">
+                       class="warehouse-product-img mr-2" alt="{{ display_name(product) }}">
                 {% else %}
                   <div class="warehouse-product-img mr-2 bg-primary text-white d-flex align-items-center justify-content-center">
                     <i class="fas fa-box"></i>
                   </div>
                 {% endif %}
                 <div>
-                  <strong>{{ product.name }}</strong>
+                  <strong>{{ display_name(product) }}</strong>
                   {% if product.name_ar %}
                   <br><small class="text-muted">{{ product.name_ar }}</small>
                   {% endif %}
@@ -213,7 +213,7 @@
                   <i class="fas fa-eye"></i>
                 </a>
                 <button type="button" class="btn btn-warning" 
-                        onclick="adjustStock({{ product.id }}, {{ product.name|tojson }})"
+                        onclick="adjustStock({{ product.id }}, {{ display_name(product)|tojson }})"
                         title="{{ t("Adjust Stock") }}">
                   <i class="fas fa-edit"></i>
                 </button>

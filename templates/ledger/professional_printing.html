@@ -12,18 +12,28 @@
     font-family: 'Arial', 'Tahoma', sans-serif;
     direction: {{ 'rtl' if is_rtl else 'ltr' }};
     margin: 0;
-    padding: 20px;
+    /* Leave room for the fixed (repeating) header and footer. */
+    padding: 18mm 0 22mm;
     background: white !important;
     color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
+  /* Fixed print header/footer repeat on every page without duplicating the
+     whole letterhead on each page break. Keep their print footprint small. */
   .print-header {
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50;
+    background: #1e3c72 !important;
     color: white;
-    padding: 30px;
-    margin-bottom: 30px;
-    border-radius: 15px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    padding: 4mm 6mm;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
   
   .company-logo {
@@ -166,29 +176,45 @@
   }
   
   .print-footer {
-    margin-top: 50px;
-    padding: 30px;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50;
+    margin-top: 0;
+    padding: 3mm 6mm;
+    background: #2c3e50 !important;
     color: white;
-    border-radius: 15px;
+    border-radius: 0;
     text-align: center;
   }
+
+  /* Compact print footprint: the on-screen luxury spacing wastes pages. */
+  .company-logo { width: 38px; height: 38px; font-size: 18px; margin: 0 auto 3px; box-shadow: none; }
+  .company-name { font-size: 13px; margin-bottom: 2px; text-shadow: none; }
+  .company-details, .info-label, .info-value { font-size: 8px; }
+  .report-title { font-size: 13px; margin: 6px 0; padding: 4px; box-shadow: none; }
+  .report-info { padding: 4px 8px; margin-bottom: 6px; }
+  .info-row { margin-bottom: 2px; padding: 2px 0; }
+  .luxury-table { margin: 6px 0; box-shadow: none; }
+  .luxury-table th { padding: 5px 6px; font-size: 9px; }
+  .luxury-table td { padding: 4px 6px; font-size: 9px; }
   
   .footer-signatures {
     display: flex;
     justify-content: space-around;
-    margin-top: 30px;
+    margin-top: 8px;
   }
   
   .signature-box {
     text-align: center;
-    min-width: 200px;
+    min-width: 120px;
   }
   
   .signature-line {
     border-bottom: 2px solid white;
-    margin: 20px 0 10px;
-    height: 40px;
+    margin: 8px 0 4px;
+    height: 12px;
   }
   
   .no-print {
@@ -325,8 +351,11 @@
           <td class="amount-{{ 'positive' if item.credit > 0 else 'zero' }}">
             {{ "{:,.2f}".format(item.credit) if item.credit > 0 else '-' }}
           </td>
-          <td class="amount-{{ 'positive' if item.account.get_balance() > 0 else 'negative' if item.account.get_balance() < 0 else 'zero' }}">
-            {{ "{:,.2f}".format(item.account.get_balance()) }}
+          {# Net movement of the SELECTED period — not the all-time account
+             balance, which would mix earlier periods into this report. #}
+          {% set period_net = (item.debit or 0) - (item.credit or 0) %}
+          <td class="amount-{{ 'positive' if period_net > 0 else 'negative' if period_net < 0 else 'zero' }}">
+            {{ "{:,.2f}".format(period_net) }}
           </td>
         </tr>
         {% endfor %}

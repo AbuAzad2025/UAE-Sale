@@ -699,6 +699,29 @@ class StockTransferService:
         if transfer.status != "in_transit":
             raise ValueError('يمكن استلام نقل في حالة "في الطريق" فقط')
 
+        # Validate source availability before mutating any stock. Without this,
+        # a short source warehouse is driven negative while the destination is
+        # still credited, leaving both warehouses inconsistent.
+        from models import Product as _Product
+
+        for line in sorted(transfer.lines, key=lambda ln: ln.product_id):
+            available = StockService.get_warehouse_quantity(
+                line.product_id,
+                transfer.from_warehouse_id,
+                tenant_id=transfer.tenant_id,
+            )
+            if available < line.quantity:
+                product = db.session.get(_Product, line.product_id)
+                name = (
+                    product.get_display_name("ar")
+                    if product is not None and hasattr(product, "get_display_name")
+                    else (getattr(product, "name", None) or str(line.product_id))
+                )
+                raise ValidationError(
+                    f"الرصيد في المستودع المصدر غير كافٍ للصنف {name}: "
+                    f"المتاح {available}، المطلوب {line.quantity}"
+                )
+
         with db.session.begin_nested():
             for line in sorted(transfer.lines, key=lambda line: line.product_id):
                 for warehouse_id, qty in (

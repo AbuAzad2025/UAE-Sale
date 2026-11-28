@@ -1017,6 +1017,29 @@ class AIService:
         }
 
     @staticmethod
+    def _cache_scope(context=None):
+        """Return the tenant identity used to scope LLM response caching."""
+        actor = (context or {}).get("current_user")
+        try:
+            can_see_costs = bool(
+                getattr(actor, "can_see_costs", lambda: False)()
+            )
+        except Exception:
+            can_see_costs = False
+        try:
+            from utils.i18n import get_current_language
+
+            locale = get_current_language()
+        except Exception:
+            locale = "ar"
+        return {
+            "tenant_id": getattr(actor, "tenant_id", None),
+            "user_id": getattr(actor, "id", None),
+            "locale": locale,
+            "can_see_costs": can_see_costs,
+        }
+
+    @staticmethod
     def chat_response(message, context=None):
         """🤖 أزاد يرد على سؤالك - تعاون متكامل بين المحلي وGroq"""
         from ai_knowledge.intelligent_assistant import intelligent_assistant
@@ -1148,9 +1171,18 @@ class AIService:
                 except Exception:
                     _ai_cache_mod = None
                     _cache_on = False
+
+                # Tenant-scoped prompt identity: never serve one company's
+                # grounded answer to another (or to a user without the same
+                # cost privileges/locale).
+                _cache_scope = AIService._cache_scope(context)
                 if _cache_on:
                     _cached = _ai_cache_mod.get(
-                        provider, model, message, knowledge_context or ""
+                        provider,
+                        model,
+                        message,
+                        knowledge_context or "",
+                        **_cache_scope,
                     )
                     if _cached:
                         return _cached
@@ -1264,6 +1296,7 @@ class AIService:
                                 message,
                                 knowledge_context or "",
                                 final_answer,
+                                **_cache_scope,
                             )
                     except Exception:
                         pass

@@ -20,6 +20,24 @@ from werkzeug.exceptions import HTTPException
 warehouse_bp = Blueprint("warehouse", __name__, url_prefix="/warehouse")
 
 
+def low_stock_sql():
+    """Single low-stock predicate for product queries (NULLs count as zero).
+
+    Mirrors StockService.get_low_stock_products() so the filtered list and the
+    low-stock report agree on which products are low.
+    """
+    from sqlalchemy import func
+
+    return func.coalesce(Product.current_stock, 0) <= func.coalesce(
+        Product.min_stock_alert, 0
+    )
+
+
+def is_low_stock(product):
+    """In-memory counterpart of :func:`low_stock_sql` used for the stats row."""
+    return (product.current_stock or 0) <= (product.min_stock_alert or 0)
+
+
 @warehouse_bp.route("/api/upload_product_image", methods=["POST"])
 @login_required
 @permission_required("manage_products")
@@ -112,7 +130,7 @@ def index():
         query = query.filter_by(category_id=category_id)
 
     if stock_filter == "low":
-        query = query.filter(Product.current_stock <= Product.min_stock_alert)
+        query = query.filter(low_stock_sql())
     elif stock_filter == "out":
         query = query.filter(Product.current_stock <= 0)
 
@@ -125,7 +143,7 @@ def index():
     total_products = len(all_products)
     out_count = sum(1 for p in all_products if (p.current_stock or 0) <= 0)
     low_count = sum(
-        1 for p in all_products if (p.current_stock or 0) > 0 and p.is_low_stock()
+        1 for p in all_products if (p.current_stock or 0) > 0 and is_low_stock(p)
     )
     good_count = total_products - out_count - low_count
 

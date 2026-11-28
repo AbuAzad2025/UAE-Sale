@@ -28,6 +28,15 @@ from utils.i18n import t as _t
 
 products_bp = Blueprint("products", __name__, url_prefix="/products")
 
+
+def low_stock_sql():
+    """Single low-stock predicate for product queries (NULLs count as zero)."""
+    from sqlalchemy import func
+
+    return func.coalesce(Product.current_stock, 0) <= func.coalesce(
+        Product.min_stock_alert, 0
+    )
+
 VALUATION_BASIS = "المتوسط المتحرك لتكلفة الوحدة (average_cost)"
 
 
@@ -144,7 +153,7 @@ def index():
         query = query.filter_by(category_id=category_id)
 
     if stock_filter == "low":
-        query = query.filter(Product.current_stock <= Product.min_stock_alert)
+        query = query.filter(low_stock_sql())
     elif stock_filter == "out":
         query = query.filter(Product.current_stock <= 0)
 

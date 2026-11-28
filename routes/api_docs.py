@@ -235,13 +235,16 @@ def swagger_ui():
                         SwaggerUIStandalonePreset
                     ],
                     layout: "BaseLayout",
-                    supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+                    // Documentation is readable without a session, but the
+                    // interactive console is disabled: anonymous "Try it out"
+                    // would fire authenticated API calls from the docs page.
+                    supportedSubmitMethods: [],
                     defaultModelsExpandDepth: 1,
                     defaultModelExpandDepth: 1,
                     displayOperationId: false,
                     showExtensions: false,
                     showCommonExtensions: false,
-                    tryItOutEnabled: true
+                    tryItOutEnabled: false
                 });
             };
         </script>

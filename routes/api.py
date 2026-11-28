@@ -1,4 +1,5 @@
 from utils.feature_guards import install_feature_gate
+from utils.log_sanitizer import sanitize_log_message
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from extensions import db, csrf, limiter
@@ -112,6 +113,31 @@ def health():
     return jsonify({"status": "ok", "message": "API is running"})
 
 
+def _scrub_health_checks(result):
+    """Remove raw exception strings from a health-check payload.
+
+    Health sub-checks embed ``str(exc)`` in their messages; those strings can
+    expose DSNs, file paths and credentials to anyone able to reach the probe.
+    The status itself is kept so the load balancer still gets an honest
+    answer, but error text is replaced by a generic, check-scoped message.
+    """
+    checks = result.get("checks") or {}
+    for name, check in checks.items():
+        if not isinstance(check, dict):
+            continue
+        clean = dict(check)
+        for key in ("message", "error", "details", "exception", "traceback"):
+            value = clean.get(key)
+            if not isinstance(value, str):
+                continue
+            if clean.get("status") in ("unhealthy", "unknown") or key != "message":
+                clean[key] = f"{name} check unavailable"
+            else:
+                clean[key] = sanitize_log_message(value)
+        checks[name] = clean
+    return result
+
+
 @api_bp.route("/healthz")
 def healthz():
     """Kubernetes/Load Balancer health probe.
@@ -124,12 +150,25 @@ def healthz():
     state of a fresh deployment - still answers 200: the application can
     serve traffic, and taking it out of the load balancer's rotation over a
     missing optional integration would be worse than the warning itself.
-    The per-check detail is in the body for monitoring.
+    Anonymous callers see only per-check statuses; detailed checks are
+    reserved for the platform owner. Raw exception strings are never emitted.
     """
     from services.health_service import HealthCheckService
 
-    result = HealthCheckService.run_full_health_check()
+    result = _scrub_health_checks(HealthCheckService.run_full_health_check())
     status_code = 200 if result["overall_status"] != "unhealthy" else 503
+
+    is_owner = bool(
+        getattr(current_user, "is_authenticated", False)
+        and getattr(current_user, "is_owner", False)
+    )
+    if not is_owner:
+        result = dict(result)
+        result["checks"] = {
+            name: {"status": check.get("status", "unknown")}
+            for name, check in (result.get("checks") or {}).items()
+            if isinstance(check, dict)
+        }
     return jsonify(result), status_code
 
 

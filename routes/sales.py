@@ -52,7 +52,7 @@ def index():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 20, type=int)
     search = request.args.get("search", "", type=str)
-    status = request.args.get("status", "", type=str)
+    status = request.args.get("status", "confirmed", type=str)
     payment_status = request.args.get("payment_status", "", type=str)
 
     query = Sale.query
@@ -76,10 +76,9 @@ def index():
             )
         )
 
-    if status:
+    # "all" is an explicit filter choice, not the old hardcoded confirmed-only view.
+    if status and status != "all":
         query = query.filter(Sale.status == status)
-    else:
-        query = query.filter(Sale.status == "confirmed")
 
     if payment_status:
         query = query.filter(Sale.payment_status == payment_status)
@@ -92,7 +91,10 @@ def index():
     )
 
     return render_template(
-        "sales/index.html", sales=pagination.items, pagination=pagination
+        "sales/index.html",
+        sales=pagination.items,
+        pagination=pagination,
+        status=status,
     )
 
 
@@ -237,12 +239,12 @@ def create():  # noqa: C901
             flash("✅ تم إنشاء الفاتورة بنجاح!", "success")
             return redirect(url_for("sales.view", id=sale.id))
 
-        except ValueError:
+        except ValueError as e:
             current_app.logger.exception("handler failed")
-            flash(
-                "⚠️: حدث خطأ غير متوقع\n💡 تحقق من الكميات المتوفرة في المخزون.",
-                "danger",
-            )
+            # Surface the service's real validation message (e.g. which product
+            # ran out of stock) instead of a generic stock hint.
+            detail = str(e).strip() or "حدث خطأ غير متوقع"
+            flash(f"⚠️ {detail}", "danger")
         except Exception as e:
             from utils.error_messages import ErrorMessages
 
@@ -377,19 +379,12 @@ def print_invoice(id):
 @login_required
 @permission_required("manage_sales")
 def edit(id):
-    """تعديل فاتورة - فقط الفواتير غير المدفوعة وغير الملغاة"""
+    """تعديل فاتورة: الملاحظات دائماً، والمبالغ للفواتير غير المدفوعة فقط."""
     sale = get_owned_or_404(Sale, id)
 
     if current_user.is_seller() and sale.seller_id != current_user.id:
         flash("ليس لديك صلاحية لتعديل هذه الفاتورة", "danger")
         return redirect(url_for("sales.index"))
-
-    if sale.payment_status == "paid":
-        flash(
-            "⚠️ لا يمكن تعديل فاتورة مدفوعة بالكامل.\n💡 الفواتير المدفوعة لا يمكن تعديلها محاسبياً.",
-            "danger",
-        )
-        return redirect(url_for("sales.view", id=id))
 
     if sale.status == "cancelled":
         flash(
@@ -399,6 +394,19 @@ def edit(id):
         return redirect(url_for("sales.view", id=id))
 
     if request.method == "POST":
+        # Paid invoices keep their accounting amounts frozen; only notes may change.
+        if sale.payment_status == "paid":
+            try:
+                sale.notes = request.form.get("notes", "")
+                db.session.commit()
+                create_audit_log("update", "sales", id)
+                flash("✅ تم تحديث ملاحظات الفاتورة بنجاح!", "success")
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Sale notes edit error: {e}")
+                flash("❌ حدث خطأ في تحديث الملاحظات.", "danger")
+            return redirect(url_for("sales.view", id=id))
+
         try:
             from decimal import Decimal as _Dec
             from services.sale_service import resolve_account as _resolve_account

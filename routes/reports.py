@@ -2162,9 +2162,9 @@ def _vat_report_data(date_from=None, date_to=None):
 
     rate_map = {}
 
-    def _accrue(rate, side, net, tax):
+    def _rate_entry(rate):
         r = (Decimal(str(rate or 0))).quantize(Decimal("0.01"))
-        entry = rate_map.setdefault(
+        return rate_map.setdefault(
             str(r),
             {
                 "rate": r,
@@ -2175,6 +2175,9 @@ def _vat_report_data(date_from=None, date_to=None):
                 "reverse_charge_vat": Decimal("0"),
             },
         )
+
+    def _accrue(rate, side, net, tax):
+        entry = _rate_entry(rate)
         if side == "sales":
             entry["sales_net"] += net
             entry["sales_vat"] += tax
@@ -2187,10 +2190,9 @@ def _vat_report_data(date_from=None, date_to=None):
     for r in taxable_purchases:
         _accrue(r["tax_rate"], "purchases", r["net_amount"], r["tax_amount"])
     for r in reverse_charge_purchases:
-        key = str((Decimal(str(r["tax_rate"] or 0))).quantize(Decimal("0.01")))
-        entry = rate_map.get(key)
-        if entry:
-            entry["reverse_charge_vat"] += r["tax_amount"]
+        # RC rows may be the only rows at a rate — create the bucket so the
+        # by-rate table does not silently drop those self-assessed taxes.
+        _rate_entry(r["tax_rate"])["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
 
     from models import Expense
@@ -2266,11 +2268,42 @@ def _vat_report_data(date_from=None, date_to=None):
     for r in expense_taxable:
         _accrue(r["tax_rate"], "purchases", r["net_amount"], r["tax_amount"])
     for r in expense_reverse_charge:
-        key = str((Decimal(str(r["tax_rate"] or 0))).quantize(Decimal("0.01")))
-        entry = rate_map.get(key)
-        if entry:
-            entry["reverse_charge_vat"] += r["tax_amount"]
+        # Same as RC purchases: a rate seen only on an RC expense must still
+        # appear in the grouped-by-rate table.
+        _rate_entry(r["tax_rate"])["reverse_charge_vat"] += r["tax_amount"]
     by_rate = [rate_map[k] for k in sorted(rate_map, key=lambda k: Decimal(k))]
+
+    # Row-scoped totals: the `summary` figures below are net of credit notes /
+    # include expense VAT, while the detail tables show their own rows only.
+    # Table footers and per-sheet XLSX totals must agree with the rows above
+    # them, so aggregate the rows themselves here.
+    def _row_total(rows, field):
+        return sum(
+            (Decimal(str(row.get(field, 0) or 0)) for row in rows), Decimal("0")
+        )
+
+    def _row_pair(rows, net_field="net_amount"):
+        return {
+            "net": _row_total(rows, net_field),
+            "tax": _row_total(rows, "tax_amount"),
+        }
+
+    row_totals = {
+        "taxable_sales": _row_pair(taxable_sales),
+        "credit_notes": _row_pair(credit_notes),
+        "exempt_sales": _row_pair(exempt_sales, "gross_amount"),
+        "zero_rated_sales": _row_pair(zero_rated_sales),
+        "unclassified_sales": _row_pair(unclassified_sales),
+        "taxable_purchases": _row_pair(taxable_purchases),
+        "zero_rated_purchases": _row_pair(zero_rated_purchases),
+        "unclassified_purchases": _row_pair(unclassified_purchases),
+        "exempt_purchases": _row_pair(exempt_purchases, "gross_amount"),
+        "non_recoverable_purchases": _row_pair(non_recoverable_purchases),
+        "reverse_charge_purchases": _row_pair(reverse_charge_purchases),
+        "expense_taxable": _row_pair(expense_taxable),
+        "expense_non_recoverable": _row_pair(expense_non_recoverable),
+        "expense_reverse_charge": _row_pair(expense_reverse_charge),
+    }
 
     total_taxable_sales -= credit_net_by_treatment["standard"]
     total_zero_rated_sales -= credit_net_by_treatment["zero"]
@@ -2321,6 +2354,7 @@ def _vat_report_data(date_from=None, date_to=None):
         "expense_non_recoverable": expense_non_recoverable,
         "expense_reverse_charge": expense_reverse_charge,
         "by_rate": by_rate,
+        "row_totals": row_totals,
         "summary": summary,
         "date_from": date_from or "",
         "date_to": date_to or "",
@@ -2378,6 +2412,7 @@ def vat_report():
         expense_non_recoverable=data["expense_non_recoverable"],
         expense_reverse_charge=data["expense_reverse_charge"],
         by_rate=data["by_rate"],
+        row_totals=data["row_totals"],
         summary=data["summary"],
         vat_label=_tenant_vat_label(),
         date_from=data["date_from"],
@@ -2641,7 +2676,14 @@ def export_cash_flow():
                 subtitle=_current_tenant_display_name(),
             )
         elif fmt == "csv":
-            return ExportService.export_to_csv(rows, headers, "cash_flow.csv")
+            # CSV has no separate summary block (unlike XLSX/PDF), so append
+            # the section totals as ordinary rows to keep the export complete.
+            csv_rows = list(rows)
+            csv_rows.append(["", "", "", "", ""])
+            csv_rows.extend(
+                [label, "", "", "", value] for label, value in summary.items()
+            )
+            return ExportService.export_to_csv(csv_rows, headers, "cash_flow.csv")
         return ExportService.export_to_excel(
             "قائمة التدفقات النقدية — Cash Flow",
             headers,
@@ -2671,6 +2713,7 @@ def export_vat_report():  # noqa: C901
 
     data = _vat_report_data(date_from, date_to)
     summary = data["summary"]
+    row_totals = data["row_totals"]
 
     sales_headers = [
         "رقم الفاتورة",
@@ -2774,72 +2817,71 @@ def export_vat_report():  # noqa: C901
                 ws.cell(row=r, column=6, value=float(tax_value)).font = Font(bold=True)
             return ws
 
+        def _row_total(key, field="net"):
+            return row_totals[key][field]
+
         _sheet(
             "المبيعات الخاضعة",
             sales_headers,
             sales_rows,
             "C0392B",
-            ("المجموع", summary["total_taxable_sales"], total_output),
+            ("المجموع", _row_total("taxable_sales"), _row_total("taxable_sales", "tax")),
         )
         _sheet(
             "المبيعات الصفرية",
             sales_headers,
             zero_rated_rows,
             "2980B9",
-            ("المجموع", summary["total_zero_rated_sales"], 0),
+            ("المجموع", _row_total("zero_rated_sales"), 0),
         )
         _sheet(
             "المبيعات المعفاة",
             sales_headers,
             exempt_sales_rows,
             "7F8C8D",
-            ("المجموع", summary["total_exempt_sales"], 0),
+            ("المجموع", _row_total("exempt_sales"), 0),
         )
         _sheet(
             "فواتير صفر بلا تصنيف",
             sales_headers,
             unclassified_sales_rows,
             "D35400",
-            ("المجموع", summary["total_unclassified_sales"], 0),
+            ("المجموع", _row_total("unclassified_sales"), 0),
         )
         _sheet(
             "إشعارات الدائنة",
             credit_note_headers,
             credit_note_rows,
             "8E44AD",
-            (
-                "المجموع",
-                -summary["total_credit_notes_net"],
-                -summary["total_credit_notes_vat"],
-            ),
+            ("المجموع", _row_total("credit_notes"), _row_total("credit_notes", "tax")),
         )
         _sheet(
             "المشتريات الصفرية",
             purchase_headers,
             zero_rated_purchase_rows,
             "2980B9",
-            ("المجموع", summary["total_zero_rated_purchases"], 0),
+            ("المجموع", _row_total("zero_rated_purchases"), 0),
         )
         _sheet(
             "مشتريات صفر بلا تصنيف",
             purchase_headers,
             unclassified_purchase_rows,
             "D35400",
-            ("المجموع", summary["total_unclassified_purchases"], 0),
+            ("المجموع", _row_total("unclassified_purchases"), 0),
         )
         _sheet(
             "المشتريات الخاضعة",
             purchase_headers,
             purchase_rows,
             "27AE60",
-            ("المجموع", summary["total_taxable_purchases"], total_input),
+            ("المجموع", _row_total("taxable_purchases"), _row_total("taxable_purchases", "tax")),
         )
         _sheet(
             "المشتريات المعفاة",
             purchase_headers,
             exempt_purchase_rows,
             "7F8C8D",
-            ("المجموع", summary["total_exempt_purchases"], 0),
+            ("المجموع", _row_total("exempt_purchases"), 0),
         )
         non_recoverable_rows = [
             _purchase_row(r) for r in data["non_recoverable_purchases"]
@@ -2854,8 +2896,8 @@ def export_vat_report():  # noqa: C901
             "34495E",
             (
                 "المجموع",
-                summary["total_non_recoverable_base"],
-                summary["total_non_recoverable_vat"],
+                _row_total("non_recoverable_purchases"),
+                _row_total("non_recoverable_purchases", "tax"),
             ),
         )
         _sheet(
@@ -2865,8 +2907,8 @@ def export_vat_report():  # noqa: C901
             "16A085",
             (
                 "المجموع",
-                summary["total_reverse_charge_base"],
-                summary["total_reverse_charge_vat"],
+                _row_total("reverse_charge_purchases"),
+                _row_total("reverse_charge_purchases", "tax"),
             ),
         )
         expense_rows = [_purchase_row(r) for r in data["expense_taxable"]]
@@ -2877,8 +2919,8 @@ def export_vat_report():  # noqa: C901
             "27AE60",
             (
                 "المجموع",
-                sum(r["net_amount"] for r in data["expense_taxable"]),
-                summary["total_expense_input_vat"],
+                _row_total("expense_taxable"),
+                _row_total("expense_taxable", "tax"),
             ),
         )
         expense_nr_rows = [_purchase_row(r) for r in data["expense_non_recoverable"]]
@@ -2889,8 +2931,8 @@ def export_vat_report():  # noqa: C901
             "34495E",
             (
                 "المجموع",
-                sum(r["net_amount"] for r in data["expense_non_recoverable"]),
-                summary["total_expense_non_recoverable_vat"],
+                _row_total("expense_non_recoverable"),
+                _row_total("expense_non_recoverable", "tax"),
             ),
         )
         expense_rc_rows = [_purchase_row(r) for r in data["expense_reverse_charge"]]
@@ -2901,8 +2943,8 @@ def export_vat_report():  # noqa: C901
             "16A085",
             (
                 "المجموع",
-                sum(r["net_amount"] for r in data["expense_reverse_charge"]),
-                summary["total_expense_reverse_charge_vat"],
+                _row_total("expense_reverse_charge"),
+                _row_total("expense_reverse_charge", "tax"),
             ),
         )
         by_rate_headers = [

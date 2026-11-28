@@ -195,6 +195,61 @@ class CurrencyService:
         return CurrencyService._rates_source.get((currency or "").upper(), "unknown")
 
     @staticmethod
+    def invalidate_rates(currency=None):
+        """Drop cached quotes so the next read observes a manual override."""
+        if currency:
+            key = (currency or "").upper()
+            CurrencyService._rates_cache.pop(key, None)
+            CurrencyService._rates_source.pop(key, None)
+        else:
+            CurrencyService._rates_cache.clear()
+            CurrencyService._rates_source.clear()
+
+    @staticmethod
+    def get_manual_rate(from_currency, to_currency):
+        """Return the newest valid owner-supplied rate, or ``None``.
+
+        Manual rates are durable ``ExchangeRate`` rows (``is_manual=True``),
+        so they survive restarts and are never overwritten by the provider
+        refresh job. Query failures are non-fatal: the caller falls back to
+        its normal live/fallback path.
+        """
+        try:
+            from datetime import datetime, timezone
+
+            from models import ExchangeRate
+
+            now = datetime.now(timezone.utc)
+
+            def _aware(value):
+                if value is not None and value.tzinfo is None:
+                    return value.replace(tzinfo=timezone.utc)
+                return value
+
+            row = (
+                ExchangeRate.query.filter_by(
+                    from_currency=(from_currency or "").upper(),
+                    to_currency=(to_currency or "").upper(),
+                    is_manual=True,
+                )
+                .order_by(ExchangeRate.valid_from.desc())
+                .first()
+            )
+            if row is not None:
+                starts = _aware(row.valid_from)
+                ends = _aware(row.valid_until)
+                valid = starts is not None and starts <= now
+                if valid and ends is not None:
+                    valid = now <= ends
+                if valid:
+                    value = Decimal(str(row.rate))
+                    if value.is_finite() and value > 0:
+                        return value.quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
     def update_all_rates():
         """Refresh live rates, persist them and invalidate stale caches.
 
@@ -299,6 +354,13 @@ class CurrencyService:
 
         if from_currency == to_currency:
             return Decimal("1")
+
+        # Owner overrides are authoritative and durable; check them before
+        # any cached or live quote so a manual fix is never masked by an
+        # earlier provider response.
+        manual = CurrencyService.get_manual_rate(from_currency, to_currency)
+        if manual is not None:
+            return manual
 
         cache_entry = CurrencyService._rates_cache.get(from_currency)
         if (

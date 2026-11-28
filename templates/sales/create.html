@@ -113,7 +113,7 @@ a.btn.btn-outline-secondary i, a.btn.btn-outline-secondary span { color: #111827
 {% endblock %}
 
 {% block content %}
-<form method="POST" action="{{ url_for('sales.create') }}" id="saleForm" class="sale-create-form">
+<form method="POST" action="{{ url_for('sales.create') }}" id="saleForm" class="sale-create-form" onsubmit="return validateForm();">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="line_count" id="line_count" value="0">
   

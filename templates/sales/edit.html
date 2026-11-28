@@ -8,7 +8,12 @@
     <div class="col-12">
       <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i>
-        <strong>{{ t("Accounting Note:") }}</strong> {{ t("Only notes and discount can be edited. Products and quantities cannot be changed after invoice creation.") }}
+        <strong>{{ t("Accounting Note:") }}</strong>
+        {% if sale.payment_status == 'paid' %}
+          {{ t("This invoice is fully paid: only the notes can be edited. Products, amounts and quantities stay unchanged.") }}
+        {% else %}
+          {{ t("Only notes and discount can be edited. Products and quantities cannot be changed after invoice creation.") }}
+        {% endif %}
       </div>
 
       <div class="card">
@@ -74,6 +79,7 @@
             </table>
 
             
+            {% if sale.payment_status != 'paid' %}
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
@@ -92,7 +98,10 @@
                   <small class="text-muted">{{ t("Leave empty to be calculated from customer payment terms") }}</small>
                 </div>
               </div>
+            </div>
+            {% endif %}
 
+            <div class="row">
               <div class="col-md-12">
                 <div class="form-group">
                   <label>{{ t("Notes") }}</label>

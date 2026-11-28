@@ -80,6 +80,14 @@
               {% endif %}
             </form>
             {% endif %}
+            {% if not meta.locked_codes and r.custom %}
+            <form method="POST" action="{{ url_for('owner.constants_delete', group=group) }}" style="display:inline;"
+                  onsubmit="return confirm({{ t('Delete this custom value?')|tojson }});">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="code" value="{{ r.code }}">
+              <button type="submit" class="btn btn-danger btn-sm" title="{{ t('Delete custom value') }}"><i class="fas fa-trash"></i></button>
+            </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

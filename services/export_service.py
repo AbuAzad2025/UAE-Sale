@@ -9,6 +9,8 @@ from io import BytesIO, StringIO
 import csv
 import logging
 
+from utils.helpers import csv_safe_cell
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,12 +19,17 @@ class ExportService:
 
     @staticmethod
     def export_to_csv(data, headers, filename="export.csv"):
-        """Export rows to a CSV file with UTF-8 BOM for Excel compat."""
+        """Export rows to a CSV file with UTF-8 BOM for Excel compat.
+
+        Both headers and cells are escaped against spreadsheet formula
+        injection (a value starting with =, +, -, @, tab or CR is prefixed
+        with a single quote).
+        """
         str_output = StringIO()
         writer = csv.writer(str_output)
-        writer.writerow(headers)
+        writer.writerow([csv_safe_cell(h) for h in headers])
         for row in data:
-            writer.writerow(["'" + str(c) if isinstance(c, str) and c[:1] in ('=', '+', '-', '@') else c for c in row])
+            writer.writerow([csv_safe_cell(c) for c in row])
 
         output = BytesIO()
         output.write(b"\xef\xbb\xbf")

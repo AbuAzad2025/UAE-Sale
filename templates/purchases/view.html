@@ -29,7 +29,15 @@
           <dd class="col-sm-8"><strong>{{ purchase.purchase_number }}</strong></dd>
           
           <dt class="col-sm-4">{{ t('Supplier:') }}</dt>
-          <dd class="col-sm-8">{{ purchase.supplier_name }}</dd>
+          <dd class="col-sm-8">
+            {% if purchase.supplier_id %}
+            <a href="{{ url_for('suppliers.view', id=purchase.supplier_id) }}" class="text-primary">
+              {{ purchase.supplier_name }}
+            </a>
+            {% else %}
+              {{ purchase.supplier_name }}
+            {% endif %}
+          </dd>
           
           <dt class="col-sm-4">{{ t('Phone:') }}</dt>
           <dd class="col-sm-8">{{ purchase.supplier_phone or '-' }}</dd>
@@ -43,6 +51,25 @@
             {% if purchase.get_paid_amount() < purchase.total_amount and purchase.days_overdue > 0 %}
             <span class="badge badge-danger">{{ t('Overdue') }} {{ purchase.days_overdue }} {{ t('days') }}</span>
             {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">{{ t('Status:') }}</dt>
+          <dd class="col-sm-8">
+            {% set balance = purchase.total_amount - purchase.get_paid_amount() %}
+            {% if balance <= 0 %}
+              <span class="badge badge-success px-3"><i class="fas fa-check mr-1"></i>{{ t('Paid') }}</span>
+            {% elif purchase.get_paid_amount() > 0 %}
+              <span class="badge badge-warning px-3"><i class="fas fa-clock mr-1"></i>{{ t('Partial') }}</span>
+            {% else %}
+              <span class="badge badge-danger px-3"><i class="fas fa-hourglass-half mr-1"></i>{{ t('Due') }}</span>
+            {% endif %}
+            {% if purchase.status %}
+              <span class="badge badge-secondary px-2">{{ purchase.status }}</span>
+            {% endif %}
+            {% if purchase.reverse_charge %}<span class="badge badge-warning px-2" title="{{ t('Reverse Charge') }}">RC</span>{% endif %}
+            {% if purchase.tax_treatment == 'zero' %}<span class="badge badge-info px-2">{{ t('Zero-rated') }}</span>{% endif %}
+            {% if purchase.tax_treatment == 'exempt' %}<span class="badge badge-secondary px-2">{{ t('Exempt') }}</span>{% endif %}
+            {% if purchase.vat_recoverable == False %}<span class="badge badge-dark px-2" title="{{ t('Non-recoverable input tax') }}">NR</span>{% endif %}
           </dd>
         </dl>
 

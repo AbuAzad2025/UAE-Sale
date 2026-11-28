@@ -4,6 +4,7 @@ from flask import current_app
 from flask_login import current_user
 from extensions import db
 from models import Receipt, Sale
+from models.sale import recompute_sale_settlement, settlement_values
 from services.currency_service import CurrencyService
 from services.gl_service import GLService
 from utils.decorators import tx, get_owned_or_raise
@@ -257,20 +258,13 @@ class PaymentService:
 
         returns_base = compute_sale_returns_base(sale.id)
 
-        balance_due = (
-            _dec(sale.amount_base) - sale.paid_amount_base - returns_base
-        ).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-        if balance_due < Decimal("0"):
-            balance_due = Decimal("0")
-        sale.balance_due = balance_due
-
-        if balance_due <= Decimal("0.01"):
-            sale.payment_status = "paid"
-            sale.balance_due = Decimal("0")
-        elif sale.paid_amount_base > Decimal("0"):
-            sale.payment_status = "partial"
-        else:
-            sale.payment_status = "unpaid"
+        # One canonical settlement formula (same as recompute_sale_settlement).
+        # The receipt's allocations are not persisted yet at this point, so a
+        # Core recompute here would read stale data; callers recompute once the
+        # allocations have been saved (see create_receipt / confirm_receipt).
+        sale.balance_due, sale.payment_status = settlement_values(
+            sale.amount_base, sale.paid_amount_base, returns_base
+        )
 
         return allocated_base
 
@@ -612,6 +606,16 @@ class PaymentService:
                 receipt.sale_id = int(stored_allocations[0]["sale_id"])
 
             db.session.flush()
+
+            # Now that allocations_json is persisted, the Core derivation sees
+            # every allocated invoice (including secondary ones). Recompute
+            # once here instead of trusting the provisional in-memory status.
+            if payment_confirmed and stored_allocations:
+                _connection = db.session.connection()
+                for _sale_id in sorted(
+                    {int(a["sale_id"]) for a in stored_allocations}
+                ):
+                    recompute_sale_settlement(_sale_id, connection=_connection)
 
             from models.customer import recompute_customer_balance
 
@@ -980,6 +984,11 @@ class PaymentService:
             receipt.set_allocations(stored)
 
             db.session.flush()
+
+            if receipt.payment_confirmed and stored:
+                _connection = db.session.connection()
+                for _sale_id in sorted({int(a["sale_id"]) for a in stored}):
+                    recompute_sale_settlement(_sale_id, connection=_connection)
 
             from models.customer import recompute_customer_balance
 

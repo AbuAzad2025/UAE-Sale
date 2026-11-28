@@ -383,7 +383,6 @@ def edit(id):
             new_recoverable = any(v in ("on", "1", "true") for v in request.form.getlist("vat_recoverable"))
             new_treatment = (request.form.get("tax_treatment") or "standard").strip().lower()
             new_rc = request.form.get("reverse_charge") in ("on", "1", "true")
-            new_rc = request.form.get("reverse_charge") in ("on", "1", "true")
             if new_treatment not in ("standard", "zero", "exempt"):
                 new_treatment = "standard"
 
@@ -392,7 +391,6 @@ def edit(id):
                 or new_inclusive != bool(purchase.tax_inclusive)
                 or new_recoverable != bool(purchase.vat_recoverable)
                 or new_treatment != (purchase.tax_treatment or "standard")
-                or new_rc != bool(purchase.reverse_charge)
                 or new_rc != bool(purchase.reverse_charge)
             )
 
@@ -409,7 +407,6 @@ def edit(id):
                 purchase.tax_inclusive = new_inclusive
                 purchase.vat_recoverable = new_recoverable
                 purchase.tax_treatment = new_treatment
-                purchase.reverse_charge = new_rc
                 purchase.reverse_charge = new_rc
                 purchase.calculate_totals()
                 db.session.flush()

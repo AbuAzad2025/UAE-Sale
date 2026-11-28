@@ -381,12 +381,18 @@ def create_invoice(id):
 @permission_required("maintenance_close")
 def create_credit_note(id):
     try:
+        order = get_maintenance_order(id)
+        if not order or not order.invoice:
+            raise ValidationError("لا يمكن إنشاء إشعار دائن قبل ترحيل الفاتورة")
+        # A credit note reverses the posted invoice: its FX rate and currency
+        # must be the invoice's, never a free-form value from the form.
+        invoice = order.invoice
         cn = create_maintenance_credit_note(
             order_id=id,
             created_by=current_user.id,
             reason=request.form.get("reason", ""),
-            currency=request.form.get("currency"),
-            exchange_rate=request.form.get("exchange_rate", type=float),
+            currency=invoice.currency,
+            exchange_rate=invoice.exchange_rate,
         )
         flash(f"تم إنشاء إشعار دائن {cn.credit_note_no} وترحيل قيده", "success")
     except ValidationError as exc:

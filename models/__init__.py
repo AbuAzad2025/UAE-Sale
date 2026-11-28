@@ -10,6 +10,7 @@ from .payment import Payment, Receipt
 from .currency import Currency, ExchangeRate
 from .audit import AuditLog
 from .assistant_action import AssistantAction
+from .webhook_event import ProcessedWebhookEvent
 from . import bot_event
 from .archive import ArchivedRecord
 from .product_return import ProductReturn, ProductReturnLine

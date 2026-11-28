@@ -19,7 +19,7 @@ from utils.decorators import permission_required, get_owned_or_404
 from utils.helpers import create_audit_log
 from services.payment_service import PaymentService
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 customers_bp = Blueprint("customers", __name__, url_prefix="/customers")
 
@@ -418,8 +418,28 @@ def statement(id):
 def _customer_statement(id, *, export=False):
     customer = get_owned_or_404(Customer, id)
 
-    date_from = request.args.get("date_from", type=str)
-    date_to = request.args.get("date_to", type=str)
+    raw_date_from = request.args.get("date_from", type=str)
+    raw_date_to = request.args.get("date_to", type=str)
+
+    def _statement_date(raw, label):
+        """Strict ISO date filter — a malformed value must not silently
+        change the statement's opening balance or filter out all rows."""
+        if not raw:
+            return None
+        try:
+            return date.fromisoformat(raw.strip()[:10])
+        except (ValueError, TypeError):
+            flash(f"⚠️ صيغة {label} غير صالحة — تم تجاهل فلتر التاريخ.", "warning")
+            return None
+
+    date_from = _statement_date(raw_date_from, "تاريخ البداية")
+    date_to = _statement_date(raw_date_to, "تاريخ النهاية")
+    if date_from and date_to and date_from > date_to:
+        flash("⚠️ تاريخ البداية بعد تاريخ النهاية — تم تجاهل فلتر التاريخ.", "warning")
+        date_from = date_to = None
+    # _row_day() yields ISO date strings, so compare like with like.
+    date_from_key = date_from.isoformat() if date_from else None
+    date_to_key = date_to.isoformat() if date_to else None
     transaction_type = request.args.get("transaction_type", "all")
 
     from sqlalchemy import func
@@ -931,16 +951,17 @@ def _customer_statement(id, *, export=False):
         transactions, key=lambda row: (_row_day(row), str(row.get("reference", "")))
     )
     opening_balance = Decimal("0")
-    if date_from:
+    if date_from_key:
         for row in full_transactions:
-            if _row_day(row) < date_from:
+            if _row_day(row) < date_from_key:
                 opening_balance += Decimal(str(row["debit"])) - Decimal(str(row["credit"]))
         transactions = [
             row for row in transactions
-            if _row_day(row) >= date_from and (not date_to or _row_day(row) <= date_to)
+            if _row_day(row) >= date_from_key
+            and (not date_to_key or _row_day(row) <= date_to_key)
         ]
-    elif date_to:
-        transactions = [row for row in transactions if _row_day(row) <= date_to]
+    elif date_to_key:
+        transactions = [row for row in transactions if _row_day(row) <= date_to_key]
 
     running_balance = opening_balance
     for trans in transactions:
@@ -1017,8 +1038,8 @@ def _customer_statement(id, *, export=False):
         opening_balance=opening_balance,
         system_balance=system_balance,
         filters={
-            "date_from": date_from or "",
-            "date_to": date_to or "",
+            "date_from": date_from_key or "",
+            "date_to": date_to_key or "",
             "transaction_type": transaction_type,
         },
     )
@@ -1159,6 +1180,20 @@ def _export_customer_statement(customer, transactions, opening_balance=0, final_
     ws.append([])
     ws.append(["التاريخ", "النوع", "المرجع", "الوصف", "مدين", "دائن", "الرصيد"])
 
+    # Brought-forward balance belongs BEFORE the period transactions and must
+    # use the same debit/credit convention as the rows below it.
+    if opening_balance:
+        ws.append(
+            [
+                "-",
+                "opening",
+                "-",
+                "رصيد مرحّل من الفترات السابقة",
+                float(opening_balance) if opening_balance > 0 else 0,
+                float(-opening_balance) if opening_balance < 0 else 0,
+                float(opening_balance),
+            ]
+        )
     for row in transactions:
         ws.append(
             [
@@ -1171,9 +1206,6 @@ def _export_customer_statement(customer, transactions, opening_balance=0, final_
                 row["balance"],
             ]
         )
-    if opening_balance:
-        ws.append(["-", "opening", "-", "رصيد مرحّل من الفترات السابقة",
-                   0, 0, float(opening_balance)])
     ws.append(["-", "total", "-", "صافي الحركات المعروضة",
                float(sum(float(r["debit"]) for r in transactions)),
                float(sum(float(r["credit"]) for r in transactions)),

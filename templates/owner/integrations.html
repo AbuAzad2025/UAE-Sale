@@ -470,4 +470,22 @@
     text-align: right;
   }
 </style>
+
+<script>
+// These two toolbar buttons are diagnostic stubs: no test endpoint is wired
+// yet. Keep them harmless instead of raising a ReferenceError on click.
+function integrationStubNotice(message) {
+  if (window.notify && typeof window.notify.info === 'function') {
+    window.notify.info(message);
+  } else if (window.Swal) {
+    Swal.fire({ icon: 'info', title: message });
+  }
+}
+function testEmail() {
+  integrationStubNotice({{ t('Email test is not available yet. Save the settings first.')|tojson }});
+}
+function testCurrencyAPI() {
+  integrationStubNotice({{ t('Exchange-rate refresh is not available from this page yet.')|tojson }});
+}
+</script>
 {% endblock %}

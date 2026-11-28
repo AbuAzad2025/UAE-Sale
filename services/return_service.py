@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from flask import current_app
 from extensions import db
 from models import Sale, SaleLine, ProductReturn, ProductReturnLine, Product
@@ -8,6 +8,23 @@ from services.tax_engine import TaxEngine
 from utils.decorators import get_owned_or_404, get_owned_or_raise
 from utils.errors import ValidationError
 from utils.helpers import generate_number, create_audit_log
+
+
+def _refund_exchange_rate(sale):
+    """Rate used to value a refund — never silently defaulted to 1.0.
+
+    A wrong rate changes the cash paid to the customer and the AR credit, so
+    an absent/invalid invoice rate is a blocking validation error rather than
+    an arbitrary fallback.
+    """
+    raw = getattr(sale, "exchange_rate", None)
+    try:
+        rate = Decimal(str(raw))
+    except (TypeError, ValueError, InvalidOperation):
+        raise ValidationError("سعر صرف الفاتورة غير صالح — لا يمكن حساب الاسترداد") from None
+    if not rate.is_finite() or rate <= Decimal("0"):
+        raise ValidationError("سعر صرف الفاتورة غير صالح — لا يمكن حساب الاسترداد")
+    return rate
 
 
 class ReturnService:
@@ -43,6 +60,7 @@ class ReturnService:
             if sale.status == "cancelled":
                 raise ValueError("Cannot create return for a cancelled sale.")
 
+            refund_rate = _refund_exchange_rate(sale)
             return_number = generate_number("R", ProductReturn, "return_number")
 
             product_return = ProductReturn(
@@ -50,7 +68,7 @@ class ReturnService:
                 sale_id=sale.id,
                 customer_id=sale.customer_id,
                 currency=sale.currency,
-                exchange_rate=sale.exchange_rate,
+                exchange_rate=refund_rate,
                 notes=notes,
                 processed_by=user_id,
                 # Returns are recorded pending and require an explicit
@@ -283,7 +301,7 @@ class ReturnService:
                     reference_type="ProductReturn",
                     reference_id=product_return.id,
                     currency=sale.currency,
-                    exchange_rate=sale.exchange_rate,
+                    exchange_rate=refund_rate,
                     idempotency_key=f"ProductReturn:{product_return.id}:revenue",
                 )
 
@@ -306,9 +324,7 @@ class ReturnService:
             from services.currency_service import CurrencyService
             from models import Payment
 
-            _rate = Decimal(str(sale.exchange_rate or 1))
-            if _rate <= 0:
-                _rate = Decimal("1")
+            _rate = refund_rate
             refund_base = (gross_return_amount * _rate).quantize(
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )

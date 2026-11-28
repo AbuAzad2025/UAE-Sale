@@ -432,18 +432,70 @@ function calculateTotalsClientSide() {
 }
 
 /**
- * Load Exchange Rate when Currency Changes
- * Allows manual editing with audit trail
+ * Exchange rate handling.
+ * The currency-change handler is the authoritative loader (it fetches the
+ * server rate); a single shared function owns all rate-change side effects
+ * (audit trail, hidden override fields and line-price refresh). Previously
+ * two separate change handlers duplicated that logic.
  */
 let serverExchangeRate = null;  // Store server rate for comparison
+
+function applyExchangeRate() {
+    const $rateInput = $('#exchange_rate');
+    const manualRate = parseFloat($rateInput.val());
+    const serverRate = parseFloat($rateInput.data('server-rate')) || serverExchangeRate;
+
+    if (!manualRate || manualRate <= 0) {
+        azad.showError(' ' + t('Exchange rate must be greater than zero'));
+        if (serverRate) {
+            $rateInput.val(serverRate.toFixed(6));
+        }
+        return;
+    }
+
+    if (serverRate && manualRate !== serverRate) {
+        const diff = ((manualRate - serverRate) / serverRate * 100).toFixed(2);
+        const diffText = diff > 0 ? `+${diff}%` : `${diff}%`;
+
+        if (manualRate < serverRate) {
+            // Manual rate is lower than server rate - requires documentation
+            $rateInput.css('background-color', '#f8d7da');
+            azad.showWarning(
+                ` ${t('Warning')}: ${t('Entered exchange rate')} (${manualRate.toFixed(6)}) ${t('is lower than server rate')} (${serverRate.toFixed(6)}) ${t('by')} ${diffText}` +
+                `\n${t('This change will be documented in the operation log')}`
+            );
+
+            $('#saleForm').find('input[name="exchange_rate_manual"]').remove();
+            $('#saleForm').append(`
+                <input type="hidden" name="exchange_rate_manual" value="true">
+                <input type="hidden" name="exchange_rate_server" value="${serverRate}">
+                <input type="hidden" name="exchange_rate_difference" value="${diff}">
+            `);
+        } else if (manualRate > serverRate) {
+            $rateInput.css('background-color', '#d1ecf1');
+            azad.showInfo(`ℹ ${t('Entered exchange rate')} ${t('is higher than server')} ${t('by')} ${diffText}`);
+        } else {
+            $rateInput.css('background-color', '#d4edda');
+        }
+    } else if (!serverRate) {
+        // Manual input without server rate
+        $rateInput.css('background-color', '#fff3cd');
+        $('#saleForm').find('input[name="exchange_rate_manual"]').remove();
+        $('#saleForm').append(`<input type="hidden" name="exchange_rate_manual" value="true">`);
+    }
+
+    updateLinePrices();
+}
+
+// One authoritative handler for manual rate edits and server-driven updates.
+$('#exchange_rate').on('change', applyExchangeRate);
 
 $('#currency').on('change', function() {
     const currency = $(this).val();
     const $rateInput = $('#exchange_rate');
-    
-    // Update payment currency display
+
     $('#payment_currency_display').text(currency);
-    
+
     if (currency === (window.BASE_CURRENCY || 'AED')) {
         $rateInput.val('1.000000');
         $rateInput.data('server-rate', 1);
@@ -451,11 +503,12 @@ $('#currency').on('change', function() {
         $rateInput.prop('readonly', false);
         $rateInput.css('background-color', '#e9ecef');
         azad.showInfo(' ' + t('Currency: AED - Prices and payment in AED'));
+        applyExchangeRate();
         return;
     }
-    
+
     $rateInput.val('...').css('background-color', '#fff8dc');
-    
+
     $.ajax({
         url: `/api/currency-rate/${currency}/${window.BASE_CURRENCY || "ILS"}`,
         success: function(data) {
@@ -469,10 +522,11 @@ $('#currency').on('change', function() {
                 const exampleAED = (examplePayment * data.rate).toFixed(2);
                 const _base = window.BASE_CURRENCY || 'AED';
                 azad.showSuccess(` ${t('Exchange rate')}: 1 ${currency} = ${data.rate.toFixed(3)} ${_base}\n\n ${t('Explanation')}:\n• ${t('Invoice')}: ${t('in AED')} (${_base})\n• ${t('Paid')}: ${t('in')} ${currency}\n• ${t('Example')}: ${examplePayment} ${currency} = ${exampleAED} ${_base}`);
-                updateLinePrices();
+                applyExchangeRate();
             } else if (data.manual_input_required) {
                 serverExchangeRate = null;
                 $rateInput.val('');
+                $rateInput.data('server-rate', null);
                 $rateInput.prop('readonly', false);
                 $rateInput.css('background-color', '#fff3cd');
                 $rateInput.focus();
@@ -482,59 +536,12 @@ $('#currency').on('change', function() {
         error: function() {
             serverExchangeRate = null;
             $rateInput.val('');
+            $rateInput.data('server-rate', null);
             $rateInput.prop('readonly', false);
             $rateInput.css('background-color', '#f8d7da');
             azad.showError(' ' + t('Failed to load exchange rate - please enter manually'));
         }
     });
-});
-
-// Audit manual exchange rate changes
-$('#exchange_rate').on('change', function() {
-    const manualRate = parseFloat($(this).val());
-    const serverRate = parseFloat($(this).data('server-rate')) || serverExchangeRate;
-    
-    if (!manualRate || manualRate <= 0) {
-        azad.showError(' ' + t('Exchange rate must be greater than zero'));
-        if (serverRate) {
-            $(this).val(serverRate.toFixed(6));
-        }
-        return;
-    }
-    
-    if (serverRate && manualRate !== serverRate) {
-        const diff = ((manualRate - serverRate) / serverRate * 100).toFixed(2);
-        const diffText = diff > 0 ? `+${diff}%` : `${diff}%`;
-        
-        if (manualRate < serverRate) {
-            // Manual rate is lower than server rate - requires documentation
-            $(this).css('background-color', '#f8d7da');
-            azad.showWarning(
-                ` ${t('Warning')}: ${t('Entered exchange rate')} (${manualRate.toFixed(6)}) ${t('is lower than server rate')} (${serverRate.toFixed(6)}) ${t('by')} ${diffText}` +
-                `\n${t('This change will be documented in the operation log')}`
-            );
-            
-            // Add hidden field to track manual override
-            $('#saleForm').find('input[name="exchange_rate_manual"]').remove();
-            $('#saleForm').append(`
-                <input type="hidden" name="exchange_rate_manual" value="true">
-                <input type="hidden" name="exchange_rate_server" value="${serverRate}">
-                <input type="hidden" name="exchange_rate_difference" value="${diff}">
-            `);
-        } else if (manualRate > serverRate) {
-            $(this).css('background-color', '#d1ecf1');
-            azad.showInfo(`ℹ ${t('Entered exchange rate')} ${t('is higher than server')} ${t('by')} ${diffText}`);
-        } else {
-            $(this).css('background-color', '#d4edda');
-        }
-    } else if (!serverRate) {
-        // Manual input without server rate
-        $(this).css('background-color', '#fff3cd');
-        $('#saleForm').find('input[name="exchange_rate_manual"]').remove();
-        $('#saleForm').append(`<input type="hidden" name="exchange_rate_manual" value="true">`);
-    }
-    
-    updateLinePrices();
 });
 
 /**

@@ -5,6 +5,7 @@ Prevents accidental logging of passwords, API keys, tokens,
 database credentials, and other secrets.
 """
 
+import logging
 import re
 
 SENSITIVE_PATTERNS = [
@@ -67,7 +68,26 @@ def sanitize_log_message(message):
 
 
 class SanitizeFilter:
-    """Logging filter that sanitizes sensitive data from log records."""
+    """Logging filter that sanitizes sensitive data from log records.
+
+    Tracebacks are formatted here (once) and stored in ``record.exc_text`` in
+    redacted form; ``record.exc_info`` is cleared so no formatter can render
+    the original, unsanitized exception string later.
+    """
+
+    @staticmethod
+    def _redact_exception(record):
+        exc_info = getattr(record, "exc_info", None)
+        if not exc_info:
+            return
+        try:
+            formatted = logging.Formatter().formatException(exc_info)
+            record.exc_text = sanitize_log_message(formatted)
+        except Exception:
+            # Never let sanitization break logging: drop the raw traceback.
+            record.exc_text = "***TRACEBACK REDACTED***"
+        finally:
+            record.exc_info = None
 
     def filter(self, record):
         if isinstance(record.msg, str):
@@ -83,4 +103,7 @@ class SanitizeFilter:
                     sanitize_log_message(str(a)) if isinstance(a, str) else a
                     for a in record.args
                 )
+        self._redact_exception(record)
+        if isinstance(getattr(record, "exc_text", None), str):
+            record.exc_text = sanitize_log_message(record.exc_text)
         return True

@@ -475,8 +475,10 @@ class GLJournalEntry(TenantScopedMixin, db.Model):
         return f"<GLEntry {self.entry_number}>"
 
     def is_balanced(self):
-        """Check if entry is balanced"""
-        return self.total_debit == self.total_credit
+        """Check if entry is balanced — exact 3dp equality (shared helper)."""
+        from utils.balance_checker import amounts_balanced
+
+        return amounts_balanced(self.total_debit, self.total_credit)
 
     @property
     def entry_type_ar(self):

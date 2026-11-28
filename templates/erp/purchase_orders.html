@@ -4,13 +4,14 @@
 {% block content %}
 <div class="mb-3"><a href="{{ url_for('erp_modules.create_purchase_order') }}" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('New Purchase Order') }}</a></div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('Supplier') }}</th><th>{{ t('Date') }}</th><th>{{ t('Total Amount') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for o in orders %}
     <tr>
       <td><strong>{{ o.po_number }}</strong></td>
-      <td>{{ o.supplier.name if o.supplier else '-' }}</td>
+      <td>{{ display_name(o.supplier) if o.supplier else '-' }}</td>
       <td>{{ o.po_date.strftime('%Y-%m-%d') if o.po_date else '-' }}</td>
       <td>{{ "{:,.2f}".format(o.total_amount|float) }} {{ base_currency_name }}</td>
       <td><span class="badge badge-{{ 'success' if o.status=='received' else ('warning' if o.status=='approved' else 'secondary') }}">{{ o.status|status_label }}</span></td>
@@ -19,5 +20,6 @@
     {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No purchase orders') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

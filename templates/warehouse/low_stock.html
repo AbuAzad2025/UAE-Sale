@@ -102,7 +102,7 @@
               <div class="d-flex align-items-center">
                 {% if product.image_url %}
                   <img src="{{ url_for('static', filename=product.image_url) }}" 
-                       class="warehouse-product-img mr-2" alt="{{ product.name }}">
+                       class="warehouse-product-img mr-2" alt="{{ display_name(product) }}">
                 {% else %}
                   <div class="warehouse-product-img mr-2 d-flex align-items-center justify-content-center"
                        style="background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: white;">
@@ -110,7 +110,7 @@
                   </div>
                 {% endif %}
                 <div>
-                  <strong>{{ product.name }}</strong>
+                  <strong>{{ display_name(product) }}</strong>
                   {% if product.name_ar %}
                   <br><small class="text-muted">{{ product.name_ar }}</small>
                   {% endif %}

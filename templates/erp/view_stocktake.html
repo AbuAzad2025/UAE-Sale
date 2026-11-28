@@ -4,37 +4,43 @@
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between">
-    <h5>{{ stocktake.warehouse.name if stocktake.warehouse else '' }} - {{ stocktake.stocktake_date.strftime('%Y-%m-%d') }}</h5>
+    <h5>{{ display_name(stocktake.warehouse) if stocktake.warehouse else '' }} - {{ stocktake.stocktake_date.strftime('%Y-%m-%d') }}</h5>
     <span class="badge badge-lg badge-{{ 'success' if stocktake.status=='approved' else ('info' if stocktake.status=='completed' else 'warning') }}">{{ stocktake.status|status_label }}</span>
   </div>
   <div class="card-body">
     {% if stocktake.status == 'in_progress' %}
     <form method="POST" action="{{ url_for('erp_modules.update_stocktake_count', id=stocktake.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <table class="table table-bordered">
+      <div class="table-responsive">
+      <table class="table table-bordered" id="stockTakeItems">
         <thead><tr><th>{{ t('Product') }}</th><th>{{ t('System Quantity') }}</th><th>{{ t('Actual Count') }}</th><th>{{ t('Difference') }}</th></tr></thead>
         <tbody>
         {% for item in stocktake.items %}
         <tr>
-          <td>{{ item.product.name if item.product else '-' }}</td>
+          <td>{{ display_name(item.product) if item.product else '-' }}</td>
           <td>{{ item.system_quantity }}</td>
-          <td><input type="number" name="counted_{{ item.id }}" class="form-control" step="0.01" value="{{ item.counted_quantity or item.system_quantity }}"></td>
-          <td id="var_{{ item.id }}">—</td>
+          <td><input type="number" name="counted_{{ item.id }}" class="form-control counted-input"
+                     data-system="{{ item.system_quantity }}" step="0.01"
+                     value="{{ item.counted_quantity if item.counted_quantity is not none else item.system_quantity }}"></td>
+          <td id="var_{{ item.id }}" class="text-center">—</td>
         </tr>
         {% endfor %}
         </tbody>
       </table>
+      </div>
       <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-2"></i>{{ t('Save Stock Take Results') }}</button>
     </form>
     {% elif stocktake.status == 'completed' %}
+    <div class="table-responsive">
     <table class="table table-bordered">
       <thead><tr><th>{{ t('Product') }}</th><th>{{ t('System') }}</th><th>{{ t('Actual') }}</th><th>{{ t('Difference') }}</th></tr></thead>
       <tbody>
       {% for item in stocktake.items %}
-      <tr><td>{{ item.product.name if item.product else '-' }}</td><td>{{ item.system_quantity }}</td><td>{{ item.counted_quantity or '-' }}</td><td><span class="badge badge-{{ 'success' if item.variance == 0 else 'danger' }}">{{ item.variance }}</span></td></tr>
+      <tr><td>{{ display_name(item.product) if item.product else '-' }}</td><td>{{ item.system_quantity }}</td><td>{{ item.counted_quantity if item.counted_quantity is not none else '-' }}</td><td><span class="badge badge-{{ 'success' if item.variance == 0 else 'danger' }}">{{ item.variance }}</span></td></tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
     <form method="POST" action="{{ url_for('erp_modules.approve_stocktake', id=stocktake.id) }}">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-success" onclick="return confirm('{{ t('Approve the stock take and update inventory?') }}')"><i class="fas fa-check mr-2"></i>{{ t('Approve Stock Take') }}</button>
@@ -44,4 +50,29 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Live variance: counted quantity minus system quantity, updated as the user types.
+$(function () {
+  function refreshVariance($input) {
+    const system = parseFloat($input.data('system')) || 0;
+    const raw = $input.val();
+    const cell = $('#var_' + $input.attr('name').replace('counted_', ''));
+    if (raw === '' || isNaN(parseFloat(raw))) {
+      cell.removeClass('badge badge-success badge-danger').addClass('text-muted').text('—');
+      return;
+    }
+    const variance = (parseFloat(raw) - system).toFixed(2);
+    const zero = Math.abs(parseFloat(variance)) < 0.001;
+    cell.removeClass('text-muted badge badge-success badge-danger')
+        .addClass('badge ' + (zero ? 'badge-success' : 'badge-danger'))
+        .text((parseFloat(variance) > 0 ? '+' : '') + variance);
+  }
+
+  $('.counted-input').on('input change', function () { refreshVariance($(this)); });
+  $('.counted-input').each(function () { refreshVariance($(this)); });
+});
+</script>
 {% endblock %}

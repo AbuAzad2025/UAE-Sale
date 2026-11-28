@@ -25,13 +25,14 @@
   </form>
 </div></div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('Customer') }}</th><th>{{ t('Date') }}</th><th>{{ t('Validity') }}</th><th>{{ t('Total Amount') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for q in quotations %}
     <tr>
       <td><strong>{{ q.quotation_number }}</strong></td>
-      <td>{{ q.customer.name if q.customer else '-' }}</td>
+      <td>{{ display_name(q.customer) if q.customer else '-' }}</td>
       <td>{{ q.quotation_date.strftime('%Y-%m-%d') if q.quotation_date else '-' }}</td>
       <td>{{ q.valid_until.strftime('%Y-%m-%d') if q.valid_until else '-' }}</td>
       <td>{{ "{:,.2f}".format(q.total_amount|float) }} {{ base_currency_name }}</td>
@@ -42,5 +43,6 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

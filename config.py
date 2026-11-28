@@ -227,13 +227,22 @@ class Config:
 
     RATELIMIT_ENABLED = _bool(os.environ.get("RATELIMIT_ENABLED"), True)
     RATELIMIT_DEFAULT = "10000 per day;1000 per hour"
-    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+    # Rate limits must be SHARED across workers/instances in production:
+    # memory:// gives every process its own counter and is trivially bypassed
+    # by rotating requests between workers. Only dev/testing may fall back to
+    # an in-process store. assert_production_sanity() fails a production boot
+    # that forces memory:// while a Redis URL is available.
+    _is_production = (
+        APP_ENV.lower() == "production" and not DEBUG
+    )
+    REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI") or (
+        REDIS_URL if _is_production else "memory://"
+    )
     RATELIMIT_LOGIN = "1000 per hour;100 per minute"
     RATELIMIT_API = "600 per hour;10 per second"
 
     TENANT_STRICT = _bool(os.environ.get("TENANT_STRICT"), True)
-
-    REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     CACHE_TYPE = os.environ.get("CACHE_TYPE", "flask_caching.backends.SimpleCache")
     CACHE_REDIS_URL = os.environ.get("CACHE_REDIS_URL", REDIS_URL)
     CACHE_DEFAULT_TIMEOUT = _int("CACHE_DEFAULT_TIMEOUT", 300)
@@ -421,6 +430,21 @@ def assert_production_sanity(cfg=None) -> None:
 
     if not cfg.SESSION_COOKIE_SECURE:
         raise RuntimeError("SESSION_COOKIE_SECURE must be True in production!")
+
+    # A per-process memory store makes rate limits worthless behind multiple
+    # workers/replicas. When Redis is configured, production must use it.
+    redis_url = getattr(cfg, "REDIS_URL", "")
+    storage_uri = getattr(cfg, "RATELIMIT_STORAGE_URI", "")
+    if redis_url and (
+        not storage_uri
+        or storage_uri.startswith("memory://")
+        or storage_uri.startswith("in-memory://")
+    ):
+        raise RuntimeError(
+            "RATELIMIT_STORAGE_URI must use shared storage (Redis) in "
+            "production when REDIS_URL is configured; memory:// is only "
+            "allowed for development/testing."
+        )
 
     base_url = getattr(cfg, "BASE_URL", "")
     if base_url and not base_url.startswith("https://"):

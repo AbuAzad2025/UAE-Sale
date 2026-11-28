@@ -5,18 +5,19 @@
 <div class="mb-3">
   <form method="POST" action="{{ url_for('erp_modules.create_stocktake') }}" class="d-inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <select name="warehouse_id" class="form-control d-inline-block" style="width:200px" required><option value="">{{ t('Select Warehouse') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select>
+    <select name="warehouse_id" class="form-control d-inline-block" style="width:200px" required><option value="">{{ t('Select Warehouse') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select>
     <button type="submit" class="btn btn-primary"><i class="fas fa-plus mr-2"></i>{{ t('Start New Stock Take') }}</button>
   </form>
 </div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('Warehouse') }}</th><th>{{ t('Date') }}</th><th>{{ t('Item Count') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for st in stock_takes %}
     <tr>
       <td><strong>{{ st.stocktake_number }}</strong></td>
-      <td>{{ st.warehouse.name if st.warehouse else '-' }}</td>
+      <td>{{ display_name(st.warehouse) if st.warehouse else '-' }}</td>
       <td>{{ st.stocktake_date.strftime('%Y-%m-%d') }}</td>
       <td>{{ st.items|length }}</td>
       <td><span class="badge badge-{{ 'success' if st.status=='approved' else ('info' if st.status=='completed' else 'warning') }}">{{ st.status|status_label }}</span></td>
@@ -25,5 +26,6 @@
     {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No stock takes') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

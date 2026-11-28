@@ -253,9 +253,9 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_taxable_sales|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.taxable_sales.net|money }}</td>
           <td></td>
-          <td class="text-right num-cell">{{ summary.total_output_vat|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.taxable_sales.tax|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -296,9 +296,9 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_credit_notes_net|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.credit_notes.net|money }}</td>
           <td></td>
-          <td class="text-right num-cell">{{ summary.total_credit_notes_vat|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.credit_notes.tax|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -337,7 +337,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_exempt_sales|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.exempt_sales.net|money }}</td>
           <td></td>
         </tr>
       </tfoot>
@@ -377,7 +377,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_zero_rated_sales|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.zero_rated_sales.net|money }}</td>
           <td></td>
         </tr>
       </tfoot>
@@ -415,7 +415,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_unclassified_sales|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.unclassified_sales.net|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -456,9 +456,9 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_taxable_purchases|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.taxable_purchases.net|money }}</td>
           <td></td>
-          <td class="text-right num-cell">{{ summary.total_input_vat|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.taxable_purchases.tax|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -494,7 +494,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_zero_rated_purchases|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.zero_rated_purchases.net|money }}</td>
           <td></td>
         </tr>
       </tfoot>
@@ -530,7 +530,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_unclassified_purchases|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.unclassified_purchases.net|money }}</td>
         </tr>
       </tfoot>
     </table>
@@ -569,7 +569,7 @@
       <tfoot>
         <tr class="font-weight-bold">
           <td colspan="3">{{ t('Total') }}</td>
-          <td class="text-right num-cell">{{ summary.total_exempt_purchases|money }}</td>
+          <td class="text-right num-cell">{{ row_totals.exempt_purchases.net|money }}</td>
           <td></td>
         </tr>
       </tfoot>

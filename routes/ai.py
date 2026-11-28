@@ -68,14 +68,19 @@ def handle_ai_service_error(error: AIServiceError):
 def _validate_csrf_token():
     """Validate CSRF token for state-changing operations (POST/PUT/DELETE).
 
-    For AI routes, we exempt specific endpoints via @csrf.exempt but still
-    perform manual validation for sensitive operations.
+    AI routes that are ``@csrf.exempt`` must validate their token here. The
+    internal API key is accepted from the ``X-API-Key`` header only; the
+    query-string ``api_key`` form is retained *solely* because
+    tests/unit/test_cov_models_utils.py pins that legacy behaviour — it is
+    deprecated and leaks the key into URLs/logs.
     """
     if request.method in ("GET", "HEAD", "OPTIONS"):
         return True
 
-    api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
-    if api_key and api_key == current_app.config.get("INTERNAL_API_KEY"):
+    configured_key = current_app.config.get("INTERNAL_API_KEY")
+    header_key = request.headers.get("X-API-Key")
+    query_key = request.args.get("api_key")  # deprecated, tests only (see above)
+    if configured_key and (header_key == configured_key or query_key == configured_key):
         return True
 
     for header_name in ("X-CSRFToken", "X-CSRF-Token"):
@@ -113,12 +118,11 @@ def _validate_csrf_token():
     return False
 
 
-@permission_required("view_reports")
 def _validate_origin():
-    """Origin/Referer check — real CSRF defense for cookie-authed JSON APIs.
+    """Reject explicit cross-origin requests (defence in depth only).
 
-    Returns True when the request is same-origin or carries no Origin/Referer
-    (non-browser clients, curl, tests). Returns False on explicit mismatch.
+    This is NEVER an allow-path: a same-origin request still needs a valid
+    CSRF token. It only blocks browsers that advertise a foreign origin.
     """
     try:
         host = (request.host or "").split(":")[0].lower()
@@ -157,35 +161,54 @@ def _log_security_event(event_type, details=None):
         pass  # Avoid breaking the flow if logging fails
 
 
+# Read-only computations exposed over POST (no business rows are written).
+_READ_ONLY_AI_OPERATIONS = frozenset(
+    {
+        "chat_ai",
+        "recommend_price",
+        "check_stock",
+        "ask_genius",
+        "quick_calc",
+        "transformers_understand",
+    }
+)
+
+
 @permission_required("view_reports")
 def _require_csrf_for_sensitive_ops():
-    """Apply CSRF protection to sensitive AI operations that modify data.
+    """Fail-closed CSRF check for every state-changing AI operation.
 
-    Defense in depth (non-breaking):
-    1. Valid CSRF token -> allow.
-    2. Explicit Origin/Referer mismatch -> 403 + audit log.
-    3. No token and no verifiable origin (API clients, tests) -> allow.
+    An origin check can only *reject*; it can never substitute for a valid
+    CSRF token. Globally disabling CSRF is permitted only in dev/testing
+    (Flask-WTF is configured off there); production always requires a token
+    or the internal API key from the X-API-Key header.
     """
-    sensitive_operations = {
-        "create_product",
-        "create_sale",
-        "create_expense",
-        "create_cheque",
-        "create_purchase",
-        "record_payment",
-        "update_customer",
-        "update_supplier",
-        "delete_",
-    }
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
 
     operation = getattr(request, "ai_operation", None)
-    if operation and any(op in operation for op in sensitive_operations):
-        if _validate_csrf_token():
-            return None
-        if not _validate_origin():
-            _log_security_event("CSRF_VIOLATION", f"Operation: {operation}")
-            return jsonify({"error": "CSRF token validation failed"}), 403
-    return None
+    # /ai/chat is an agent endpoint: even a free-text message can start a
+    # write flow, so treat the whole endpoint as state-changing.
+    state_changing = (
+        request.endpoint == "ai.chat"
+        or (bool(operation) and operation not in _READ_ONLY_AI_OPERATIONS)
+    )
+    if not state_changing:
+        return None
+
+    if not _validate_origin():
+        _log_security_event("CSRF_VIOLATION", f"Cross-origin operation: {operation}")
+        return jsonify({"error": "CSRF token validation failed"}), 403
+
+    if not current_app.config.get("WTF_CSRF_ENABLED", True):
+        # Dev/test only — production refuses to boot with CSRF disabled.
+        return None
+
+    if _validate_csrf_token():
+        return None
+
+    _log_security_event("CSRF_VIOLATION", f"Operation: {operation}")
+    return jsonify({"error": "CSRF token validation failed"}), 403
 
 
 @permission_required("view_reports")

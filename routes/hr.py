@@ -542,6 +542,70 @@ def leave_types():
     return render_template("hr/leave_types.html", leave_types=types)
 
 
+@hr_bp.route("/leave-types/create", methods=["GET", "POST"])
+@login_required
+@permission_required("manage_hr")
+def create_leave_type():
+    """Define a new leave type for the current tenant."""
+    if request.method == "POST":
+        try:
+            name = (request.form.get("name") or "").strip()
+            name_ar = (request.form.get("name_ar") or "").strip()
+            code = (request.form.get("code") or "").strip().lower()
+            if not name or not code:
+                raise ValueError("الاسم والكود مطلوبان")
+            if len(code) > 20 or not code.replace("-", "").replace("_", "").isalnum():
+                raise ValueError("الكود يجب أن يتكون من حروف لاتينية وأرقام وشرطات فقط")
+            if LeaveType.query.filter_by(code=code).first():
+                raise ValueError("هذا الكود مستخدم بالفعل")
+            days = request.form.get("default_days", 0, type=int)
+            if days is None or days < 0 or days > 365:
+                raise ValueError("عدد الأيام غير صالح")
+            lt = LeaveType(
+                name=name,
+                name_ar=name_ar or None,
+                code=code,
+                default_days=days,
+                is_paid=request.form.get("is_paid") == "on",
+                is_active=True,
+                description=(request.form.get("description") or "").strip() or None,
+            )
+            db.session.add(lt)
+            db.session.commit()
+            create_audit_log("create", "leave_types", lt.id, {"code": code})
+            flash(f'✅ تم إنشاء نوع الإجازة "{name}"', "success")
+            return redirect(url_for("hr.leave_types"))
+        except ValueError as exc:
+            current_app.logger.warning("validation failed: %s", exc)
+            flash(f"⚠️: {exc}", "danger")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("handler failed")
+            flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
+    return render_template("hr/create_leave_type.html")
+
+
+@hr_bp.route("/leave-types/<int:id>/toggle", methods=["POST"])
+@login_required
+@permission_required("manage_hr")
+def toggle_leave_type(id):
+    """Enable/disable a leave type without deleting historical requests."""
+    lt = get_owned_or_404(LeaveType, id)
+    lt.is_active = not bool(lt.is_active)
+    try:
+        db.session.commit()
+        create_audit_log("update", "leave_types", lt.id, {"is_active": lt.is_active})
+        flash(
+            "✅ تم تفعيل نوع الإجازة" if lt.is_active else "✅ تم تعطيل نوع الإجازة",
+            "success",
+        )
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("handler failed")
+        flash("❌ خطأ: حدث خطأ غير متوقع", "danger")
+    return redirect(url_for("hr.leave_types"))
+
+
 @hr_bp.route("/payroll")
 @login_required
 @permission_required("manage_hr")

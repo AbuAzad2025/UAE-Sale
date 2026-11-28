@@ -100,6 +100,11 @@
                   <input type="checkbox" name="vat_recoverable" class="form-check-input" id="vat_recoverable" value="on" {% if purchase.vat_recoverable %}checked{% endif %}>
                   <label class="form-check-label" for="vat_recoverable">{{ t('Recoverable input tax') }}</label>
                 </div>
+                <div class="form-check">
+                  <input type="hidden" name="reverse_charge" value="0">
+                  <input type="checkbox" name="reverse_charge" class="form-check-input" id="reverse_charge" value="on" {% if purchase.reverse_charge %}checked{% endif %}>
+                  <label class="form-check-label" for="reverse_charge">{{ t('Reverse charge (foreign supplier)') }}</label>
+                </div>
               </div>
             </div>
 

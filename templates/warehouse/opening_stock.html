@@ -29,11 +29,11 @@
           {% for m in pending %}
           <tr>
             <td>{{ loop.index }}</td>
-            <td>{{ m.product.name if m.product else '-' }}</td>
+            <td>{{ display_name(m.product) if m.product else '-' }}</td>
             <td>{{ '{:,.3f}'.format(m.quantity or 0) }}</td>
             <td>{{ '{:,.3f}'.format(m.product.cost_price or 0) }}</td>
             <td><strong>{{ '{:,.2f}'.format((m.quantity or 0) * (m.product.cost_price or 0)) }}</strong></td>
-            <td>{{ m.warehouse.name if m.warehouse else '-' }}</td>
+            <td>{{ display_name(m.warehouse) if m.warehouse else '-' }}</td>
           </tr>
           {% else %}
           <tr><td colspan="6" class="text-center text-muted py-4">{{ t("No movements pending posting ✅") }}</td></tr>

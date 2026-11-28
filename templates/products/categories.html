@@ -51,7 +51,7 @@
                                     <tbody>
                                         {% for category in categories %}
                                         <tr>
-                                            <td>{{ category.name }}</td>
+                                            <td>{{ display_name(category) }}</td>
                                             <td>{{ category.name_ar or '' }}</td>
                                             <td>{{ category.description or '' }}</td>
                                             <td>{{ category.products.count() if category.products else 0 }}</td>

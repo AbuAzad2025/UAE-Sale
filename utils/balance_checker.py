@@ -6,11 +6,42 @@ the calculated sum of confirmed sale balances.
 """
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 logger = logging.getLogger(__name__)
 
 TOLERANCE = Decimal("0.01")
+# Journals are money with three decimals: equality is checked at 3dp, never
+# with a loose one-cent tolerance. One helper serves the listener, the API
+# and the journal manager so a draft cannot be accepted by one and rejected
+# by another.
+JOURNAL_Q = Decimal("0.001")
+
+
+def journal_totals(lines):
+    """Sum debit/credit of journal lines (dicts or ORM rows), as Decimals."""
+    debit = Decimal("0")
+    credit = Decimal("0")
+    for line in lines or []:
+        if isinstance(line, dict):
+            d, c = line.get("debit"), line.get("credit")
+        else:
+            d, c = getattr(line, "debit", None), getattr(line, "credit", None)
+        debit += to_decimal(d)
+        credit += to_decimal(c)
+    return debit, credit
+
+
+def amounts_balanced(debit, credit):
+    """Exact 3dp equality of two money amounts (ROUND_HALF_UP)."""
+    left = to_decimal(debit).quantize(JOURNAL_Q, rounding=ROUND_HALF_UP)
+    right = to_decimal(credit).quantize(JOURNAL_Q, rounding=ROUND_HALF_UP)
+    return left == right
+
+
+def is_journal_balanced(lines):
+    """Single journal-balance predicate for every posting path."""
+    return amounts_balanced(*journal_totals(lines))
 
 
 def to_decimal(value):

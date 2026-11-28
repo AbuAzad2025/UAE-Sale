@@ -209,6 +209,51 @@ def add_custom(group, code, ar, en=None):
     return code
 
 
+def delete_custom(group, code):
+    """Remove an owner-defined value from an unlocked group.
+
+    System/base codes can never be deleted here (they may drive application
+    logic); they are hidden via ``set_disabled`` instead. The matching label
+    override and disabled entry are cleaned up with the value.
+    """
+    if group not in _registry():
+        raise ValueError(f"مجموعة ثوابت غير معروفة: {group}")
+    reg = _registry()[group]
+    if reg.get("locked_codes") or not reg.get("allow_add"):
+        raise ValueError("حذف القيم المضافة غير مسموح لهذه المجموعة.")
+    code = (code or "").strip()
+    settings, data = _load_overrides()
+    ov = data.get(group) or {}
+    if not isinstance(ov, dict):
+        ov = {}
+    custom = ov.get("custom") or []
+    if not isinstance(custom, list):
+        custom = []
+    remaining = [
+        item
+        for item in custom
+        if not (
+            isinstance(item, (list, tuple)) and len(item) >= 1 and item[0] == code
+        )
+    ]
+    if len(remaining) == len(custom):
+        raise ValueError("القيمة غير موجودة بين الإضافات المخصصة.")
+    ov["custom"] = remaining
+    labels = ov.get("labels") or {}
+    if isinstance(labels, dict):
+        labels.pop(code, None)
+        ov["labels"] = labels
+    disabled = ov.get("disabled") or []
+    if isinstance(disabled, list) and code in disabled:
+        ov["disabled"] = [item for item in disabled if item != code]
+    data[group] = ov
+    settings.set_custom_setting(OVERRIDES_KEY, data)
+    from extensions import db
+
+    db.session.flush()
+    return code
+
+
 def set_label(group, code, ar, en=None):
     """Override display labels (allowed for every group, incl. locked)."""
     if group not in _registry():

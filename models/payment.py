@@ -75,7 +75,11 @@ class Payment(TenantScopedMixin, db.Model):
     )
 
     payment_confirmed = db.Column(
-        db.Boolean, default=True, index=True
+        db.Boolean,
+        default=True,
+        nullable=False,
+        server_default=db.text("true"),
+        index=True,
     )  # True للنقد/بطاقة، False للشيكات المعلقة
     confirmation_date = db.Column(db.DateTime)  # تاريخ التأكيد
     rejection_reason = db.Column(db.String(500))  # سبب الرفض
@@ -178,7 +182,11 @@ class Payment(TenantScopedMixin, db.Model):
             db.session.flush()
 
             if self.sale:
-                self.sale.recalculate_payment_status()
+                from models.sale import recompute_sale_settlement
+
+                recompute_sale_settlement(
+                    self.sale.id, connection=db.session.connection()
+                )
 
             from models.customer import recompute_customer_balance
 
@@ -199,7 +207,11 @@ class Payment(TenantScopedMixin, db.Model):
             db.session.flush()
 
             if self.sale:
-                self.sale.recalculate_payment_status()
+                from models.sale import recompute_sale_settlement
+
+                recompute_sale_settlement(
+                    self.sale.id, connection=db.session.connection()
+                )
 
             from models.customer import recompute_customer_balance
 
@@ -313,7 +325,13 @@ class Receipt(TenantScopedMixin, db.Model):
         db.Integer, db.ForeignKey("cheques.id", use_alter=True), index=True
     )
 
-    payment_confirmed = db.Column(db.Boolean, default=True, index=True)
+    payment_confirmed = db.Column(
+        db.Boolean,
+        default=True,
+        nullable=False,
+        server_default=db.text("true"),
+        index=True,
+    )
     confirmation_date = db.Column(db.DateTime)
     rejection_reason = db.Column(db.String(500))
 
@@ -482,6 +500,14 @@ class Receipt(TenantScopedMixin, db.Model):
             applied.append({"sale_id": int(sale_id), "amount_base": applied_base})
         if dirty:
             self.set_allocations(allocations)
+        if applied:
+            from models.sale import recompute_sale_settlement
+
+            connection = db.session.connection()
+            for entry in applied:
+                _sid = entry.get("sale_id")
+                if _sid:
+                    recompute_sale_settlement(int(_sid), connection=connection)
         return applied
 
     @property
@@ -564,7 +590,9 @@ class Receipt(TenantScopedMixin, db.Model):
 
             sale = self.primary_sale
             if sale is not None:
-                sale.recalculate_payment_status()
+                recompute_sale_settlement(
+                    sale.id, connection=db.session.connection()
+                )
 
                 from models.customer import recompute_customer_balance
 

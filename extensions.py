@@ -106,8 +106,13 @@ class ColorFormatter(logging.Formatter):
         timestamp = self.formatTime(record, "%Y-%m-%d %H:%M:%S")
         message = f"[{timestamp}] {color}{record.levelname:8s}{reset} [{req_id}] {record.name}: {record.getMessage()}"
 
-        if record.exc_info:
-            message += "\n" + self.formatException(record.exc_info)
+        # SanitizeFilter pre-formats and redacts tracebacks into exc_text;
+        # formatting exc_info here would re-emit the original secret-bearing
+        # exception string. Fall back only when no filter has run.
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
+        if record.exc_text:
+            message += "\n" + record.exc_text
 
         try:
             target_encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
@@ -322,6 +327,19 @@ def init_extensions(app):
     csrf.init_app(app)
 
     cache.init_app(app)
+
+    # Defence in depth for the config guard: never let a production app boot
+    # with a per-process rate-limit store when shared Redis is configured.
+    if (
+        str(app.config.get("APP_ENV", "")).lower() == "production"
+        and not app.config.get("DEBUG")
+        and app.config.get("REDIS_URL")
+        and str(app.config.get("RATELIMIT_STORAGE_URI", "")).startswith("memory://")
+    ):
+        raise RuntimeError(
+            "Production rate limiting requires shared Redis storage "
+            "(RATELIMIT_STORAGE_URI), not memory://"
+        )
 
     limiter.init_app(app)
 

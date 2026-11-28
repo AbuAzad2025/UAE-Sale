@@ -29,6 +29,7 @@ from models.maintenance import (
     MaintenanceReturn,
     MaintenanceReturnLine,
     MaintenanceSetting,
+    MaintenanceService,
     MaintenanceWarrantyAudit,
     MaintenanceDeviceRegistry,
     MaintenanceSupplierPayment,
@@ -106,6 +107,81 @@ def _get_settings(tenant_id):
         db.session.add(s)
         db.session.flush()
     return s
+
+
+def _assert_tenant_row(row, tenant_id):
+    """Refuse to touch a settings row belonging to another tenant."""
+    actual = getattr(row, "tenant_id", None)
+    if tenant_id is not None and actual is not None and int(actual) != int(tenant_id):
+        raise ValidationError("السجل ينتمي إلى شركة أخرى")
+
+
+@tx
+def update_maintenance_service(service_id, tenant_id, *, actor_id=None, **fields):
+    """Edit a fixed-price service with tenant isolation and numeric validation."""
+    if actor_id is not None:
+        require_maintenance_actor(actor_id, "maintenance_settings")
+    row = db.session.get(MaintenanceService, int(service_id))
+    if row is None:
+        raise ValidationError("الخدمة غير موجودة")
+    _assert_tenant_row(row, tenant_id)
+    text_fields = ("service_code", "name", "name_ar", "category")
+    for key in text_fields:
+        if key in fields and fields[key] is not None:
+            value = str(fields[key]).strip()
+            if not value:
+                raise ValidationError(f"{key} مطلوب")
+            if key == "service_code" and value != row.service_code:
+                duplicate = MaintenanceService.query.filter_by(
+                    tenant_id=tenant_id, service_code=value
+                ).first()
+                if duplicate is not None and duplicate.id != row.id:
+                    raise ValidationError("هذا الكود مستخدم بالفعل")
+            setattr(row, key, value[:200])
+    if "fixed_price" in fields and fields["fixed_price"] is not None:
+        row.fixed_price = _decimal(fields["fixed_price"], "السعر الثابت")
+    if "tax_rate" in fields and fields["tax_rate"] is not None:
+        row.tax_rate = _decimal(fields["tax_rate"], "ضريبة الخدمة", maximum=D("100"))
+    for key in ("duration_minutes", "sort_order"):
+        if key in fields and fields[key] is not None:
+            value = int(fields[key])
+            if value < 0:
+                raise ValidationError(f"{key} غير صالح")
+            setattr(row, key, value)
+    for key in ("is_active", "requires_parts"):
+        if key in fields and fields[key] is not None:
+            setattr(row, key, bool(fields[key]))
+    db.session.flush()
+    return row
+
+
+@tx
+def update_device_registry(device_id, tenant_id, *, actor_id=None, **fields):
+    """Edit a customer device/warranty record with tenant isolation."""
+    if actor_id is not None:
+        require_maintenance_actor(actor_id, "maintenance_settings")
+    row = db.session.get(MaintenanceDeviceRegistry, int(device_id))
+    if row is None:
+        raise ValidationError("الجهاز غير موجود")
+    _assert_tenant_row(row, tenant_id)
+    for key in ("serial_number", "imei", "plate", "brand", "model", "warranty_type", "warranty_notes"):
+        if key in fields:
+            value = fields[key]
+            setattr(row, key, (str(value).strip() or None) if value is not None else None)
+    if "is_under_warranty" in fields and fields["is_under_warranty"] is not None:
+        row.is_under_warranty = bool(fields["is_under_warranty"])
+    for key in ("purchase_date", "warranty_end_date"):
+        if key in fields and fields[key] is not None:
+            value = str(fields[key]).strip() or None
+            if value:
+                try:
+                    setattr(row, key, date.fromisoformat(value))
+                except ValueError:
+                    raise ValidationError(f"{key} غير صالح") from None
+            else:
+                setattr(row, key, None)
+    db.session.flush()
+    return row
 
 
 @tx
@@ -913,10 +989,10 @@ def create_maintenance_credit_note(
     if existing:
         raise ValidationError("إشعار دائن موجود بالفعل لهذا الأمر")
 
-    cn_currency = currency or order.invoice.currency
-    cn_exchange_rate = (
-        exchange_rate if exchange_rate is not None else order.invoice.exchange_rate
-    )
+    # A credit note reverses the posted invoice: its currency and rate are
+    # inherited from that invoice, never from arbitrary caller input.
+    cn_currency = order.invoice.currency
+    cn_exchange_rate = order.invoice.exchange_rate
     total_value_base = (
         order.invoice.total_amount * D(str(cn_exchange_rate or 1))
     ).quantize(D("0.001"))
@@ -1311,39 +1387,64 @@ def send_customer_notification(
     if not customer:
         raise ValidationError("العميل غير موجود")
 
-    message = custom_message or (
+    from services.notification_service import NotificationService
+
+    default_message = (
         f"عزيزي {customer.name}، تم استلام جهازكم بأمر صيانة رقم {order.order_no}. "
         "سنوافكمكم بالجديد عند انتهاء الإصلاح."
     )
-
-    channel = (channel or "whatsapp").strip().lower()
-    result = {
-        "channel": channel,
-        "sent": False,
-        "error": None,
-        "contact": None,
-        "message": message,
+    placeholders = {
+        "customer_name": customer.name,
         "order_no": order.order_no,
+        "sale_number": order.order_no,
+        "last_invoice": order.order_no,
+        "receipt_number": order.order_no,
+        "amount": getattr(order, "total_amount", "") or "",
+        "total_amount": getattr(order, "total_amount", "") or "",
+        "date": str(getattr(order, "received_date", None) or date.today()),
+        "phone": customer.phone or "",
+        "balance": "",
     }
 
-    if channel == "whatsapp":
-        from services.whatsapp_service import WhatsAppService
-
-        contact = customer.phone
-        result["contact"] = contact
-        if not contact:
-            result["error"] = "لا يوجد رقم هاتف للعميل"
-        else:
-            response = WhatsAppService.send_custom_message(contact, message)
-            result["sent"] = bool(response.get("success"))
-            result["error"] = response.get("error")
-    elif channel == "email":
-        result["contact"] = customer.email
-        result["error"] = "قناة البريد غير مفعّلة: لا يوجد مزود بريد مرتبط"
-    elif channel == "sms":
-        result["error"] = "قناة الرسائل النصية غير مفعّلة"
-    else:
+    channel = (channel or "whatsapp").strip().lower()
+    if channel not in {"whatsapp", "email", "sms"}:
         raise ValidationError("قناة إشعار غير معروفة")
+    # A caller-supplied message wins over the saved template; otherwise the
+    # channel methods render the owner's template with these placeholders.
+    template_key = None if custom_message else {
+        "whatsapp": "reminder_whatsapp",
+        "email": "invoice_email",
+        "sms": "payment_sms",
+    }[channel]
+    fallback = custom_message or default_message
+
+    contact = customer.phone if channel != "email" else customer.email
+    if channel == "whatsapp":
+        response = NotificationService.send_whatsapp(
+            contact, template_key, fallback, **placeholders
+        )
+    elif channel == "email":
+        response = NotificationService.send_email(
+            contact,
+            template_key,
+            fallback,
+            subject=f"أمر صيانة {order.order_no}",
+            **placeholders,
+        )
+    else:
+        response = NotificationService.send_sms(
+            contact, template_key, fallback, **placeholders
+        )
+
+    result = {
+        "channel": channel,
+        "sent": bool(response.get("sent")),
+        "skipped": bool(response.get("skipped")),
+        "error": response.get("error"),
+        "contact": contact,
+        "message": response.get("message") or fallback,
+        "order_no": order.order_no,
+    }
 
     try:
         from utils.helpers import create_audit_log

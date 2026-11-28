@@ -107,7 +107,15 @@
         {% for purchase in purchases %}
         <tr>
           <td><strong>{{ purchase.purchase_number }}</strong></td>
-          <td>{{ purchase.supplier_name }}</td>
+          <td>
+            {% if purchase.supplier_id %}
+            <a href="{{ url_for('suppliers.view', id=purchase.supplier_id) }}" class="text-primary">
+              {{ purchase.supplier_name }}
+            </a>
+            {% else %}
+              {{ purchase.supplier_name }}
+            {% endif %}
+          </td>
           <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
           <td class="text-right"><strong>{{ "{:,.2f}".format(purchase.total_amount) }}</strong></td>
           <td class="text-right text-success">{{ "{:,.2f}".format(purchase.get_paid_amount()) }}</td>
@@ -129,7 +137,7 @@
               </span>
             {% else %}
               <span class="badge badge-danger px-3">
-                <i class="fas fa-hourglass-half mr-1"></i>{{ t('Deferred') }}
+                <i class="fas fa-hourglass-half mr-1"></i>{{ t('Due') }}
               </span>
             {% endif %}
           </td>
@@ -141,17 +149,29 @@
           </td>
           <td>{{ purchase.currency }}</td>
           <td>
+            {# Independent badges: RC can legitimately coexist with zero/exempt. #}
+            {% set has_tax_badge = false %}
             {% if purchase.reverse_charge %}
-              <span class="badge badge-warning px-2">RC</span>
-            {% elif purchase.tax_treatment == 'zero' %}
+              <span class="badge badge-warning px-2" title="{{ t('Reverse Charge') }}">RC</span>
+              {% set has_tax_badge = true %}
+            {% endif %}
+            {% if purchase.tax_treatment == 'zero' %}
               <span class="badge badge-info px-2">{{ t('Zero-rated') }}</span>
-            {% elif purchase.tax_treatment == 'exempt' %}
+              {% set has_tax_badge = true %}
+            {% endif %}
+            {% if purchase.tax_treatment == 'exempt' %}
               <span class="badge badge-secondary px-2">{{ t('Exempt') }}</span>
-            {% elif purchase.vat_recoverable == False %}
-              <span class="badge badge-dark px-2">NR</span>
-            {% elif purchase.tax_rate and purchase.tax_rate > 0 %}
+              {% set has_tax_badge = true %}
+            {% endif %}
+            {% if purchase.vat_recoverable == False %}
+              <span class="badge badge-dark px-2" title="{{ t('Non-recoverable input tax') }}">NR</span>
+              {% set has_tax_badge = true %}
+            {% endif %}
+            {% if purchase.tax_rate and purchase.tax_rate > 0 %}
               <span class="badge badge-success px-2">{{ '%g'|format(purchase.tax_rate) }}%</span>
-            {% else %}
+              {% set has_tax_badge = true %}
+            {% endif %}
+            {% if not has_tax_badge %}
               <span class="badge badge-light px-2">—</span>
             {% endif %}
           </td>

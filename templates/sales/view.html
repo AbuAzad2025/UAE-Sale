@@ -28,10 +28,17 @@
     <a href="{{ url_for('sales.index') }}" class="btn btn-info btn-lg">
       <i class="fas fa-arrow-right mr-2"></i>{{ t("Back to List") }}
     </a>
+    {% if sale.status != 'cancelled' %}
+    <a href="{{ url_for('sales.edit', id=sale.id) }}" class="btn btn-primary btn-lg">
+      <i class="fas fa-edit mr-2"></i>{{ t("Edit Notes") if sale.payment_status == 'paid' else t("Edit") }}
+    </a>
+    {% endif %}
+    {% if not current_user.is_seller() %}
     <button type="button" class="btn btn-danger btn-lg" 
             onclick="deleteItem('sales', {{ sale.id }}, {{ sale.sale_number|tojson }})">
       <i class="fas fa-trash mr-2"></i>{{ t("Delete") }}
     </button>
+    {% endif %}
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-lg">
       <i class="fas fa-home mr-2"></i>{{ t("Home") }}
     </a>
@@ -376,6 +383,11 @@
           <a href="{{ url_for('sales.index') }}" class="btn btn-info mb-2">
             <i class="fas fa-list mr-2"></i>{{ t("All Invoices") }}
           </a>
+          {% if sale.status != 'cancelled' %}
+          <a href="{{ url_for('sales.edit', id=sale.id) }}" class="btn btn-primary mb-2">
+            <i class="fas fa-edit mr-2"></i>{{ t("Edit Notes") if sale.payment_status == 'paid' else t("Edit") }}
+          </a>
+          {% endif %}
           {% if current_user.is_owner and sale.status != 'cancelled' %}
           <button type="button" class="btn btn-danger" onclick="confirmCancel()">
             <i class="fas fa-ban mr-2"></i>{{ t("Cancel Invoice") }}

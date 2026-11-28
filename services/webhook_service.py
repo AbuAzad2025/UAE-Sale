@@ -5,8 +5,10 @@ Webhook Service - خدمة Webhooks
 
 from datetime import datetime, timezone
 from extensions import db
-from models import Donation
+from models import Donation, ProcessedWebhookEvent
 from services.notification_service import NotificationService
+from sqlalchemy.exc import IntegrityError
+from flask import has_app_context
 import hmac
 import hashlib
 import json
@@ -17,6 +19,68 @@ logger = logging.getLogger(__name__)
 
 class WebhookService:
     """خدمة معالجة Webhooks"""
+
+    @staticmethod
+    def _event_id(provider, data):
+        """Stable, provider-scoped identity for an IPN/event payload."""
+        raw = str(data.get("event_id") or data.get("id") or "").strip()
+        if not raw:
+            # Providers that do not send an event id still give a stable
+            # (payment_id, status, order/type) tuple. Hash it so arbitrary
+            # remote text never lands in a unique index as-is.
+            basis = "|".join(
+                str(data.get(key) or "")
+                for key in ("payment_id", "payment_status", "order_id", "type")
+            )
+            raw = hashlib.sha256(basis.encode("utf-8")).hexdigest()
+        return f"{provider}:{raw}"[:255]
+
+    @staticmethod
+    def _claim_event(provider, data):
+        """Claim an event for processing; return False when it is a replay.
+
+        The claim is claimed with a DB UNIQUE key so two workers cannot both
+        process the same IPN. Callers MUST settle the claim (commit on success,
+        rollback on failure) via ``_settle_claim``.
+        """
+        if not has_app_context():
+            # Pure unit tests call the service outside Flask; there is no DB
+            # (and no replay window) to protect in that case.
+            return True
+        event_id = WebhookService._event_id(provider, data)
+        try:
+            db.session.add(
+                ProcessedWebhookEvent(provider=provider, event_id=event_id)
+            )
+            db.session.flush()
+        except IntegrityError:
+            db.session.rollback()
+            logger.info("Ignoring replayed %s webhook event %s", provider, event_id)
+            return False
+        return True
+
+    @staticmethod
+    def _settle_claim(success):
+        """Commit a processed event, or release the claim after a failure."""
+        if not has_app_context():
+            return
+        try:
+            if success:
+                db.session.commit()
+            else:
+                db.session.rollback()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    @staticmethod
+    def _duplicate_response(provider, data):
+        return {
+            "success": True,
+            "message": "Event already processed",
+            "duplicate": True,
+            "event_id": WebhookService._event_id(provider, data),
+        }
 
     @staticmethod
     def verify_ipn_signature(raw_body, received_sig, secret):
@@ -143,6 +207,9 @@ class WebhookService:
                     )
                     return {"success": False, "error": "Invalid signature"}
 
+            if not WebhookService._claim_event("nowpayments", data):
+                return WebhookService._duplicate_response("nowpayments", data)
+
             payment_id = data.get("payment_id")
             payment_status = data.get("payment_status")
             order_id = data.get("order_id", "")
@@ -152,12 +219,15 @@ class WebhookService:
             )
 
             if order_id.startswith("DONATION_"):
-                return WebhookService._process_donation_webhook(data)
+                result = WebhookService._process_donation_webhook(data)
             else:
                 logger.warning(f"Unknown order type: {order_id}")
-                return {"success": False, "error": "Unknown order type"}
+                result = {"success": False, "error": "Unknown order type"}
+            WebhookService._settle_claim(bool(result.get("success")))
+            return result
 
         except Exception as e:
+            WebhookService._settle_claim(False)
             logger.error(f"❌ Webhook processing error: {str(e)}")
             return {"success": False, "error": str(e)}
 
@@ -231,20 +301,26 @@ class WebhookService:
             dict: نتيجة المعالجة
         """
         try:
+            if not WebhookService._claim_event("stripe", data):
+                return WebhookService._duplicate_response("stripe", data)
+
             event_type = data.get("type")
             event_data = data.get("data", {}).get("object", {})
 
             logger.info(f"📨 Stripe webhook received: {event_type}")
 
             if event_type == "payment_intent.succeeded":
-                return WebhookService._process_stripe_payment_success(event_data)
+                result = WebhookService._process_stripe_payment_success(event_data)
             elif event_type == "payment_intent.payment_failed":
-                return WebhookService._process_stripe_payment_failed(event_data)
+                result = WebhookService._process_stripe_payment_failed(event_data)
             else:
                 logger.info(f"Unhandled Stripe event: {event_type}")
-                return {"success": True, "message": "Event acknowledged"}
+                result = {"success": True, "message": "Event acknowledged"}
+            WebhookService._settle_claim(bool(result.get("success")))
+            return result
 
         except Exception as e:
+            WebhookService._settle_claim(False)
             logger.error(f"❌ Stripe webhook processing error: {str(e)}")
             return {"success": False, "error": str(e)}
 

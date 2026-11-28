@@ -6,8 +6,8 @@
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card"><div class="card-body">
     <div class="row">
-      <div class="col-md-4"><div class="form-group"><label>{{ t('From Warehouse') }} <span class="text-danger">*</span></label><select name="from_warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>{{ t('To Warehouse') }} <span class="text-danger">*</span></label><select name="to_warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('From Warehouse') }} <span class="text-danger">*</span></label><select name="from_warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('To Warehouse') }} <span class="text-danger">*</span></label><select name="to_warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select></div></div>
     </div>
   </div></div>
   <div class="card"><div class="card-header"><h5 class="mb-0">{{ t('Products') }}</h5></div><div class="card-body">
@@ -25,7 +25,7 @@
 </form>
 <script>
 var lineIndex = 0;
-var products = [{% for p in products %}{id:{{p.id}},name:{{ p.name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}];
+var products = [{% for p in products %}{id:{{p.id}},name:{{ display_name(p)|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}];
 
 function fillOptions(sel, term, keepValue){
   term = (term || '').trim().toLowerCase();

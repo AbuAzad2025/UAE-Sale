@@ -49,7 +49,7 @@
               {% else %}
               <i class="fas fa-warehouse"></i>
               {% endif %}
-              {{ warehouse.name_ar or warehouse.name }}
+              {{ display_name(warehouse) }}
             </a>
           </h3>
           </div>
@@ -70,7 +70,7 @@
             {% if warehouse.parent %}
             <p class="mb-2">
               <strong><i class="fas fa-sitemap text-success"></i> {{ t("Parent Warehouse") }}:</strong>
-              <span class="badge badge-success">{{ warehouse.parent.name_ar or warehouse.parent.name }}</span>
+              <span class="badge badge-success">{{ display_name(warehouse.parent) }}</span>
             </p>
             {% endif %}
             
@@ -81,7 +81,7 @@
             </p>
             <ul class="list-unstyled ml-3">
               {% for sub in warehouse.sub_warehouses %}
-              <li><i class="fas fa-angle-right text-muted"></i> {{ sub.name_ar or sub.name }}</li>
+              <li><i class="fas fa-angle-right text-muted"></i> {{ display_name(sub) }}</li>
               {% endfor %}
             </ul>
             {% endif %}

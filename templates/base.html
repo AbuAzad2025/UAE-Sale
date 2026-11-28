@@ -9,7 +9,7 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {# CSP is enforced via the HTTP response header in app.py (after_request).
      A <meta http-equiv> here would conflict with and can override it. #}
-  <script>window.BASE_URL = "{{ request.script_root }}"; window.BASE_CURRENCY = '{{ base_currency }}';</script>
+  <script>window.BASE_URL = "{{ request.script_root }}"; window.BASE_CURRENCY = '{{ base_currency }}'; window.CURRENT_LANGUAGE = '{{ current_language }}';</script>
   
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#667eea">
@@ -277,7 +277,7 @@
           
           {% if (current_user.is_owner or (current_user.role and current_user.role.slug == 'developer')) and not is_impersonating %}
           <li class="nav-item">
-            <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.') %}active{% endif %}">
+            <a href="{{ url_for('owner.dashboard') }}" class="nav-link {% if request.endpoint == 'owner.dashboard' %}active{% endif %}">
               <i class="nav-icon fas fa-crown"></i>
               <p>{{ t("Platform Console") }}</p>
             </a>
@@ -787,14 +787,7 @@
               {% if current_user.has_permission('manage_purchases') %}
               <li class="nav-item"><a href="{{ url_for('erp_modules.purchase_orders') }}" class="nav-link"><i class="fas fa-shopping-cart nav-icon"></i><p>{{ t("Purchase Orders") }}</p></a></li>
               {% endif %}
-              {% if current_user.has_permission('manage_backups') %}
-           <li class="nav-item">
-             <a href="{{ url_for('owner.verify_latest_backup') }}" class="nav-link">
-               <i class="nav-icon fas fa-clipboard-check"></i>
-               <p>{{ t("Verify Backups") }}</p>
-             </a>
-           </li>
-           {% endif %}
+              {# Backup verification lives under the single "Backups" entry in Owner Mode. #}
 
            {% if current_user.has_permission('manage_warehouse') %}
               <li class="nav-item"><a href="{{ url_for('shipments.list_shipments') }}" class="nav-link"><i class="fas fa-truck nav-icon"></i><p>{{ t("Shipments") }}</p></a></li>
@@ -943,15 +936,6 @@
           </li>
           {% endif %}
 
-          {% if current_user.has_permission('manage_backups') %}
-          <li class="nav-item {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}menu-open{% endif %}">
-            <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}active{% endif %}">
-              <i class="nav-icon fas fa-database"></i>
-              <p>{{ t("Backups") }}</p>
-            </a>
-          </li>
-          {% endif %}
-
           {% endif %}
 
           
@@ -996,18 +980,10 @@
           {% if current_user.is_owner or (current_user.role and current_user.role.slug == 'developer') %}
           <li class="nav-header">{{ t("Owner Mode") }}</li>
           <li class="nav-item">
-            <a href="{{ url_for('owner.dashboard') }}" class="nav-link">
-              <i class="nav-icon fas fa-crown text-warning"></i>
-              <p>{{ t("Owner Dashboard") }}</p>
-            </a>
-          </li>
-          <li class="nav-item">
             <a href="{{ url_for('owner.tenants_list') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.tenant') %}active{% endif %}">
               <i class="nav-icon fas fa-building text-success"></i>
               <p>{{ t("Tenants") }}</p>
             </a>
-          </li>
-          <li class="nav-item">
           </li>
           <li class="nav-item">
             <a href="{{ url_for('owner.support_inbox') }}" class="nav-link {% if request.endpoint and request.endpoint.startswith('owner.support_ticket') %}active{% endif %}">
@@ -1052,7 +1028,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a href="{{ url_for('owner.list_backups') }}" class="nav-link">
+            <a href="{{ url_for('owner.list_backups') }}" class="nav-link {% if request.endpoint and request.endpoint in ['owner.list_backups', 'owner.scheduled_backups', 'owner.verify_latest_backup'] %}active{% endif %}">
               <i class="nav-icon fas fa-database text-info"></i>
               <p>{{ t("Backups") }}</p>
             </a>

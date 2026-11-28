@@ -299,6 +299,14 @@ def _normalize_lines(
         if parties != owned:
             raise ValueError("Journal parties must belong to the posting tenant.")
 
+    # A perfectly balanced 0 == 0 journal is still meaningless (and was the
+    # loophole that let blank entries reach the ledger). Every posting path
+    # funnels through _normalize_lines, so reject it centrally.
+    if total_debit <= Decimal("0"):
+        raise ValidationError(
+            "لا يمكن ترحيل قيد بقيمة صفرية — يجب أن يكون مجموع المدين أكبر من صفر."
+        )
+
     if total_debit == total_credit:
         # Round the whole journal consistently. Keep transaction amounts intact,
         # assigning any base residual to the largest line on the deficient side.

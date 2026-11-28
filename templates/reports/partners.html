@@ -3,6 +3,12 @@
 {% block title %}{{ t('Partners & Merchants Report') }}{% endblock %}
 
 {% block content %}
+{% if request.args.get('date_from') or request.args.get('date_to') %}
+<div class="print-only mb-3" style="text-align:center; font-size:12pt; font-weight:700;">
+  {{ t('Period') }}: {% if request.args.get('date_from') %}{{ t('From') }} {{ request.args.get('date_from') }}{% endif %}{% if request.args.get('date_from') and request.args.get('date_to') %} — {% endif %}{% if request.args.get('date_to') %}{{ t('To') }} {{ request.args.get('date_to') }}{% endif %}
+</div>
+{% endif %}
+
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">

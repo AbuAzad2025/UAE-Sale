@@ -14,6 +14,8 @@ import json
 import zipfile
 from datetime import datetime, timezone
 
+from utils.helpers import csv_safe_cell
+
 
 # Tenant-scoped model classes (must have tenant_id column)
 def _tenant_scoped_models():
@@ -190,10 +192,13 @@ def export_tenant_zip(tenant_id):
             # Write CSV
             csv_buf = io.StringIO()
             writer = csv.writer(csv_buf)
-            writer.writerow(cols)
+            writer.writerow([csv_safe_cell(col) for col in cols])
             for row in rows:
                 writer.writerow(
-                    [_serialize_value(getattr(row, col, None)) for col in cols]
+                    [
+                        csv_safe_cell(_serialize_value(getattr(row, col, None)))
+                        for col in cols
+                    ]
                 )
             zf.writestr(f"{table_name}.csv", csv_buf.getvalue())
 

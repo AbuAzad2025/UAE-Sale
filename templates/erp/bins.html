@@ -6,7 +6,7 @@
   <form method="POST" action="{{ url_for('erp_modules.create_bin') }}" class="d-inline">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
-      <div class="col-md-2"><select name="warehouse_id" class="form-control" required><option value="">{{ t('Warehouse') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div>
+      <div class="col-md-2"><select name="warehouse_id" class="form-control" required><option value="">{{ t('Warehouse') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select></div>
       <div class="col-md-1"><input type="text" name="code" class="form-control" placeholder="{{ t('Code') }}" required></div>
       <div class="col-md-2"><input type="text" name="name" class="form-control" placeholder="{{ t('Name') }}"></div>
       <div class="col-md-1"><input type="text" name="aisle" class="form-control" placeholder="{{ t('Aisle') }}"></div>
@@ -18,12 +18,13 @@
   </form>
 </div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Warehouse') }}</th><th>{{ t('Code') }}</th><th>{{ t('Name') }}</th><th>{{ t('Aisle') }}</th><th>{{ t('Shelf') }}</th><th>{{ t('Location') }}</th><th>{{ t('Capacity') }}</th><th>{{ t('Current Stock') }}</th></tr></thead>
     <tbody>
     {% for b in bins %}
     <tr>
-      <td>{{ b.warehouse.name if b.warehouse else '-' }}</td>
+      <td>{{ display_name(b.warehouse) if b.warehouse else '-' }}</td>
       <td><span class="badge badge-primary">{{ b.code }}</span></td>
       <td>{{ b.name or '-' }}</td><td>{{ b.aisle or '-' }}</td><td>{{ b.shelf or '-' }}</td><td>{{ b.position or '-' }}</td>
       <td>{{ b.capacity }}</td><td>{{ b.current_stock }}</td>
@@ -31,5 +32,6 @@
     {% else %}<tr><td colspan="8" class="text-center text-muted">{{ t('No locations') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

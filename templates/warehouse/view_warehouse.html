@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t("Warehouse Details") }} - {{ warehouse.name_ar or warehouse.name }}{% endblock %}
+{% block title %}{{ t("Warehouse Details") }} - {{ display_name(warehouse) }}{% endblock %}
 
 {% block content %}
 <div class="content-header">
@@ -8,7 +8,7 @@
     <div class="row mb-2">
       <div class="col-sm-6">
         <h1 class="m-0">
-          <i class="fas fa-warehouse"></i> {{ warehouse.name_ar or warehouse.name }}
+          <i class="fas fa-warehouse"></i> {{ display_name(warehouse) }}
           {% if warehouse.is_main %}
           <span class="badge badge-primary text-sm ml-2">{{ t("Main") }}</span>
           {% endif %}
@@ -18,7 +18,7 @@
         <ol class="breadcrumb float-sm-left">
           <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}">{{ t("Home") }}</a></li>
           <li class="breadcrumb-item"><a href="{{ url_for('warehouse.list_warehouses') }}">{{ t("Warehouses") }}</a></li>
-          <li class="breadcrumb-item active">{{ warehouse.name_ar or warehouse.name }}</li>
+          <li class="breadcrumb-item active">{{ display_name(warehouse) }}</li>
         </ol>
       </div>
     </div>
@@ -36,7 +36,7 @@
       <div class="card-body">
         <div class="row">
           <div class="col-md-3">
-            <strong>{{ t("Name") }}:</strong> {{ warehouse.name_ar or warehouse.name }}
+            <strong>{{ t("Name") }}:</strong> {{ display_name(warehouse) }}
           </div>
           <div class="col-md-3">
             <strong>{{ t("Code") }}:</strong> {{ warehouse.code or '-' }}
@@ -78,19 +78,19 @@
             <tr>
               <td>
                 <a href="{{ url_for('products.edit', id=item.product.id) }}">
-                  {{ item.product.name_ar or item.product.name }}
+                  {{ display_name(item.product) }}
                 </a>
               </td>
               <td>{{ item.product.sku or '-' }}</td>
               <td>
                 {% if item.product.category %}
-                <span class="badge badge-info">{{ item.product.category.name_ar or item.product.category.name }}</span>
+                <span class="badge badge-info">{{ display_name(item.product.category) }}</span>
                 {% else %}
                 -
                 {% endif %}
               </td>
               <td class="text-center">
-                <span class="badge {% if item.quantity <= 0 %}badge-danger{% elif item.quantity <= item.product.min_stock_alert %}badge-warning{% else %}badge-success{% endif %} p-2" style="font-size: 1rem;">
+                <span class="badge {% if (item.quantity or 0) <= 0 %}badge-danger{% elif (item.quantity or 0) <= (item.product.min_stock_alert or 0) %}badge-warning{% else %}badge-success{% endif %} p-2" style="font-size: 1rem;">
                   {{ item.quantity }}
                 </span>
               </td>

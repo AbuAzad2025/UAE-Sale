@@ -40,6 +40,48 @@ class AdvancedFinancialAnalytics:
             ["5", "6"], date_from, date_to, is_pl=True
         )
 
+        # Gross margin must compare revenue with COGS (cost of goods/services
+        # sold), not with every expense — otherwise it is just net margin.
+        # Resolve the accounts by ROLE so a re-mapped chart of accounts is
+        # still respected; never hard-code GL codes here.
+        from services.account_resolution import AccountRole
+
+        cogs = (
+            AdvancedFinancialAnalytics._role_balance(
+                AccountRole.COGS, date_from, date_to
+            )
+            + AdvancedFinancialAnalytics._role_balance(
+                AccountRole.MAINTENANCE_COGS, date_from, date_to
+            )
+        )
+        gross_profit = revenue - cogs
+
+        # Quick/cash ratios use real liquid-asset balances instead of made-up
+        # 80%/30% fractions of current assets.
+        cash_and_bank = sum(
+            (
+                AdvancedFinancialAnalytics._role_balance(role, date_to=date_to)
+                for role in (
+                    AccountRole.CASH,
+                    AccountRole.BANK,
+                    AccountRole.BANK_SAVINGS,
+                )
+            ),
+            Decimal(0),
+        )
+        receivables = sum(
+            (
+                AdvancedFinancialAnalytics._role_balance(role, date_to=date_to)
+                for role in (
+                    AccountRole.AR_CONTROL,
+                    AccountRole.MAINTENANCE_AR,
+                    AccountRole.UNDER_COLLECTION,
+                )
+            ),
+            Decimal(0),
+        )
+        quick_assets = cash_and_bank + receivables
+
         net_profit = revenue - expenses
 
         ratios = {
@@ -47,19 +89,18 @@ class AdvancedFinancialAnalytics:
                 "current_ratio": float(current_assets / current_liabilities)
                 if current_liabilities > 0
                 else 0,
-                "quick_ratio": float(
-                    (current_assets * Decimal("0.8")) / current_liabilities
-                )
+                "quick_ratio": float(quick_assets / current_liabilities)
                 if current_liabilities > 0
                 else 0,
-                "cash_ratio": float(
-                    (current_assets * Decimal("0.3")) / current_liabilities
-                )
+                "cash_ratio": float(cash_and_bank / current_liabilities)
                 if current_liabilities > 0
                 else 0,
             },
             "profitability": {
-                "gross_profit_margin": float((net_profit / revenue) * 100)
+                "gross_profit_margin": float((gross_profit / revenue) * 100)
+                if revenue > 0
+                else 0,
+                "gross_margin": float((gross_profit / revenue) * 100)
                 if revenue > 0
                 else 0,
                 "net_profit_margin": float((net_profit / revenue) * 100)
@@ -96,12 +137,34 @@ class AdvancedFinancialAnalytics:
                 "total_liabilities": float(total_liabilities),
                 "equity": float(equity),
                 "revenue": float(revenue),
+                "cogs": float(cogs),
+                "gross_profit": float(gross_profit),
                 "expenses": float(expenses),
                 "net_profit": float(net_profit),
             },
         }
 
         return ratios
+
+    @staticmethod
+    def _role_balance(role, date_from=None, date_to=None):
+        """Signed balance of the account mapped to a semantic GL role.
+
+        ``GLAccount.get_balance`` applies the account's debit/credit nature,
+        so refunds/contra entries keep their sign instead of being inflated
+        by ``abs()``.
+        """
+        from models.gl import GLAccount
+        from services.account_resolution import AccountResolver
+
+        try:
+            code = AccountResolver.resolve(role)
+        except (ValueError, RuntimeError):
+            return Decimal(0)
+        account = GLAccount.query.filter_by(code=str(code), is_active=True).first()
+        if account is None:
+            return Decimal(0)
+        return Decimal(str(account.get_balance(date_from=date_from, date_to=date_to) or 0))
 
     @staticmethod
     def _calculate_balance_by_prefix(prefix, date_from=None, date_to=None, is_pl=False):
@@ -197,8 +260,9 @@ class AdvancedFinancialAnalytics:
                     else:
                         total -= line.amount_base
             else:
-                balance = account.get_balance()
-                total += abs(balance)
+                # Keep the natural sign: abs() hides contra entries (refunds,
+                # returns, reversals) and inflates both revenue and expenses.
+                total += account.get_balance()
 
         return total
 
@@ -301,7 +365,7 @@ class AdvancedFinancialAnalytics:
         total_expenses = Decimal(0)
 
         for account in expense_accounts:
-            balance = abs(account.get_balance())
+            balance = account.get_balance()
             total_expenses += balance
 
             breakdown.append(
@@ -335,7 +399,7 @@ class AdvancedFinancialAnalytics:
         total_revenue = Decimal(0)
 
         for account in revenue_accounts:
-            balance = abs(account.get_balance())
+            balance = account.get_balance()
             total_revenue += balance
 
             breakdown.append(

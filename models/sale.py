@@ -1,7 +1,41 @@
 from datetime import datetime, date, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
+
+SETTLEMENT_Q = Decimal("0.001")
+# A residual of one cent or less is a rounding artefact, not an open invoice.
+PAID_THRESHOLD = Decimal("0.01")
+
+
+def _money(value):
+    """Safe Decimal conversion for settlement inputs (never float arithmetic)."""
+    if value is None:
+        return Decimal("0")
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except (TypeError, ValueError, InvalidOperation):
+        return Decimal("0")
+
+
+def settlement_values(amount_base, paid_base, returns_base=Decimal("0")):
+    """The single settlement formula: ``(balance_due, payment_status)``.
+
+    Every path that derives an invoice's status must go through this helper
+    (directly or through :func:`recompute_sale_settlement`), so a partial
+    payment cannot be reported as paid by one screen and unpaid by another.
+    """
+    paid = _money(paid_base)
+    balance = (_money(amount_base) - paid - _money(returns_base)).quantize(
+        SETTLEMENT_Q, rounding=ROUND_HALF_UP
+    )
+    if balance < Decimal("0"):
+        balance = Decimal("0")
+    if balance <= PAID_THRESHOLD:
+        return Decimal("0"), "paid"
+    return balance, ("partial" if paid > Decimal("0") else "unpaid")
 
 
 def _parse_allocations(raw):
@@ -137,25 +171,14 @@ def recompute_sale_settlement(sale_id, connection=None):
         return None
 
     paid_base = compute_sale_paid_base(sale_id, connection=connection).quantize(
-        Decimal("0.001"), rounding=ROUND_HALF_UP
+        SETTLEMENT_Q, rounding=ROUND_HALF_UP
     )
     returns_base = compute_sale_returns_base(sale_id, connection=connection).quantize(
-        Decimal("0.001"), rounding=ROUND_HALF_UP
+        SETTLEMENT_Q, rounding=ROUND_HALF_UP
     )
-    amount_base = Decimal(str(row.amount_base or 0))
-    balance_due = (amount_base - paid_base - returns_base).quantize(
-        Decimal("0.001"), rounding=ROUND_HALF_UP
+    balance_due, payment_status = settlement_values(
+        row.amount_base, paid_base, returns_base
     )
-    if balance_due < Decimal("0"):
-        balance_due = Decimal("0")
-
-    if balance_due <= Decimal("0.01"):
-        payment_status = "paid"
-        balance_due = Decimal("0")
-    elif paid_base > Decimal("0"):
-        payment_status = "partial"
-    else:
-        payment_status = "unpaid"
 
     try:
         from services.currency_service import CurrencyService
@@ -167,9 +190,7 @@ def recompute_sale_settlement(sale_id, connection=None):
     if (row.currency or _base) == _base:
         paid_amount = paid_base
     else:
-        paid_amount = (paid_base / rate).quantize(
-            Decimal("0.001"), rounding=ROUND_HALF_UP
-        )
+        paid_amount = (paid_base / rate).quantize(SETTLEMENT_Q, rounding=ROUND_HALF_UP)
 
     connection.execute(
         Sale.__table__.update()
@@ -373,91 +394,32 @@ class Sale(TenantScopedMixin, db.Model):
                 Decimal("0.001"), rounding=ROUND_HALF_UP
             )
 
-        paid_base = (
-            Decimal(str(self.paid_amount_base))
-            if self.paid_amount_base is not None
-            else Decimal("0")
-        )
+        paid_base = _money(self.paid_amount_base)
         if (self.currency or _base) == _base:
             self.paid_amount = paid_base
         else:
             self.paid_amount = (paid_base / exchange_rate_decimal).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
+                SETTLEMENT_Q, rounding=ROUND_HALF_UP
             )
 
         returns_base = Decimal("0")
         if self.id:
             returns_base = compute_sale_returns_base(self.id)
-        if (self.currency or _base) == _base:
-            self.balance_due = (self.total_amount - paid_base - returns_base).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
-            )
-        else:
-            self.balance_due = (self.amount_base - paid_base - returns_base).quantize(
-                Decimal("0.001"), rounding=ROUND_HALF_UP
-            )
-        if self.balance_due < Decimal("0"):
-            self.balance_due = Decimal("0")
-
-        if self.balance_due <= Decimal("0"):
-            self.payment_status = "paid"
-        elif paid_base > Decimal("0"):
-            self.payment_status = "partial"
-        else:
-            self.payment_status = "unpaid"
-
-    def recalculate_payment_status(self, connection=None):  # noqa: C901
-        """
-        Recalculate payment status based on CONFIRMED settlements only
-        المعالجة المحاسبية الدقيقة: الشيكات المعلقة لا تُحسب!
-
-        F2/F8: المدفوع يُحسب من المسدّدات المؤكدة:
-            * سندات الصرف المرتبطة (Payment) المؤكدة (مخصومة استردادات المرتجع)
-            * تخصيصات سندات القبض المرتبطة (Receipt) المؤكدة
-        ويمر عبر Core (connection) ليعمل داخل الـ flush بأمان.
-        """
-        if connection is None:
-            connection = db.session.connection()
-
-        total_confirmed_paid_aed = compute_sale_paid_base(
-            self.id, connection=connection
+        # amount_base is total_amount converted to the base currency (and
+        # identical to it when the invoice is already in the base currency),
+        # so one formula covers both cases.
+        self.balance_due, self.payment_status = settlement_values(
+            self.amount_base, paid_base, returns_base
         )
 
-        self.paid_amount_base = total_confirmed_paid_aed
-        try:
-            ex = (
-                Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal("1")
-            )
-            try:
-                from services.currency_service import CurrencyService
+    def recalculate_payment_status(self, connection=None):
+        """Recalculate settlement from CONFIRMED documents only.
 
-                _base2 = CurrencyService.get_base_currency()
-            except Exception:
-                _base2 = "ILS"
-            if (self.currency or _base2) == _base2:
-                self.paid_amount = total_confirmed_paid_aed
-            else:
-                self.paid_amount = (total_confirmed_paid_aed / ex).quantize(
-                    Decimal("0.001"), rounding=ROUND_HALF_UP
-                )
-        except Exception:
-            self.paid_amount = self.paid_amount or Decimal("0")
-
-        total_aed = Decimal(str(self.amount_base))
-        returns_base = compute_sale_returns_base(self.id, connection=connection)
-        self.balance_due = (
-            total_aed - total_confirmed_paid_aed - returns_base
-        ).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
-        if self.balance_due < Decimal("0"):
-            self.balance_due = Decimal("0")
-
-        if self.balance_due <= Decimal("0.01"):
-            self.payment_status = "paid"
-            self.balance_due = Decimal("0")
-        elif total_confirmed_paid_aed > Decimal("0"):
-            self.payment_status = "partial"
-        else:
-            self.payment_status = "unpaid"
+        Backwards-compatible wrapper: it no longer carries a second formula.
+        The Core recomputation derives paid/returns/balance/status once and
+        writes them both to the DB and to the in-session instance.
+        """
+        return recompute_sale_settlement(self.id, connection=connection)
 
     @property
     def pending_cheques_amount(self):

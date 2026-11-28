@@ -55,6 +55,25 @@ from sqlalchemy import text, inspect
 _FX_REVALUATION_CONFIRM_TOKEN = "YES_POST_FX_REVALUATION"
 _DB_CONVERT_CONFIRM_TOKEN = "YES_CONVERT_DATABASE"
 
+# Quick filter for high-impact operations an auditor should see first.
+_SENSITIVE_AUDIT_ACTIONS = frozenset(
+    {
+        "delete",
+        "archive",
+        "restore",
+        "export",
+        "truncate",
+        "convert_database",
+        "restore_backup",
+        "delete_backup",
+        "update_role_permissions",
+        "impersonate",
+        "unlock_vault",
+        "post_partner_distribution",
+        "maintenance_notify",
+    }
+)
+
 
 def _allowed_conversion_hosts():
     """Hosts a database conversion may target: loopback + current DB host only."""
@@ -357,6 +376,25 @@ def system_stats():
     return render_template("owner/system_stats.html", db_stats=db_stats)
 
 
+def _apply_audit_filters(query):
+    """Shared filter set for the audit table and its CSV export."""
+    action = (request.args.get("action") or "").strip()
+    if action:
+        query = query.filter(AuditLog.action == action)
+    table_name = (request.args.get("table_name") or "").strip()
+    if table_name:
+        query = query.filter(AuditLog.table_name == table_name)
+    user_id = request.args.get("user", type=int)
+    if user_id:
+        query = query.filter(AuditLog.user_id == user_id)
+    archived = (request.args.get("is_archived") or "").strip()
+    if archived in {"0", "1"}:
+        query = query.filter(AuditLog.is_archived.is_(archived == "1"))
+    if (request.args.get("sensitive") or "").strip() in {"1", "on", "true"}:
+        query = query.filter(AuditLog.action.in_(_SENSITIVE_AUDIT_ACTIONS))
+    return query
+
+
 @owner_bp.route("/audit-logs/export")
 @login_required
 @owner_required
@@ -364,13 +402,7 @@ def audit_logs_export():
     """Stream the filtered audit trail as CSV (audited)."""
     import csv, io
     from flask import Response
-    q = AuditLog.query
-    action = request.args.get("action")
-    if action:
-        q = q.filter(AuditLog.action == action)
-    table_name = request.args.get("table_name")
-    if table_name:
-        q = q.filter(AuditLog.table_name == table_name)
+    q = _apply_audit_filters(AuditLog.query)
     rows = q.order_by(AuditLog.created_at.desc()).limit(10000).all()
     out = io.StringIO()
     writer = csv.writer(out)
@@ -391,17 +423,9 @@ def audit_logs_export():
 def audit_logs():
     """سجل التدقيق الشامل - مراقبة كل عمليات النظام"""
     page = request.args.get("page", 1, type=int)
-    action = request.args.get("action", "", type=str)
-    user_id = request.args.get("user", type=int)
     per_page = request.args.get("per_page", 50, type=int)
 
-    query = AuditLog.query
-
-    if action:
-        query = query.filter_by(action=action)
-
-    if user_id:
-        query = query.filter_by(user_id=user_id)
+    query = _apply_audit_filters(AuditLog.query)
 
     pagination = query.order_by(AuditLog.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -425,6 +449,93 @@ def audit_logs():
         pagination=pagination,
         stats=stats,
         users=users,
+        sensitive_actions=sorted(_SENSITIVE_AUDIT_ACTIONS),
+    )
+
+
+@owner_bp.route("/journal-audit")
+@login_required
+@owner_required
+def journal_audit():
+    """Immutable audit trail for GL journal mutations (owner only)."""
+    from models.journal_entry_audit import JournalEntryAudit
+
+    page = request.args.get("page", 1, type=int)
+    action = (request.args.get("action") or "").strip()
+    entry_id = request.args.get("entry_id", type=int)
+
+    query = JournalEntryAudit.query
+    if action:
+        query = query.filter(JournalEntryAudit.action == action)
+    if entry_id:
+        query = query.filter(JournalEntryAudit.journal_entry_id == entry_id)
+
+    pagination = query.order_by(JournalEntryAudit.performed_at.desc()).paginate(
+        page=page, per_page=50, error_out=False
+    )
+    return render_template(
+        "owner/journal_audit.html",
+        logs=pagination.items,
+        pagination=pagination,
+        action=action,
+        entry_id=entry_id,
+    )
+
+
+@owner_bp.route("/audit-files")
+@login_required
+@owner_required
+def audit_files():
+    """Read the durable JSONL audit file written for sensitive operations.
+
+    Only ``.jsonl`` basenames inside the instance audit directory are
+    accepted, and only one page is materialised at a time.
+    """
+    import json
+    import re
+    from collections import deque
+
+    from utils.helpers import instance_audit_dir
+
+    filename = (request.args.get("file") or "audit_trail.jsonl").strip()
+    if (
+        not re.fullmatch(r"[A-Za-z0-9_-]+\.jsonl", filename)
+        or filename != os.path.basename(filename)
+    ):
+        abort(400)
+
+    page = max(1, request.args.get("page", 1, type=int) or 1)
+    per_page = 50
+    path = os.path.join(instance_audit_dir(), filename)
+    total = 0
+    tail = deque(maxlen=per_page * page)
+    if os.path.isfile(path):
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.strip():
+                    total += 1
+                    tail.append(line.rstrip("\n"))
+    window = list(tail)
+    start = max(0, len(window) - per_page)
+    # Newest first, each entry parsed defensively for display.
+    records = []
+    for raw in reversed(window[start:]):
+        try:
+            record = json.loads(raw)
+            if not isinstance(record, dict):
+                record = {"payload": record}
+        except Exception:
+            record = {"error": "invalid JSON line", "payload": raw[:500]}
+        records.append(record)
+
+    pages = max(1, (total + per_page - 1) // per_page)
+    return render_template(
+        "owner/audit_files.html",
+        records=records,
+        filename=filename,
+        page=page,
+        pages=pages,
+        total=total,
     )
 
 
@@ -1540,10 +1651,10 @@ def scheduled_backups():
             "backup_time": request.form.get("backup_time", "02:00"),
             "keep_count": int(request.form.get("keep_count", 5)),
         }
-        BackupService.save_schedule_settings(settings)
-
-        flash("✅ تم حفظ إعدادات النسخ الاحتياطي", "success")
-        return redirect(url_for("owner.scheduled_backups"))
+        if BackupService.save_schedule_settings(settings):
+            flash("✅ تم حفظ إعدادات النسخ الاحتياطي", "success")
+            return redirect(url_for("owner.scheduled_backups"))
+        flash("❌ تعذّر حفظ إعدادات النسخ الاحتياطي. تحقق من صلاحيات مجلد instance.", "danger")
 
     settings = BackupService.get_schedule_settings()
 
@@ -2403,6 +2514,9 @@ def constants_add(group):
         create_audit_log(
             "create", "system_lookups", None, {"group": group, "code": code}
         )
+        # The override service only flushes; persist explicitly so the
+        # customization (and its audit row) survives the request.
+        db.session.commit()
         flash(f'تمت إضافة "{code}" إلى الثوابت بنجاح', "success")
     except ValueError:
         current_app.logger.exception("handler failed")
@@ -2426,6 +2540,7 @@ def constants_label(group):
         create_audit_log(
             "update", "system_lookups", None, {"group": group, "code": code}
         )
+        db.session.commit()
         flash("تم حفظ التسمية بنجاح", "success")
     except ValueError:
         current_app.logger.exception("handler failed")
@@ -2453,6 +2568,7 @@ def constants_visibility(group):
             None,
             {"group": group, "code": code, "disabled": disable},
         )
+        db.session.commit()
         flash("تم تحديث الحالة بنجاح", "success")
     except ValueError:
         current_app.logger.exception("handler failed")
@@ -2460,6 +2576,33 @@ def constants_visibility(group):
     except Exception as e:
         current_app.logger.error(f"Lookup visibility error: {e}")
         flash("حدث خطأ أثناء التحديث.", "danger")
+    return redirect(url_for("owner.constants_group", group=group))
+
+
+@owner_bp.route("/constants/<group>/delete", methods=["POST"])
+@login_required
+@owner_required
+def constants_delete(group):
+    """Remove an owner-defined lookup value (system codes are never deleted)."""
+    from services.lookup_service import delete_custom
+    from utils.helpers import create_audit_log
+
+    code = (request.form.get("code") or "").strip()
+    try:
+        delete_custom(group, code)
+        create_audit_log(
+            "delete", "system_lookups", None, {"group": group, "code": code}
+        )
+        db.session.commit()
+        flash(f'تم حذف "{code}" من الثوابت', "success")
+    except ValueError as exc:
+        db.session.rollback()
+        current_app.logger.warning("Lookup delete rejected: %s", exc)
+        flash(f"⚠️ {exc}", "danger")
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Lookup delete error: {e}")
+        flash("حدث خطأ أثناء الحذف.", "danger")
     return redirect(url_for("owner.constants_group", group=group))
 
 
@@ -2475,6 +2618,10 @@ def invoice_settings():
 
     if request.method == "POST":
         try:
+            # Uploads are validated independently from the rest of the form;
+            # never report an unqualified success when one of them failed.
+            upload_failed = False
+
             # Only update fields that the form actually contains.  The owner
             # settings page intentionally shows a subset of the stored keys;
             # writing every key would silently wipe hidden settings on save.
@@ -2573,6 +2720,7 @@ def invoice_settings():
                     allowed_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
                     ext = os.path.splitext(logo_file.filename)[1].lower()
                     if ext not in allowed_ext:
+                        upload_failed = True
                         flash(
                             "⚠️ نوع الملف غير مدعوم للشعار. المسموح: PNG, JPG, JPEG, GIF, WEBP.",
                             "danger",
@@ -2583,6 +2731,7 @@ def invoice_settings():
                         file_size = logo_file.tell()
                         logo_file.seek(0)
                         if file_size > max_size:
+                            upload_failed = True
                             flash(
                                 "⚠️ حجم ملف الشعار كبير جداً. الحد الأقصى: 5 ميجابايت.",
                                 "danger",
@@ -2626,12 +2775,14 @@ def invoice_settings():
                     allowed_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
                     ext = os.path.splitext(filename)[1].lower()
                     if ext not in allowed_ext:
+                        upload_failed = True
                         flash("⚠️ نوع الملف غير مدعوم للعلامة المائية. المسموح: PNG, JPG, JPEG, GIF, WEBP.", "danger")
                     else:
                         watermark_file.seek(0, os.SEEK_END)
                         file_size = watermark_file.tell()
                         watermark_file.seek(0)
                         if file_size > 5 * 1024 * 1024:
+                            upload_failed = True
                             flash("⚠️ حجم العلامة المائية كبير جداً. الحد الأقصى: 5 ميجابايت.", "danger")
                         else:
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2661,7 +2812,10 @@ def invoice_settings():
 
             db.session.commit()
 
-            flash("تم حفظ إعدادات الترويسات بنجاح", "success")
+            if upload_failed:
+                flash("تم حفظ الإعدادات النصية، لكن بعض الملفات لم تُرفع. راجع التنبيهات أعلاه.", "warning")
+            else:
+                flash("تم حفظ إعدادات الترويسات بنجاح", "success")
             # Stay on the neutral tenant-facing URL when invoked via the alias.
             if request.endpoint == "main.letterheads_settings":
                 return redirect(url_for("main.letterheads_settings"))
@@ -3329,9 +3483,87 @@ def currency_settings():
     settings = SystemSettings.get_current()
     rates = CurrencyService.get_all_rates("AED")
 
-    return render_template(
-        "owner/currency_settings.html", settings=settings, rates=rates
+    from models import ExchangeRate
+
+    manual_rates = (
+        ExchangeRate.query.filter_by(is_manual=True)
+        .order_by(ExchangeRate.valid_from.desc())
+        .limit(50)
+        .all()
     )
+    return render_template(
+        "owner/currency_settings.html",
+        settings=settings,
+        rates=rates,
+        manual_rates=manual_rates,
+        base_currency=CurrencyService.get_base_currency(),
+    )
+
+
+@owner_bp.route("/currency-settings/manual-rate", methods=["POST"])
+@login_required
+@owner_required
+def currency_manual_rate():
+    """Persist an owner-supplied FX rate used when providers are unavailable."""
+    from models import Currency, ExchangeRate
+    from services.currency_service import CurrencyService
+
+    def _fail(message):
+        flash(message, "danger")
+        return redirect(url_for("owner.currency_settings"))
+
+    base = (CurrencyService.get_base_currency() or "AED").upper()
+    from_code = (request.form.get("from_currency") or "").strip().upper() or base
+    to_code = (request.form.get("to_currency") or "").strip().upper()
+    if (
+        len(from_code) != 3
+        or len(to_code) != 3
+        or not from_code.isalpha()
+        or not to_code.isalpha()
+    ):
+        return _fail("⚠️ أدخل رمزي عملة صالحين (3 أحرف).")
+    if from_code == to_code:
+        return _fail("⚠️ العملتان متطابقتان؛ لا حاجة لمعدل تحويل.")
+
+    try:
+        rate = Decimal((request.form.get("rate") or "").strip())
+    except (ValueError, TypeError, ArithmeticError):
+        return _fail("⚠️ معدل التحويل غير صالح.")
+    if not rate.is_finite() or rate <= 0 or rate > Decimal("1000000"):
+        return _fail("⚠️ يجب أن يكون معدل التحويل أكبر من صفر وأقل من 1,000,000.")
+
+    now = datetime.now(timezone.utc)
+    row = (
+        ExchangeRate.query.filter_by(
+            from_currency=from_code, to_currency=to_code, is_manual=True
+        )
+        .order_by(ExchangeRate.valid_from.desc())
+        .first()
+    )
+    if row is None:
+        currency = Currency.query.filter_by(code=to_code).first()
+        row = ExchangeRate(
+            from_currency=from_code,
+            to_currency=to_code,
+            currency_id=currency.id if currency else None,
+            is_manual=True,
+            created_by=current_user.id,
+        )
+        db.session.add(row)
+    row.rate = rate
+    row.source = "manual"
+    row.valid_from = now
+    row.valid_until = None
+    row.created_by = current_user.id
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("handler failed")
+        return _fail("❌ تعذّر حفظ معدل التحويل.")
+    CurrencyService.invalidate_rates(from_code)
+    flash(f"✅ تم حفظ معدل التحويل {from_code} → {to_code}", "success")
+    return redirect(url_for("owner.currency_settings"))
 
 
 @owner_bp.route("/payment-gateways", methods=["GET", "POST"])
@@ -3352,11 +3584,24 @@ def payment_gateways():
         db.session.commit()
 
     if request.method == "POST":
-        vault.stripe_publishable_key = request.form.get("stripe_publishable_key")
-        vault.stripe_secret_key = request.form.get("stripe_secret_key")
-        vault.paypal_client_id = request.form.get("paypal_client_id")
-        vault.paypal_client_secret = request.form.get("paypal_client_secret")
-        vault.nowpayments_api_key = request.form.get("nowpayments_api_key")
+        # Blank password fields in settings forms conventionally mean "keep
+        # the stored value"; otherwise a single empty field wipes a working
+        # gateway credential on every unrelated save.
+        def _secret(field, current):
+            value = (request.form.get(field) or "").strip()
+            return value or current
+
+        vault.stripe_publishable_key = _secret(
+            "stripe_publishable_key", vault.stripe_publishable_key
+        )
+        vault.stripe_secret_key = _secret("stripe_secret_key", vault.stripe_secret_key)
+        vault.paypal_client_id = _secret("paypal_client_id", vault.paypal_client_id)
+        vault.paypal_client_secret = _secret(
+            "paypal_client_secret", vault.paypal_client_secret
+        )
+        vault.nowpayments_api_key = _secret(
+            "nowpayments_api_key", vault.nowpayments_api_key
+        )
 
         db.session.commit()
         flash("✅ تم تحديث إعدادات بوابات الدفع", "success")

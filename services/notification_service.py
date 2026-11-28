@@ -5,8 +5,18 @@ Notification Service - خدمة الإشعارات
 
 from datetime import datetime, timezone
 import logging
+import os
+import re
 
 logger = logging.getLogger(__name__)
+
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def _as_bool(value):
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_VALUES
+    return bool(value)
 
 
 class NotificationService:
@@ -112,6 +122,230 @@ class NotificationService:
         return False
 
     @staticmethod
+    def _db_settings():
+        """Current SystemSettings, or None when no DB/app context is available."""
+        try:
+            from flask import has_app_context
+
+            if has_app_context():
+                from models.system_settings import SystemSettings
+
+                return SystemSettings.query.filter_by(is_active=True).first()
+        except Exception as exc:
+            logger.debug("Notification settings lookup unavailable: %s", exc)
+        return None
+
+    @staticmethod
+    def get_setting(name, env_name=None, default=None):
+        """Read a channel setting from DB first, then the environment."""
+        settings = NotificationService._db_settings()
+        value = getattr(settings, name, None) if settings is not None else None
+        if value is None or value == "":
+            value = os.environ.get(env_name) if env_name else None
+        if value is None or value == "":
+            return default
+        if isinstance(default, bool):
+            return _as_bool(value)
+        return value
+
+    @staticmethod
+    def render_template(template_key, default_template, **placeholders):
+        """Render a saved notification template with ``{name}`` placeholders.
+
+        Saved templates live in ``SystemSettings.notification_templates``;
+        the caller's ``default_template`` is used when no saved text exists.
+        Unknown placeholders are left intact instead of raising KeyError.
+        """
+        template = default_template or ""
+        if template_key:
+            settings = NotificationService._db_settings()
+            if settings is not None:
+                try:
+                    import json
+
+                    saved = json.loads(settings.notification_templates or "{}")
+                    if isinstance(saved, dict) and isinstance(
+                        saved.get(template_key), str
+                    ):
+                        if saved[template_key].strip():
+                            template = saved[template_key]
+                except Exception as exc:
+                    logger.debug("Invalid notification template JSON: %s", exc)
+        if not template:
+            return ""
+        return re.sub(
+            r"\{([A-Za-z_][A-Za-z0-9_]*)\}",
+            lambda match: str(
+                placeholders.get(match.group(1), match.group(0))
+            ),
+            template,
+        )
+
+    @staticmethod
+    def channel_enabled(channel):
+        """Honour the owner's per-channel enable flags (DB first, env fallback)."""
+        settings = NotificationService._db_settings()
+
+        def _flag(attr, env_name):
+            value = getattr(settings, attr, None) if settings is not None else None
+            if value is None:
+                value = os.environ.get(env_name)
+            return _as_bool(value) if value is not None else False
+
+        if channel == "email":
+            return _flag("enable_email_notifications", "ENABLE_EMAIL_NOTIFICATIONS")
+        if channel == "sms":
+            return _flag("sms_enabled", "ENABLE_SMS_NOTIFICATIONS") or _flag(
+                "enable_sms_notifications", "ENABLE_SMS_NOTIFICATIONS"
+            )
+        if channel == "whatsapp":
+            return _flag("whatsapp_enabled", "ENABLE_WHATSAPP_NOTIFICATIONS")
+        return False
+
+    @staticmethod
+    def send_email(to, template_key, default_template, subject=None, **placeholders):
+        """Send a templated email when email notifications are enabled."""
+        message = NotificationService.render_template(
+            template_key, default_template, **placeholders
+        )
+        result = {
+            "channel": "email",
+            "sent": False,
+            "skipped": False,
+            "error": None,
+            "contact": to,
+            "message": message,
+        }
+        if not to:
+            result["error"] = "لا يوجد بريد إلكتروني للمستلم"
+            return result
+        if not NotificationService.channel_enabled("email"):
+            result["skipped"] = True
+            result["error"] = "Email notifications are disabled"
+            return result
+        host = NotificationService.get_setting("smtp_server", "SMTP_SERVER")
+        if not host:
+            result["error"] = "SMTP server is not configured"
+            return result
+        sender = NotificationService.get_setting(
+            "email_from", "DEFAULT_MAIL_SENDER"
+        ) or "no-reply@localhost"
+        try:
+            import smtplib
+            from email.message import EmailMessage
+
+            port = int(
+                NotificationService.get_setting("smtp_port", "SMTP_PORT", 587)
+            )
+            msg = EmailMessage()
+            msg["Subject"] = subject or "Notification"
+            msg["From"] = sender
+            msg["To"] = to
+            msg.set_content(message)
+            with smtplib.SMTP(str(host), port, timeout=15) as smtp:
+                if _as_bool(
+                    NotificationService.get_setting("smtp_use_tls", "SMTP_USE_TLS", True)
+                ):
+                    smtp.starttls()
+                username = NotificationService.get_setting(
+                    "smtp_username", "SMTP_USERNAME"
+                )
+                password = NotificationService.get_setting(
+                    "smtp_password", "SMTP_PASSWORD"
+                )
+                if username and password:
+                    smtp.login(str(username), str(password))
+                smtp.send_message(msg)
+            result["sent"] = True
+        except Exception as exc:
+            logger.warning("Email delivery failed: %s", exc)
+            result["error"] = str(exc)[:300]
+        return result
+
+    @staticmethod
+    def send_sms(to, template_key, default_template, **placeholders):
+        """Send a templated SMS when SMS notifications are enabled."""
+        message = NotificationService.render_template(
+            template_key, default_template, **placeholders
+        )
+        result = {
+            "channel": "sms",
+            "sent": False,
+            "skipped": False,
+            "error": None,
+            "contact": to,
+            "message": message,
+        }
+        if not to:
+            result["error"] = "لا يوجد رقم هاتف للمستلم"
+            return result
+        if not NotificationService.channel_enabled("sms"):
+            result["skipped"] = True
+            result["error"] = "SMS notifications are disabled"
+            return result
+        api_url = os.environ.get("SMS_API_URL")
+        api_key = NotificationService.get_setting("sms_api_key", "SMS_API_KEY")
+        if not api_url or not api_key:
+            result["error"] = "SMS provider is not configured"
+            return result
+        try:
+            import requests
+
+            response = requests.post(
+                api_url,
+                data={
+                    "token": str(api_key),
+                    "to": to,
+                    "message": message,
+                    "text": message,
+                    "sender": NotificationService.get_setting(
+                        "sms_sender_name", "SMS_SENDER_NAME", ""
+                    ),
+                },
+                timeout=15,
+            )
+            if 200 <= response.status_code < 300:
+                result["sent"] = True
+            else:
+                result["error"] = f"SMS API HTTP {response.status_code}"
+        except Exception as exc:
+            logger.warning("SMS delivery failed: %s", exc)
+            result["error"] = str(exc)[:300]
+        return result
+
+    @staticmethod
+    def send_whatsapp(to, template_key, default_template, **placeholders):
+        """Send a templated WhatsApp message when WhatsApp is enabled."""
+        message = NotificationService.render_template(
+            template_key, default_template, **placeholders
+        )
+        result = {
+            "channel": "whatsapp",
+            "sent": False,
+            "skipped": False,
+            "error": None,
+            "contact": to,
+            "message": message,
+        }
+        if not to:
+            result["error"] = "لا يوجد رقم هاتف للمستلم"
+            return result
+        if not NotificationService.channel_enabled("whatsapp"):
+            result["skipped"] = True
+            result["error"] = "WhatsApp notifications are disabled"
+            return result
+        try:
+            from services.whatsapp_service import WhatsAppService
+
+            response = WhatsAppService.send_custom_message(to, message)
+            result["sent"] = bool(response.get("success"))
+            result["error"] = response.get("error")
+        except Exception as exc:
+            logger.warning("WhatsApp delivery failed: %s", exc)
+            result["error"] = str(exc)[:300]
+        return result
+
+    @staticmethod
     def notify_payment_received(amount, customer_name, payment_method):
         """إشعار باستلام دفعة"""
         return NotificationService.send_notification(
@@ -210,21 +444,54 @@ class SecurityService:
             del SecurityService._failed_attempts[ip_address]
 
     @staticmethod
+    def _failed_login_counts():
+        """Return (distinct IPs, total failures) from durable login history.
+
+        Failed logins are persisted by the auth route in ``login_history``;
+        reading them makes the security status survive restarts instead of
+        depending on the process-local throttling dict. The dict is only a
+        fallback for contexts where the DB is unavailable.
+        """
+        try:
+            from flask import has_app_context
+
+            if has_app_context():
+                from sqlalchemy import func
+
+                from extensions import db
+                from models.login_history import LoginHistory
+
+                rows = (
+                    db.session.query(
+                        LoginHistory.ip_address, func.count(LoginHistory.id)
+                    )
+                    .filter(LoginHistory.success.is_(False))
+                    .group_by(LoginHistory.ip_address)
+                    .all()
+                )
+                if rows:
+                    return len(rows), sum(int(count or 0) for _, count in rows)
+        except Exception as exc:
+            logger.debug("Failed-login history query unavailable: %s", exc)
+        return len(SecurityService._failed_attempts), sum(
+            int(data.get("count", 0)) for data in SecurityService._failed_attempts.values()
+        )
+
+    @staticmethod
     def get_security_status():
         """الحصول على حالة الأمان"""
+        failed_ips, total_failed = SecurityService._failed_login_counts()
         return {
             "blacklisted_ips": len(SecurityService._blacklist),
-            "failed_attempts": len(SecurityService._failed_attempts),
-            "total_failed_count": sum(
-                data["count"] for data in SecurityService._failed_attempts.values()
-            ),
+            "failed_attempts": failed_ips,
+            "total_failed_count": total_failed,
             "security_level": SecurityService._calculate_security_level(),
         }
 
     @staticmethod
     def _calculate_security_level():
         """حساب مستوى الأمان"""
-        failed_count = len(SecurityService._failed_attempts)
+        failed_count, _ = SecurityService._failed_login_counts()
         blacklisted = len(SecurityService._blacklist)
 
         if blacklisted > 10 or failed_count > 20:

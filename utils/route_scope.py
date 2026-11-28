@@ -75,7 +75,10 @@ TENANT_MARKERS = (
     "permission_required",
     "owner_required",
     "tenant_required",
-    "login_required",
+    # "login_required" is intentionally NOT an isolation marker: proving that
+    # somebody is logged in says nothing about which tenant's rows the view
+    # may read/write. Views that only carry @login_required must be given a
+    # real tenant marker (or reclassified) instead of passing this census.
 )
 
 VALID_SCOPES = frozenset({"tenant", "platform", "public", "system"})

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Journal Audit') }}{% endblock %}
+{% block content %}
+<div class="content-header">
+  <div class="container-fluid">
+    <div class="row mb-2 align-items-center">
+      <div class="col-sm-6">
+        <h1 class="m-0"><i class="fas fa-book text-primary mr-2"></i>{{ t('Journal Entry Audit Trail') }}</h1>
+        <p class="text-muted mb-0">{{ t('Every create, update, post, reverse and delete on GL journal entries.') }}</p>
+      </div>
+      <div class="col-sm-6 d-flex justify-content-end">
+        <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-right mr-1"></i>{{ t('Back to Audit Logs') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="content">
+  <div class="container-fluid">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-gradient-primary"><h3 class="card-title"><i class="fas fa-filter mr-2"></i>{{ t('Filters') }}</h3></div>
+      <div class="card-body">
+        <form method="GET" action="{{ url_for('owner.journal_audit') }}" class="form-row">
+          <div class="form-group col-md-4">
+            <label>{{ t('Action') }}</label>
+            <select name="action" class="form-control">
+              <option value="">{{ t('All') }}</option>
+              {% for code in ['create', 'update', 'post', 'approve', 'reverse', 'delete'] %}
+              <option value="{{ code }}" {{ 'selected' if action == code }}>{{ code }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group col-md-4">
+            <label>{{ t('Journal Entry ID') }}</label>
+            <input type="number" name="entry_id" class="form-control" value="{{ entry_id or '' }}">
+          </div>
+          <div class="form-group col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-search mr-1"></i>{{ t('Apply') }}</button>
+            <a href="{{ url_for('owner.journal_audit') }}" class="btn btn-secondary">{{ t('Reset') }}</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow">
+      <div class="card-header bg-gradient-dark"><h3 class="card-title"><i class="fas fa-history mr-2"></i>{{ t('Journal Audit Records') }}</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover table-striped mb-0">
+            <thead class="thead-dark">
+              <tr>
+                <th>{{ t('Time') }}</th>
+                <th>{{ t('Entry') }}</th>
+                <th>{{ t('Action') }}</th>
+                <th>{{ t('Performed By') }}</th>
+                <th>{{ t('Reason') }}</th>
+                <th>{{ t('IP') }}</th>
+                <th>{{ t('Values') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for log in logs %}
+              <tr>
+                <td>{{ log.performed_at.strftime('%Y-%m-%d %H:%M:%S') if log.performed_at else '-' }}</td>
+                <td>#{{ log.journal_entry_id }} {% if log.journal_entry and log.journal_entry.entry_number %}({{ log.journal_entry.entry_number }}){% endif %}</td>
+                <td><span class="badge badge-info">{{ log.action }}</span></td>
+                <td>{{ log.performer.username if log.performer else log.performed_by }}</td>
+                <td>{{ log.reason or '-' }}</td>
+                <td><small class="text-monospace">{{ log.ip_address or '-' }}</small></td>
+                <td>
+                  {% if log.old_values %}<small class="d-block text-muted">{{ t('Before') }}: {{ log.old_values|string|truncate(300) }}</small>{% endif %}
+                  {% if log.new_values %}<small class="d-block">{{ t('After') }}: {{ log.new_values|string|truncate(300) }}</small>{% endif %}
+                  {% if not log.old_values and not log.new_values %}-{% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center py-4 text-muted">{{ t('No records') }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% if pagination and pagination.pages > 1 %}
+      <div class="card-footer">
+        <nav aria-label="Page navigation"><ul class="pagination mb-0">
+          {% if pagination.has_prev %}<li class="page-item"><a class="page-link" href="{{ url_for('owner.journal_audit', page=pagination.prev_num, action=action, entry_id=entry_id) }}">{{ t('Previous') }}</a></li>{% endif %}
+          {% for n in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if n %}<li class="page-item {{ 'active' if n == pagination.page }}"><a class="page-link" href="{{ url_for('owner.journal_audit', page=n, action=action, entry_id=entry_id) }}">{{ n }}</a></li>{% else %}<li class="page-item disabled"><span class="page-link">...</span></li>{% endif %}
+          {% endfor %}
+          {% if pagination.has_next %}<li class="page-item"><a class="page-link" href="{{ url_for('owner.journal_audit', page=pagination.next_num, action=action, entry_id=entry_id) }}">{{ t('Next') }}</a></li>{% endif %}
+        </ul></nav>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

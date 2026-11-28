@@ -23,8 +23,8 @@
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card"><div class="card-header"><h5 class="mb-0">{{ t('Purchase Order Details') }}</h5></div><div class="card-body">
     <div class="row">
-      <div class="col-md-4"><div class="form-group"><label>{{ t('Supplier') }} <span class="text-danger">*</span></label><select name="supplier_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div></div>
-      <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }} <span class="text-danger">*</span></label><select name="warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Supplier') }} <span class="text-danger">*</span></label><select name="supplier_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ display_name(s) }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }} <span class="text-danger">*</span></label><select name="warehouse_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>{{ t('Expected Delivery') }}</label><input type="date" name="expected_delivery" class="form-control"></div></div>
       <div class="col-md-3"><div class="form-group"><label for="po-tax-rate">{{ t('Tax') }} %</label><input id="po-tax-rate" type="number" name="tax_rate" class="form-control" value="{{ default_rate }}" min="0" max="100" step="0.01" {{ 'readonly' if not tax_enabled }}></div></div>
     </div>
@@ -38,7 +38,7 @@
       <tr>
         <td><label class="d-sm-none" data-label="product_id">{{ t('Product') }}</label><select class="form-control" data-field="product_id" aria-label="{{ t('Product') }}" required>
           <option value="">{{ t('Select') }}</option>
-          {% for p in products %}<option value="{{ p.id }}" data-cost="{{ p.cost_price or 0 }}">{{ p.name }}</option>{% endfor %}
+          {% for p in products %}<option value="{{ p.id }}" data-cost="{{ p.cost_price or 0 }}">{{ display_name(p) }}</option>{% endfor %}
         </select></td>
         <td><label class="d-sm-none" data-label="quantity">{{ t('Quantity') }}</label><input type="number" class="form-control" data-field="quantity" aria-label="{{ t('Quantity') }}" min="0.001" step="0.001" required></td>
         <td><label class="d-sm-none" data-label="unit_cost">{{ t('Cost') }}</label><input type="number" class="form-control" data-field="unit_cost" aria-label="{{ t('Cost') }}" min="0.001" step="0.001" required></td>

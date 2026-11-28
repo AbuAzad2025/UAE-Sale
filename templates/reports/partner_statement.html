@@ -42,10 +42,12 @@
   <form method="GET" class="mb-3 no-print">
     <div class="row">
       <div class="col-md-3">
-        <input type="date" name="date_from" class="form-control" value="{{ date_from }}" placeholder="{{ t('From Date') }}">
+        <label for="date_from" class="form-label">{{ t('From Date') }}</label>
+        <input type="date" id="date_from" name="date_from" class="form-control" value="{{ date_from }}" placeholder="{{ t('From Date') }}">
       </div>
       <div class="col-md-3">
-        <input type="date" name="date_to" class="form-control" value="{{ date_to }}" placeholder="{{ t('To Date') }}">
+        <label for="date_to" class="form-label">{{ t('To Date') }}</label>
+        <input type="date" id="date_to" name="date_to" class="form-control" value="{{ date_to }}" placeholder="{{ t('To Date') }}">
       </div>
       <div class="col-md-2">
         <button type="submit" class="btn btn-primary">{{ t('Filter') }}</button>

@@ -21,6 +21,7 @@ from utils.helpers import create_audit_log
 from decimal import Decimal
 from datetime import datetime, date, timedelta
 from services.aging_analysis_service import AGING_BUCKETS, OVERDUE_BUCKETS
+from utils.balance_checker import amounts_balanced, is_journal_balanced
 
 ledger_bp = Blueprint("ledger", __name__, url_prefix="/ledger")
 install_feature_gate(ledger_bp, "gl")
@@ -552,8 +553,8 @@ def trial_balance():
             total_debit_balance += debit_bal
             total_credit_balance += credit_bal
 
-    is_balanced = total_debit == total_credit
-    is_net_balanced = total_debit_balance == total_credit_balance
+    is_balanced = amounts_balanced(total_debit, total_credit)
+    is_net_balanced = amounts_balanced(total_debit_balance, total_credit_balance)
 
     return render_template(
         "ledger/trial_balance.html",
@@ -1155,7 +1156,7 @@ def api_calculate_journal_balance():
 
         difference = abs(total_debit - total_credit)
         is_balanced = (
-            difference < Decimal("0.01") and total_debit > 0 and total_credit > 0
+            is_journal_balanced(lines) and total_debit > 0 and total_credit > 0
         )
 
         return jsonify(

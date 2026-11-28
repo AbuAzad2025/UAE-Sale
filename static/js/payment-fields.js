@@ -6,6 +6,21 @@
 (function($) {
   'use strict';
 
+  // Current UI language. base.html renders window.CURRENT_LANGUAGE; the
+  // document lang is a fallback for standalone/older pages.
+  const currentLang = window.CURRENT_LANGUAGE
+    || ((document.documentElement.lang || 'ar').toLowerCase().startsWith('en') ? 'en' : 'ar');
+
+  function localized(en, ar, fallback) {
+    return (currentLang === 'en' ? (en || ar) : (ar || en)) || fallback || '';
+  }
+  function fieldLabel(field) {
+    return localized(field.label_en, field.label_ar, field.name);
+  }
+  function methodTitle(method) {
+    return localized(method.title_en, method.title_ar, '');
+  }
+
   // Unified lookups (window.SYSTEM_LOOKUPS rendered by base.html from
   // LookupService); inline defaults keep the module working standalone.
   function lookupOptions(key, fallback, blankLabel) {
@@ -14,7 +29,11 @@
       const rows = (window.SYSTEM_LOOKUPS || {})[key];
       if (Array.isArray(rows) && rows.length) {
         opts = rows.map(function (row) {
-          return { value: row[0], label: (row[1] && row[1].ar) || row[0] };
+          const meta = row[1] || {};
+          return {
+            value: row[0],
+            label: localized(meta.en, meta.ar, String(row[0]))
+          };
         });
       }
     } catch (e) { /* fall through to defaults */ }
@@ -234,7 +253,7 @@
       $container.html(`
         <div class="alert alert-success">
           <i class="${methodConfig.icon} mr-2"></i>
-          <strong>${methodConfig.title_ar}</strong> - ${t('No additional fields required')}
+          <strong>${methodTitle(methodConfig)}</strong> - ${t('No additional fields required')}
         </div>
       `);
       return;
@@ -244,7 +263,7 @@
       <div class="card border-${methodConfig.color} mb-3">
         <div class="card-header bg-${methodConfig.color} text-white">
           <i class="${methodConfig.icon} mr-2"></i>
-          <strong>${methodConfig.title_ar}</strong>
+          <strong>${methodTitle(methodConfig)}</strong>
         </div>
         <div class="card-body">
           <div class="row">
@@ -256,7 +275,7 @@
       const requiredLabel = field.required ? '<span class="text-danger">*</span>' : '';
       
       html += '<div class="col-md-6"><div class="form-group">';
-      html += `<label>${field.label_ar} ${requiredLabel}</label>`;
+      html += `<label>${fieldLabel(field)} ${requiredLabel}</label>`;
       
       if (field.type === 'select') {
         html += `<select name="${fieldName}" class="form-control" ${requiredAttr}>`;

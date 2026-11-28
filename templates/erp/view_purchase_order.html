@@ -4,23 +4,25 @@
 {% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between">
-    <h5>{{ order.supplier.name if order.supplier else '' }} - {{ order.po_number }}</h5>
+    <h5>{{ display_name(order.supplier) if order.supplier else '' }} - {{ order.po_number }}</h5>
     <span class="badge badge-lg badge-{{ 'success' if order.status=='received' else ('warning' if order.status=='approved' else 'secondary') }}">{{ order.status|status_label }}</span>
   </div>
   <div class="card-body">
     <div class="row mb-3">
       <div class="col-md-4"><p><strong>{{ t('Date') }}:</strong> {{ order.po_date.strftime('%Y-%m-%d') }}</p><p><strong>{{ t('Expected Delivery') }}:</strong> {{ order.expected_delivery.strftime('%Y-%m-%d') if order.expected_delivery else '-' }}</p></div>
       <div class="col-md-4 text-center"><h3>{{ "{:,.2f}".format(order.total_amount|float) }} {{ base_currency_name }}</h3></div>
-      <div class="col-md-4"><p><strong>{{ t('Warehouse') }}:</strong> {{ order.warehouse.name if order.warehouse else '-' }}</p><p><strong>{{ t('Requested By') }}:</strong> {{ order.requested_by.full_name if order.requested_by else '-' }}</p></div>
+      <div class="col-md-4"><p><strong>{{ t('Warehouse') }}:</strong> {{ display_name(order.warehouse) if order.warehouse else '-' }}</p><p><strong>{{ t('Requested By') }}:</strong> {{ display_name(order.requested_by) if order.requested_by else '-' }}</p></div>
     </div>
+    <div class="table-responsive">
     <table class="table table-bordered">
       <thead><tr><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Cost') }}</th><th>{{ t('Total Amount') }}</th><th>{{ t('Received') }}</th></tr></thead>
       <tbody>
       {% for l in order.lines %}
-      <tr><td>{{ l.product.name if l.product else '-' }}</td><td>{{ l.quantity }}</td><td>{{ "{:,.2f}".format(l.unit_cost|float) }}</td><td>{{ "{:,.2f}".format(l.line_total|float) }}</td><td>{{ l.received_quantity or 0 }}</td></tr>
+      <tr><td>{{ display_name(l.product) if l.product else '-' }}</td><td>{{ l.quantity }}</td><td>{{ "{:,.2f}".format(l.unit_cost|float) }}</td><td>{{ "{:,.2f}".format(l.line_total|float) }}</td><td>{{ l.received_quantity or 0 }}</td></tr>
       {% endfor %}
       </tbody>
     </table>
+    </div>
     <div class="mt-3">
       {% if order.status == 'draft' %}
       <form method="POST" action="{{ url_for('erp_modules.submit_purchase_order', id=order.id) }}" style="display:inline">

@@ -191,6 +191,7 @@ class ChequeAccountingIntegration:
         }
 
         accounts = {}
+        cheque_entry_ids = set()
         for kind, entry_id in (
             (
                 "receive" if cheque.cheque_type == "incoming" else "issue",
@@ -204,6 +205,7 @@ class ChequeAccountingIntegration:
             entry = GLJournalEntry.query.filter_by(
                 id=entry_id, tenant_id=cheque.tenant_id
             ).one()
+            cheque_entry_ids.add(entry.id)
             summary["journal_entries"].append(
                 {
                     "type": kind,
@@ -215,11 +217,15 @@ class ChequeAccountingIntegration:
             for line in entry.lines:
                 accounts[line.account_id] = line.account
 
+        # Account impact must describe THIS cheque only — summing every posted
+        # line on the account (the old behaviour) reported unrelated vouchers
+        # as if they belonged to the cheque.
         for account in sorted(accounts.values(), key=lambda account: account.code):
             balance = (
                 db.session.query(db.func.sum(GLJournalLine.amount_base))
                 .join(GLJournalEntry, GLJournalLine.entry_id == GLJournalEntry.id)
                 .filter(
+                    GLJournalEntry.id.in_(cheque_entry_ids),
                     GLJournalEntry.tenant_id == cheque.tenant_id,
                     GLJournalEntry.is_posted.is_(True),
                     GLJournalLine.account_id == account.id,

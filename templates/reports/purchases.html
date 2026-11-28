@@ -3,6 +3,12 @@
 {% block title %}{{ t('Purchases Report') }}{% endblock %}
 
 {% block content %}
+{% if start_date or end_date %}
+<div class="print-only mb-3" style="text-align:center; font-size:12pt; font-weight:700;">
+  {{ t('Period') }}: {% if start_date %}{{ t('From') }} {{ start_date }}{% endif %}{% if start_date and end_date %} — {% endif %}{% if end_date %}{{ t('To') }} {{ end_date }}{% endif %}
+</div>
+{% endif %}
+
 <div class="container-fluid">
   <div class="row">
     <div class="col-12">
@@ -19,7 +25,7 @@
         </div>
         <div class="card-body">
           
-          <form method="get" action="" class="mb-4">
+          <form method="get" action="" class="mb-4 no-print">
             <div class="row">
               <div class="col-md-3">
                 <label>{{ t('From Date') }}</label>

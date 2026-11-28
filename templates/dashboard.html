@@ -13,30 +13,30 @@
 {% block content %}
 
 <style>
-  :root { --tenant-brand: #007A3D; --tenant-brand-dark: #075c2e; }
+  /* Brand colors come from base.html's --tenant-primary / --tenant-secondary. */
   .stat-card { border: 1px solid rgba(0,122,61,.14); border-radius: 14px; transition: transform .15s, box-shadow .15s; }
   .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,61,.12); }
-  .stat-card .stat-icon { background: var(--tenant-brand) !important; border-radius: 12px; }
+  .stat-card .stat-icon { background: var(--tenant-primary) !important; border-radius: 12px; }
   .stat-card .stat-label { color: #333 !important; font-weight: 700; font-size: 14px; }
-  .stat-card .stat-value { color: var(--tenant-brand-dark); font-size: 30px; font-weight: 800; }
+  .stat-card .stat-value { color: var(--tenant-secondary); font-size: 30px; font-weight: 800; }
   .stat-card small.text-muted, .stat-card .text-muted { color: #555 !important; font-size: 12px; }
-  .btn.dash-action { background: #fff; color: var(--tenant-brand-dark); border: 1px solid var(--tenant-brand); font-weight: 700; font-size: 13px; min-height: 36px; }
-  .btn.dash-action:hover { background: var(--tenant-brand); color: #fff; }
+  .btn.dash-action { background: #fff; color: var(--tenant-secondary); border: 1px solid var(--tenant-primary); font-weight: 700; font-size: 13px; min-height: 36px; }
+  .btn.dash-action:hover { background: var(--tenant-primary); color: #fff; }
   .card.glass-effect h5.text-muted { color: #333 !important; font-weight: 700; font-size: 15px; }
   .card.glass-effect small.text-muted { color: #555 !important; font-size: 12px; }
 </style>
 
-<div class="row mb-4">
+<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-4 mb-4">
   {% if current_user.has_permission('manage_sales') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-shopping-cart"></i>
       </div>
       <div class="stat-value">{{ stats.today_sales_count|default(0) }}</div>
       <div class="stat-label">{{ t('Sales Today') }}</div>
       <div class="mt-2">
-        <strong style="color: var(--tenant-brand); font-size: 1.15rem;">
+        <strong style="color: var(--tenant-primary); font-size: 1.15rem;">
           {{ "{:,.0f}".format(stats.today_sales_amount|default(0)) }}
         </strong>
         <small class="text-muted"> {{ base_currency_name }}</small>
@@ -51,15 +51,15 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_purchases') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-truck-loading"></i>
       </div>
       <div class="stat-value">{{ stats.month_purchases_count|default(0) }}</div>
       <div class="stat-label">{{ t('Purchases This Month') }}</div>
       <div class="mt-2">
-        <strong style="color: var(--tenant-brand); font-size: 1.15rem;">
+        <strong style="color: var(--tenant-primary); font-size: 1.15rem;">
           {{ "{:,.0f}".format(stats.month_purchases_amount|default(0)) }}
         </strong>
         <small class="text-muted"> {{ base_currency_name }}</small>
@@ -74,9 +74,9 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_customers') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-users"></i>
       </div>
       <div class="stat-value">{{ stats.customers_count|default(0) }}</div>
@@ -94,9 +94,9 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') or current_user.has_permission('view_ledger') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-file-invoice-dollar"></i>
       </div>
       <div class="stat-value">{{ "{:,.0f}".format(stats.total_receivables|default(0)) }}</div>
@@ -114,9 +114,9 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_products') or current_user.has_permission('view_products') or current_user.has_permission('manage_warehouse') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-box-open"></i>
       </div>
       <div class="stat-value">{{ stats.products_count|default(0) }}</div>
@@ -134,15 +134,15 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-money-check"></i>
       </div>
       <div class="stat-value">{{ stats.pending_cheques_count|default(0) }}</div>
       <div class="stat-label">{{ t('Pending Cheques') }}</div>
       <div class="mt-2">
-        <strong style="color: var(--tenant-brand); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.pending_cheques_amount|default(0)) }}</strong>
+        <strong style="color: var(--tenant-primary); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.pending_cheques_amount|default(0)) }}</strong>
         <small class="text-muted"> {{ base_currency_name }} · {{ t('Cleared') }} {{ stats.cleared_cheques_count|default(0) }}</small>
       </div>
       <a href="{{ url_for('cheques.outgoing') }}" class="btn btn-sm dash-action mt-2 w-100">{{ t('View Cheques') }}</a>
@@ -151,17 +151,17 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-exchange-alt"></i>
       </div>
       <div class="stat-value">{{ stats.outgoing_today_count|default(0) }} / {{ stats.incoming_today_count|default(0) }}</div>
       <div class="stat-label">{{ t('Payments Today (Outgoing / Incoming)') }}</div>
       <div class="mt-2">
-        <strong style="color: var(--tenant-brand); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.outgoing_today_amount|default(0)) }}</strong>
+        <strong style="color: var(--tenant-primary); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.outgoing_today_amount|default(0)) }}</strong>
         <small class="text-muted">{{ t('Outgoing') }} · </small>
-        <strong style="color: var(--tenant-brand); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.incoming_today_amount|default(0)) }}</strong>
+        <strong style="color: var(--tenant-primary); font-size: 1.15rem;">{{ "{:,.0f}".format(stats.incoming_today_amount|default(0)) }}</strong>
         <small class="text-muted">{{ t('Incoming') }}</small>
       </div>
       <a href="{{ url_for('payments.receipts') }}" class="btn btn-sm dash-action mt-2 w-100">{{ t('View Payments') }}</a>
@@ -170,9 +170,9 @@
   {% endif %}
 
   {% if current_user.has_permission('maintenance_view') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-tools"></i>
       </div>
       <div class="stat-value">{{ stats.maintenance_open|default(0) }}</div>
@@ -184,9 +184,9 @@
   {% endif %}
 
   {% if current_user.has_permission('manage_payments') or current_user.has_permission('view_ledger') or current_user.has_permission('view_reports') %}
-  <div class="col-lg-3 col-md-6 mb-4">
+  <div class="col">
     <div class="stat-card">
-      <div class="stat-icon" style="background: var(--tenant-brand);">
+      <div class="stat-icon" style="background: var(--tenant-primary);">
         <i class="fas fa-hand-holding-usd"></i>
       </div>
       <div class="stat-value">{{ "{:,.0f}".format(stats.total_payables|default(0)) }}</div>
@@ -199,15 +199,15 @@
 
 {% if current_user.can_see_costs() and stats.cash_balance is defined %}
 
-<div class="row mb-4">
-  <div class="col-md-4 mb-3">
+<div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+  <div class="col">
     <div class="card glass-effect border-0">
       <div class="card-body text-center">
         <div class="mb-3">
-          <i class="fas fa-wallet fa-3x" style="color: var(--tenant-brand);"></i>
+          <i class="fas fa-wallet fa-3x" style="color: var(--tenant-primary);"></i>
         </div>
         <h5 class="text-muted">{{ t('Cash Balance') }}</h5>
-        <h2 class="mb-0" style="color: var(--tenant-brand); font-weight: 700;">
+        <h2 class="mb-0" style="color: var(--tenant-primary); font-weight: 700;">
           {{ "{:,.2f}".format(stats.cash_balance|default(0)) }}
         </h2>
         <small class="text-muted">{{ base_currency_name }} ({{ base_currency }})</small>
@@ -215,14 +215,14 @@
     </div>
   </div>
 
-  <div class="col-md-4 mb-3">
+  <div class="col">
     <div class="card glass-effect border-0">
       <div class="card-body text-center">
         <div class="mb-3">
-          <i class="fas fa-university fa-3x" style="color: var(--tenant-brand);"></i>
+          <i class="fas fa-university fa-3x" style="color: var(--tenant-primary);"></i>
         </div>
         <h5 class="text-muted">{{ t('Bank Balance') }}</h5>
-        <h2 class="mb-0" style="color: var(--tenant-brand); font-weight: 700;">
+        <h2 class="mb-0" style="color: var(--tenant-primary); font-weight: 700;">
           {{ "{:,.2f}".format(stats.bank_balance|default(0)) }}
         </h2>
         <small class="text-muted">{{ base_currency_name }} ({{ base_currency }})</small>
@@ -230,14 +230,14 @@
     </div>
   </div>
 
-  <div class="col-md-4 mb-3">
+  <div class="col">
     <div class="card glass-effect border-0">
       <div class="card-body text-center">
         <div class="mb-3">
-          <i class="fas fa-boxes fa-3x" style="color: var(--tenant-brand);"></i>
+          <i class="fas fa-boxes fa-3x" style="color: var(--tenant-primary);"></i>
         </div>
         <h5 class="text-muted">{{ t('Inventory Value') }}</h5>
-        <h2 class="mb-0" style="color: var(--tenant-brand); font-weight: 700;">
+        <h2 class="mb-0" style="color: var(--tenant-primary); font-weight: 700;">
           {{ "{:,.2f}".format(stats.inventory_value_gl|default(0)) }}
         </h2>
         <small class="text-muted">{{ base_currency_name }} ({{ base_currency }})</small>
@@ -303,7 +303,7 @@
                     <br><small class="text-muted">{{ sale.sale_date.strftime('%H:%M') }}</small>
                   </td>
                   <td>
-                    <strong style="color: var(--tenant-brand);">{{ "{:,.2f}".format(sale.total_amount) }}</strong>
+                    <strong style="color: var(--tenant-primary);">{{ "{:,.2f}".format(sale.total_amount) }}</strong>
                     <small class="text-muted">{{ sale.currency }}</small>
                   </td>
                   <td>
@@ -367,42 +367,42 @@
 </div>
 {% endif %}
 
-<div class="row">
+<div class="row row-cols-2 row-cols-lg-4 g-4">
   {% if current_user.has_permission('manage_sales') %}
-  <div class="col-md-3 mb-3">
-    <a href="{{ url_for('sales.create') }}" class="card text-center text-decoration-none hover-card">
+  <div class="col">
+    <a href="{{ url_for('sales.create') }}" class="card text-center text-decoration-none hover-card quick-tile">
       <div class="card-body">
-        <i class="fas fa-plus-circle fa-3x mb-3" style="color: var(--tenant-brand);"></i>
+        <i class="fas fa-plus-circle fa-3x mb-3" style="color: var(--tenant-primary);"></i>
         <h5 class="mb-0">{{ t('New Invoice') }}</h5>
       </div>
     </a>
   </div>
   {% endif %}
   {% if current_user.has_permission('manage_customers') %}
-  <div class="col-md-3 mb-3">
-    <a href="{{ url_for('customers.create') }}" class="card text-center text-decoration-none hover-card">
+  <div class="col">
+    <a href="{{ url_for('customers.create') }}" class="card text-center text-decoration-none hover-card quick-tile">
       <div class="card-body">
-        <i class="fas fa-user-plus fa-3x mb-3" style="color: var(--tenant-brand);"></i>
+        <i class="fas fa-user-plus fa-3x mb-3" style="color: var(--tenant-primary);"></i>
         <h5 class="mb-0">{{ t('New Customer') }}</h5>
       </div>
     </a>
   </div>
   {% endif %}
   {% if current_user.has_permission('manage_products') %}
-  <div class="col-md-3 mb-3">
-    <a href="{{ url_for('products.create') }}" class="card text-center text-decoration-none hover-card">
+  <div class="col">
+    <a href="{{ url_for('products.create') }}" class="card text-center text-decoration-none hover-card quick-tile">
       <div class="card-body">
-        <i class="fas fa-box fa-3x mb-3" style="color: var(--tenant-brand);"></i>
+        <i class="fas fa-box fa-3x mb-3" style="color: var(--tenant-primary);"></i>
         <h5 class="mb-0">{{ t('New Product') }}</h5>
       </div>
     </a>
   </div>
   {% endif %}
   {% if current_user.has_permission('view_reports') %}
-  <div class="col-md-3 mb-3">
-    <a href="{{ url_for('reports.sales') }}" class="card text-center text-decoration-none hover-card">
+  <div class="col">
+    <a href="{{ url_for('reports.sales') }}" class="card text-center text-decoration-none hover-card quick-tile">
       <div class="card-body">
-        <i class="fas fa-chart-bar fa-3x mb-3" style="color: var(--tenant-brand);"></i>
+        <i class="fas fa-chart-bar fa-3x mb-3" style="color: var(--tenant-primary);"></i>
         <h5 class="mb-0">{{ t('Reports') }}</h5>
       </div>
     </a>
@@ -429,48 +429,29 @@
   transition: transform .15s, box-shadow .15s;
 }
 .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,122,61,.12); }
-.stat-icon { width: 56px; height: 56px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: #fff; margin-bottom: 12px; font-size: 1.5rem; background: var(--tenant-brand) !important; }
-.stat-value { font-size: 1.9rem; font-weight: 800; color: var(--tenant-brand-dark); }
+.stat-icon { width: 56px; height: 56px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: #fff; margin-bottom: 12px; font-size: 1.5rem; background: var(--tenant-primary) !important; }
+.stat-value { font-size: 1.9rem; font-weight: 800; color: var(--tenant-secondary); }
 .stat-label { color: #222 !important; font-weight: 700; font-size: 0.95rem; }
-.hover-card { border: 1px solid rgba(0,122,61,.2) !important; border-radius: 12px; background: #fff; color: var(--tenant-brand-dark); }
-.hover-card h5 { color: var(--tenant-brand-dark); font-weight: 800; font-size: 15px; }
-.hover-card i { color: var(--tenant-brand) !important; }
+.hover-card { border: 1px solid rgba(0,122,61,.2) !important; border-radius: 12px; background: #fff; color: var(--tenant-secondary); }
+.hover-card h5 { color: var(--tenant-secondary); font-weight: 800; font-size: 15px; }
+.hover-card i { color: var(--tenant-primary) !important; }
 .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 24px rgba(0,122,61,.16); }
-/* Quick-action tiles: one consistent brand gradient with readable white text/icons,
-   overriding the generic href-based button rules in style.css. */
-body a.card.hover-card[href*="/sales/create"],
-body a.card.hover-card[href*="/customers/create"],
-body a.card.hover-card[href*="/products/create"],
-body a.card.hover-card[href*="/reports/sales"] {
-  background: linear-gradient(135deg, var(--tenant-brand-dark) 0%, var(--tenant-brand) 100%) !important;
-  border: 2px solid var(--tenant-brand) !important;
+/* Quick-action tiles: one consistent brand gradient with readable white text/icons.
+   Selected by class rather than by URL substring so new tiles get the same styling. */
+a.card.hover-card.quick-tile {
+  background: linear-gradient(135deg, var(--tenant-primary) 0%, var(--tenant-secondary) 100%) !important;
+  border: 2px solid var(--tenant-primary) !important;
   box-shadow: 0 4px 14px rgba(0,0,0,.16) !important;
 }
-a.hover-card[href*="/sales/create"] h5,
-a.hover-card[href*="/customers/create"] h5,
-a.hover-card[href*="/products/create"] h5,
-a.hover-card[href*="/reports/sales"] h5,
-a.hover-card[href*="/sales/create"] i,
-a.hover-card[href*="/customers/create"] i,
-a.hover-card[href*="/products/create"] i,
-a.hover-card[href*="/reports/sales"] i {
-  color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
-}
-body a.card.hover-card[href*="/sales/create"] > .card-body,
-body a.card.hover-card[href*="/customers/create"] > .card-body,
-body a.card.hover-card[href*="/products/create"] > .card-body,
-body a.card.hover-card[href*="/reports/sales"] > .card-body,
-body a.card.hover-card[href*="/sales/create"] h5,
-body a.card.hover-card[href*="/customers/create"] h5,
-body a.card.hover-card[href*="/products/create"] h5,
-body a.card.hover-card[href*="/reports/sales"] h5,
-body a.card.hover-card[href*="/sales/create"] i,
-body a.card.hover-card[href*="/customers/create"] i,
-body a.card.hover-card[href*="/products/create"] i,
-body a.card.hover-card[href*="/reports/sales"] i {
+a.card.hover-card.quick-tile > .card-body,
+a.card.hover-card.quick-tile h5,
+a.card.hover-card.quick-tile i {
   background: transparent !important;
   color: #fff !important;
+}
+a.card.hover-card.quick-tile h5,
+a.card.hover-card.quick-tile i {
+  text-shadow: 0 1px 2px rgba(0,0,0,.35) !important;
 }
 </style>
 {% endblock %}

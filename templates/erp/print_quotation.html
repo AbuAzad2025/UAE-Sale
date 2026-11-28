@@ -106,9 +106,16 @@
       {% if quotation.discount_amount %}<div class="total-row"><span>{{ t('Discount') }}</span><span>- {{ "{:,.2f}".format(quotation.discount_amount) }} {{ quotation.currency }}</span></div>{% endif %}
       {% if quotation.shipping_cost %}<div class="total-row"><span>{{ t('Shipping') }}</span><span>{{ "{:,.2f}".format(quotation.shipping_cost) }} {{ quotation.currency }}</span></div>{% endif %}
       {% if quotation.tax_amount and not quotation.tax_inclusive %}<div class="total-row"><span>{{ t('Tax') }}</span><span>{{ "{:,.2f}".format(quotation.tax_amount) }} {{ quotation.currency }}</span></div>{% endif %}
+      {% if quotation.tax_amount and quotation.tax_inclusive %}<div class="total-row"><span>{{ t('Tax') }} ({{ t('VAT included in total') }})</span><span>{{ "{:,.2f}".format(quotation.tax_amount) }} {{ quotation.currency }}</span></div>{% endif %}
       <div class="total-row final"><span>{{ t('Grand Total') }}</span><span>{{ "{:,.2f}".format(quotation.total_amount or 0) }} {{ quotation.currency }}</span></div>
     </div>
 
+    {% set _amount_words = amount_words_ar if current_language == 'ar' else amount_words_en %}
+    {% if amount_in_words is defined and amount_in_words %}
+    <div class="amount-words"><strong>{{ t('Amount in words') }}:</strong> {{ amount_in_words }}</div>
+    {% elif _amount_words is defined and _amount_words %}
+    <div class="amount-words"><strong>{{ t('Amount in words') }}:</strong> {{ _amount_words }}</div>
+    {% endif %}
     {% if quotation.notes %}<div class="amount-words">{{ quotation.notes }}</div>{% endif %}
   </div>
 

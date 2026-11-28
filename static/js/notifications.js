@@ -27,8 +27,26 @@ class NotificationManager {
             this.container = document.getElementById('toast-container');
         }
 
+        this.container.setAttribute('role', 'region');
+        this.container.setAttribute('aria-label', 'Notifications');
+        this.container.setAttribute('aria-live', 'polite');
+        this.updateDirection();
+
         // Inject CSS
         this.injectStyles();
+    }
+
+    updateDirection() {
+        const rtl = document.documentElement.dir === 'rtl' ||
+            document.documentElement.lang === 'ar';
+        if (rtl) {
+            this.container.classList.add('rtl');
+            this.container.setAttribute('dir', 'rtl');
+        } else {
+            this.container.classList.remove('rtl');
+            this.container.removeAttribute('dir');
+        }
+        return rtl;
     }
 
     trackUserInteraction() {
@@ -60,6 +78,11 @@ class NotificationManager {
                 pointer-events: none;
             }
 
+            .toast-container.rtl {
+                left: auto;
+                right: 20px;
+            }
+
             .toast {
                 position: relative;
                 min-width: 300px;
@@ -74,14 +97,14 @@ class NotificationManager {
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                border-right: 5px solid;
+                border-inline-start: 5px solid transparent;
                 font-family: 'Tajawal', sans-serif;
             }
 
-            .toast.toast-success { border-right-color: #28a745; }
-            .toast.toast-error { border-right-color: #dc3545; }
-            .toast.toast-warning { border-right-color: #ffc107; }
-            .toast.toast-info { border-right-color: #17a2b8; }
+            .toast.toast-success { border-inline-start-color: #28a745; }
+            .toast.toast-error { border-inline-start-color: #dc3545; }
+            .toast.toast-warning { border-inline-start-color: #ffc107; }
+            .toast.toast-info { border-inline-start-color: #17a2b8; }
 
             .toast-icon {
                 font-size: 24px;
@@ -155,7 +178,7 @@ class NotificationManager {
             .toast-progress {
                 position: absolute;
                 bottom: 0;
-                right: 0;
+                inset-inline-end: 0;
                 height: 3px;
                 background: currentColor;
                 border-bottom-left-radius: 12px;
@@ -193,6 +216,36 @@ class NotificationManager {
             .toast.removing {
                 animation: slideOut 0.3s ease-in forwards;
             }
+
+            @keyframes slideInRtl {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes slideOutRtl {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+
+            .toast-container.rtl .toast {
+                animation-name: slideInRtl;
+            }
+
+            .toast-container.rtl .toast.removing {
+                animation-name: slideOutRtl;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -210,12 +263,20 @@ class NotificationManager {
         // Create toast element
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('aria-label', `${title || ''} ${message || ''}`.trim());
+        this.updateDirection();
+        if (this.container.classList.contains('rtl')) {
+            toast.setAttribute('dir', 'rtl');
+        }
 
-        // Icon
+        // Visible icon (decorative: the type is conveyed by role/colour/text)
         const icons = {
-            success: '',
-            error: '',
-            warning: '',
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
             info: 'ℹ'
         };
 
@@ -230,12 +291,12 @@ class NotificationManager {
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
 toast.innerHTML = `
-            <div class="toast-icon">${icons[type]}</div>
+            <div class="toast-icon" aria-hidden="true">${icons[type] || icons.info}</div>
             <div class="toast-content">
                 ${title ? `<div class="toast-title">${_esc(title)}</div>` : ''}
                 <div class="toast-message">${_esc(message)}</div>
             </div>
-            <button class="toast-close" onclick="this.closest('.toast').remove()">×</button>
+            <button type="button" class="toast-close" aria-label="Close notification" onclick="this.closest('.toast').remove()">×</button>
         `;
         toast.appendChild(progress);
 
@@ -297,7 +358,8 @@ if (typeof $ !== 'undefined') {
     };
 }
 
-// Replace old flash messages with toasts
+// Replace old flash messages with toasts (jQuery is optional on some pages)
+if (typeof $ !== 'undefined') {
 $(document).ready(function() {
     $('#flash-messages-container .alert, .flash-messages .alert, [data-toast]').each(function() {
         const $alert = $(this);
@@ -315,4 +377,5 @@ $(document).ready(function() {
         }
     });
 });
+}
 

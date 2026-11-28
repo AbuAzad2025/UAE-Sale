@@ -7,9 +7,9 @@
   <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="row">
-      <div class="col-md-6"><div class="form-group"><label>{{ t('Product') }} <span class="text-danger">*</span></label><select name="product_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-6"><div class="form-group"><label>{{ t('Product') }} <span class="text-danger">*</span></label><select name="product_id" class="form-control" required><option value="">{{ t('Select') }}</option>{% for p in products %}<option value="{{ p.id }}">{{ display_name(p) }}</option>{% endfor %}</select></div></div>
       <div class="col-md-6"><div class="form-group"><label>{{ t('Lot Number') }} <span class="text-danger">*</span></label><input type="text" name="lot_number" class="form-control" required></div></div>
-      <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }}</label><select name="warehouse_id" class="form-control"><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ w.name }}</option>{% endfor %}</select></div></div>
+      <div class="col-md-4"><div class="form-group"><label>{{ t('Warehouse') }}</label><select name="warehouse_id" class="form-control"><option value="">{{ t('Select') }}</option>{% for w in warehouses %}<option value="{{ w.id }}">{{ display_name(w) }}</option>{% endfor %}</select></div></div>
       <div class="col-md-4"><div class="form-group"><label>{{ t('Quantity') }}</label><input type="number" name="quantity" class="form-control" step="0.01" value="0"></div></div>
       {% if current_user.can_see_costs() %}<div class="col-md-4"><div class="form-group"><label>{{ t('Unit Cost') }}</label><input type="number" name="cost_price" class="form-control" step="0.01" value="0"></div></div>{% endif %}
       <div class="col-md-4"><div class="form-group"><label>{{ t('Production Date') }}</label><input type="date" name="manufacture_date" class="form-control"></div></div>

@@ -93,6 +93,59 @@
             </tbody>
           </table>
         </div>
+
+        <h5 class="mt-4 mb-3"><i class="fas fa-edit text-warning"></i> {{ t('Manual Exchange Rates') }}</h5>
+        <form method="POST" action="{{ url_for('owner.currency_manual_rate') }}" class="currency-settings-form mb-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-row">
+            <div class="form-group col-md-3">
+              <label>{{ t('From Currency') }}</label>
+              <input type="text" class="form-control" name="from_currency" value="{{ base_currency }}" maxlength="3" dir="ltr" required>
+            </div>
+            <div class="form-group col-md-3">
+              <label>{{ t('To Currency') }}</label>
+              <select name="to_currency" class="form-control select2" required>
+                <option value="">{{ t('Select') }}</option>
+                {% for code, meta in lookups.get('currencies', []) %}
+                <option value="{{ code }}">{{ code }} - {{ meta.en if current_language == 'en' else meta.ar }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group col-md-3">
+              <label>{{ t('Rate') }}</label>
+              <input type="number" class="form-control" name="rate" step="0.000001" min="0.000001" dir="ltr" required>
+            </div>
+            <div class="form-group col-md-3 d-flex align-items-end">
+              <button type="submit" class="btn btn-warning"><i class="fas fa-save mr-1"></i> {{ t('Save Manual Rate') }}</button>
+            </div>
+          </div>
+          <small class="form-text text-muted">{{ t('Manual rates override automatic quotes and are not replaced by the provider refresh.') }}</small>
+        </form>
+
+        {% if manual_rates %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+              <tr>
+                <th>{{ t('Pair') }}</th>
+                <th>{{ t('Rate') }}</th>
+                <th>{{ t('Source') }}</th>
+                <th>{{ t('Updated') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in manual_rates %}
+              <tr>
+                <td><strong>{{ row.from_currency }} → {{ row.to_currency }}</strong></td>
+                <td dir="ltr">{{ row.rate }}</td>
+                <td>{{ row.source or t('Manual') }}</td>
+                <td>{{ row.valid_from.strftime('%Y-%m-%d %H:%M') if row.valid_from else '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -11,12 +11,13 @@
   </div></div></div>
 </div>
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('Customer') }}</th><th>{{ t('Overdue Amount') }}</th><th>{{ t('Days Overdue') }}</th><th>{{ t('Level') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for l in letters %}
     <tr>
-      <td>{{ l.letter_number }}</td><td>{{ l.customer.name if l.customer else '-' }}</td>
+      <td>{{ l.letter_number }}</td><td>{{ display_name(l.customer) if l.customer else '-' }}</td>
       <td>{{ "{:,.2f}".format(l.amount_due|float) }} {{ base_currency_name }}</td><td>{{ l.days_overdue }}</td>
       <td><span class="badge badge-{{ 'warning' if l.level<=2 else ('danger' if l.level==3 else 'dark') }}">{{ t('Level') }} {{ l.level }}</span></td>
       <td><span class="badge badge-{{ 'success' if l.status=='sent' else 'secondary' }}">{{ l.status|status_label }}</span></td>
@@ -26,5 +27,6 @@
     {% else %}<tr><td colspan="7" class="text-center text-muted">{{ t('No dunning letters') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

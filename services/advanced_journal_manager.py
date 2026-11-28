@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from extensions import db
 from models.gl import GLAccount, GLJournalEntry, GLJournalLine
 from models.journal_entry_audit import JournalEntryAudit
+from utils.balance_checker import amounts_balanced, is_journal_balanced
 from utils.decorators import get_owned_or_404
 
 _THREE_DP = Decimal("0.001")
@@ -30,10 +31,15 @@ class AdvancedJournalEntryManager:
             (Decimal(str(line.get("credit", 0) or 0)) for line in lines), Decimal("0")
         )
 
-        if total_debit != total_credit:
+        if not is_journal_balanced(lines):
             raise ValueError(
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
+
+        if created_by is None:
+            # Headless callers must still name an actor; never leave the
+            # posting (and its audit row) silently unattributed.
+            created_by = JournalEntryAudit.resolve_actor_id()
 
         for line in lines:
             account_code = line.get("account_code")
@@ -103,7 +109,7 @@ class AdvancedJournalEntryManager:
                 Decimal("0"),
             )
 
-            if total_debit != total_credit:
+            if not is_journal_balanced(updates["lines"]):
                 raise ValueError(
                     f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}"
                 )
@@ -207,12 +213,13 @@ class AdvancedJournalEntryManager:
             raise ValueError("لا يمكن عكس قيد غير مرحل")
 
         old_values = entry.to_dict()
+        actor = JournalEntryAudit.resolve_actor_id(reversed_by, fallback_entry=entry)
 
         reversal_entry = None
         if create_reversal_entry:
             reversal_entry = entry.reverse_entry(
                 description=f"عكس القيد {entry.entry_number}",
-                created_by=reversed_by,
+                created_by=actor,
                 notes=f"سبب العكس: {reason}",
             )
             JournalEntryAudit.record(
@@ -220,7 +227,7 @@ class AdvancedJournalEntryManager:
                 action=JournalEntryAudit.ACTION_CREATE,
                 new_values=JournalEntryAudit.entry_payload(reversal_entry),
                 reason=reason,
-                performed_by=reversed_by,
+                performed_by=actor,
                 fallback_entry=entry,
             )
 
@@ -322,7 +329,7 @@ class AdvancedJournalEntryManager:
             ensure_accounts=False,
         )
 
-        if total_debit != total_credit:
+        if not amounts_balanced(total_debit, total_credit):
             raise ValueError(
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
@@ -358,17 +365,20 @@ class AdvancedJournalEntryManager:
 
     @staticmethod
     def _log_audit(entry_id, action, old_values, new_values, reason, user_id):
-        """تسجيل تدقيق"""
-        audit = JournalEntryAudit(
+        """تسجيل تدقيق عبر الكاتب الوحيد (JournalEntryAudit.record)."""
+        entry = db.session.get(GLJournalEntry, entry_id)
+        # An explicit actor is required for headless callers; the entry is
+        # passed as a fallback so an unknown user never becomes a NULL insert.
+        actor = JournalEntryAudit.resolve_actor_id(user_id, fallback_entry=entry)
+        JournalEntryAudit.record(
             journal_entry_id=entry_id,
             action=action,
-            old_values=str(old_values) if old_values else None,
-            new_values=str(new_values) if new_values else None,
+            old_values=old_values,
+            new_values=new_values,
             reason=reason,
-            performed_by=user_id,
-            performed_at=datetime.now(timezone.utc),
+            performed_by=actor,
+            fallback_entry=entry,
         )
-        db.session.add(audit)
 
 
 def add_helper_methods():
@@ -402,9 +412,9 @@ def add_helper_methods():
     def get_balance_status(self):
         """الحصول على حالة التوازن"""
         difference = abs(
-            Decimal(str(self.total_debit)) - Decimal(str(self.total_credit))
+            Decimal(str(self.total_debit or 0)) - Decimal(str(self.total_credit or 0))
         )
-        if difference < Decimal("0.01"):
+        if amounts_balanced(self.total_debit, self.total_credit):
             return "balanced"
         elif difference < Decimal("10"):
             return "minor_imbalance"

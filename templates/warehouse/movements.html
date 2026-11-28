@@ -125,7 +125,7 @@
               </div>
             </td>
             <td>
-              <strong>{{ movement.product.name if movement.product else t('Not specified') }}</strong>
+              <strong>{{ display_name(movement.product) if movement.product else t('Not specified') }}</strong>
               {% if movement.product and movement.product.sku %}
               <br><small class="text-muted">SKU: {{ movement.product.sku }}</small>
               {% endif %}

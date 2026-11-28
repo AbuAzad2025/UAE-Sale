@@ -3,6 +3,7 @@
 {% block page_title %}<i class="fas fa-file-code mr-2"></i>{{ t('E-Invoices') }}{% endblock %}
 {% block content %}
 <div class="card"><div class="card-body">
+  <div class="table-responsive">
   <table class="table table-bordered table-striped">
     <thead><tr><th>{{ t('Number') }}</th><th>{{ t('Invoice') }}</th><th>{{ t('Customer') }}</th><th>{{ t('Amount') }}</th><th>{{ t('Tax') }}</th><th>{{ t('Total Amount') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
@@ -20,5 +21,6 @@
     {% else %}<tr><td colspan="8" class="text-center text-muted">{{ t('No e-invoices') }}</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div></div>
 {% endblock %}

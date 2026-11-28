@@ -87,7 +87,7 @@
       <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.income_statement') }}" class="report-link btn"><i class="fas fa-chart-line"></i><span>{{ t('Income Statement') }}<small>{{ t('Profits & Losses') }}</small></span></a></div>
       <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.balance_sheet') }}" class="report-link btn"><i class="fas fa-file-invoice-dollar"></i><span>{{ t('Balance Sheet Report') }}<small>{{ t('Assets, Liabilities & Equity') }}</small></span></a></div>
       <div class="col-md-4 mb-2"><a href="{{ url_for('reports.cash_flow') }}" class="report-link btn"><i class="fas fa-money-bill-alt"></i><span>{{ t('Cash Flow Statement') }}<small>{{ t('Cash & Expense Movements') }}</small></span></a></div>
-      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.vat_report') }}" class="report-link btn"><i class="fas fa-percent"></i><span>{{ t('VAT Report') }}<small>{{ t('Outputs and Inputs') }} — {{ (current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5)|int }}%</small></span></a></div>
+      <div class="col-md-4 mb-2"><a href="{{ url_for('reports.vat_report') }}" class="report-link btn"><i class="fas fa-percent"></i><span>{{ t('VAT Report') }}<small>{{ t('Outputs and Inputs') }} — {{ (current_tenant.default_tax_rate if current_tenant and current_tenant.default_tax_rate is not none else 5) }}%</small></span></a></div>
       <div class="col-md-4 mb-2"><a href="{{ url_for('ledger.journal_entries') }}" class="report-link btn"><i class="fas fa-list-alt"></i><span>{{ t('Journal Entries') }}<small>{{ t('All Posted Entries') }}</small></span></a></div>
     </div>
   </div>

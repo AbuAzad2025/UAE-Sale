@@ -68,6 +68,41 @@ def api_create_return():
         return jsonify({"success": False, "message": "Internal server error"}), 500
 
 
+@returns_bp.route("/api/<int:id>/approve", methods=["POST"])
+@login_required
+@permission_required("manage_sales")
+def api_approve_return(id):
+    """Approve a pending sales return (HTTP counterpart of the service call).
+
+    Returns stay ``pending`` until this endpoint is called; the service owns
+    the balance/settlement recomputation, so no formula is duplicated here.
+    """
+    product_return = get_owned_or_404(ProductReturn, id)
+    if product_return.sale_id:
+        get_owned_or_404(Sale, product_return.sale_id)
+    try:
+        data = request.get_json(silent=True) or {}
+        notes = data.get("notes")
+        with atomic_transaction():
+            result = ReturnService.approve_return(
+                id, user_id=current_user.id, notes=notes
+            )
+        return jsonify(
+            {
+                "success": True,
+                "message": "Return approved successfully",
+                "return_id": result.id,
+                "return_number": result.return_number,
+                "status": result.status,
+            }
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Error approving return {id}: {e}")
+        return jsonify({"success": False, "message": "Internal server error"}), 500
+
+
 @returns_bp.route("/view/<int:id>")
 @login_required
 @permission_required("manage_sales")

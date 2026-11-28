@@ -623,6 +623,7 @@ def _journal_line_totals(target, connection):
     debit = Decimal("0")
     credit = Decimal("0")
     has_lines = False
+    lines = []
 
     try:
         from extensions import db
@@ -632,11 +633,12 @@ def _journal_line_totals(target, connection):
                 has_lines = True
                 debit += Decimal(str(obj.debit or 0))
                 credit += Decimal(str(obj.credit or 0))
+                lines.append({"debit": obj.debit, "credit": obj.credit})
     except Exception:
         pass
 
     if has_lines:
-        return debit, credit, True
+        return debit, credit, True, lines
 
     if getattr(target, "id", None) is not None:
         from sqlalchemy import select
@@ -650,9 +652,10 @@ def _journal_line_totals(target, connection):
         for row in rows:
             debit += Decimal(str(row.debit or 0))
             credit += Decimal(str(row.credit or 0))
+            lines.append({"debit": row.debit, "credit": row.credit})
         has_lines = len(rows) > 0
 
-    return debit, credit, has_lines
+    return debit, credit, has_lines, lines
 
 
 def register_gl_listeners():
@@ -675,18 +678,21 @@ def register_gl_listeners():
         سطوره) فالمقارنة على إجماليات الرأس تُستخدم كخط دفاع إضافي —
         والحاجز الأول يبقى في طبقة الخدمات (GLService.post_entry).
         """
+        from utils.balance_checker import is_journal_balanced
         from utils.errors import ValidationError
 
-        debit, credit, has_lines = _journal_line_totals(target, connection)
+        debit, credit, has_lines, lines = _journal_line_totals(target, connection)
 
         if not has_lines:
             debit = target.total_debit or Decimal("0")
             credit = target.total_credit or Decimal("0")
+            lines = [{"debit": debit, "credit": credit}]
             source = "إجماليات الرأس"
         else:
             source = "مجموع سطور القيد"
 
-        if abs(Decimal(str(debit)) - Decimal(str(credit))) > Decimal("0.01"):
+        # Exact 3dp equality via the shared predicate — no one-cent tolerance.
+        if not is_journal_balanced(lines):
             logger.error(
                 f"❌ Journal entry {target.entry_number} is UNBALANCED! "
                 f"Debit: {debit}, Credit: {credit} ({source})"

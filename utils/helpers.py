@@ -16,6 +16,25 @@ def _parse_sequence(raw):
         return None
 
 
+# Spreadsheet formula-injection prefixes (OWASP CSV Injection). A leading
+# quote makes Excel/Calc/LibreOffice treat the cell as literal text while
+# preserving the original value for the reader.
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def csv_safe_cell(value):
+    """Return a CSV-safe representation of *value*.
+
+    Strings beginning with a formula trigger character are prefixed with a
+    single quote. Numeric and date values are passed through unchanged so
+    exports keep their native formatting; csv.writer handles the None -> ""
+    coercion. Use for both headers and data cells of every writer.
+    """
+    if isinstance(value, str) and value[:1] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
 def generate_number(
     prefix, model, field_name="sale_number", date_format="%Y", max_retries=5
 ):

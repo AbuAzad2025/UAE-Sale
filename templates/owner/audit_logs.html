@@ -35,6 +35,12 @@
           <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-primary">
             <i class="fas fa-shield-alt"></i> {{ t('Audit Logs') }}
           </a>
+          <a href="{{ url_for('owner.journal_audit') }}" class="btn btn-outline-info">
+            <i class="fas fa-book mr-1"></i> {{ t('Journal Audit') }}
+          </a>
+          <a href="{{ url_for('owner.audit_files') }}" class="btn btn-outline-warning">
+            <i class="fas fa-file-alt mr-1"></i> {{ t('Durable Audit File') }}
+          </a>
           <a href="{{ url_for('owner.data_cleanup') }}" class="btn btn-outline-danger">
             <i class="fas fa-trash"></i> {{ t('Data Cleanup') }}
           </a>
@@ -152,6 +158,24 @@
               <a href="{{ url_for('owner.audit_logs') }}" class="btn btn-secondary">
                 <i class="fas fa-redo mr-1"></i>{{ t('Reset Filters') }}
               </a>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-4">
+              <label><i class="fas fa-archive text-secondary mr-1"></i> {{ t('Archived Records') }}</label>
+              <select name="is_archived" class="form-control">
+                <option value="">{{ t('All') }}</option>
+                <option value="0" {{ 'selected' if request.args.get('is_archived') == '0' }}>{{ t('Active') }}</option>
+                <option value="1" {{ 'selected' if request.args.get('is_archived') == '1' }}>{{ t('Archived') }}</option>
+              </select>
+            </div>
+            <div class="form-group col-md-4">
+              <label><i class="fas fa-exclamation-triangle text-danger mr-1"></i> {{ t('Quick Filter') }}</label>
+              <div class="custom-control custom-switch mt-2">
+                <input type="checkbox" class="custom-control-input" id="sensitive_filter" name="sensitive" value="1" {% if request.args.get('sensitive') %}checked{% endif %}>
+                <label class="custom-control-label" for="sensitive_filter">{{ t('Sensitive actions only') }}</label>
+              </div>
+              <small class="form-text text-muted">{{ t('Deletes, restores, exports, permission and backup changes') }}</small>
             </div>
           </div>
         </form>
@@ -332,14 +356,14 @@
             <ul class="pagination mb-0">
               {% if pagination.has_prev %}
                 <li class="page-item">
-                  <a class="page-link" href="{{ url_for('owner.audit_logs', page=pagination.prev_num, action=request.args.get('action', ''), user=request.args.get('user', '')) }}">{{ t('Previous') }}</a>
+                  <a class="page-link" href="{{ url_for('owner.audit_logs', page=pagination.prev_num, action=request.args.get('action', ''), user=request.args.get('user', ''), is_archived=request.args.get('is_archived', ''), sensitive=request.args.get('sensitive', '')) }}">{{ t('Previous') }}</a>
                 </li>
               {% endif %}
 
               {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                 {% if page_num %}
                   <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                    <a class="page-link" href="{{ url_for('owner.audit_logs', page=page_num, action=request.args.get('action', ''), user=request.args.get('user', '')) }}">{{ page_num }}</a>
+                    <a class="page-link" href="{{ url_for('owner.audit_logs', page=page_num, action=request.args.get('action', ''), user=request.args.get('user', ''), is_archived=request.args.get('is_archived', ''), sensitive=request.args.get('sensitive', '')) }}">{{ page_num }}</a>
                   </li>
                 {% else %}
                   <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -348,7 +372,7 @@
 
               {% if pagination.has_next %}
                 <li class="page-item">
-                  <a class="page-link" href="{{ url_for('owner.audit_logs', page=pagination.next_num, action=request.args.get('action', ''), user=request.args.get('user', '')) }}">{{ t('Next') }}</a>
+                  <a class="page-link" href="{{ url_for('owner.audit_logs', page=pagination.next_num, action=request.args.get('action', ''), user=request.args.get('user', ''), is_archived=request.args.get('is_archived', ''), sensitive=request.args.get('sensitive', '')) }}">{{ t('Next') }}</a>
                 </li>
               {% endif %}
             </ul>

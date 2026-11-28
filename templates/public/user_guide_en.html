@@ -60,6 +60,7 @@
         <div class="logo">{{ config.COMPANY_NAME }} - User Guide</div>
         <div>
             <a href="{{ url_for('public.landing') }}">Home</a>
+            <a href="{{ url_for('language.set_language', lang='ar', next=url_for('public.user_guide')) }}" title="العربية"><i class="fas fa-globe"></i> العربية</a>
             <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
         </div>
     </div>

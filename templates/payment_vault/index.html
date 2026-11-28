@@ -79,7 +79,7 @@
 }
 
 .feature-list {
-    text-align: right;
+    text-align: start;
     margin: 30px 0;
 }
 
@@ -201,7 +201,7 @@
             </a>
             
             <a href="{{ url_for('owner.dashboard') }}" class="btn-vault">
-                <i class="fas fa-arrow-right mr-2"></i>
+                <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>
                 {{ t('Back to Owner Dashboard') }}
             </a>
         </div>

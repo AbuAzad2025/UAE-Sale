@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, current_app
 from flask_login import login_required
 from services.monitoring_service import MonitoringService
 from utils.decorators import admin_required
@@ -24,7 +24,21 @@ def metrics():
 @login_required
 @admin_required
 def dashboard():
+    from utils.monitoring import SENTRY_AVAILABLE
+
     health = MonitoringService.get_system_health()
     metrics = MonitoringService.get_application_metrics()
 
-    return render_template("monitoring/dashboard.html", health=health, metrics=metrics)
+    if not SENTRY_AVAILABLE:
+        sentry_status = "unavailable"
+    elif current_app.config.get("SENTRY_DSN"):
+        sentry_status = "enabled"
+    else:
+        sentry_status = "disabled"
+
+    return render_template(
+        "monitoring/dashboard.html",
+        health=health,
+        metrics=metrics,
+        sentry_status=sentry_status,
+    )

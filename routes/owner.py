@@ -3005,7 +3005,9 @@ def system_health():  # noqa: C901
             memory_ok = False
 
         try:
-            disk = psutil.disk_usage(".")
+            from services.health_service import _disk_root
+
+            disk = psutil.disk_usage(_disk_root())
             disk_ok = True
         except Exception:
             disk = type(
@@ -3277,7 +3279,7 @@ def performance_metrics():
     if os.path.exists(performance_file):
         with open(performance_file, "r", encoding="utf-8", errors="replace") as f:
             for line in f.readlines()[-200:]:
-                if "SLOW" in line:
+                if "slow" in line.lower():
                     slow_queries.append(line.strip())
 
     metrics = {

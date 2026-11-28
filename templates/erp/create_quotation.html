@@ -22,10 +22,12 @@
     </div>
   </div></div>
   <div class="card"><div class="card-header"><h5 class="mb-0">{{ t('Quotation Items') }}</h5></div><div class="card-body">
-    <table class="table" id="lines-table">
-      <thead><tr><th>#</th><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Price') }}</th><th>{{ t('Discount') }}%</th><th>{{ t('Treatment') }}</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div class="table-responsive">
+      <table class="table" id="lines-table">
+        <thead><tr><th>#</th><th>{{ t('Product') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Price') }}</th><th>{{ t('Discount') }}%</th><th>{{ t('Treatment') }}</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
     <button type="button" class="btn btn-success btn-sm" onclick="addLine()"><i class="fas fa-plus mr-1"></i>{{ t('Add Row') }}</button>
   </div></div>
   <div class="card"><div class="card-body">

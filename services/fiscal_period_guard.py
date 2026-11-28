@@ -14,12 +14,15 @@ covered the date, and `FiscalPeriod` had no `tenant_id` so one tenant
 closing a year froze every other tenant's invoicing.
 
 The contract below is the fix: a document date must fall inside an OPEN
-period, and a date with no period is NOT open.
+period, and a date with no period is NOT open. If several periods overlap,
+the date is closed as soon as ANY covering period in scope is closed — an
+overlapping new period can never silently re-open closed books.
 
     assert_period_open(document_date)      -> raises ValidationError if closed
     assert_period_open()                  -> uses today
     is_open(document_date)                -> bool, no raise
     period_for_date(document_date)        -> FiscalPeriod | None
+    covering_periods(document_date)       -> all covering rows (optional lock)
 """
 
 from datetime import date, datetime, timezone
@@ -41,13 +44,12 @@ def _to_date(value):
     return None
 
 
-def period_for_date(document_date=None, *, tenant_id=None):
-    """Return the FiscalPeriod covering *document_date*, or None.
+def covering_periods(document_date=None, *, tenant_id=None, for_update=False):
+    """Every fiscal period covering *document_date* in the effective scope.
 
-    Deterministic: when several periods overlap the OPENEST one wins, and
-    ties are broken by the most recent start_date. The previous
-    implementation used an unordered ``.first()``, so the answer depended on
-    database row order.
+    Scope is the explicit tenant plus the platform-wide rows (tenant_id NULL).
+    ``for_update`` locks those rows for the caller's transaction so a period
+    cannot be closed between the guard check and the posting it protects.
     """
     from models.erp_modules import FiscalPeriod
     from models.tenant_scope import get_current_tenant_id
@@ -60,36 +62,62 @@ def period_for_date(document_date=None, *, tenant_id=None):
         FiscalPeriod.end_date >= target,
     )
     if tenant_id is not None and hasattr(FiscalPeriod, "tenant_id"):
-        scoped = query.filter(
+        query = query.filter(
             (FiscalPeriod.tenant_id == tenant_id) | (FiscalPeriod.tenant_id.is_(None))
-        ).all()
-    else:
-        scoped = query.all()
+        )
+    if for_update:
+        query = query.with_for_update()
+    return query.all()
 
+
+def _has_closed_period(scoped):
+    """True when ANY covering period is closed (fail-closed on overlaps)."""
+    return any(bool(getattr(p, "is_closed", False)) for p in scoped)
+
+
+def _select_period(scoped):
+    """Deterministic representative of a set of covering periods.
+
+    A closed period wins over an open one — a closed year must stay closed
+    even when a new overlapping period was opened on top of it — then a
+    tenant-specific row wins over a platform row, then the most recent
+    start_date wins. Ties no longer depend on database row order.
+    """
     if not scoped:
         return None
 
     def _sort_key(p):
         is_global = getattr(p, "tenant_id", None) is None
         return (
-            is_global,
             not bool(getattr(p, "is_closed", False)),
+            is_global,
             -(p.start_date.toordinal() if p.start_date else 0),
         )
 
     return sorted(scoped, key=_sort_key)[0]
 
 
-def is_open(document_date=None):
-    """True when the period covering *document_date* exists and is open.
+def period_for_date(document_date=None, *, tenant_id=None):
+    """Return the FiscalPeriod covering *document_date*, or None.
+
+    Deterministic and fail-closed: a closed covering period beats an open
+    one, so an overlapping open period cannot silently re-open closed books.
+    The previous implementation used an unordered ``.first()``, so the
+    answer depended on database row order.
+    """
+    return _select_period(
+        covering_periods(document_date, tenant_id=tenant_id)
+    )
+
+
+def is_open(document_date=None, *, tenant_id=None):
+    """True when *document_date* is covered and NO covering period is closed.
 
     A date covered by NO period is NOT open. The old behaviour treated a
     missing period as open, so a year nobody created was unprotected.
     """
-    period = period_for_date(document_date)
-    if period is None:
-        return False
-    return not bool(getattr(period, "is_closed", False))
+    scoped = covering_periods(document_date, tenant_id=tenant_id)
+    return bool(scoped) and not _has_closed_period(scoped)
 
 
 def _resolve_tenant_id(tenant_id=None):
@@ -192,7 +220,13 @@ def ensure_periods_for_years(years):
 
 
 def assert_period_open(document_date=None, document_type="document", *, tenant_id=None):
-    """Raise ValidationError when the period covering *document_date* is closed.
+    """Raise ValidationError when ANY covering period is closed.
+
+    Overlapping periods must not re-open closed books: creating a fresh open
+    period over a closed one used to let postings through whenever the
+    representative period happened to be the open one. The covering rows are
+    locked (where the backend supports SELECT ... FOR UPDATE) for the caller's
+    transaction so a concurrent close cannot race the check.
 
     Importing ValidationError lazily keeps this module importable from
     models/ and services/ without a circular import.
@@ -200,15 +234,15 @@ def assert_period_open(document_date=None, document_type="document", *, tenant_i
     from utils.errors import ValidationError
 
     target = _to_date(document_date) or datetime.now(timezone.utc).date()
-    period = period_for_date(target, tenant_id=tenant_id)
-    if period is None:
+    scoped = covering_periods(target, tenant_id=tenant_id, for_update=True)
+    if not scoped:
         raise ValidationError(
             f"لا توجد فترة مالية معرَّفة لتاريخ {target}. "
             "أنشئ الفترة المالية أولاً قبل ترحيل المستندات."
         )
 
-    if getattr(period, "is_closed", False):
+    if _has_closed_period(scoped):
         raise ValidationError(
             f"الفترة المالية بتاريخ {target} مغلقة. لا يمكن ترحيل مستند إلى فترة مغلقة."
         )
-    return period
+    return _select_period(scoped)

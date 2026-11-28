@@ -110,11 +110,11 @@
             
             <div class="col-md-3">
                 <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                    <div class="stat-number" id="live-revenue">${{ "%.2f"|format(stats.total_revenue) }}</div>
+                    <div class="stat-number" id="live-revenue">{{ "%.2f"|format(stats.total_revenue) }} {{ base_currency }}</div>
                     <div class="stat-label">
                         <i class="fas fa-dollar-sign"></i> {{ t('Total Revenue') }}
                     </div>
-                    <small class="d-block mt-2" style="opacity: 0.8;">{{ t('Today') }}: $<span id="today-revenue">{{ "%.2f"|format(stats.today_revenue or 0) }}</span></small>
+                    <small class="d-block mt-2" style="opacity: 0.8;">{{ t('Today') }}: <span id="today-revenue">{{ "%.2f"|format(stats.today_revenue or 0) }}</span> {{ base_currency }}</small>
                 </div>
             </div>
             
@@ -246,7 +246,7 @@
                                     <tr>
                                         <td>{{ purchase.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>{{ purchase.customer_name or t('Not specified') }}</td>
-                                        <td><strong>${{ purchase.amount_usd }}</strong></td>
+                                        <td><strong>{{ purchase.amount_usd }} {{ base_currency }}</strong></td>
                                         <td>
                                             {% if purchase.status == 'completed' %}
                                                 <span class="badge badge-success"> {{ t('Completed') }}</span>
@@ -291,7 +291,7 @@
                                     <tr>
                                         <td>{{ donation.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>{{ donation.donor_name or t('Anonymous') }}</td>
-                                        <td><strong>${{ donation.amount_usd }}</strong></td>
+                                        <td><strong>{{ donation.amount_usd }} {{ base_currency }}</strong></td>
                                         <td>{{ donation.crypto_type|upper }}</td>
                                         <td>
                                             {% if donation.status == 'completed' %}
@@ -366,7 +366,7 @@
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + value;
+                            return value + ' {{ base_currency }}';
                         }
                     }
                 }

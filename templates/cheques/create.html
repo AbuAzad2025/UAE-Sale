@@ -7,7 +7,7 @@
   </div>
   <div>
     <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to Cheques') }}
+      <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('Back to Cheques') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
       <i class="fas fa-home mr-2"></i>{{ t('Home') }}
@@ -61,12 +61,12 @@
 }
 
 .cheque-create-form textarea.form-control {
-  text-align: right;
+  text-align: start;
   line-height: 1.6;
 }
 
 .cheque-create-form textarea.form-control::placeholder {
-  text-align: right;
+  text-align: start;
 }
 </style>
 {% endblock %}

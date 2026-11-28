@@ -5,7 +5,26 @@
 from datetime import datetime, timezone
 from extensions import db
 from models.tenant_scope import TenantScopedMixin
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP
+
+# Money columns are Numeric(18, 3): quantize actuals/variance once, HALF_UP,
+# so a DB round-trip cannot disagree with the variance shown to the user.
+MONEY_Q = Decimal("0.001")
+# Percentage columns are Numeric(_, 2); the default Decimal quantize mode is
+# HALF_EVEN, so state it explicitly rather than relying on an implicit mode.
+PERCENT_Q = Decimal("0.01")
+
+
+def _dec(value, default="0"):
+    """Safe Decimal conversion for budget amounts (never float arithmetic)."""
+    if value is None:
+        return Decimal(default)
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except (TypeError, ValueError, ArithmeticError):
+        return Decimal(default)
 
 
 class Budget(TenantScopedMixin, db.Model):
@@ -105,28 +124,39 @@ class Budget(TenantScopedMixin, db.Model):
                 )
             ).scalar() or Decimal("0")
 
-            if line.account.type in ["asset", "expense"]:
-                line.actual_amount = debit_sum - credit_sum
-            else:  # liability, equity, revenue
-                line.actual_amount = credit_sum - debit_sum
+            actual = (
+                debit_sum - credit_sum
+                if line.account.type in ["asset", "expense"]
+                else credit_sum - debit_sum  # liability, equity, revenue
+            )
+            line.actual_amount = _dec(actual).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+            line.variance = _dec(line.actual_amount - _dec(line.budgeted_amount)).quantize(
+                MONEY_Q, rounding=ROUND_HALF_UP
+            )
 
-            line.variance = line.actual_amount - line.budgeted_amount
+            budgeted = _dec(line.budgeted_amount)
+            line.variance_percentage = (
+                ((line.variance / budgeted) * 100).quantize(
+                    PERCENT_Q, rounding=ROUND_HALF_EVEN
+                )
+                if budgeted != 0
+                else Decimal("0")
+            )
 
-            if line.budgeted_amount != 0:
-                line.variance_percentage = (line.variance / line.budgeted_amount) * 100
-            else:
-                line.variance_percentage = 0
+            total_actual += _dec(line.actual_amount)
+            total_variance += _dec(line.variance)
 
-            total_actual += line.actual_amount
-            total_variance += line.variance
+        self.total_actual = total_actual.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+        self.total_variance = total_variance.quantize(MONEY_Q, rounding=ROUND_HALF_UP)
 
-        self.total_actual = total_actual
-        self.total_variance = total_variance
-
-        if self.total_budgeted != 0:
-            self.variance_percentage = (self.total_variance / self.total_budgeted) * 100
-        else:
-            self.variance_percentage = 0
+        total_budgeted = _dec(self.total_budgeted)
+        self.variance_percentage = (
+            ((self.total_variance / total_budgeted) * 100).quantize(
+                PERCENT_Q, rounding=ROUND_HALF_EVEN
+            )
+            if total_budgeted != 0
+            else Decimal("0")
+        )
 
         db.session.commit()
 

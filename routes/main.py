@@ -29,7 +29,6 @@ from models import (
     get_current_tenant_id,
 )
 from models.maintenance import MaintenanceOrder
-from services.stock_service import StockService
 from utils.i18n import t as _t
 
 DASHBOARD_CACHE_TTL = 60
@@ -145,27 +144,6 @@ def dashboard():  # noqa: C901
                 "products", lambda: Product.query.filter_by(is_active=True).count()
             )
 
-            low_stock = _cached(
-                "low_stock",
-                lambda: (
-                    []
-                    if not hasattr(StockService, "get_low_stock_products")
-                    else StockService.get_low_stock_products(limit=10)
-                ),
-            )
-            stats["low_stock_count"] = len(low_stock)
-            stats["low_stock_products"] = low_stock
-
-            out_of_stock = _cached(
-                "out_of_stock",
-                lambda: (
-                    []
-                    if not hasattr(StockService, "get_out_of_stock_products")
-                    else StockService.get_out_of_stock_products()
-                ),
-            )  # noqa: E501
-            stats["out_of_stock_count"] = len(out_of_stock)
-
         if show_sales_card:
 
             def _today_sales():
@@ -180,20 +158,6 @@ def dashboard():  # noqa: C901
             today_sales = _cached("today_sales", _today_sales)
             stats["today_sales_count"] = today_sales[0] or 0
             stats["today_sales_amount"] = float(today_sales[1] or 0)
-
-            def _month_sales():
-                return (
-                    db.session.query(func.count(Sale.id), func.sum(Sale.amount_base))
-                    .filter(
-                        func.date(Sale.sale_date) >= month_start,
-                        Sale.status == "confirmed",
-                    )
-                    .first()
-                )
-
-            month_sales = _cached("month_sales", _month_sales)
-            stats["month_sales_count"] = month_sales[0] or 0
-            stats["month_sales_amount"] = float(month_sales[1] or 0)
 
         if show_purchases_card:
 

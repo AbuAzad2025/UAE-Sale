@@ -87,7 +87,7 @@
           <i class="fas fa-arrow-up mr-1"></i>{{ t("Out") }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-warning" id="filterAdjust">
-          <i class="fas fa-edit mr-1"></i>{{ t("Edit") }}
+          <i class="fas fa-edit mr-1"></i>{{ t("Adjustment") }}
         </button>
       </div>
     </div>
@@ -141,7 +141,7 @@
                 </span>
               {% elif movement.movement_type == 'adjustment' %}
                 <span class="badge badge-warning px-3">
-                  <i class="fas fa-edit mr-1"></i>{{ t("Edit") }}
+                  <i class="fas fa-edit mr-1"></i>{{ t("Adjustment") }}
                 </span>
               {% else %}
                 <span class="badge badge-secondary px-3">{{ movement.movement_type }}</span>
@@ -254,7 +254,7 @@ $(document).ready(function() {
   });
 
   $('#filterAdjust').click(function() {
-    table.column(2).search('{{ t("Edit") }}').draw();
+    table.column(2).search('{{ t("Adjustment") }}').draw();
     $('.btn-group .btn').removeClass('active');
     $(this).addClass('active');
   });

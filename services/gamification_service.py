@@ -105,6 +105,7 @@ class GamificationService:
                     "user_id": user.id,
                     "username": user.username,
                     "full_name": user.full_name_ar or user.full_name,
+                    "full_name_en": user.full_name or user.username,
                     "points": points,
                     "badge": badge,
                 }

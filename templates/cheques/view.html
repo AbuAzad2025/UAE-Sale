@@ -20,7 +20,7 @@
             <div class="col-md-6">
               <strong>{{ t('Status') }}:</strong> {{ cheque.status|status_label }}
             </div>
-            <div class="col-md-6 text-left">
+            <div class="col-md-6" style="text-align: end;">
               {% if cheque.is_overdue and cheque.status == 'pending' %}
                 <i class="fas fa-exclamation-triangle mr-1"></i>
                 <strong>{{ t('Overdue by') }} {{ cheque.days_until_due|abs }} {{ t('days') }}!</strong>
@@ -281,7 +281,7 @@
         <hr>
         {% endif %}
 
-        {% if cheque.status not in ['cleared', 'cancelled'] %}
+        {% if cheque.status not in ['cleared', 'cancelled', 'bounced'] %}
         <button type="button" class="btn btn-secondary btn-block mb-2" onclick="cancelCheque()">
           <i class="fas fa-ban mr-2"></i>{{ t('Cancel Cheque') }}
         </button>
@@ -296,7 +296,7 @@
         <hr>
 
         <a href="{{ url_for('cheques.index') }}" class="btn btn-outline-primary btn-block">
-          <i class="fas fa-arrow-right mr-2"></i>{{ t('Back to List') }}
+          <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('Back to List') }}
         </a>
       </div>
     </div>
@@ -366,7 +366,7 @@
           <div class="form-group">
             <label>{{ t('Actual amount in') }} {{ base_currency }} ({{ t('at the new rate') }}):</label>
             <input type="text" id="actual_amount_preview" class="form-control font-weight-bold" 
-                   value="..." readonly>
+                   value="" readonly>
           </div>
           
           <div id="gain_loss_preview" style="display:none;" class="alert">

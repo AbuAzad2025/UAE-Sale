@@ -13,7 +13,7 @@
           </h3>
           <div class="card-tools">
             <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-              <i class="fas fa-arrow-left"></i> {{ t('Back') }}
+              <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }}"></i> {{ t('Back') }}
             </a>
           </div>
         </div>

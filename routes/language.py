@@ -13,9 +13,14 @@ def set_language(lang):
     """تغيير اللغة"""
     if lang in ["ar", "en"]:
         session["language"] = lang
-        flash(
-            f"تم تغيير اللغة إلى {'العربية' if lang == 'ar' else 'English'}", "success"
+        # Flash a concrete message for each target language so it can be
+        # translated by an exact key in flash_translations.json.
+        message = (
+            "تم تغيير اللغة إلى العربية"
+            if lang == "ar"
+            else "تم تغيير اللغة إلى English"
         )
+        flash(message, "success")
 
     next_url = request.args.get("next", "")
     if next_url.startswith("/") and not next_url.startswith("//"):

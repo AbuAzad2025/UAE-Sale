@@ -237,7 +237,10 @@
           <span class="dropdown-item dropdown-header">{{ current_user.username }}</span>
           <div class="dropdown-divider"></div>
           <a href="{{ url_for('users.change_password') }}" class="dropdown-item"><i class="fas fa-key mr-2"></i>{{ t('Change Password') }}</a>
-          <a href="{{ url_for('auth.logout') }}" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>{{ t('Logout') }}</a>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt mr-2"></i>{{ t('Logout') }}</button>
+          </form>
         </div>
       </li>
     </ul>
@@ -1138,7 +1141,7 @@
         <span class="footer-divider" aria-hidden="true"></span>
         {% endif %}
         <div class="footer-col footer-platform">
-          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="Azad Smart Systems" class="footer-logo">
+          <img src="{{ url_for('static', filename='img/azad_logo.png') }}" alt="{{ config.COMPANY_NAME or 'Azad Smart Systems' }} logo" class="footer-logo">
           <div class="footer-col-body">
             <span class="footer-brand-name">{{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems') }}</span>
             <span class="footer-contact" dir="ltr">
@@ -1273,12 +1276,13 @@ $(function() {
         }
       }, 100);
       
+      // Dismiss in sync with the 20s .flash-timer progress bar.
       setTimeout(() => {
         alert.style.transition = 'all 0.5s ease-out';
         alert.style.transform = 'translateX(100%)';
         alert.style.opacity = '0';
         setTimeout(() => alert.remove(), 500);
-      }, 40000);
+      }, 20000);
     }
   });
   

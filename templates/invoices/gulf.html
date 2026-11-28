@@ -75,6 +75,10 @@
   .signature-section { display: flex; justify-content: space-around; margin-top: 20px; padding-top: 20px; border-top: 2px dashed {{ settings.accent_color or '#8b7355' }}; }
   .signature-box { text-align: center; width: 150px; }
   .signature-line { border-top: 2px solid #333; margin-top: 40px; padding-top: 8px; font-size: 11px; }
+  @media print {
+    /* Fixed positioning repeats the watermark on every printed page. */
+    .document-watermark { position: fixed !important; }
+  }
 </style>
 {% endblock %}
 
@@ -295,11 +299,11 @@
   
   {% if settings and settings.enable_watermark %}
     {% if settings.watermark_image_path %}
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
+      <div class="document-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
         <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%;">
       </div>
     {% elif settings.watermark_text %}
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
+      <div class="document-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 90px; color: rgba(201,169,97,0.05); font-weight: 700; z-index: 0; pointer-events: none; font-family: 'Noto Kufi Arabic';">
          {{ settings.watermark_text }} 
       </div>
     {% endif %}

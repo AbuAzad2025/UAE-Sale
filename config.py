@@ -296,7 +296,6 @@ class Config:
     DEVELOPER_WEBSITE = os.environ.get("DEVELOPER_WEBSITE", "https://azadsystems.com")
     DEVELOPER_PHONE = os.environ.get("DEVELOPER_PHONE", "")
     DEVELOPER_EMAIL = os.environ.get("DEVELOPER_EMAIL", "")
-    APP_VERSION = "2.0.0"
 
     BABEL_DEFAULT_LOCALE = os.environ.get("BABEL_DEFAULT_LOCALE", "ar")
     BABEL_DEFAULT_TIMEZONE = os.environ.get("BABEL_DEFAULT_TIMEZONE", "Asia/Dubai")
@@ -324,6 +323,8 @@ class Config:
 
     ALLOW_CARD_DECRYPTION = _bool(os.environ.get("ALLOW_CARD_DECRYPTION"), False)
 
+    # Single source of truth for the reported version (see /metrics and the
+    # owner system page); the earlier hardcoded "2.0.0" assignment was dead.
     APP_VERSION = os.environ.get("APP_VERSION", "1.0.0")
     ITEMS_PER_PAGE = _int("ITEMS_PER_PAGE", 20)
 

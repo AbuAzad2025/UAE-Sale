@@ -244,17 +244,15 @@ def quotation_pipeline():
             {"label": month_start.strftime("%Y-%m"), "count": cnt, "value": float(val)}
         )
 
-    expiring = (
-        Quotation.query.filter(
-            Quotation.is_active.is_(True),
-            Quotation.status.in_(["draft", "sent"]),
-            Quotation.valid_until >= today,
-            Quotation.valid_until <= today + timedelta(days=7),
-        )
-        .order_by(Quotation.valid_until.asc())
-        .limit(20)
-        .all()
+    expiring_query = Quotation.query.filter(
+        Quotation.is_active.is_(True),
+        Quotation.status.in_(["draft", "sent"]),
+        Quotation.valid_until >= today,
+        Quotation.valid_until <= today + timedelta(days=7),
     )
+    # The KPI must show the true count; the table below only lists the first 20.
+    expiring_count = expiring_query.count()
+    expiring = expiring_query.order_by(Quotation.valid_until.asc()).limit(20).all()
 
     return render_template(
         "reports/quotation_pipeline.html",
@@ -265,6 +263,7 @@ def quotation_pipeline():
         top_customers=top_customers,
         monthly=monthly,
         expiring=expiring,
+        expiring_count=expiring_count,
         date_from=date_from,
         date_to=date_to,
     )
@@ -839,7 +838,10 @@ def receivables():
     }
 
     return render_template(
-        "reports/receivables.html", aging_data=aging_data, summary=summary
+        "reports/receivables.html",
+        aging_data=aging_data,
+        summary=summary,
+        as_of_date=as_of_date,
     )
 
 

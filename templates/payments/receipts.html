@@ -83,6 +83,9 @@
       <a href="{{ url_for('payments.create_receipt') }}" class="btn btn-success">
         <i class="fas fa-plus mr-2"></i>{{ t('New Receipt Voucher') }}
       </a>
+      <a href="{{ url_for('payments.create_voucher', direction='outgoing') }}" class="btn btn-primary">
+        <i class="fas fa-arrow-up mr-2"></i>{{ t('New Payment Voucher') }}
+      </a>
       <a href="{{ url_for('payments.archived_receipts') }}" class="btn btn-warning">
         <i class="fas fa-archive mr-2"></i>{{ t('Archive') }}
       </a>

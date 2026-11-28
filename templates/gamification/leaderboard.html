@@ -3,6 +3,7 @@
 {% block title %}{{ t('Leaderboard') }} - {{ company_name }}{% endblock %}
 
 {% block content %}
+{% set badge_names_en = {'newbie': 'Beginner', 'bronze': 'Bronze', 'silver': 'Silver', 'gold': 'Gold', 'platinum': 'Platinum', 'legend': 'Legendary'} %}
 <div class="content-header">
     <div class="container-fluid">
         <div class="row mb-2">
@@ -33,17 +34,18 @@
                             </thead>
                             <tbody>
                                 {% for user in leaderboard %}
-                                <tr class="{% if user.rank <= 3 %}font-weight-bold{% endif %}">
+                                <tr class="{% if user.rank <= 3 %}font-weight-bold{% endif %} {% if user.user_id == current_user.id %}table-primary{% endif %}">
                                     <td>
                                         {% if user.rank == 1 %}
                                         {% elif user.rank == 2 %}
                                         {% elif user.rank == 3 %}
                                         {% else %}{{ user.rank }}
                                         {% endif %}
+                                        {% if user.user_id == current_user.id %}<span class="badge badge-info ml-1">{{ t('You') }}</span>{% endif %}
                                     </td>
-                                    <td>{{ user.full_name }}</td>
+                                    <td>{{ user.full_name_en if current_language == 'en' and user.full_name_en else user.full_name }}</td>
                                     <td><span class="badge badge-primary">{{ user.points }}</span></td>
-                                    <td>{{ user.badge.icon }} {{ user.badge.name_ar }}</td>
+                                    <td>{{ user.badge.icon }} {{ badge_names_en.get(user.badge.key, user.badge.name_ar) if current_language == 'en' else user.badge.name_ar }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -53,6 +55,34 @@
             </div>
 
             <div class="col-md-4">
+                {% set my_row = leaderboard | selectattr('user_id', 'equalto', current_user.id) | first | default(none) %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ t('Your progress') }}</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if my_row %}
+                        <p class="mb-1">
+                            <strong>{{ t('Rank') }}:</strong> #{{ my_row.rank }} &nbsp;
+                            <strong>{{ t('Points') }}:</strong> {{ my_row.points }}
+                        </p>
+                        <p class="mb-2">{{ my_row.badge.icon }} {{ badge_names_en.get(my_row.badge.key, my_row.badge.name_ar) if current_language == 'en' else my_row.badge.name_ar }}</p>
+                        {% set thresholds = [100, 500, 1000, 5000, 10000] %}
+                        {% set next_threshold = thresholds | select('gt', my_row.points) | first | default(none) %}
+                        {% if next_threshold %}
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ ((my_row.points / next_threshold) * 100) | round | int }}%;" aria-valuenow="{{ my_row.points }}" aria-valuemin="0" aria-valuemax="{{ next_threshold }}"></div>
+                        </div>
+                        <small class="text-muted">{{ my_row.points }} / {{ next_threshold }} {{ t('points to next badge') }}</small>
+                        {% else %}
+                        <small class="text-muted">{{ t('Top badge reached!') }}</small>
+                        {% endif %}
+                        {% else %}
+                        <p class="mb-2 text-muted">{{ t('You are not in the top 20 yet.') }}</p>
+                        {% endif %}
+                        <a href="{{ url_for('gamification.my_stats') }}" class="btn btn-sm btn-outline-primary mt-2">{{ t('My stats') }}</a>
+                    </div>
+                </div>
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">{{ t('Available Badges') }}</h3>

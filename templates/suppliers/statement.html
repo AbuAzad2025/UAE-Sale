@@ -22,6 +22,11 @@
     .main-sidebar, .main-header, .main-footer, .content-header, .no-print { display: none !important; }
     .content-wrapper { margin: 0 !important; padding: 0 !important; }
   }
+  /* Logical alignment utilities (Bootstrap 4 has only physical ones). */
+  .text-start { text-align: left; text-align: start; }
+  .text-end { text-align: right; text-align: end; }
+  .float-start { float: left; float: inline-start; }
+  .float-end { float: right; float: inline-end; }
 </style>
 {% endblock %}
 
@@ -52,7 +57,7 @@
         <h6>{{ t('Total Payments') }}</h6><h3 class="text-primary">{{ '{:,.2f}'.format(payments|sum(attribute='amount_base') or 0) }}</h3>
       </div>
       <div class="st-card">
-        <h6>{{ t('Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}</h6>
+        <h6>{{ t('Balance') }} {{ t('Due to Supplier') if final_balance < 0 else t('In Our Favor') }}</h6>
         <h3 class="{{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
           {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
         </h3>
@@ -68,9 +73,9 @@
             <th>{{ t('Date') }}</th>
             <th>{{ t('Reference') }}</th>
             <th>{{ t('Description') }}</th>
-            <th class="text-left">{{ t('Debit') }}</th>
-            <th class="text-left">{{ t('Credit') }}</th>
-            <th class="text-left">{{ t('Balance') }}</th>
+            <th class="text-start">{{ t('Debit') }}</th>
+            <th class="text-start">{{ t('Credit') }}</th>
+            <th class="text-start">{{ t('Balance') }}</th>
             <th class="text-center no-print">{{ t('Details') }}</th>
           </tr>
         </thead>
@@ -86,9 +91,9 @@
                 <span class="badge badge-warning">{{ t('Pending') }}</span>
               {% endif %}
             </td>
-            <td class="text-left">{{ '{:,.2f}'.format(tr.debit) if tr.debit else '-' }}</td>
-            <td class="text-left">{{ '{:,.2f}'.format(tr.credit) if tr.credit else '-' }}</td>
-            <td class="text-left"><strong>{{ '{:,.2f}'.format(tr.balance|abs) }}</strong>
+            <td class="text-start">{{ '{:,.2f}'.format(tr.debit) if tr.debit else '-' }}</td>
+            <td class="text-start">{{ '{:,.2f}'.format(tr.credit) if tr.credit else '-' }}</td>
+            <td class="text-start"><strong>{{ '{:,.2f}'.format(tr.balance|abs) }}</strong>
               <small class="text-muted">{{ t('Credit') if tr.balance < 0 else t('Debit') }}</small>
             </td>
             <td class="text-center no-print">
@@ -136,8 +141,8 @@
         </tbody>
         <tfoot class="font-weight-bold">
           <tr>
-            <td colspan="4" class="text-left">{{ t('Final Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}</td>
-            <td colspan="4" class="text-left {{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
+            <td colspan="4" class="text-start">{{ t('Final Balance') }} {{ t('Due to Supplier') if final_balance < 0 else t('In Our Favor') }}</td>
+            <td colspan="4" class="text-start {{ 'st-balance-pos' if final_balance < 0 else 'st-balance-neg' }}">
               {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}
             </td>
           </tr>

@@ -277,27 +277,29 @@
           <label>
             <i class="fas fa-handshake text-info"></i> {{ t('Partners and Profit Shares') }}
           </label>
-          <table class="table table-bordered table-sm">
-            <thead>
-              <tr>
-                <th style="width: 50%">{{ t('Partner') }}</th>
-                <th style="width: 40%">{{ t('Percentage (%)') }}</th>
-                <th style="width: 10%">{{ t('Delete') }}</th>
-              </tr>
-            </thead>
-            <tbody id="partnersList">
-              
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3">
-                  <button type="button" class="btn btn-sm btn-outline-primary" id="addPartnerBtn">
-                    <i class="fas fa-plus"></i> {{ t('Add Partner') }}
-                  </button>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm">
+              <thead>
+                <tr>
+                  <th style="width: 50%">{{ t('Partner') }}</th>
+                  <th style="width: 40%">{{ t('Percentage (%)') }}</th>
+                  <th style="width: 10%">{{ t('Delete') }}</th>
+                </tr>
+              </thead>
+              <tbody id="partnersList">
+                
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addPartnerBtn">
+                      <i class="fas fa-plus"></i> {{ t('Add Partner') }}
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
     </div>

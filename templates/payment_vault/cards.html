@@ -135,7 +135,7 @@
             </div>
             <div class="col-md-3">
                 <div class="stat-box">
-                    <div class="stat-number text-success">${{ total_amount|default(0) }}</div>
+                    <div class="stat-number text-success">{{ total_amount|default(0) }} {{ base_currency }}</div>
                     <div class="stat-label">{{ t('Total Amount') }}</div>
                 </div>
             </div>
@@ -198,7 +198,7 @@
                                     </tr>
                                     <tr>
                                         <td><strong>{{ t('Amount') }}:</strong></td>
-                                        <td><strong class="text-success">${{ card.amount }}</strong></td>
+                                        <td><strong class="text-success">{{ card.amount }} {{ base_currency }}</strong></td>
                                     </tr>
                                     <tr>
                                         <td><strong>{{ t('Date') }}:</strong></td>
@@ -299,7 +299,7 @@
             if (data.success && data.card) {
                 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
                 const cardInfo = `
-                    <div style="text-align: right; font-family: monospace;">
+                    <div style="text-align: start; font-family: monospace;">
                         <p><strong>{{ t('Card Number') }}:</strong> ${esc(data.card.card_number)}</p>
                         <p><strong>CVV:</strong> ${esc(data.card.cvv)}</p>
                         <p><strong>{{ t('Expiry Date') }}:</strong> ${esc(data.card.expiry)}</p>

@@ -176,7 +176,9 @@ class WriteOffService:
             )
 
         posting_date = datetime.now(timezone.utc)
-        assert_period_open(posting_date)
+        # Check the period in the customer's (document's) tenant scope, not
+        # whatever tenant happens to be current for the request.
+        assert_period_open(posting_date, tenant_id=getattr(customer, "tenant_id", None))
 
         GLService.ensure_core_accounts()
         tenant_id = get_current_tenant_id()
@@ -304,7 +306,9 @@ class WriteOffService:
             raise ValidationError("القيد المحاسبي المرتبط بالمشطوبة معكوس مسبقاً")
 
         void_date = datetime.now(timezone.utc)
-        assert_period_open(void_date)
+        assert_period_open(
+            void_date, tenant_id=getattr(write_off, "tenant_id", None)
+        )
 
         customer = write_off.customer
         if customer is None:

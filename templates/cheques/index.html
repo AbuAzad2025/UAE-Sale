@@ -260,6 +260,9 @@
             <td>
               <strong>{{ "{:,.2f}".format(cheque.amount) }}</strong>
               <small class="text-muted">{{ cheque.currency }}</small>
+              {% if cheque.currency != base_currency %}
+              <br><small class="text-muted">{{ "{:,.2f}".format(cheque.amount_base) }} {{ base_currency }}</small>
+              {% endif %}
             </td>
             <td>
               {{ cheque.due_date.strftime('%Y-%m-%d') }}

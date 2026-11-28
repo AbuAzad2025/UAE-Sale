@@ -6,9 +6,9 @@
   <div class="col-12">
     <form method="get" class="form-inline no-print">
       <label class="mr-1" for="date_from">{{ t('From') }}:</label>
-      <input type="date" id="date_from" name="date_from" value="{{ date_from or '' }}" class="form-control mr-2" placeholder="{{ t('From') }}">
+      <input type="date" id="date_from" name="date_from" value="{{ date_from or '' }}" class="form-control mr-2">
       <label class="mr-1" for="date_to">{{ t('To') }}:</label>
-      <input type="date" id="date_to" name="date_to" value="{{ date_to or '' }}" class="form-control mr-2" placeholder="{{ t('To') }}">
+      <input type="date" id="date_to" name="date_to" value="{{ date_to or '' }}" class="form-control mr-2">
       <button type="submit" class="btn btn-primary"><i class="fas fa-filter mr-1"></i>{{ t('Apply Filter') }}</button>
     </form>
   </div>
@@ -35,7 +35,7 @@
       <span class="info-box-icon"><i class="fas fa-money-bill"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('Total Value') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(total_value) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(total_value) }}</span>
       </div>
     </div>
   </div>
@@ -53,7 +53,7 @@
       <span class="info-box-icon"><i class="fas fa-clock"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('Expiring Soon') }}</span>
-        <span class="info-box-number">{{ expiring|length }}</span>
+        <span class="info-box-number">{{ expiring_count }}</span>
       </div>
     </div>
   </div>

@@ -710,7 +710,16 @@ class StockTransferService:
                 transfer.from_warehouse_id,
                 tenant_id=transfer.tenant_id,
             )
-            if available < line.quantity:
+            # Stock is primarily tracked on the product (current_stock) in this
+            # system; per-warehouse quantities may legitimately be zero when no
+            # warehouse breakdown exists. Do not block such transfers.
+            if not available:
+                product_row = db.session.get(_Product, line.product_id)
+                available = (
+                    Decimal(str(getattr(product_row, "current_stock", 0) or 0))
+                    if product_row is not None else Decimal("0")
+                )
+            if available < Decimal(str(line.quantity or 0)):
                 product = db.session.get(_Product, line.product_id)
                 name = (
                     product.get_display_name("ar")

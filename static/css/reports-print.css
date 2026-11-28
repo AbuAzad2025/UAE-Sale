@@ -35,10 +35,15 @@
     color: #000 !important;
     font-size: 10pt !important;
     font-family: 'Arial', 'Tahoma', sans-serif !important;
-    direction: rtl !important;
-    text-align: right !important;
+    direction: ltr !important;
+    text-align: start !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  html[dir="rtl"], html[dir="rtl"] body {
+    direction: rtl !important;
+    text-align: right !important;
   }
   
   /* ═══ إخفاء جميع عناصر الواجهة ═══ */
@@ -283,6 +288,13 @@
     white-space: normal !important;
     overflow: visible !important;
   }
+
+  /* Long descriptions wrap; document numbers and references stay intact. */
+  .doc-number, .reference {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
   .table-responsive, .card, .card-body, .content-wrapper,
   .container, .container-fluid {
     overflow: visible !important;
@@ -361,7 +373,7 @@
   
   /* ═══ محاذاة ===  */
   .text-end {
-    text-align: left !important;
+    text-align: end !important;
   }
   
   .text-center {

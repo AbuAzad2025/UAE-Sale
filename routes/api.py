@@ -174,7 +174,10 @@ def healthz():
 
 @api_bp.route("/version")
 def version():
-    return jsonify({"version": "1.0.0", "name": "Warehouse & Sales Management System"})
+    return jsonify({
+        "version": current_app.config.get("APP_VERSION", "1.0.0"),
+        "name": "Warehouse & Sales Management System",
+    })
 
 
 @api_bp.route("/payment-fields/<payment_method>")

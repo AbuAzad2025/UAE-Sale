@@ -35,6 +35,25 @@ except ImportError:
 _MONEY_TWO = Decimal("0.01")
 _LRM = "\u200e"  # Left-To-Right Mark: keeps digits contiguous inside RTL rows
 
+# The three logging setup helpers attach handlers (and Flask routes) directly
+# to an app object. Re-running them for every create_app() in one process
+# stacked duplicate FileHandlers on errors.log / performance.log and leaked
+# descriptors. Bootstrap once per process and make later create_app() calls
+# no-ops for logging — every original handler is still installed on the first
+# app, so the log files, rotation and permissions are unchanged.
+_LOGGING_BOOTSTRAPPED = False
+
+
+def _bootstrap_logging(app):
+    """Install console, advanced and enhanced logging exactly once."""
+    global _LOGGING_BOOTSTRAPPED
+    if _LOGGING_BOOTSTRAPPED:
+        return
+    setup_logging(app)
+    setup_advanced_logging(app)
+    setup_enhanced_logging(app)
+    _LOGGING_BOOTSTRAPPED = True
+
 _STATUS_BADGE_MAP = {
     "unpaid": ("warning", "غير مدفوع"),
     "partial": ("info", "جزئي"),
@@ -418,7 +437,7 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
 
     _install_persistent_upload_serving(app)
 
-    setup_logging(app)
+    _bootstrap_logging(app)
     init_extensions(app)
 
     from extensions import login_manager  # noqa: F811  (local import intentional)
@@ -435,9 +454,6 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(User, int(user_id))
-
-    setup_advanced_logging(app)
-    setup_enhanced_logging(app)
 
     if run_startup_tasks:
         from utils.system_init import ensure_system_integrity

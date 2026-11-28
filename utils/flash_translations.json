@@ -63,6 +63,8 @@
   "تم تعيين فترة ضمان {warranty_days} يوم": "A warranty period of {warranty_days} day(s) has been set",
   "تم تغيير الحالة إلى {order.status}": "Status changed to {order.status}",
   "تم تغيير اللغة إلى {'العربية' if lang == 'ar' else 'English'}": "Language changed to {'Arabic' if lang == 'ar' else 'English'}",
+  "تم تغيير اللغة إلى العربية": "Language changed to Arabic",
+  "تم تغيير اللغة إلى English": "Language changed to English",
   "تم تفعيل المستأجر \"{tenant.name_ar}\"": "Tenant \"{tenant.name_ar}\" has been activated",
   "تم تنفيذ إجراء الكفالة: {action}": "Guarantee action executed: {action}",
   "تم حذف المستودع \"{warehouse.name}\" بنجاح": "Warehouse \"{warehouse.name}\" deleted successfully",

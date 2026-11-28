@@ -381,13 +381,26 @@ $(document).ready(function() {
         },
         cache: true
       },
-      language: 'ar',
-      dir: 'rtl',
+      language: '{{ current_language }}',
+      dir: '{{ "rtl" if current_language == "ar" else "ltr" }}',
       placeholder: {{ t("Search for a customer...")|tojson }},
       minimumInputLength: 1,
       width: '100%'
     });
   }
+
+  // sales-enhanced.js renders price inputs with a hardcoded "Unit price in AED"
+  // title; keep that label aligned with the tenant's base currency.
+  document.addEventListener('DOMContentLoaded', function() {
+    var priceTitle = {{ t("Price")|tojson }} + ' ({{ base_currency }})';
+    var baseT = window.t;
+    if (typeof baseT === 'function') {
+      window.t = function(key, params) {
+        return key === 'Unit price in AED' ? priceTitle : baseT(key, params);
+      };
+    }
+    document.querySelectorAll('.price-input').forEach(function(el) { el.title = priceTitle; });
+  });
 
   // When the warehouse changes, refresh per-line stock for the selected products.
   $('#warehouse_id').on('change', function() {

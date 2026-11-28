@@ -5,7 +5,22 @@
 
 (function($) {
   'use strict';
-  
+
+  /**
+   * toastr is an optional plugin on this project: some pages load only the
+   * bundled notification layer (notifications.js / azad-app.js). Calling it
+   * unguarded used to throw a ReferenceError and abort the surrounding
+   * handler. Fall back to window.UI, which routes through the same notify
+   * system, and stay silent rather than crash if neither is loaded.
+   */
+  function notifyUser(type, message) {
+    if (window.toastr && typeof window.toastr[type] === 'function') {
+      window.toastr[type](' ' + message);
+    } else if (window.UI && typeof window.UI[type] === 'function') {
+      window.UI[type](message);
+    }
+  }
+
   // =====================================
   // حذف عنصر عام
   // =====================================
@@ -70,7 +85,7 @@
   // =====================================
   window.deleteMultiple = function(itemIds, itemType, redirectUrl) {
     if (!itemIds || itemIds.length === 0) {
-      toastr.warning(' ' + t('You must select at least one item'));
+      notifyUser('warning', t('You must select at least one item'));
       return;
     }
     
@@ -141,7 +156,7 @@
       if (result.isConfirmed) {
         $(rowElement).fadeOut(300, function() {
           $(this).remove();
-          toastr.success(' ' + t('Deleted'));
+          notifyUser('success', t('Deleted'));
         });
       }
     });

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% set initial_direction = 'outgoing' if request.args.get('direction') == 'outgoing' else 'incoming' %}
 {% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Unified Financial Voucher') }}{% endblock %}
 {% block page_title %}{{ t('Create Financial Voucher (Receipt/Payment)') }}{% endblock %}
 
@@ -55,19 +56,19 @@
       
       <div class="row mb-4 justify-content-center">
         <div class="col-md-5">
-          <div class="card type-card text-center p-3 selected" id="card-incoming" onclick="selectDirection('incoming')">
+          <div class="card type-card text-center p-3 {% if initial_direction == 'incoming' %}selected{% endif %}" id="card-incoming" onclick="selectDirection('incoming')">
             <i class="fas fa-arrow-down fa-2x text-success mb-2"></i>
             <h4>{{ t('Receipt Voucher (incoming)') }}</h4>
             <p class="text-muted small mb-0">{{ t('Receive money from a customer or supplier') }}</p>
-            <input type="radio" name="direction" value="incoming" checked style="display:none;">
+            <input type="radio" name="direction" value="incoming" {% if initial_direction == 'incoming' %}checked{% endif %} style="display:none;">
           </div>
         </div>
         <div class="col-md-5">
-          <div class="card type-card text-center p-3" id="card-outgoing" onclick="selectDirection('outgoing')">
+          <div class="card type-card text-center p-3 {% if initial_direction == 'outgoing' %}selected{% endif %}" id="card-outgoing" onclick="selectDirection('outgoing')">
             <i class="fas fa-arrow-up fa-2x text-danger mb-2"></i>
             <h4>{{ t('Payment Voucher (outgoing)') }}</h4>
             <p class="text-muted small mb-0">{{ t('Pay money to a supplier or customer') }}</p>
-            <input type="radio" name="direction" value="outgoing" style="display:none;">
+            <input type="radio" name="direction" value="outgoing" {% if initial_direction == 'outgoing' %}checked{% endif %} style="display:none;">
           </div>
         </div>
       </div>
@@ -159,7 +160,7 @@
       </div>
 
     </div>
-    <div class="card-footer text-right">
+    <div class="card-footer" style="text-align: end;">
       <button type="submit" class="btn btn-primary btn-lg px-5"><i class="fas fa-save mr-2"></i>{{ t('Save Voucher') }}</button>
       <a href="{{ url_for('payments.receipts') }}" class="btn btn-secondary btn-lg ml-2">{{ t('Cancel') }}</a>
     </div>

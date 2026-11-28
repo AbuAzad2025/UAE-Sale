@@ -32,7 +32,7 @@
           <span class="info-box-icon"><i class="fas fa-dollar-sign"></i></span>
           <div class="info-box-content">
             <span class="info-box-text">{{ t('Total Sales') }}</span>
-            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_sales_aed|default(0)) }}</span>
+            <span class="info-box-number">{{ "{:,.2f}".format(summary.total_sales_aed|default(0)) }}</span>
           </div>
         </div>
       </div>
@@ -42,7 +42,7 @@
           <span class="info-box-icon"><i class="fas fa-coins"></i></span>
           <div class="info-box-content">
             <span class="info-box-text">{{ t('Paid') }}</span>
-            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_paid_aed|default(0)) }}</span>
+            <span class="info-box-number">{{ "{:,.2f}".format(summary.total_paid_aed|default(0)) }}</span>
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@
           <span class="info-box-icon"><i class="fas fa-exclamation-circle"></i></span>
           <div class="info-box-content">
             <span class="info-box-text">{{ t('Due') }}</span>
-            <span class="info-box-number">{{ "{:,.0f}".format(summary.total_pending_aed|default(0)) }}</span>
+            <span class="info-box-number">{{ "{:,.2f}".format(summary.total_pending_aed|default(0)) }}</span>
           </div>
         </div>
       </div>
@@ -97,6 +97,8 @@
           </td>
           <td>{{ sale.payment_status|status_badge }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
     </table>

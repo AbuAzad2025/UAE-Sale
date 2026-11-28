@@ -6,13 +6,18 @@
 <div class="card"><div class="card-body">
   <div class="table-responsive">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>{{ t('Number') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Date') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
+    <thead><tr><th>{{ t('Number') }}</th><th>{{ t('From') }}</th><th>{{ t('To') }}</th><th>{{ t('Products') }}</th><th>{{ t('Date') }}</th><th>{{ t('Status') }}</th><th>{{ t('Actions') }}</th></tr></thead>
     <tbody>
     {% for tr in transfers %}
     <tr>
       <td><strong>{{ tr.transfer_number }}</strong></td>
       <td>{{ display_name(tr.from_warehouse) if tr.from_warehouse else '-' }}</td>
       <td>{{ display_name(tr.to_warehouse) if tr.to_warehouse else '-' }}</td>
+      <td>
+        {% for line in tr.lines %}
+          {{ display_name(line.product) if line.product else '-' }} &times; {{ line.quantity }}{% if not loop.last %}<br>{% endif %}
+        {% else %}-{% endfor %}
+      </td>
       <td>{{ tr.transfer_date.strftime('%Y-%m-%d') }}</td>
       <td><span class="badge badge-{{ 'success' if tr.status=='received' else ('info' if tr.status=='in_transit' else 'warning') }}">{{ tr.status|status_label }}</span></td>
       <td>
@@ -26,7 +31,7 @@
         {% endif %}
       </td>
     </tr>
-    {% else %}<tr><td colspan="6" class="text-center text-muted">{{ t('No transfers') }}</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="7" class="text-center text-muted">{{ t('No transfers') }}</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>

@@ -11,8 +11,11 @@
   <div class="d-flex gap-2 flex-wrap">
     
     <div class="btn-group d-flex align-items-center" role="group">
-      <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-        <i class="fas fa-file-alt mr-1"></i> {{ t("Print Template") }}
+      <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" class="btn btn-secondary btn-lg" target="_blank">
+        <i class="fas fa-print mr-1"></i>{{ t("Print") }}
+      </a>
+      <button type="button" class="btn btn-secondary btn-lg dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <span class="sr-only">{{ t("Print Template") }}</span>
       </button>
       <div class="dropdown-menu dropdown-menu-right">
         <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='modern') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Modern") }}</a>
@@ -22,9 +25,6 @@
         <a class="dropdown-item" href="{{ url_for('sales.print_invoice', id=sale.id, template='simple') }}"><i class="fas fa-file-alt mr-2"></i> {{ t("Basic") }}</a>
       </div>
     </div>
-    <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" class="btn btn-secondary btn-lg" target="_blank">
-      <i class="fas fa-print mr-2"></i>{{ t("Print") }}
-    </a>
     <a href="{{ url_for('sales.index') }}" class="btn btn-info btn-lg">
       <i class="fas fa-arrow-right mr-2"></i>{{ t("Back to List") }}
     </a>
@@ -177,7 +177,10 @@
                 <td class="text-center">
                   <span class="badge badge-primary">{{ line.quantity }}</span>
                 </td>
-                <td class="text-center">{{ "{:,.2f}".format(line.unit_price) }}</td>
+                <td class="text-center">
+                  {{ "{:,.2f}".format(line.unit_price) }}
+                  <small class="text-muted">{{ sale.currency or base_currency }}</small>
+                </td>
                 <td class="text-center">
                   {% if line.discount_percent > 0 %}
                     <span class="badge badge-warning">{{ line.discount_percent }}%</span>
@@ -187,6 +190,7 @@
                 </td>
                 <td class="text-center">
                   <strong style="color: #007A3D;">{{ "{:,.2f}".format(line.line_total) }}</strong>
+                  <small class="text-muted">{{ sale.currency or base_currency }}</small>
                 </td>
               </tr>
               {% endfor %}
@@ -278,6 +282,13 @@
           <i class="fas fa-hourglass-half"></i> {{ t("Due") }}
         </div>
         {% endif %}
+        <div class="mt-2">
+          {% if sale.status == 'cancelled' %}
+          <span class="badge badge-secondary px-3"><i class="fas fa-ban mr-1"></i>{{ t("Cancelled") }}</span>
+          {% else %}
+          <span class="badge badge-primary px-3"><i class="fas fa-check mr-1"></i>{{ t("Confirmed") }}</span>
+          {% endif %}
+        </div>
       </div>
     </div>
 
@@ -292,27 +303,27 @@
         <div class="invoice-summary">
           <div class="d-flex justify-content-between mb-2">
             <span>{{ t("Subtotal") }}:</span>
-            <strong>{{ "{:,.2f}".format(sale.subtotal) }}</strong>
+            <strong>{{ "{:,.2f}".format(sale.subtotal) }} <small class="text-muted">{{ sale.currency or base_currency }}</small></strong>
           </div>
           
           {% if sale.discount_amount > 0 %}
           <div class="d-flex justify-content-between mb-2">
             <span><i class="fas fa-tag text-danger mr-1"></i>{{ t("Discount") }}:</span>
-            <strong class="text-danger">-{{ "{:,.2f}".format(sale.discount_amount) }}</strong>
+            <strong class="text-danger">-{{ "{:,.2f}".format(sale.discount_amount) }} <small class="text-muted">{{ sale.currency or base_currency }}</small></strong>
           </div>
           {% endif %}
           
           {% if sale.shipping_cost > 0 %}
           <div class="d-flex justify-content-between mb-2">
             <span><i class="fas fa-truck text-info mr-1"></i>{{ t("Shipping") }}:</span>
-            <strong class="text-info">+{{ "{:,.2f}".format(sale.shipping_cost) }}</strong>
+            <strong class="text-info">+{{ "{:,.2f}".format(sale.shipping_cost) }} <small class="text-muted">{{ sale.currency or base_currency }}</small></strong>
           </div>
           {% endif %}
           
           {% if sale.tax_amount > 0 or (sale.tax_treatment and sale.tax_treatment != 'standard') %}
           <div class="d-flex justify-content-between mb-2">
             <span><i class="fas fa-percent text-warning mr-1"></i>{% include 'invoices/_tax_label.html' %}:</span>
-            <strong class="text-warning">{{ "{:,.2f}".format(sale.tax_amount) }}</strong>
+            <strong class="text-warning">{{ "{:,.2f}".format(sale.tax_amount) }} <small class="text-muted">{{ sale.currency or base_currency }}</small></strong>
           </div>
           {% endif %}
         </div>
@@ -322,7 +333,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3" style="font-size: 1.3rem;">
           <strong>{{ t("Total Amount") }}:</strong>
           <strong style="color: #007A3D;">
-            {{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}
+            {{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}
           </strong>
         </div>
         
@@ -376,10 +387,6 @@
       </div>
       <div class="card-body">
         <div class="btn-group-vertical w-100">
-          <a href="{{ url_for('sales.print_invoice', id=sale.id) }}" 
-             class="btn btn-secondary mb-2" target="_blank">
-            <i class="fas fa-print mr-2"></i>{{ t("Print Invoice") }}
-          </a>
           <a href="{{ url_for('sales.index') }}" class="btn btn-info mb-2">
             <i class="fas fa-list mr-2"></i>{{ t("All Invoices") }}
           </a>

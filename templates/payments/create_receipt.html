@@ -47,12 +47,12 @@
 }
 
 .receipt-create-form textarea.form-control {
-  text-align: right;
+  text-align: start;
   line-height: 1.6;
 }
 
 .receipt-create-form textarea.form-control::placeholder {
-  text-align: right;
+  text-align: start;
 }
 </style>
 {% endblock %}
@@ -363,7 +363,7 @@
             <i class="fas fa-times"></i> {{ t('Cancel') }}
           </a>
         </div>
-        <div class="col-6 text-right">
+        <div class="col-6" style="text-align: end;">
           <button type="submit" class="btn btn-success">
             <i class="fas fa-save"></i> {% if is_payment %}{{ t('Save Payment Voucher') }}{% else %}{{ t('Save Receipt Voucher') }}{% endif %}
           </button>

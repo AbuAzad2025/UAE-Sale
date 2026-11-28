@@ -83,19 +83,19 @@
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="metric-box">
-                    <div class="metric-value">${{ summary.total_revenue|default(0) }}</div>
+                    <div class="metric-value">{{ summary.total_revenue|default(0) }} {{ base_currency }}</div>
                     <div class="metric-label">{{ t('Total Revenue') }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="metric-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                    <div class="metric-value">${{ summary.total_purchases_amount|default(0) }}</div>
+                    <div class="metric-value">{{ summary.total_purchases_amount|default(0) }} {{ base_currency }}</div>
                     <div class="metric-label">{{ t('Purchase Revenue') }}</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="metric-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                    <div class="metric-value">${{ summary.total_donations_amount|default(0) }}</div>
+                    <div class="metric-value">{{ summary.total_donations_amount|default(0) }} {{ base_currency }}</div>
                     <div class="metric-label">{{ t('Donation Revenue') }}</div>
                 </div>
             </div>
@@ -166,7 +166,7 @@
                                         {{ trans.donor_name or t('Anonymous') }}
                                     {% endif %}
                                 </td>
-                                <td><strong>${{ trans.amount_usd }}</strong></td>
+                                <td><strong>{{ trans.amount_usd }} {{ base_currency }}</strong></td>
                                 <td>{{ trans.crypto_type|upper }}</td>
                                 <td>
                                     {% if trans.status == 'completed' %}

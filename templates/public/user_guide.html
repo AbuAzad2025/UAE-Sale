@@ -65,6 +65,7 @@
     <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</div>
     <div>
         <a href="{{ url_for('public.landing') }}">{{ t('Home') }}</a>
+        <a href="{{ url_for('language.set_language', lang='en', next=url_for('public.user_guide')) }}" title="English"><i class="fas fa-globe"></i> English</a>
         <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> {{ t('Sign In') }}</a>
     </div>
 </nav>

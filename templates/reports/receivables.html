@@ -3,6 +3,12 @@
 {% block page_title %}{{ t('Receivables Report') }} - {{ t('Aging Report') }}{% endblock %}
 
 {% block content %}
+{% if as_of_date %}
+<div class="print-only mb-3" style="text-align:center; font-size:12pt; font-weight:700;">
+  {{ t('Period') }}: {{ as_of_date }}
+</div>
+{% endif %}
+
 <div class="row mb-3">
   <div class="col-12">
     <div class="alert alert-info">
@@ -17,7 +23,7 @@
       <span class="info-box-icon"><i class="fas fa-check"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('Current (0-30)') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(summary.current) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.current) }}</span>
       </div>
     </div>
   </div>
@@ -27,7 +33,7 @@
       <span class="info-box-icon"><i class="fas fa-clock"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('31-60 days') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_30) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.days_30) }}</span>
       </div>
     </div>
   </div>
@@ -37,7 +43,7 @@
       <span class="info-box-icon"><i class="fas fa-exclamation"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('61-90 days') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_60) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.days_60) }}</span>
       </div>
     </div>
   </div>
@@ -47,7 +53,7 @@
       <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('91-120 days') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(summary.days_90) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.days_90) }}</span>
       </div>
     </div>
   </div>
@@ -57,7 +63,7 @@
       <span class="info-box-icon"><i class="fas fa-times-circle"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">{{ t('120+ days') }}</span>
-        <span class="info-box-number">{{ "{:,.0f}".format(summary.over_90) }}</span>
+        <span class="info-box-number">{{ "{:,.2f}".format(summary.over_90) }}</span>
       </div>
     </div>
   </div>
@@ -84,6 +90,9 @@
         </tr>
       </thead>
       <tbody>
+        {% if aging_data.values()|map(attribute='sales')|map('length')|sum == 0 %}
+        <tr><td colspan="7" class="text-center text-muted">{{ t('No Data') }}</td></tr>
+        {% endif %}
         {% for category, data in aging_data.items() %}
           {% for sale in data.sales %}
           <tr>

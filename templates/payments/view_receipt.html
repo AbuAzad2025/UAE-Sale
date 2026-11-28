@@ -41,7 +41,7 @@
     </form>
     {% endif %}
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-info">
-      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
+      <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('Back') }}
     </a>
   </div>
 </div>
@@ -71,7 +71,7 @@
     {% endif %}
 
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-info">
-      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
+      <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('Back') }}
     </a>
   </div>
 </div>

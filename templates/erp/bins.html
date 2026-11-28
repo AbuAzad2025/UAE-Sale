@@ -20,7 +20,7 @@
 <div class="card"><div class="card-body">
   <div class="table-responsive">
   <table class="table table-bordered table-striped">
-    <thead><tr><th>{{ t('Warehouse') }}</th><th>{{ t('Code') }}</th><th>{{ t('Name') }}</th><th>{{ t('Aisle') }}</th><th>{{ t('Shelf') }}</th><th>{{ t('Location') }}</th><th>{{ t('Capacity') }}</th><th>{{ t('Current Stock') }}</th></tr></thead>
+    <thead><tr><th>{{ t('Warehouse') }}</th><th>{{ t('Code') }}</th><th>{{ t('Name') }}</th><th>{{ t('Aisle') }}</th><th>{{ t('Shelf') }}</th><th>{{ t('Location') }}</th><th>{{ t('Capacity') }}</th><th>{{ t('Current Stock') }}</th><th>{{ t('Utilization') }}</th></tr></thead>
     <tbody>
     {% for b in bins %}
     <tr>
@@ -28,8 +28,20 @@
       <td><span class="badge badge-primary">{{ b.code }}</span></td>
       <td>{{ b.name or '-' }}</td><td>{{ b.aisle or '-' }}</td><td>{{ b.shelf or '-' }}</td><td>{{ b.position or '-' }}</td>
       <td>{{ b.capacity }}</td><td>{{ b.current_stock }}</td>
+      <td>
+        {% set capacity = b.capacity or 0 %}
+        {% set used = b.current_stock or 0 %}
+        {% set pct = (used / capacity * 100)|float if capacity > 0 else 0 %}
+        <div class="progress" style="height:18px;min-width:110px;">
+          <div class="progress-bar {{ 'bg-danger' if pct >= 100 else ('bg-warning' if pct >= 80 else 'bg-success') }}"
+               role="progressbar" style="width: {{ pct if pct <= 100 else 100 }}%;"
+               aria-valuenow="{{ '{:,.0f}'.format(pct) }}" aria-valuemin="0" aria-valuemax="100">
+            {{ '{:,.0f}'.format(pct) }}%
+          </div>
+        </div>
+      </td>
     </tr>
-    {% else %}<tr><td colspan="8" class="text-center text-muted">{{ t('No locations') }}</td></tr>{% endfor %}
+    {% else %}<tr><td colspan="9" class="text-center text-muted">{{ t('No locations') }}</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>

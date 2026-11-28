@@ -697,7 +697,13 @@ $(document).on('dblclick', '.editable', function() {
     const entityId = $this.data('id');
     const field = $this.data('field');
     
-    const input = $(`<input type="text" class="form-control form-control-sm" value="${originalValue}">`);
+    // Build the element through jQuery and assign the value as a property.
+    // Interpolating cell text into a value="..." attribute let a quote or a
+    // "><script>..." payload break out of the attribute and execute (DOM XSS).
+    const input = $('<input>', {
+        type: 'text',
+        'class': 'form-control form-control-sm'
+    }).val(originalValue);
     $this.html(input);
     input.focus().select();
     
@@ -705,7 +711,9 @@ $(document).on('dblclick', '.editable', function() {
         const newValue = $(this).val();
         if (newValue !== originalValue) {
             try {
-                const res = await fetch(`/api/inline-edit/${entityType}/${entityId}`, {
+                // These values originate in data-* attributes; encode them so a
+                // crafted value cannot alter the request path.
+                const res = await fetch(`/api/inline-edit/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}`, {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({field: field, value: newValue})

@@ -164,6 +164,13 @@
     @page {
       size: {{ settings.paper_size or 'A4' }} {{ settings.orientation or 'portrait' }};
       margin: 5mm;
+      {% if settings and settings.show_page_numbers %}
+      @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-size: 9px;
+        color: #666;
+      }
+      {% endif %}
     }
     
     .page-wrapper {
@@ -228,6 +235,16 @@
         overflow-wrap: anywhere;
         word-break: break-word;
       }
+      /* Long descriptive text may wrap anywhere; keep identifiers intact. */
+      .document .doc-number,
+      .document .reference {
+        overflow-wrap: normal !important;
+        word-break: normal !important;
+      }
+      /* Receipt total: vw-based clamp is a screen trick — use pt on paper. */
+      .receipt .amount-value,
+      .receipt .amount-big,
+      .receipt .amount-huge { font-size: 22pt !important; }
       .page-wrapper { background: white; }
 
       /* Repeat the tenant header and footer on EVERY printed page.

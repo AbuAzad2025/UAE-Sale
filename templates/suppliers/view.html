@@ -112,15 +112,27 @@
           </tr>
           <tr>
             <th><i class="fas fa-phone text-muted mr-2"></i>{{ t('Phone 1') }}:</th>
-            <td>{{ supplier.phone or t('N/A') }}</td>
+            <td>
+              {% if supplier.phone %}
+              <a href="tel:{{ supplier.phone }}" class="text-primary"><i class="fas fa-phone mr-1"></i>{{ supplier.phone }}</a>
+              {% else %}{{ t('N/A') }}{% endif %}
+            </td>
           </tr>
           <tr>
             <th><i class="fas fa-phone text-muted mr-2"></i>{{ t('Phone 2') }}:</th>
-            <td>{{ supplier.phone2 or t('N/A') }}</td>
+            <td>
+              {% if supplier.phone2 %}
+              <a href="tel:{{ supplier.phone2 }}" class="text-primary"><i class="fas fa-phone mr-1"></i>{{ supplier.phone2 }}</a>
+              {% else %}{{ t('N/A') }}{% endif %}
+            </td>
           </tr>
           <tr>
             <th><i class="fas fa-envelope text-muted mr-2"></i>{{ t('Email (short)') }}:</th>
-            <td>{{ supplier.email or t('N/A') }}</td>
+            <td>
+              {% if supplier.email %}
+              <a href="mailto:{{ supplier.email }}" class="text-primary"><i class="fas fa-envelope mr-1"></i>{{ supplier.email }}</a>
+              {% else %}{{ t('N/A') }}{% endif %}
+            </td>
           </tr>
           <tr>
             <th><i class="fas fa-globe text-muted mr-2"></i>{{ t('Website') }}:</th>

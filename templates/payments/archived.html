@@ -6,7 +6,7 @@
 <div class="row mb-3">
   <div class="col-12">
     <a href="{{ url_for('payments.receipts') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{{ t('Back') }}
+      <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('Back') }}
     </a>
   </div>
 </div>

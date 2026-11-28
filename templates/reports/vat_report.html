@@ -248,6 +248,8 @@
           <td class="text-center">{{ sale.tax_rate }}%</td>
           <td class="text-right num-cell">{{ sale.tax_amount|money }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -291,6 +293,8 @@
           <td class="text-center">{{ note.tax_rate }}%</td>
           <td class="text-right num-cell">{{ note.tax_amount|money }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -332,6 +336,8 @@
           <td class="text-right num-cell">{{ sale.gross_amount|money }}</td>
           <td class="text-center">{{ sale.tax_rate }}%</td>
         </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -372,6 +378,8 @@
           <td class="text-right num-cell">{{ sale.net_amount|money }}</td>
           <td class="text-center">0%</td>
         </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -410,6 +418,8 @@
           <td>{{ sale.party }}</td>
           <td class="text-right num-cell">{{ sale.net_amount|money }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -451,6 +461,8 @@
           <td class="text-center">{{ purchase.tax_rate }}%</td>
           <td class="text-right num-cell">{{ purchase.tax_amount|money }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -489,6 +501,8 @@
           <td class="text-right num-cell">{{ purchase.net_amount|money }}</td>
           <td class="text-center">0%</td>
         </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -525,6 +539,8 @@
           <td>{{ purchase.party }}</td>
           <td class="text-right num-cell">{{ purchase.net_amount|money }}</td>
         </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>
@@ -564,6 +580,8 @@
           <td class="text-right num-cell">{{ purchase.gross_amount|money }}</td>
           <td class="text-center">{{ purchase.tax_rate }}%</td>
         </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">{{ t('No Data') }}</td></tr>
         {% endfor %}
       </tbody>
       <tfoot>

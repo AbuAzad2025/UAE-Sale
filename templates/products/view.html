@@ -139,15 +139,16 @@
         <h3 class="card-title">{{ t('Recent Movements') }}</h3>
       </div>
       <div class="card-body p-0">
-        <table class="table table-sm">
-          <thead>
-            <tr>
-              <th>{{ t('Type') }}</th>
-              <th>{{ t('Quantity') }}</th>
-              <th>{{ t('Date') }}</th>
-              <th>{{ t('Reference') }}</th>
-            </tr>
-          </thead>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{{ t('Type') }}</th>
+                <th>{{ t('Quantity') }}</th>
+                <th>{{ t('Date') }}</th>
+                <th>{{ t('Reference') }}</th>
+              </tr>
+            </thead>
           <tbody>
             {% for movement in product.stock_movements[:10] %}
             <tr>
@@ -172,7 +173,8 @@
             </tr>
             {% endfor %}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   </div>

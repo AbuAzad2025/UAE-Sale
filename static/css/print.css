@@ -1,12 +1,18 @@
 html, body {
   font-family: "DejaVu Sans", "Tahoma", "Arial", sans-serif;
-  direction: rtl;
-  text-align: right;
+  direction: ltr;
+  text-align: start;
   font-size: 13px;
   line-height: 1.5;
   color: #000;
   margin: 0;
   background: #fdfdfd;
+}
+
+html[dir="rtl"],
+html[dir="rtl"] body {
+  direction: rtl;
+  text-align: right;
 }
 
 #receipt {
@@ -216,6 +222,12 @@ footer {
     hyphens: auto !important;
     white-space: normal !important;
     overflow: visible !important;
+  }
+
+  /* Long descriptions wrap; document numbers and references stay intact. */
+  .doc-number, .reference {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
   }
 
   .container, .container-fluid {

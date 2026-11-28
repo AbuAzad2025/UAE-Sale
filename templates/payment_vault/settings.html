@@ -289,7 +289,7 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="min_donation_amount">
-                                            <i class="fas fa-arrow-up mr-2"></i>{{ t('Minimum ($)') }}
+                                            <i class="fas fa-arrow-up mr-2"></i>{{ t('Minimum ($)')|replace('$', base_currency) }}
                                         </label>
                                         <input type="number" 
                                                class="form-control" 
@@ -302,7 +302,7 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="max_donation_amount">
-                                            <i class="fas fa-arrow-down mr-2"></i>{{ t('Maximum ($)') }}
+                                            <i class="fas fa-arrow-down mr-2"></i>{{ t('Maximum ($)')|replace('$', base_currency) }}
                                         </label>
                                         <input type="number" 
                                                class="form-control" 
@@ -315,7 +315,7 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="daily_limit">
-                                            <i class="fas fa-calendar-day mr-2"></i>{{ t('Daily Limit ($)') }}
+                                            <i class="fas fa-calendar-day mr-2"></i>{{ t('Daily Limit ($)')|replace('$', base_currency) }}
                                         </label>
                                         <input type="number" 
                                                class="form-control" 
@@ -428,7 +428,7 @@
                                 {{ t('Lock Vault') }}
                             </a>
                             <a href="{{ url_for('owner.dashboard') }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-right mr-2"></i>
+                                <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>
                                 {{ t('Back to Owner Dashboard') }}
                             </a>
                         </div>

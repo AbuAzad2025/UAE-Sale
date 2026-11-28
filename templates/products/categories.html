@@ -45,7 +45,6 @@
                                             <th>{{ t('Description') }}</th>
                                             <th>{{ t('Product Count') }}</th>
                                             <th>{{ t('Status') }}</th>
-                                            <th>{{ t('Actions') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -61,14 +60,6 @@
                                                 {% else %}
                                                     <span class="badge badge-danger">{{ t('Inactive') }}</span>
                                                 {% endif %}
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i> {{ t('Edit') }}
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger">
-                                                    <i class="fas fa-trash"></i> {{ t('Delete') }}
-                                                </button>
                                             </td>
                                         </tr>
                                         {% endfor %}

@@ -67,6 +67,12 @@
     background: #f8f9fa !important;
   }
 }
+
+/* Logical alignment utilities (Bootstrap 4 has only physical ones). */
+.text-start { text-align: left; text-align: start; }
+.text-end { text-align: right; text-align: end; }
+.float-start { float: left; float: inline-start; }
+.float-end { float: right; float: inline-end; }
 </style>
 {% endblock %}
 
@@ -117,9 +123,9 @@
             {% endif %}
           </td>
           <td>{{ purchase.purchase_date.strftime('%Y-%m-%d') }}</td>
-          <td class="text-right"><strong>{{ "{:,.2f}".format(purchase.total_amount) }}</strong></td>
-          <td class="text-right text-success">{{ "{:,.2f}".format(purchase.get_paid_amount()) }}</td>
-          <td class="text-right">
+          <td class="text-end"><strong>{{ "{:,.2f}".format(purchase.total_amount) }}</strong></td>
+          <td class="text-end text-success">{{ "{:,.2f}".format(purchase.get_paid_amount()) }}</td>
+          <td class="text-end">
             {% set balance = (purchase.total_amount - purchase.get_paid_amount()) %}
             <strong class="{% if balance > 0 %}text-danger{% else %}text-success{% endif %}">
               {{ "{:,.2f}".format(balance) }}

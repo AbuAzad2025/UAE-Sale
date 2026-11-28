@@ -43,11 +43,11 @@
     <div class="row">
       <div class="col-md-3">
         <label for="date_from" class="form-label">{{ t('From Date') }}</label>
-        <input type="date" id="date_from" name="date_from" class="form-control" value="{{ date_from }}" placeholder="{{ t('From Date') }}">
+        <input type="date" id="date_from" name="date_from" class="form-control" value="{{ date_from }}">
       </div>
       <div class="col-md-3">
         <label for="date_to" class="form-label">{{ t('To Date') }}</label>
-        <input type="date" id="date_to" name="date_to" class="form-control" value="{{ date_to }}" placeholder="{{ t('To Date') }}">
+        <input type="date" id="date_to" name="date_to" class="form-control" value="{{ date_to }}">
       </div>
       <div class="col-md-2">
         <button type="submit" class="btn btn-primary">{{ t('Filter') }}</button>
@@ -90,6 +90,8 @@
             <td class="text-success">{{ "{:,.2f}".format(txn.credit) if txn.credit else '0.00' }}</td>
             <td class="font-weight-bold">{{ "{:,.2f}".format(txn.balance) }}</td>
           </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted">{{ t('No Data') }}</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>

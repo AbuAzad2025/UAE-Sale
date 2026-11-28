@@ -120,7 +120,7 @@
               {% if balance > 0 %}
                 <strong class="text-danger">{{ "{:,.2f}".format(balance) }}</strong>
               {% elif balance < 0 %}
-                <strong class="text-success">{{ "{:,.2f}".format(balance|abs) }}</strong>
+                <strong class="text-success">{{ "{:,.2f}".format(balance) }}</strong>
               {% else %}
                 <span class="text-muted">0.00</span>
               {% endif %}

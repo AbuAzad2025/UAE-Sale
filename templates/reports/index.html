@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Reports & Statistics') }}{% endblock %}
+{% block title %}{{ (display_name(current_tenant) if current_tenant else t('Azad')) }} - {{ t('Reports & Statistics') }}{% endblock %}
 {% block page_title %}{{ t('Reports & Statistics') }}{% endblock %}
 
 {% block extra_css %}
@@ -53,7 +53,7 @@
 {% block content %}
 <div class="reports-hero">
   <h3><i class="fas fa-chart-line mr-2"></i> {{ t('Reports & Statistics Center') }}</h3>
-  <p>{{ t('Comprehensive dashboard for all financial and operational reports') }} — {{ current_tenant.name_ar if current_tenant else '' }}</p>
+  <p>{{ t('Comprehensive dashboard for all financial and operational reports') }} — {{ display_name(current_tenant) if current_tenant else '' }}</p>
 </div>
 
 {# ===== روابط سريعة ===== #}

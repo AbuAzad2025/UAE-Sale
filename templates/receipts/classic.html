@@ -181,10 +181,9 @@
       font-weight: 700;
     }
       @media print { .no-print { display: none !important; } }
-    /* classic: let the outer document control pagination */
+    /* classic: keep the double border on paper; let the outer document paginate */
     @media print {
       .document .receipt {
-        border: none !important;
         padding: 0 !important;
         min-height: 0 !important;
         box-shadow: none !important;

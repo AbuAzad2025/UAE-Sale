@@ -32,10 +32,15 @@
     color: #000 !important;
     font-size: 11pt !important;
     font-family: 'Arial', 'Tahoma', sans-serif !important;
-    direction: rtl !important;
-    text-align: right !important;
+    direction: ltr !important;
+    text-align: start !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  html[dir="rtl"], html[dir="rtl"] body {
+    direction: rtl !important;
+    text-align: right !important;
   }
   
   /* ═══ إخفاء جميع عناصر الواجهة ═══ */
@@ -318,7 +323,7 @@
   
   /* ═══ محاذاة النصوص ═══ */
   .text-end {
-    text-align: left !important;
+    text-align: end !important;
   }
   
   .text-center {

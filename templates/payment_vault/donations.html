@@ -10,7 +10,7 @@
     </div>
     <div>
         <a href="{{ url_for('payment_vault.dashboard') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-right"></i> {{ t('Back to Dashboard') }}
+            <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }}"></i> {{ t('Back to Dashboard') }}
         </a>
     </div>
 </div>
@@ -66,7 +66,7 @@
             </div>
             
             <div class="stat-box success">
-                <div class="stat-number text-success">${{ total_amount|default(0) }}</div>
+                <div class="stat-number text-success">{{ total_amount|default(0) }} {{ base_currency }}</div>
                 <div class="stat-label">{{ t('Total Amount') }}</div>
             </div>
             
@@ -152,7 +152,7 @@
                                         {{ donation.donor_name or t('Anonymous') }}<br>
                                         <small class="text-muted">{{ donation.donor_email or '-' }}</small>
                                     </td>
-                                    <td><strong class="text-primary">${{ donation.amount_usd }}</strong></td>
+                                    <td><strong class="text-primary">{{ donation.amount_usd }} {{ base_currency }}</strong></td>
                                     <td>
                                         <span class="badge badge-info">{{ donation.crypto_type|upper }}</span>
                                     </td>
@@ -234,7 +234,7 @@ function viewDonation(id) {
 
 function sendThankYou(email, name, amount) {
     const subject = {{ t('Thank you for your donation - Azad Systems')|tojson }};
-    const body = `${{ t('Dear') }} ${name},\n\n{{ t('Thank you very much for your generous donation of') }} $${amount}\n\n{{ t('Your donation helps us develop the system and provide better services.') }}\n\n{{ t('With thanks and appreciation,') }}\n{{ t('Azad Systems Team') }}`;
+    const body = `{{ t('Dear') }} ${name},\n\n{{ t('Thank you very much for your generous donation of') }} ${amount} {{ base_currency }}\n\n{{ t('Your donation helps us develop the system and provide better services.') }}\n\n{{ t('With thanks and appreciation,') }}\n{{ t('Azad Systems Team') }}`;
     
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

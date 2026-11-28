@@ -16,6 +16,16 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+/* Logical alignment utilities (Bootstrap 4 has only physical ones). */
+.text-start { text-align: left; text-align: start; }
+.text-end { text-align: right; text-align: end; }
+.float-start { float: left; float: inline-start; }
+.float-end { float: right; float: inline-end; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
   <div class="col-md-8">
@@ -110,21 +120,21 @@
       <div class="card-body">
         <dl class="row">
           <dt class="col-6">{{ t('Total Before Discount:') }}</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format((purchase.subtotal or 0) + (purchase.discount_amount or 0)) }}</dd>
+          <dd class="col-6 text-start">{{ "{:,.2f}".format((purchase.subtotal or 0) + (purchase.discount_amount or 0)) }}</dd>
           
           <dt class="col-6">{{ t('Discount:') }}</dt>
-          <dd class="col-6 text-left text-danger">{{ "{:,.2f}".format(purchase.discount_amount or 0) }}</dd>
+          <dd class="col-6 text-start text-danger">{{ "{:,.2f}".format(purchase.discount_amount or 0) }}</dd>
           
           <dt class="col-6">{{ t('Total After Discount:') }}</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>
+          <dd class="col-6 text-start">{{ "{:,.2f}".format(purchase.subtotal) }}</dd>
           
           <dt class="col-6">{{ t('Tax:') }}</dt>
-          <dd class="col-6 text-left">{{ "{:,.2f}".format(purchase.tax_amount) }} ({{ purchase.tax_treatment or 'standard' }} — {% if purchase.tax_inclusive %}{{ t('inclusive') }}{% else %}{{ t('exclusive') }}{% endif %})</dd>
+          <dd class="col-6 text-start">{{ "{:,.2f}".format(purchase.tax_amount) }} ({{ purchase.tax_treatment or 'standard' }} — {% if purchase.tax_inclusive %}{{ t('inclusive') }}{% else %}{{ t('exclusive') }}{% endif %})</dd>
         </dl>
         <hr>
         <dl class="row">
           <dt class="col-6"><h5>{{ t('Total:') }}</h5></dt>
-          <dd class="col-6 text-left"><h5>{{ "{:,.2f}".format(purchase.total_amount) }} {{ purchase.currency }}</h5></dd>
+          <dd class="col-6 text-start"><h5>{{ "{:,.2f}".format(purchase.total_amount) }} {{ purchase.currency }}</h5></dd>
         </dl>
       </div>
     </div>

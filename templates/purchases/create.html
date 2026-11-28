@@ -157,6 +157,12 @@
   border: 2px solid rgba(13, 148, 136, 0.3);
   box-shadow: 0 6px 18px rgba(13, 148, 136, 0.22);
 }
+
+/* Logical alignment utilities (Bootstrap 4 has only physical ones). */
+.text-start { text-align: left; text-align: start; }
+.text-end { text-align: right; text-align: end; }
+.float-start { float: left; float: inline-start; }
+.float-end { float: right; float: inline-end; }
 </style>
 <style>
 .purchase-header-actions .purchase-header-link + .purchase-header-link {
@@ -297,6 +303,7 @@
             <input type="number" name="tax_rate" id="tax_rate" 
                    class="form-control" value="0" step="0.01" min="0" max="100">
             <small class="form-text text-muted">{{ t('Example: 5 for 5% tax') }}</small>
+            <small class="form-text text-muted">{{ t('Use 0 and choose Zero-rated 0% when the purchase has no tax') }}</small>
             </div>
             <div class="form-group">
               <label for="tax_treatment">{{ t('Tax Treatment') }}</label>
@@ -369,15 +376,15 @@
               <table class="table table-sm">
                 <tr>
                   <td>{{ t('Subtotal:') }}</td>
-                  <td class="text-left" id="summary_subtotal">0.00 {{ base_currency }}</td>
+                  <td class="text-start" id="summary_subtotal">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr>
                   <td>{{ t('Tax:') }}</td>
-                  <td class="text-left" id="summary_tax">0.00 {{ base_currency }}</td>
+                  <td class="text-start" id="summary_tax">0.00 {{ base_currency }}</td>
                 </tr>
                 <tr class="font-weight-bold border-top">
                   <td>{{ t('Total:') }}</td>
-                  <td class="text-left text-primary" id="summary_total">0.00 {{ base_currency }}</td>
+                  <td class="text-start text-primary" id="summary_total">0.00 {{ base_currency }}</td>
                 </tr>
               </table>
             </div>
@@ -534,7 +541,7 @@ function addLine() {
                 <strong> ${p.text}</strong>
                 <br><small class="text-muted">SKU: ${p.sku || '-'}</small>
               </div>
-              <div class="text-left">
+              <div class="text-start">
                 <small><strong>${(p.cost_price || 0).toFixed(2)} {{ base_currency }}</strong></small>
                 <br><small class="${stockClass}">${stockIcon} ${p.current_stock || 0}</small>
               </div>

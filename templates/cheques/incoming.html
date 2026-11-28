@@ -16,7 +16,7 @@
       <i class="fas fa-plus-circle mr-2"></i>{{ t('Add New Cheque') }}
     </a>
     <a href="{{ url_for('cheques.index') }}" class="btn btn-secondary">
-      <i class="fas fa-arrow-right mr-2"></i>{{ t('All Cheques') }}
+      <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }} mr-2"></i>{{ t('All Cheques') }}
     </a>
     <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
       <i class="fas fa-home mr-2"></i>{{ t('Home') }}

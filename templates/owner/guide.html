@@ -11,8 +11,10 @@
         body { font-family: 'Tajawal', sans-serif; background: #f8f9fa; color: #2d3748; line-height: 1.7; }
 
         .navbar { background: #0f172a; color: #f1f5f9; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-        .navbar a { color: #94a3b8; text-decoration: none; margin: 0 12px; font-size: 0.95rem; }
-        .navbar a:hover { color: #60a5fa; }
+        .navbar a, .navbar .nav-link-button { color: #94a3b8; text-decoration: none; margin: 0 12px; font-size: 0.95rem; }
+        .navbar a:hover, .navbar .nav-link-button:hover { color: #60a5fa; }
+        .navbar .nav-link-button { background: transparent; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+        .navbar form, footer form { display: inline; }
         .navbar .logo { font-size: 1.3rem; font-weight: 800; color: #f1f5f9; }
 
         .header { background: #0f172a; color: #f1f5f9; padding: 40px 24px; text-align: center; border-bottom: 3px solid #667eea; }
@@ -41,7 +43,8 @@
         th { background: #f8fafc; font-weight: 700; color: #0f172a; }
 
         footer { background: #0f172a; color: #94a3b8; padding: 28px 24px; text-align: center; margin-top: 40px; }
-        footer a { color: #60a5fa; text-decoration: none; }
+        footer a, footer .footer-link { color: #60a5fa; text-decoration: none; }
+        footer .footer-link { background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; }
     </style>
 </head>
 <body>
@@ -50,7 +53,10 @@
     <div class="logo">{{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }} — {{ t('Owner Guide') }}</div>
     <div>
         <a href="{{ url_for('owner.dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> {{ t('Sign Out') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="nav-link-button"><i class="fas fa-sign-out-alt"></i> {{ t('Sign Out') }}</button>
+        </form>
     </div>
 </nav>
 
@@ -70,11 +76,16 @@
         <p><code>/owner/dashboard</code></p>
         <p>{{ t('The main dashboard displays:') }}</p>
         <ul>
-            <li>{{ t('Total Users') }}</li>
-            <li>{{ t('Total Clients') }}</li>
-            <li>{{ t('Total Sales') }}</li>
-            <li>{{ t('Total Revenue') }}</li>
+            <li>{{ t('Sales Today') }}</li>
+            <li>{{ t('Revenue This Month') }}</li>
+            <li>{{ t('Profit This Month') }}</li>
+            <li>{{ t('Receivables') }}</li>
+            <li>{{ t('Overdue Invoices') }}</li>
+            <li>{{ t('Customers') }}</li>
+            <li>{{ t('Products') }}</li>
+            <li>{{ t('Inventory Value') }}</li>
         </ul>
+        <p>{{ t('Database') }} • {{ t('Encrypted Cards') }} • {{ t('Settings') }} • {{ t('User Management') }} • {{ t('System Monitoring') }} • {{ t('Advanced Settings') }} • {{ t('System Tools') }}</p>
         <p>{{ t('You can click any card to view details.') }}</p>
     </div>
 
@@ -209,6 +220,10 @@
         <h2>10. {{ t('Reports') }}</h2>
         <p>{{ t('Owner reports:') }}</p>
         <ul>
+            <li><code>/reports/sales</code> — {{ t('Sales Reports') }}</li>
+            <li><code>/reports/receivables</code> — {{ t('Receivables') }}</li>
+            <li><code>/reports/cash-flow</code> — {{ t('Cash Flow') }}</li>
+            <li><code>/reports/inventory-valuation</code> — {{ t('Inventory Valuation') }}</li>
         </ul>
     </div>
 
@@ -216,6 +231,8 @@
         <h2>11. {{ t('Analytics') }}</h2>
         <p>{{ t('Advanced analytics:') }}</p>
         <ul>
+            <li><code>/owner/activity-monitor</code> — {{ t('Live Monitoring') }}</li>
+            <li><code>/owner/performance-metrics</code> — {{ t('Performance') }}</li>
         </ul>
     </div>
 
@@ -272,7 +289,7 @@
 
 <footer>
     <p>&copy; {{ current_year }} {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }} — {{ t('Owner Guide') }}</p>
-    <p><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a> | <a href="{{ url_for('auth.logout') }}">{{ t('Sign Out') }}</a></p>
+    <div style="margin: 1em 0;"><a href="{{ url_for('owner.dashboard') }}">{{ t('Owner Dashboard') }}</a> | <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="footer-link">{{ t('Sign Out') }}</button></form></div>
 </footer>
 
 </body>

@@ -82,6 +82,10 @@
     color: #666;
     font-size: 11px;
   }
+  @media print {
+    /* Fixed positioning repeats the watermark on every printed page. */
+    .document-watermark { position: fixed !important; }
+  }
 </style>
 {% endblock %}
 
@@ -291,11 +295,11 @@
   
   {% if settings and settings.enable_watermark %}
     {% if settings.watermark_image_path %}
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
+      <div class="document-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.05; z-index: 0; pointer-events: none;">
         <img src="{{ url_for('static', filename=settings.watermark_image_path) }}" alt="Watermark" style="width: 100%; max-height: 400px;">
       </div>
     {% elif settings.watermark_text %}
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; color: rgba(0,0,0,0.05); font-weight: 700; z-index: 0; pointer-events: none; white-space: nowrap;">
+      <div class="document-watermark" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; color: rgba(0,0,0,0.05); font-weight: 700; z-index: 0; pointer-events: none; white-space: nowrap;">
         {{ settings.watermark_text }}
       </div>
     {% endif %}

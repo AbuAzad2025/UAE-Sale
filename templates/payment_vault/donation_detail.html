@@ -116,7 +116,7 @@
                     <div class="info-row">
                         <div class="info-label">{{ t('Amount') }}:</div>
                         <div class="info-value text-success">
-                            <h3 class="mb-0">${{ donation.amount_usd }}</h3>
+                            <h3 class="mb-0">{{ donation.amount_usd }} {{ base_currency }}</h3>
                         </div>
                     </div>
                     
@@ -234,7 +234,7 @@
                         
                         <div class="col-md-{% if donation.donor_email %}6{% else %}12{% endif %} mt-3">
                             <a href="{{ url_for('payment_vault.donations') }}" class="btn btn-secondary btn-block btn-lg">
-                                <i class="fas fa-arrow-left"></i> {{ t('Back to Donations') }}
+                                <i class="fas fa-arrow-{{ 'right' if is_rtl else 'left' }}"></i> {{ t('Back to Donations') }}
                             </a>
                         </div>
                     </div>
@@ -251,7 +251,7 @@
 <script>
 function sendThankYou(email, name, amount) {
     const subject = encodeURIComponent({{ t('Thank you for your generous donation')|tojson }});
-    const body = encodeURIComponent(`${{ t('Dear') }} ${name},\n\n{{ t('Thank you for your generous donation of') }} $${amount}.\n\n{{ t('Best regards,') }}\n{{ t('Azad Systems Team') }}`);
+    const body = encodeURIComponent(`{{ t('Dear') }} ${name},\n\n{{ t('Thank you for your generous donation of') }} ${amount} {{ base_currency }}.\n\n{{ t('Best regards,') }}\n{{ t('Azad Systems Team') }}`);
     window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
 }
 </script>

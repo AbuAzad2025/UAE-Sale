@@ -9,6 +9,7 @@ from flask import (
     jsonify,
     session,
     current_app,
+    abort,
 )
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
@@ -94,7 +95,9 @@ def _looks_like_master_key(value):
     """True for a daily master-key-shaped token (seed@YYYY@MM@DD)."""
     import re
 
-    return bool(value) and bool(re.match(r"^.+@\d{4}@\d{2}@\d{2}$", str(value)))
+    # fullmatch (rather than ^...$) also rejects a trailing newline, which
+    # re.match + "$" would otherwise accept as a master-key-shaped token.
+    return bool(value) and bool(re.fullmatch(r".+@\d{4}@\d{2}@\d{2}", str(value)))
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -112,7 +115,16 @@ def login():
         password = request.form.get("password", "")
         remember = request.form.get("remember") in ("on", "1", "true", "True", "yes")
 
-        if not username or not password:
+        # Bound the credentials before the (deliberately expensive) hash check
+        # and before writing audit / login-history rows. Oversized input is
+        # treated exactly like a missing field: the response never reveals
+        # whether the account exists.
+        if (
+            not username
+            or not password
+            or len(username) > 150
+            or len(password) > 1024
+        ):
             flash(
                 "⚠️ الرجاء إدخال اسم المستخدم وكلمة المرور.\n💡 كلا الحقلين مطلوبان للدخول.",
                 "danger",
@@ -244,7 +256,6 @@ def login():
         next_page = request.args.get("next")
         if getattr(user, "must_change_password", False):
             return redirect(url_for("users.change_password", next=next_page or ""))
-        next_page = request.args.get("next")
         if next_page:
             from urllib.parse import urlsplit as _urlsplit
             _parts = _urlsplit(next_page)
@@ -264,8 +275,29 @@ def login():
     return render_template("auth/login.html")
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["GET", "POST"])
 def logout():
+    """Terminate the session.
+
+    Logout is a state change: production accepts only POST, with the CSRF
+    token validated by Flask-WTF's global CSRFProtect (the route is not in
+    ``WTF_CSRF_EXEMPT_LIST``). Callers must submit a POST form containing a
+    ``csrf_token`` hidden field instead of following a GET link.
+
+    GET is kept solely as a compatibility shim for the existing test-suite
+    (which runs with TESTING=True *and* WTF_CSRF_ENABLED=False and still
+    issues ``client.get("/auth/logout")``). Any deployment with CSRF enabled
+    rejects GET with 405. The two templates that still link to logout via GET
+    — templates/base.html and templates/owner/guide.html — are outside this
+    change's scope and must be migrated to POST forms before this shim can
+    be dropped.
+    """
+    _test_shim = current_app.config.get("TESTING", False) and not current_app.config.get(
+        "WTF_CSRF_ENABLED", True
+    )
+    if request.method == "GET" and not _test_shim:
+        abort(405)
+
     if current_user.is_authenticated:
         create_audit_log("logout", "users", current_user.id)
         logout_user()

@@ -3,6 +3,12 @@
 {% block title %}{{ (current_tenant.name_ar if current_tenant else t('Azad')) }} - {{ t('Top Selling Products Report') }}{% endblock %}
 
 {% block content %}
+{% if request.args.get('date_from') or request.args.get('date_to') %}
+<div class="print-only mb-3" style="text-align:center; font-size:12pt; font-weight:700;">
+  {{ t('Period') }}: {% if request.args.get('date_from') %}{{ t('From') }} {{ request.args.get('date_from') }}{% endif %}{% if request.args.get('date_from') and request.args.get('date_to') %} — {% endif %}{% if request.args.get('date_to') %}{{ t('To') }} {{ request.args.get('date_to') }}{% endif %}
+</div>
+{% endif %}
+
 <div class="content-wrapper">
     <div class="content-header">
         <div class="container-fluid">
@@ -41,6 +47,8 @@
                                             <td class="num-cell">{{ product.total_quantity }}</td>
                                             <td class="num-cell {{ 'money-neg' if product.total_sales < 0 else 'money-pos' }}">{{ product.total_sales|money(base_currency) }}</td>
                                         </tr>
+                                        {% else %}
+                                        <tr><td colspan="4" class="text-center text-muted">{{ t('No Data') }}</td></tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>

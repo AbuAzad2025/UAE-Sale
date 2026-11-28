@@ -16,6 +16,10 @@
             <div class="col-sm-6">
                 <h1 class="m-0">{{ t('System Monitoring Dashboard') }}</h1>
             </div>
+            <div class="col-sm-6 text-right">
+                {% if health.timestamp %}<small class="text-muted d-block">{{ t('Last updated') }}: {{ health.timestamp }}</small>{% endif %}
+                <small class="text-muted d-block">{{ t('Sentry') }}: {{ sentry_status|default('unknown', true) }}</small>
+            </div>
         </div>
     </div>
 </div>
@@ -114,23 +118,23 @@
                         <table class="table">
                             <tr>
                                 <td>{{ t('Total Space') }}</td>
-                                <td><strong>{{ health.disk.total_gb }} GB</strong></td>
+                                <td><strong>{{ (health.disk.total_gb ~ ' GB') if health.disk.total_gb is defined else 'N/A' }}</strong></td>
                             </tr>
                             <tr>
                                 <td>{{ t('Used Space') }}</td>
-                                <td><strong>{{ health.disk.used_gb }} GB</strong></td>
+                                <td><strong>{{ (health.disk.used_gb ~ ' GB') if health.disk.used_gb is defined else 'N/A' }}</strong></td>
                             </tr>
                             <tr>
                                 <td>{{ t('Free Space') }}</td>
-                                <td><strong>{{ health.disk.free_gb }} GB</strong></td>
+                                <td><strong>{{ (health.disk.free_gb ~ ' GB') if health.disk.free_gb is defined else 'N/A' }}</strong></td>
                             </tr>
                             <tr>
                                 <td>{{ t('Total Memory') }}</td>
-                                <td><strong>{{ health.memory.total_mb }} MB</strong></td>
+                                <td><strong>{{ (health.memory.total_mb ~ ' MB') if health.memory.total_mb is defined else 'N/A' }}</strong></td>
                             </tr>
                             <tr>
                                 <td>{{ t('Number of Processors') }}</td>
-                                <td><strong>{{ health.cpu.cores }}</strong></td>
+                                <td><strong>{{ health.cpu.cores|default('N/A') }}</strong></td>
                             </tr>
                         </table>
                     </div>

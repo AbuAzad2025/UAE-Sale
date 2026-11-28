@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from werkzeug.utils import secure_filename
 from flask import current_app, request
 from extensions import db
@@ -219,17 +219,21 @@ def allocate_transactional_numbers(prefix, model, field_name, count):
 
 
 def calculate_discount(amount, discount_percent):
-    """Calculate discount amount from percentage"""
+    """Calculate discount amount from percentage (money: HALF_UP at 2dp)."""
     amount = Decimal(str(amount))
     discount_percent = Decimal(str(discount_percent))
-    return (amount * discount_percent / Decimal("100")).quantize(Decimal("0.01"))
+    return (amount * discount_percent / Decimal("100")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
 
 def calculate_vat(amount, vat_rate):
-    """Calculate VAT/Tax amount from rate"""
+    """Calculate VAT/Tax amount from rate (money: HALF_UP at 2dp)."""
     amount = Decimal(str(amount))
     vat_rate = Decimal(str(vat_rate))
-    return (amount * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
+    return (amount * vat_rate / Decimal("100")).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
 
 def format_currency_display(amount, currency="AED", lang="ar"):

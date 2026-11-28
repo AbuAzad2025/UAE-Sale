@@ -272,17 +272,17 @@
 
 <div class="row mb-3">
   {% set prompts = [
-    ('fa-chart-line', 'Sales Today', 'كم عدد المبيعات اليوم؟'),
-    ('fa-chart-bar', 'Compare Sales', 'قارن مبيعات هذا الشهر والشهر الماضي'),
-    ('fa-users', 'Customers Count', 'كم عدد العملاء؟'),
-    ('fa-boxes', 'Inventory Status', 'ما حالة المخزون؟'),
-    ('fa-receipt', 'Expenses This Month', 'كم عدد المصروفات هذا الشهر؟'),
-    ('fa-money-check', 'Cheques Count', 'كم عدد الشيكات؟'),
-    ('fa-calendar-lock', 'Fiscal Periods', 'ما حالة الفترات المالية؟')
+    ('fa-chart-line', 'Sales Today', 'كم عدد المبيعات اليوم؟', 'How many sales today?'),
+    ('fa-chart-bar', 'Compare Sales', 'قارن مبيعات هذا الشهر والشهر الماضي', 'Compare sales this month and last month'),
+    ('fa-users', 'Customers Count', 'كم عدد العملاء؟', 'How many customers?'),
+    ('fa-boxes', 'Inventory Status', 'ما حالة المخزون؟', 'Inventory status'),
+    ('fa-receipt', 'Expenses This Month', 'كم عدد المصروفات هذا الشهر؟', 'Total expenses this month'),
+    ('fa-money-check', 'Cheques Count', 'كم عدد الشيكات؟', 'How many cheques?'),
+    ('fa-calendar-lock', 'Fiscal Periods', 'ما حالة الفترات المالية؟', 'Fiscal periods status')
   ] %}
-  {% for icon, label, question in prompts %}
+  {% for icon, label, question_ar, question_en in prompts %}
   <div class="col-6 col-md-4 col-xl mb-3">
-    <button type="button" class="ai-feature-card w-100 h-100" data-chat-question="{{ question if current_language == 'ar' else t(label) }}">
+    <button type="button" class="ai-feature-card w-100 h-100" data-chat-question="{{ question_ar if current_language == 'ar' else question_en }}">
       <span class="ai-feature-icon d-block"><i class="fas {{ icon }}" aria-hidden="true"></i></span>
       <span>{{ ('مقارنة المبيعات' if current_language == 'ar' else 'Compare Sales') if label == 'Compare Sales' else t(label) }}</span>
     </button>
@@ -305,9 +305,9 @@
             <p class="mt-2 mb-0">{{ t('I answer from your company live data and only within your permissions. Ask about sales, customers, inventory, expenses or cheques.') }}</p>
             <div class="alert alert-light border mt-3 mb-0">
               <strong>{{ t('Try:') }}</strong>
-              <span class="d-block mt-1">«كم عدد المبيعات اليوم؟»</span>
-              <span class="d-block">«كم عدد العملاء؟»</span>
-              <span class="d-block">«ما حالة المخزون؟»</span>
+              <span class="d-block mt-1">«{{ 'How many sales today?' if current_language == 'en' else 'كم عدد المبيعات اليوم؟' }}»</span>
+              <span class="d-block">«{{ 'How many customers?' if current_language == 'en' else 'كم عدد العملاء؟' }}»</span>
+              <span class="d-block">«{{ 'Inventory status' if current_language == 'en' else 'ما حالة المخزون؟' }}»</span>
             </div>
           </div>
         </div>
@@ -399,8 +399,8 @@
         </div>
         
         <div id="salesFollowUps" class="d-flex flex-wrap mb-2" hidden>
-          <button type="button" class="btn btn-sm btn-outline-primary mr-2" data-chat-question="وأمس؟">{{ "Yesterday?" if current_language == "en" else "وأمس؟" }}</button>
-          <button type="button" class="btn btn-sm btn-outline-primary" data-chat-question="والشهر الماضي؟">{{ "Last month?" if current_language == "en" else "والشهر الماضي؟" }}</button>
+          <button type="button" class="btn btn-sm btn-outline-primary mr-2" data-chat-question="{{ 'Yesterday?' if current_language == 'en' else 'وأمس؟' }}">{{ "Yesterday?" if current_language == "en" else "وأمس؟" }}</button>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-chat-question="{{ 'Last month?' if current_language == 'en' else 'والشهر الماضي؟' }}">{{ "Last month?" if current_language == "en" else "والشهر الماضي؟" }}</button>
         </div>
         <div class="input-group">
         <input type="text" id="userMessage" class="form-control form-control-lg" 
@@ -469,6 +469,67 @@
 {% block extra_js %}
 <script>
 window.chatHistory = [];
+
+// Lightweight, client-only feedback (no backend endpoint). Votes are stored
+// per message id in localStorage so a reload keeps the user's choice.
+const AI_FEEDBACK_KEY = 'ai_message_feedback';
+let feedbackSeq = 0;
+
+function readFeedback() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(AI_FEEDBACK_KEY) || '{}');
+    return stored && typeof stored === 'object' ? stored : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function addFeedbackButtons(row) {
+  const id = 'ai-msg-' + Date.now() + '-' + (++feedbackSeq);
+  row.attr('data-feedback-id', id);
+  let vote = readFeedback()[id] || null;
+
+  const toolbar = $('<div>', { class: 'd-flex align-items-center mt-2' });
+  const up = $('<button>', {
+    type: 'button',
+    class: 'btn btn-sm btn-outline-success mr-1',
+    title: {{ ('Good answer' if current_language == 'en' else 'إجابة مفيدة')|tojson }},
+    'aria-label': {{ ('Good answer' if current_language == 'en' else 'إجابة مفيدة')|tojson }}
+  }).html('<i class="fas fa-thumbs-up"></i>');
+  const down = $('<button>', {
+    type: 'button',
+    class: 'btn btn-sm btn-outline-danger',
+    title: {{ ('Bad answer' if current_language == 'en' else 'إجابة غير مفيدة')|tojson }},
+    'aria-label': {{ ('Bad answer' if current_language == 'en' else 'إجابة غير مفيدة')|tojson }}
+  }).html('<i class="fas fa-thumbs-down"></i>');
+  const note = $('<small>', { class: 'text-muted ml-2' });
+
+  function render() {
+    up.toggleClass('active', vote === 'up').attr('aria-pressed', String(vote === 'up'));
+    down.toggleClass('active', vote === 'down').attr('aria-pressed', String(vote === 'down'));
+    note.text(vote ? {{ ('Thanks for your feedback!')|tojson }} : '');
+  }
+
+  function cast(value) {
+    vote = vote === value ? null : value;
+    const stored = readFeedback();
+    if (vote) stored[id] = vote;
+    else delete stored[id];
+    try {
+      localStorage.setItem(AI_FEEDBACK_KEY, JSON.stringify(stored));
+    } catch (error) {
+      // Storage may be disabled — keep the in-memory vote only.
+    }
+    render();
+  }
+
+  up.on('click', function() { cast('up'); });
+  down.on('click', function() { cast('down'); });
+  toolbar.append(up, down, note);
+  row.find('.chat-message-text').after(toolbar);
+  render();
+}
+
 function addMessage(sender, text, isBot = false) {
   if (typeof chatHistory !== 'undefined') {
     chatHistory.push({
@@ -506,6 +567,7 @@ function addMessage(sender, text, isBot = false) {
     `);
     
     const row = chatBox.children().last();
+    if (isBot) addFeedbackButtons(row);
     setTimeout(() => {
       chatBox.scrollTop(chatBox[0].scrollHeight);
     }, 100);
@@ -548,10 +610,25 @@ $(document).ready(function() {
   const csrfToken = {{ csrf_token()|tojson }};
   const requestError = {{ t('Sorry, an error occurred. Try again.')|tojson }};
 
+  function apiErrorText(xhr) {
+    const payload = xhr && xhr.responseJSON;
+    const text = payload && (payload.response || payload.error);
+    return text ? String(text) : requestError;
+  }
+
   function showChatResult(result) {
     followUpTopic = result.follow_up_topic === 'sales' ? 'sales' : null;
     salesFollowUps.prop('hidden', !followUpTopic);
     const body = addMessage('bot', result.response, true).find('.chat-message-text');
+    const provenance = result.grounded
+      ? {{ ('Grounded in your company data' if current_language == 'en' else 'مبني على بيانات شركتك فقط')|tojson }}
+      : (result.provenance || result.source || null);
+    if (provenance) {
+      $('<div>', { class: 'small text-success mt-1' })
+        .append($('<i>', { class: 'fas fa-database mr-1' }))
+        .append($('<span>').text(String(provenance)))
+        .insertAfter(body);
+    }
     if (result.formal_url) {
       $('<a>', {
         class: 'btn btn-sm btn-outline-primary d-table mt-2',
@@ -592,7 +669,7 @@ $(document).ready(function() {
             showChatResult(next);
           },
           error: function(xhr) {
-            error.text(xhr.responseJSON?.response || requestError);
+            error.text(apiErrorText(xhr));
             field.add(submit).prop('disabled', false);
             field.focus();
           }
@@ -626,7 +703,7 @@ $(document).ready(function() {
             }
           },
           error: function(xhr) {
-            addMessage('bot', xhr.responseJSON?.response || requestError, true);
+            addMessage('bot', apiErrorText(xhr), true);
             confirm.prop('disabled', false);
           }
         });
@@ -691,7 +768,7 @@ $(document).ready(function() {
       data: JSON.stringify(request.body),
       success: queued ? watchQueuedMessage : showChatResult,
       error: function(xhr) {
-        const row = addMessage('bot', xhr.responseJSON?.response || requestError, true);
+        const row = addMessage('bot', apiErrorText(xhr), true);
         if (xhr.status === 0 || xhr.status >= 500) {
           const retryButton = $('<button>', {
             type: 'button',
@@ -810,7 +887,7 @@ $(document).ready(function() {
         }
       },
       error: function(xhr) {
-        addMessage('bot', xhr.responseJSON?.response || requestError, true);
+        addMessage('bot', apiErrorText(xhr), true);
       },
       complete: function() {
         $('#uploadExcelBtn, #excelFile, #warehouseSelect').prop('disabled', false);
@@ -966,8 +1043,6 @@ $(document).ready(function() {
   switchAIMode(savedMode);
 
 });  // نهاية document.ready
-
-let chatHistoryGlobal = [];
 
 
 function loadBusinessInsights() {

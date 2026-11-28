@@ -16,6 +16,16 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+/* Logical alignment utilities (Bootstrap 4 has only physical ones). */
+.text-start { text-align: left; text-align: start; }
+.text-end { text-align: right; text-align: end; }
+.float-start { float: left; float: inline-start; }
+.float-end { float: right; float: inline-end; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
   <div class="col-md-4">
@@ -30,7 +40,7 @@
         <ul class="list-group list-group-unbordered mb-3">
           <li class="list-group-item">
             <b>{{ t('Classification') }}</b>
-            <span class="float-left">
+            <span class="float-start">
               {% if customer.customer_classification == 'vip' %}<span class="badge badge-danger">VIP</span>
               {% elif customer.customer_classification == 'premium' %}<span class="badge badge-warning">{{ t('Premium') }}</span>
               {% else %}<span class="badge badge-secondary">{{ t('Regular') }}</span>{% endif %}
@@ -38,13 +48,14 @@
           </li>
           <li class="list-group-item">
             <b>{{ t('Balance') }}</b>
-            <span class="float-left {% if customer.get_balance_aed() < 0 %}text-danger{% elif customer.get_balance_aed() > 0 %}text-success{% else %}text-muted{% endif %}">
-              {{ "{:,.2f}".format(customer.get_balance_aed()) }} {{ base_currency }}
+            {% set balance = customer.get_balance_aed() %}
+            <span class="float-start {% if balance > 0 %}text-danger{% elif balance < 0 %}text-success{% else %}text-muted{% endif %}">
+              {{ "{:,.2f}".format(balance) }} {{ base_currency }}
             </span>
           </li>
           <li class="list-group-item">
             <b>{{ t('Opening Balance') }}</b>
-            <span class="float-left">
+            <span class="float-start">
               {{ "{:,.2f}".format(customer.get_opening_balance_base()) }} {{ base_currency }}
               {% if customer.opening_balance_currency and customer.opening_balance_currency != base_currency %}
                 <small class="text-muted">({{ "{:,.2f}".format(customer.opening_balance or 0) }} {{ customer.opening_balance_currency }})</small>
@@ -53,10 +64,10 @@
           </li>
           <li class="list-group-item">
             <b>{{ t('Total Purchases') }}</b>
-            <span class="float-left">{{ "{:,.2f}".format(customer.total_purchases) }} {{ base_currency }}</span>
+            <span class="float-start">{{ "{:,.2f}".format(customer.total_purchases) }} {{ base_currency }}</span>
           </li>
         </ul>
-        {% if customer.balance < 0 %}
+        {% if customer.get_balance_aed() > 0 %}
         <a href="{{ url_for('payments.create_receipt') }}?customer_id={{ customer.id }}" class="btn btn-primary btn-block">
           <i class="fas fa-money-bill-wave"></i> {{ t('Add Payment') }}
         </a>
@@ -79,9 +90,17 @@
       <div class="card-body">
         <dl class="row">
           <dt class="col-sm-4">{{ t('Phone') }}:</dt>
-          <dd class="col-sm-8">{{ customer.phone or '-' }}</dd>
+          <dd class="col-sm-8">
+            {% if customer.phone %}
+            <a href="tel:{{ customer.phone }}" class="text-primary"><i class="fas fa-phone mr-1"></i>{{ customer.phone }}</a>
+            {% else %}-{% endif %}
+          </dd>
           <dt class="col-sm-4">{{ t('Email') }}:</dt>
-          <dd class="col-sm-8">{{ customer.email or '-' }}</dd>
+          <dd class="col-sm-8">
+            {% if customer.email %}
+            <a href="mailto:{{ customer.email }}" class="text-primary"><i class="fas fa-envelope mr-1"></i>{{ customer.email }}</a>
+            {% else %}-{% endif %}
+          </dd>
           <dt class="col-sm-4">{{ t('Address') }}:</dt>
           <dd class="col-sm-8">{{ customer.address or '-' }}</dd>
           <dt class="col-sm-4">{{ t('Default Currency') }}:</dt>

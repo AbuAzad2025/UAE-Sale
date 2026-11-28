@@ -45,10 +45,10 @@
               </div>
               <div class="col-md-6">
                 <h5>{{ t("Totals") }}</h5>
-                <p><strong>{{ t("Subtotal") }}:</strong> {{ sale.subtotal }} {{ base_currency }}</p>
-                <p><strong>{{ t("Tax") }}:</strong> {{ sale.tax_amount }} {{ base_currency }}</p>
-                <p><strong>{{ t("Total Amount") }}:</strong> {{ sale.total_amount }} {{ base_currency }}</p>
-                <p><strong>{{ t("Paid") }}:</strong> {{ sale.paid_amount }} {{ base_currency }}</p>
+                <p><strong>{{ t("Subtotal") }}:</strong> {{ sale.subtotal }} {{ sale.currency or base_currency }}</p>
+                <p><strong>{{ t("Tax") }}:</strong> {{ sale.tax_amount }} {{ sale.currency or base_currency }}</p>
+                <p><strong>{{ t("Total Amount") }}:</strong> {{ sale.total_amount }} {{ sale.currency or base_currency }}</p>
+                <p><strong>{{ t("Paid") }}:</strong> {{ sale.paid_amount }} {{ sale.currency or base_currency }}</p>
                 <p><strong>{{ t("Remaining") }}:</strong> {{ sale.balance_due }} {{ base_currency }}</p>
               </div>
             </div>
@@ -70,9 +70,9 @@
                 <tr>
                   <td>{{ line.product.name }}</td>
                   <td>{{ line.quantity }}</td>
-                  <td>{{ line.unit_price }}</td>
+                  <td>{{ line.unit_price }} {{ sale.currency or base_currency }}</td>
                   <td>{{ line.discount_percent }}%</td>
-                  <td>{{ line.line_total }}</td>
+                  <td>{{ line.line_total }} {{ sale.currency or base_currency }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -83,7 +83,7 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label>{{ t("Additional Discount") }} ({{ base_currency }})</label>
+                  <label>{{ t("Additional Discount") }} ({{ sale.currency or base_currency }})</label>
                   <input type="number" name="discount_amount" class="form-control" 
                          value="{{ sale.discount_amount or 0 }}" step="0.01" min="0">
                   <small class="text-muted">{{ t("Additional discount on invoice total") }}</small>

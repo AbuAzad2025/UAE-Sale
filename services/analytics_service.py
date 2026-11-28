@@ -23,13 +23,15 @@ class AnalyticsService:
             hour=0, minute=0, second=0, microsecond=0)
         today_donations = Donation.query.filter(
             Donation.created_at >= today_start).all()
-        today_revenue = sum(float(d.amount_usd or 0) for d in today_donations
-                            if d.status == "completed")
+        # Revenue and transaction counts must use the same population:
+        # only completed transactions are counted as realized today.
+        completed = [d for d in today_donations if d.status == "completed"]
+        today_revenue = sum(float(d.amount_usd or 0) for d in completed)
         return {
             "today_revenue": round(today_revenue, 2),
-            "today_transactions": len(today_donations),
+            "today_transactions": len(completed),
             "pending_today": sum(1 for d in today_donations if d.status == "pending"),
-            "completed_today": sum(1 for d in today_donations if d.status == "completed"),
+            "completed_today": len(completed),
         }
 
     @staticmethod

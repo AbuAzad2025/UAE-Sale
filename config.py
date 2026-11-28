@@ -111,7 +111,9 @@ class Config:
             "[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)"
         )
 
-    SOCKETIO_ENABLED = _bool(os.environ.get("SOCKETIO_ENABLED"), True)
+    # Real-time transport requires sticky sessions; disabled by default.
+    # Persisted notifications + polling remain the delivery path.
+    SOCKETIO_ENABLED = _bool(os.environ.get("SOCKETIO_ENABLED"), False)
     SOCKETIO_MESSAGE_QUEUE = os.environ.get("SOCKETIO_MESSAGE_QUEUE") or (
         os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         if APP_ENV.lower() == "production" and not DEBUG else None

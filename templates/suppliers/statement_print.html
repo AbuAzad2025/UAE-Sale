@@ -52,7 +52,11 @@
 
   <div class="st-title-band">
     <h2>{{ t('Supplier Statement') }} — {{ display_name(supplier) }}</h2>
-    <div style="font-size:8px;">{{ t('Date') }}: {{ now().strftime('%Y-%m-%d') }} | {{ t('Supplier Number') }} #{{ supplier.id }}</div>
+    <div style="font-size:8px;">{{ t('Date') }}: {{ now().strftime('%Y-%m-%d') }} |
+      {% if supplier.supplier_number is defined and supplier.supplier_number %}{{ t('Supplier Number') }}: {{ supplier.supplier_number }}
+      {% elif supplier.code is defined and supplier.code %}{{ t('Supplier Number') }}: {{ supplier.code }}
+      {% else %}{{ t('ID') }}: #{{ supplier.id }}{% endif %}
+    </div>
   </div>
 
   <div class="st-body">
@@ -68,10 +72,6 @@
         <h3>{{ t('Account Summary') }}</h3>
         <p><strong>{{ t('Total Purchases') }}:</strong> {{ '{:,.2f}'.format(total_purchases) }}</p>
         <p><strong>{{ t('Total Payments') }}:</strong> {{ '{:,.2f}'.format(total_payments) }}</p>
-        {% if total_opening %}<p><strong>{{ t('Opening Balance') }}:</strong> {{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</p>{% endif %}
-        {% if total_opening %}<p><strong>{{ t('Opening Balance') }}:</strong> {{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</p>{% endif %}
-        {% if total_opening %}<p><strong>{{ t('Opening Balance') }}:</strong> {{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</p>{% endif %}
-        {% if total_opening %}<p><strong>{{ t('Opening Balance') }}:</strong> {{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</p>{% endif %}
         {% if total_opening %}<p><strong>{{ t('Opening Balance') }}:</strong> {{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</p>{% endif %}
         <p><strong>{{ t('Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}:</strong> {{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}</p>
       </div>
@@ -105,28 +105,15 @@
               {% for ln in tx.details.lines %}{{ ln.product }} ({{ '{:,.2f}'.format(ln.quantity) }} × {{ '{:,.2f}'.format(ln.unit_cost) }}){% if not loop.last %}، {% endif %}{% endfor %}
               · <strong>{{ t('Tax') }}:</strong> {{ '{:,.2f}'.format(tx.details.tax) }}
               · <strong>{{ t('Due Date') }}:</strong> {{ tx.details.due_date }}
+            {% elif tx.type == 'opening' %}
+              <strong>{{ t('Description') }}:</strong> {{ tx.description }}
             {% else %}
-              {% if tx.type == 'opening' %}<strong>{{ t('Description') }}:</strong> {{ tx.description }}
-              {% else %}
-              {% if tx.type == 'opening' %}<strong>{{ t('Description') }}:</strong> {{ tx.description }}
-              {% else %}
-              {% if tx.type == 'opening' %}<strong>{{ t('Description') }}:</strong> {{ tx.description }}
-              {% else %}
-              {% if tx.type == 'opening' %}<strong>{{ t('Description') }}:</strong> {{ tx.description }}
-              {% else %}
-              {% if tx.type == 'opening' %}<strong>{{ t('Description') }}:</strong> {{ tx.description }}
-              {% else %}
               <strong>{{ t('Method') }}:</strong> {{ tx.details.method }}
               · <strong>{{ t('Status') }}:</strong> {{ t('Confirmed') if tx.details.confirmed else t('Pending') }}
               · <strong>{{ t('Cheque') }}:</strong> {{ tx.details.cheque_number }}
               · <strong>{{ t('Bank/Account') }}:</strong> {{ tx.details.bank_name }} / {{ tx.details.account_number }}
               · <strong>{{ t('Due Date') }}:</strong> {{ tx.details.due_date }}
               {% if tx.details.notes %}· <strong>{{ t('Notes') }}:</strong> {{ tx.details.notes }}{% endif %}
-              {% endif %}
-              {% endif %}
-              {% endif %}
-              {% endif %}
-              {% endif %}
             {% endif %}
           </td>
         </tr>
@@ -137,9 +124,13 @@
     </table>
 
     <div class="st-total">
-      <div class="st-total-row"><span>{{ t('Total Purchases') }}</span><span>{{ '{:,.2f}'.format(total_purchases) }} {{ base_currency }}</span></div>
-      <div class="st-total-row"><span>{{ t('Total Payments') }}</span><span>{{ '{:,.2f}'.format(total_payments) }} {{ base_currency }}</span></div>
-      <div class="st-total-row final"><span>{{ t('Balance') }} {{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }}</span><span>{{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}</span></div>
+      <div class="st-total-row"><span>{{ t('Total Payments (Debit)') }}</span><span>{{ '{:,.2f}'.format(total_payments) }} {{ base_currency }}</span></div>
+      <div class="st-total-row"><span>{{ t('Total Purchases (Credit)') }}</span><span>{{ '{:,.2f}'.format(total_purchases) }} {{ base_currency }}</span></div>
+      {% if total_opening %}<div class="st-total-row"><span>{{ t('Opening Balance (Credit)') }}</span><span>{{ '{:,.2f}'.format(total_opening) }} {{ base_currency }}</span></div>{% endif %}
+      <div class="st-total-row final">
+        <span>{{ t('Final Balance') }} = {{ t('Payments') }} − {{ t('Purchases') }}{% if total_opening %} − {{ t('Opening Balance') }}{% endif %} ({{ t('Due from Supplier') if final_balance < 0 else t('In Our Favor') }})</span>
+        <span>{{ '{:,.2f}'.format(final_balance|abs) }} {{ base_currency }}</span>
+      </div>
     </div>
 
     <div class="st-sign">

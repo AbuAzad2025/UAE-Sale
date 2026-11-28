@@ -195,6 +195,74 @@ class CurrencyService:
         return CurrencyService._rates_source.get((currency or "").upper(), "unknown")
 
     @staticmethod
+    def update_all_rates():
+        """Refresh live rates, persist them and invalidate stale caches.
+
+        Called by the scheduled ``celery_tasks.update_exchange_rates`` job.
+        Only live-provider quotes are stored as non-manual ``ExchangeRate``
+        rows; manual overrides are never touched. Returns a small summary so
+        the task can report how many pairs were refreshed.
+        """
+        from datetime import datetime, timezone
+
+        from models import Currency, ExchangeRate
+
+        base = (CurrencyService.get_base_currency() or CurrencyService.DEFAULT_BASE).upper()
+
+        # Drop any stale (possibly fallback) quote before asking the provider.
+        CurrencyService._rates_cache.pop(base, None)
+        CurrencyService._rates_source.pop(base, None)
+
+        try:
+            rates = CurrencyService.get_all_rates(base=base)
+        except Exception:
+            return {"success": False, "updated": 0, "base": base, "source": "unavailable"}
+
+        if CurrencyService.get_rate_provenance(base) != "live":
+            return {"success": False, "updated": 0, "base": base, "source": "fallback"}
+
+        now = datetime.now(timezone.utc)
+        currency_ids = {
+            (row.code or "").upper(): row.id for row in Currency.query.all()
+        }
+        updated = 0
+        try:
+            for code, value in (rates or {}).items():
+                code = str(code).upper()
+                if code == base:
+                    continue
+                rate = Decimal(str(value))
+                row = (
+                    ExchangeRate.query.filter_by(
+                        from_currency=base, to_currency=code, is_manual=False
+                    )
+                    .order_by(ExchangeRate.valid_from.desc())
+                    .first()
+                )
+                if row is None:
+                    row = ExchangeRate(
+                        from_currency=base,
+                        to_currency=code,
+                        currency_id=currency_ids.get(code),
+                        source="live",
+                        is_manual=False,
+                    )
+                    db.session.add(row)
+                row.rate = rate.quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
+                row.source = "live"
+                row.valid_from = now
+                updated += 1
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+        # Force the next reader to observe the refreshed provider quote.
+        CurrencyService._rates_cache.pop(base, None)
+        CurrencyService._rates_source.pop(base, None)
+        return {"success": True, "updated": updated, "base": base, "source": "live"}
+
+    @staticmethod
     def get_exchange_rate(from_currency, to_currency=None, user_rate=None):
         """
         Get exchange rate between two currencies.
@@ -245,7 +313,16 @@ class CurrencyService:
                 )
 
         all_rates = CurrencyService.get_all_rates(base=from_currency)
-        return all_rates.get(to_currency, Decimal("1"))
+        rate = all_rates.get(to_currency)
+        if rate is None:
+            # Never silently treat an unknown pair as 1:1 — callers must
+            # supply an explicit manual rate instead of booking a fake FX
+            # gain/loss against a currency we do not actually know.
+            raise ValueError(
+                f"No exchange rate available for {from_currency} to {to_currency}; "
+                f"an explicit manual rate is required"
+            )
+        return Decimal(str(rate)).quantize(RATE_QUANTUM, rounding=ROUND_HALF_UP)
 
     @staticmethod
     def format_amount(amount, currency=None, decimal_places=2):

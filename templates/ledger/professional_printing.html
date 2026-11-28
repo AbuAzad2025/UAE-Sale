@@ -251,12 +251,6 @@
         <button class="print-btn" onclick="printReport()">
           <i class="fas fa-print mr-2"></i>{{ t('Luxury Print') }}
         </button>
-        <button class="print-btn" onclick="printPDF()">
-          <i class="fas fa-file-pdf mr-2"></i>{{ t('Export PDF') }}
-        </button>
-        <button class="print-btn" onclick="printExcel()">
-          <i class="fas fa-file-excel mr-2"></i>{{ t('Export Excel') }}
-        </button>
       </div>
     </div>
   </div>
@@ -358,18 +352,13 @@
     <div class="alert alert-info" style="margin-top: 30px; border-radius: 15px; border-inline-start: 5px solid #17a2b8;">
       <h5><i class="fas fa-info-circle mr-2"></i>{{ t('Important Notes') }}:</h5>
       <ul class="mb-0">
-        <li>{{ t('This report was prepared in accordance with international accounting standards') }}</li>
         <li>{{ t('All amounts in') }} {{ base_currency_name }} ({{ base_currency }})</li>
-        <li>{{ t('The report is approved by the advanced accounting system') }}</li>
         <li>{{ t('Print Date') }}: {{ datetime.now().strftime('%Y-%m-%d %H:%M') }}</li>
       </ul>
     </div>
 
     
     <div class="print-footer">
-      <h5><i class="fas fa-certificate mr-2"></i>{{ t('Data Accuracy Certificate') }}</h5>
-      <p>{{ t('We confirm that the data in this report is correct and matches the accounting records') }}</p>
-      
       <div class="footer-signatures">
         <div class="signature-box">
           <div class="signature-line"></div>
@@ -411,45 +400,6 @@ function printReport() {
       el.style.display = '';
     });
   }, 1000);
-}
-
-function printPDF() {
-  if (typeof jsPDF !== 'undefined') {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const element = document.getElementById('printContent');
-    
-    doc.setFontSize(20);
-    doc.text({{ t('Trial Balance Report')|tojson }}, 105, 20, { align: 'center' });
-    
-    doc.save('trial_balance_' + new Date().toISOString().split('T')[0] + '.pdf');
-  } else {
-    alert({{ t('jsPDF library is not available')|tojson }});
-  }
-}
-
-function printExcel() {
-  const data = [];
-  
-  {% for item in trial_balance_data %}
-  data.push([
-    '{{ item.account.code }}',
-    '{{ display_name(item.account) }}',
-    '{{ item.account.type|status_label }}',
-    {{ item.debit }},
-    {{ item.credit }},
-    {{ item.account.get_balance() }}
-  ]);
-  {% endfor %}
-  
-  const ws = XLSX.utils.aoa_to_sheet([
-    [{{ t('Account Code')|tojson }}, {{ t('Account Name')|tojson }}, {{ t('Account Type')|tojson }}, {{ t('Debit')|tojson }}, {{ t('Credit')|tojson }}, {{ t('Net Balance')|tojson }}],
-    ...data
-  ]);
-  
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, {{ t('Trial Balance')|tojson }});
-  
-  XLSX.writeFile(wb, 'trial_balance_' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
 window.addEventListener('beforeprint', function() {

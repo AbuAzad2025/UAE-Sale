@@ -144,7 +144,7 @@
     <div class="totals">
       <div class="total-row">
         <span>{{ t("Subtotal") }}:</span>
-        <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency }}</strong>
+        <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency or base_currency }}</strong>
       </div>
       {% if sale.discount_amount > 0 %}
       <div class="total-row">
@@ -166,8 +166,17 @@
       {% endif %}
       <div class="total-row final">
         <span>{{ t("⭐ Grand Total ⭐") }}</span>
-        <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
+        <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}</strong>
       </div>
+      {% if sale.paid_amount_base is defined and sale.paid_amount_base is not none %}
+      <div class="total-row"><span>{{ t('Paid') }}:</span><strong>{{ "{:,.2f}".format(sale.paid_amount_base) }} {{ base_currency }}</strong></div>
+      {% endif %}
+      {% if sale.balance_due is defined and sale.balance_due is not none %}
+      <div class="total-row"><span>{{ t('Balance') }}:</span><strong>{{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}</strong></div>
+      {% endif %}
+      {% if sale.amount_base is defined and sale.amount_base is not none %}
+      <div class="total-row"><span>{{ t('Base Equivalent') }} ({{ base_currency }}):</span><strong>{{ "{:,.2f}".format(sale.amount_base) }} {{ base_currency }}</strong></div>
+      {% endif %}
     <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>

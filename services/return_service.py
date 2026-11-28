@@ -12,7 +12,9 @@ from utils.helpers import generate_number, create_audit_log
 
 class ReturnService:
     @staticmethod
-    def create_return(sale_id, return_lines_data, user_id=None, notes=None):  # noqa: C901
+    def create_return(  # noqa: C901
+        sale_id, return_lines_data, user_id=None, notes=None, auto_approve=False
+    ):
         """
         Create a product return (Sales Return) with financial and stock updates.
 
@@ -25,6 +27,11 @@ class ReturnService:
                 - notes (str)
             user_id (int): ID of the user processing the return.
             notes (str): General notes for the return.
+            auto_approve (bool): Legacy escape hatch — pass True to finalise a
+                return immediately. The default is ``False``: returns are
+                created ``pending`` and must be finalised via
+                :meth:`approve_return` (which re-derives the customer balance
+                and the invoice settlement).
 
         Returns:
             ProductReturn: The created return record.
@@ -46,7 +53,10 @@ class ReturnService:
                 exchange_rate=sale.exchange_rate,
                 notes=notes,
                 processed_by=user_id,
-                status="approved",  # Immediate approval for now
+                # Returns are recorded pending and require an explicit
+                # approval — automatic approval bypassed the control and made
+                # the balance/stock effects impossible to review.
+                status="approved" if auto_approve else "pending",
             )
 
             product_return.total_amount = Decimal("0")
@@ -82,11 +92,14 @@ class ReturnService:
                         f"Sale line {sale_line_id} does not belong to sale {sale.id}."
                     )
 
+                # Effects are applied at creation, so a pending return also
+                # consumes sold quantity — otherwise two pending returns could
+                # each return the same units.
                 previous_returned = db.session.query(
                     db.func.sum(ProductReturnLine.quantity)
                 ).join(ProductReturn).filter(
                     ProductReturnLine.sale_line_id == sale_line.id,
-                    ProductReturn.status == "approved",
+                    ProductReturn.status.in_(["pending", "approved"]),
                 ).scalar() or Decimal("0")
 
                 if (previous_returned + quantity) > sale_line.quantity:
@@ -271,6 +284,7 @@ class ReturnService:
                     reference_id=product_return.id,
                     currency=sale.currency,
                     exchange_rate=sale.exchange_rate,
+                    idempotency_key=f"ProductReturn:{product_return.id}:revenue",
                 )
 
             # Post the COGS/inventory reversal at BASE currency (rate=1) in its
@@ -286,6 +300,7 @@ class ReturnService:
                     reference_id=product_return.id,
                     currency=_CS.get_base_currency(),
                     exchange_rate=1,
+                    idempotency_key=f"ProductReturn:{product_return.id}:cost",
                 )
 
             from services.currency_service import CurrencyService
@@ -330,6 +345,7 @@ class ReturnService:
                     reference_id=product_return.id,
                     currency=CurrencyService.get_base_currency(),
                     exchange_rate=1,
+                    idempotency_key=f"ProductReturn:{product_return.id}:cash",
                 )
                 cash_out_txn = (cash_out_base / _rate).quantize(
                     Decimal("0.001"), rounding=ROUND_HALF_UP
@@ -392,3 +408,47 @@ class ReturnService:
             db.session.rollback()
             current_app.logger.error(f"Failed to create return: {e}")
             raise e
+
+    @staticmethod
+    def approve_return(product_return_id, user_id=None, notes=None):
+        """Finalise a pending sales return.
+
+        The after_update listener in ``models/events.py`` re-derives the
+        customer balance and the invoice settlement when the status enters
+        (or leaves) ``approved`` — so no balance formula is duplicated here.
+        Calling this twice is a no-op.
+        """
+        product_return = get_owned_or_raise(ProductReturn, product_return_id)
+        if product_return is None:
+            raise ValueError(f"Product return {product_return_id} not found")
+        if product_return.status == "approved":
+            return product_return
+
+        from models.sale import recompute_sale_settlement
+
+        product_return.status = "approved"
+        product_return.processed_by = user_id or product_return.processed_by
+        if notes:
+            product_return.notes = (product_return.notes or "") + f"\n[اعتماد] {notes}"
+        db.session.flush()
+
+        recompute_sale_settlement(
+            product_return.sale_id, connection=db.session.connection()
+        )
+        from models.customer import recompute_customer_balance
+
+        recompute_customer_balance(product_return.customer_id)
+
+        create_audit_log(
+            "approve",
+            "product_returns",
+            product_return.id,
+            changes={
+                "status": "approved",
+                "return_number": product_return.return_number,
+                "refund_amount": str(product_return.refund_amount),
+            },
+            commit=False,
+        )
+        db.session.flush()
+        return product_return

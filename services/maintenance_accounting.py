@@ -298,6 +298,9 @@ def _post(
     reference_id,
     created_by=None,
     entry_date=None,
+    currency=None,
+    exchange_rate=1,
+    tenant_id=None,
 ):
     if not lines:
         raise ValidationError("لا يوجد بنود للترحيل")
@@ -309,6 +312,9 @@ def _post(
         reference_id=reference_id,
         entry_date=entry_date or datetime.now(timezone.utc),
         created_by=created_by,
+        currency=currency,
+        exchange_rate=exchange_rate,
+        tenant_id=tenant_id,
     )
 
 
@@ -605,7 +611,19 @@ def post_goods_receipt(purchase, *, created_by=None, entry_date=None):
         REFERENCE_PURCHASE, purchase.id, "سبق ترحيل استلام هذا أمر الشراء"
     )
     accounts = maintenance_accounts(purchase.tenant_id)
-    lines = build_goods_receipt_lines(purchase.subtotal, purchase.tax_amount, accounts)
+    rate = D(str(getattr(purchase, "exchange_rate", 1) or 1))
+    if rate <= 0:
+        raise ValidationError("سعر صرف أمر الشراء غير صالح")
+    # The purchase subtotal/VAT are in the transaction currency — convert to
+    # base before posting, and carry the original currency/rate as GL metadata
+    # instead of silently booking a foreign document at rate 1.
+    subtotal_base = (D(str(getattr(purchase, "subtotal", 0) or 0)) * rate).quantize(
+        D("0.001")
+    )
+    vat_base = (D(str(getattr(purchase, "tax_amount", 0) or 0)) * rate).quantize(
+        D("0.001")
+    )
+    lines = build_goods_receipt_lines(subtotal_base, vat_base, accounts)
     return _post(
         lines,
         description=f"استلام قطع صيانة - أمر شراء {purchase.po_number}",
@@ -613,6 +631,9 @@ def post_goods_receipt(purchase, *, created_by=None, entry_date=None):
         reference_id=purchase.id,
         created_by=created_by,
         entry_date=entry_date,
+        currency=getattr(purchase, "currency", None),
+        exchange_rate=rate,
+        tenant_id=purchase.tenant_id,
     )
 
 

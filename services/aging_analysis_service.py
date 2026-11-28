@@ -48,6 +48,7 @@ routes/ledger.py).
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, date, time
 
+from extensions import db
 from models import Customer, Supplier, Sale, Purchase, Payment
 from services.due_date_service import (
     OVERDUE_BUCKETS,
@@ -116,6 +117,61 @@ def _archived_record_ids(table_name):
     )
 
 
+def _customer_deductions(customer_id):
+    """Approved returns and active write-offs for a customer, in base currency.
+
+    Returns (returns_by_sale, writeoffs_by_sale, unassigned_writeoffs). The
+    unassigned write-offs are spread across open invoices by the caller.
+    """
+    from sqlalchemy import select
+
+    from models.product_return import ProductReturn
+    from models.write_off import WriteOff
+
+    connection = db.session.connection()
+
+    returns_by_sale = {}
+    rows = connection.execute(
+        select(
+            ProductReturn.__table__.c.sale_id,
+            ProductReturn.__table__.c.refund_amount,
+            ProductReturn.__table__.c.exchange_rate,
+        ).where(
+            ProductReturn.__table__.c.customer_id == customer_id,
+            ProductReturn.__table__.c.status == "approved",
+        )
+    ).fetchall()
+    for row in rows:
+        if row.sale_id is None:
+            continue
+        value = Decimal(str(row.refund_amount or 0)) * Decimal(
+            str(row.exchange_rate or 1)
+        )
+        returns_by_sale[row.sale_id] = returns_by_sale.get(row.sale_id, Decimal("0")) + value
+
+    writeoffs_by_sale = {}
+    unassigned = Decimal("0")
+    rows = connection.execute(
+        select(
+            WriteOff.__table__.c.sale_id,
+            WriteOff.__table__.c.amount_base,
+        ).where(
+            WriteOff.__table__.c.customer_id == customer_id,
+            WriteOff.__table__.c.status == WriteOff.STATUS_POSTED,
+        )
+    ).fetchall()
+    for row in rows:
+        value = Decimal(str(row.amount_base or 0))
+        if row.sale_id is None:
+            unassigned += value
+        else:
+            writeoffs_by_sale[row.sale_id] = (
+                writeoffs_by_sale.get(row.sale_id, Decimal("0")) + value
+            )
+
+    return returns_by_sale, writeoffs_by_sale, unassigned
+
+
 class AgingAnalysisService:
     @staticmethod
     def get_receivables_aging(as_of_date=None, as_of=None):  # noqa: C901
@@ -176,10 +232,29 @@ class AgingAnalysisService:
                 .all()
             )
 
-            for sale in unpaid_sales:
-                balance = (sale.amount_base or Decimal("0")) - (
-                    sale.paid_amount_base or Decimal("0")
+            # A receivable is net of approved returns and active (posted)
+            # write-offs — mirror `derive_customer_balance` so the aging card
+            # agrees with the customer/ledger balances.
+            returns_by_sale, writeoffs_by_sale, unassigned_writeoffs = (
+                _customer_deductions(customer.id)
+            )
+            raw_balances = [
+                (
+                    sale,
+                    Decimal(str(sale.amount_base or 0))
+                    - Decimal(str(sale.paid_amount_base or 0)),
                 )
+                for sale in unpaid_sales
+            ]
+            positive_total = sum(
+                (raw for _sale, raw in raw_balances if raw > 0), Decimal("0")
+            )
+
+            for sale, raw_balance in raw_balances:
+                balance = raw_balance - returns_by_sale.get(sale.id, Decimal("0"))
+                balance -= writeoffs_by_sale.get(sale.id, Decimal("0"))
+                if positive_total > 0 and raw_balance > 0:
+                    balance -= unassigned_writeoffs * raw_balance / positive_total
 
                 if balance > 0:
                     days_old = (as_of_date - sale.sale_date.date()).days

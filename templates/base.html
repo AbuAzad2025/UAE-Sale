@@ -198,10 +198,10 @@
           <i class="fas fa-globe"></i><span class="nav-label">{{ session.get('language', 'ar')|upper }}</span>
         </a>
         <div class="dropdown-menu dropdown-menu-sm dropdown-menu-left">
-          <a href="{{ url_for('language.set_language', lang='ar') }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
+          <a href="{{ url_for('language.set_language', lang='ar') }}?next={{ request.full_path|urlencode }}" class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}"></i>{{ t('Arabic') }}
           </a>
-          <a href="{{ url_for('language.set_language', lang='en') }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
+          <a href="{{ url_for('language.set_language', lang='en') }}?next={{ request.full_path|urlencode }}" class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}">
             <i class="fas fa-check mr-2 {% if session.get('language') != 'en' %}invisible{% endif %}"></i>{{ t('English') }}
           </a>
         </div>
@@ -244,13 +244,13 @@
   </nav>
 
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <a href="{{ url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
+    <a href="{{ url_for('owner.dashboard') if current_user.is_owner and not is_impersonating else url_for('main.dashboard') }}" class="brand-link text-center" style="padding: 15px;">
       {% if current_user.is_owner %}
-      <img src="{{ _tenant_logo }}" alt="logo" style="height: 60px;">
+      <img src="{{ _tenant_logo }}" alt="{{ config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems' }} logo" style="height: 60px;">
       {% elif _tenant_context and current_tenant and current_tenant.logo_url %}
-      <img src="{{ current_tenant.logo_url }}" alt="{{ current_tenant.name_ar or 'Company' }}" style="height: 60px;">
+      <img src="{{ current_tenant.logo_url }}" alt="{{ (current_tenant.name_ar or current_tenant.name or 'Company') ~ ' logo' }}" style="height: 60px;">
       {% else %}
-      <img src="{{ _tenant_logo }}" alt="logo" style="height: 60px;">
+      <img src="{{ _tenant_logo }}" alt="{{ config.COMPANY_NAME_AR or config.COMPANY_NAME or 'Azad Smart Systems' }} logo" style="height: 60px;">
       {% endif %}
     </a>
 
@@ -267,7 +267,7 @@
           <i class="fas fa-user-circle fa-2x text-white"></i>
         </div>
         <div class="info">
-          <a href="#" class="d-block text-white">{{ t('Account') }}</a>
+          <a href="{{ url_for('users.change_password') }}" class="d-block text-white">{{ t('Account') }}</a>
           <small class="text-white-50">{{ (current_user.role.name if current_language == 'en' and current_user.role.name else (current_user.role.name_ar or current_user.role.name)) if current_user.role else t('User') }}</small>
         </div>
       </div>
@@ -1101,7 +1101,7 @@
              inside it, so this is a div (not h1) to avoid nested headings. #}
           <div class="page-title-host">{% block page_title %}{% endblock %}</div>
           <ol class="breadcrumb float-sm-right mb-0" style="background:transparent;">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-home"></i> {{ t("Home") }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('owner.dashboard') if current_user.is_owner and not is_impersonating else url_for('main.dashboard') }}"><i class="fas fa-home"></i> {{ t("Home") }}</a></li>
             <li class="breadcrumb-item active">{% block breadcrumb_current %}{{ self.page_title()|page_title_text }}{% endblock %}</li>
           </ol>
         </div>
@@ -1149,7 +1149,7 @@
       <div class="footer-inline">
         {% if _tenant_context %}
         <div class="footer-col footer-tenant">
-          <img src="{{ _tenant_logo }}" alt="logo" class="footer-logo">
+          <img src="{{ _tenant_logo }}" alt="{{ (current_tenant.name_ar or current_tenant.name_en or current_tenant.name or 'Company') ~ ' logo' }}" class="footer-logo">
           <div class="footer-col-body">
             <span class="footer-brand-name">{{ current_tenant.name_ar if current_language == 'ar' and current_tenant.name_ar else (current_tenant.name_en or current_tenant.name or '') }}</span>
             {% if current_tenant.phone_1 %}<span class="footer-contact" dir="ltr"><i class="fas fa-phone"></i> {{ current_tenant.phone_1 }}</span>{% endif %}

@@ -70,6 +70,8 @@
             {% if tenant.is_active and not tenant.is_suspended %}
             <form method="POST" action="{{ url_for('owner.tenant_suspend', id=tenant.id) }}" style="display:inline;" onsubmit='return confirm({{ t('Suspend tenant {name}?', name=tenant.name_ar)|tojson }})'>
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="text" name="suspension_reason" class="form-control form-control-sm d-inline-block w-auto mr-1" maxlength="255"
+                     placeholder="{{ t('Suspension reason') }}" title="{{ t('Suspension reason') }}">
               <button type="submit" class="btn btn-danger btn-sm" title="{{ t('Suspend') }}"><i class="fas fa-ban"></i></button>
             </form>
             {% else %}

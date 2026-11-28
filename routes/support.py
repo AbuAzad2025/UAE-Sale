@@ -5,11 +5,11 @@
 يجب أن يُضيفه إلى utils/route_scope.py (حتمي — test_route_isolation_census).
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 
 from extensions import db
-from models import SupportTicket
+from models import SupportTicket, User
 from utils.decorators import get_owned_or_404
 from utils.helpers import create_audit_log
 
@@ -83,9 +83,30 @@ def ticket_new():
             priority = "normal"
         if category not in CATEGORY_CHOICES:
             category = "other"
+
+        # While the platform owner impersonates a tenant, tickets must be
+        # attributed to that tenant's user, not to the owner account. Record
+        # the true operator in the audit trail for provenance.
+        impersonated_id = session.get("impersonate_tenant_id")
+        is_impersonating = (
+            impersonated_id is not None
+            and session.get("impersonate_owner_id") in (None, current_user.id)
+            and tenant_id is not None
+            and str(impersonated_id) == str(tenant_id)
+        )
+        author_id = current_user.id
+        if is_impersonating:
+            tenant_author = (
+                User.query.filter_by(tenant_id=tenant_id, is_active=True)
+                .order_by(User.id)
+                .first()
+            )
+            if tenant_author is not None:
+                author_id = tenant_author.id
+
         row = SupportTicket(
             tenant_id=tenant_id,
-            author_user_id=current_user.id,
+            author_user_id=author_id,
             subject=subject,
             description=description,
             priority=priority,
@@ -93,11 +114,22 @@ def ticket_new():
         )
         db.session.add(row)
         db.session.commit()
+        changes = {
+            "subject": subject,
+            "priority": priority,
+            "category": category,
+        }
+        if is_impersonating:
+            # Marker survives even when the tenant has no user to attribute
+            # the ticket to (author then stays the authenticated owner).
+            changes["created_via_impersonation"] = True
+            changes["owner_user_id"] = current_user.id
+            changes["effective_author_user_id"] = author_id
         create_audit_log(
             "create_support_ticket",
             "support_tickets",
             row.id,
-            changes={"subject": subject, "priority": priority, "category": category},
+            changes=changes,
         )
         flash("✅ تم فتح التذكرة — سنرد عليك ضمن SLA الموضح", "success")
         return redirect(url_for("support.ticket_view", id=row.id))

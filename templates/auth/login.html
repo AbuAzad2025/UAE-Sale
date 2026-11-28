@@ -21,10 +21,10 @@
         <i class="fas fa-globe" aria-hidden="true"></i>{{ t('Arabic') if current_language == 'ar' else t('English') }}
       </button>
       <div class="dropdown-menu dropdown-menu-right">
-        <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}">
+        <a class="dropdown-item {% if session.get('language', 'ar') == 'ar' %}active{% endif %}" href="{{ url_for('language.set_language', lang='ar') }}?next={{ request.full_path|urlencode }}">
           <i class="fas fa-check {% if session.get('language', 'ar') != 'ar' %}invisible{% endif %}" aria-hidden="true"></i>{{ t('Arabic') }}
         </a>
-        <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}">
+        <a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('language.set_language', lang='en') }}?next={{ request.full_path|urlencode }}">
           <i class="fas fa-check {% if session.get('language') != 'en' %}invisible{% endif %}" aria-hidden="true"></i>{{ t('English') }}
         </a>
       </div>
@@ -96,7 +96,7 @@
                 <label for="remember">{{ t('Remember Me') }}</label>
               </div>
               <a href="https://wa.me/{{ config.COMPANY_WHATSAPP }}" target="_blank" rel="noopener" class="login-recover">
-                <i class="fas fa-key" aria-hidden="true"></i>{{ t('Forgot password? Contact admin') }}
+                <i class="fab fa-whatsapp" aria-hidden="true"></i>{{ 'تواصل مع الدعم عبر واتساب' if current_language == 'ar' else 'Contact support on WhatsApp' }}
               </a>
             </div>
             <button type="submit" class="btn btn-primary login-submit">

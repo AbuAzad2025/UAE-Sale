@@ -53,6 +53,64 @@ from utils.db_safety import (
 from sqlalchemy import text, inspect
 
 _FX_REVALUATION_CONFIRM_TOKEN = "YES_POST_FX_REVALUATION"
+_DB_CONVERT_CONFIRM_TOKEN = "YES_CONVERT_DATABASE"
+
+
+def _allowed_conversion_hosts():
+    """Hosts a database conversion may target: loopback + current DB host only."""
+    hosts = {"localhost", "127.0.0.1", "::1"}
+    configured_host = None
+    try:
+        configured_host = db.engine.url.host
+    except Exception:
+        pass
+    if not configured_host:
+        try:
+            from sqlalchemy.engine import make_url
+
+            configured_host = make_url(
+                current_app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+            ).host
+        except Exception:
+            configured_host = None
+    if configured_host:
+        hosts.add(str(configured_host).strip().lower())
+    return hosts
+
+
+def _validate_conversion_uri(uri):
+    """Return (host, dbname) for an allowlisted PostgreSQL URI, else (None, None).
+
+    Only the scheme and host are inspected; credentials are never logged.
+    """
+    try:
+        from sqlalchemy.engine import make_url
+
+        url = make_url(uri)
+    except Exception:
+        return None, None
+
+    driver = (url.drivername or "").lower()
+    if driver not in {
+        "postgresql",
+        "postgres",
+        "postgresql+psycopg2",
+        "postgresql+psycopg",
+        "postgresql+pg8000",
+    }:
+        return None, None
+    if not url.username or not url.database:
+        return None, None
+    # libpq options such as dbname/service could redirect the connection.
+    if url.query and ({"dbname", "service"} & set(url.query)):
+        return None, None
+
+    host = (url.host or "").strip().lower()
+    if host in ("localhost", "::1"):
+        host = "127.0.0.1"
+    if host not in _allowed_conversion_hosts():
+        return None, None
+    return host, url.database
 
 
 def get_allowed_table_names_safe():
@@ -760,6 +818,8 @@ def verify_latest_backup():
 
     if request.method == "POST":
         row = _verify_latest(db)
+        # record_verification() only adds the row; the caller owns the commit.
+        db.session.commit()
         if row.status == "verified":
             flash(
                 f"✅ تم التحقق: {row.filename} — {row.table_count} جدولًا، {row.data_markers} سجلًا",
@@ -1043,6 +1103,7 @@ def delete_backup():
 
 @owner_bp.route("/backups/download/<filename>")
 @login_required
+@owner_required
 @permission_required("manage_backups")
 def download_backup(filename):
     """تحميل نسخة احتياطية"""
@@ -1345,6 +1406,9 @@ def convert_database():
     """تحويل بين أنواع قواعد البيانات"""
     if request.method == "POST":
         target_db = (request.form.get("target_db") or "").strip()
+        confirmation = (
+            request.form.get("confirm_token") or request.form.get("confirm") or ""
+        ).strip()
 
         if not target_db:
             flash("⚠️ يرجى اختيار قاعدة البيانات المستهدفة.", "warning")
@@ -1354,38 +1418,109 @@ def convert_database():
             flash("❌ هذا النظام يدعم PostgreSQL فقط.", "danger")
             return render_template("owner/convert_database.html")
 
+        if confirmation != _DB_CONVERT_CONFIRM_TOKEN:
+            flash(
+                f"❌ تأكيد غير صالح — اكتب {_DB_CONVERT_CONFIRM_TOKEN} للمتابعة.",
+                "danger",
+            )
+            return render_template("owner/convert_database.html")
+
+        new_uri = (request.form.get("postgresql_uri") or "").strip()
+        target_host, target_name = _validate_conversion_uri(new_uri)
+        if target_host is None:
+            flash(
+                "❌ عنوان قاعدة البيانات غير مسموح — يُسمح فقط بـ localhost/127.0.0.1 "
+                "ومضيف قاعدة البيانات الحالي، مع PostgreSQL.",
+                "danger",
+            )
+            return render_template("owner/convert_database.html")
+
         flash("🔄 جاري التحويل إلى PostgreSQL...", "info")
 
         try:
-            new_uri = request.form.get("postgresql_uri")
-
             from sqlalchemy import create_engine
 
             target_engine = create_engine(new_uri)
-
             inspector = inspect(db.engine)
             allowed_tables = get_allowed_table_names_safe()
+            table_names = [
+                name
+                for name in inspector.get_table_names()
+                if name in allowed_tables
+            ]
+            expected_counts = {}
 
-            for table_name in inspector.get_table_names():
-                if table_name not in allowed_tables:
-                    continue
-                result = db.session.execute(text(f"SELECT * FROM {table_name}"))  # nosec B608
-                rows = result.fetchall()
-                columns = result.keys()
+            # One transaction for the whole conversion: a failure rolls back
+            # every table instead of leaving a partially copied database.
+            with target_engine.begin() as conn:
+                for table_name in table_names:
+                    # Table names come from inspector, never from user input.
+                    result = db.session.execute(
+                        text(f"SELECT * FROM {table_name}")  # nosec B608
+                    )
+                    rows = result.fetchall()
+                    columns = result.keys()
+                    expected_counts[table_name] = len(rows)
 
-                if rows:
-                    placeholders = ", ".join([f":{col}" for col in columns])
-                    insert_sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"  # nosec B608
+                    if rows:
+                        placeholders = ", ".join([f":{col}" for col in columns])
+                        insert_sql = (
+                            f"INSERT INTO {table_name} ({', '.join(columns)}) "
+                            f"VALUES ({placeholders})"  # nosec B608
+                        )
+                        conn.execute(
+                            text(insert_sql),
+                            [dict(zip(columns, row)) for row in rows],
+                        )
 
-                    with target_engine.connect() as conn:
-                        for row in rows:
-                            conn.execute(text(insert_sql), dict(zip(columns, row)))
-                        conn.commit()
+            # Verify each copied table in a fresh connection after commit.
+            with target_engine.connect() as verify_conn:
+                for table_name, expected in expected_counts.items():
+                    actual = verify_conn.execute(
+                        text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
+                    ).scalar()
+                    if int(actual or 0) != int(expected):
+                        raise RuntimeError(
+                            f"Row count mismatch for {table_name}: "
+                            f"{actual} != {expected}"
+                        )
 
+            create_audit_log(
+                "convert_database",
+                "system",
+                None,
+                changes={
+                    "action": "convert_database",
+                    "status": "success",
+                    "target_host": target_host,
+                    "target_db": target_name,
+                    "tables": len(expected_counts),
+                },
+                commit=True,
+            )
             flash("✅ تم التحويل إلى PostgreSQL بنجاح!", "success")
 
         except Exception as e:
-            current_app.logger.error(f"Database convert error: {e}")
+            db.session.rollback()
+            # Do not log the exception verbatim: SQLAlchemy may embed the URI
+            # (and its password) in connection error messages.
+            current_app.logger.error("Database convert error (%s)", type(e).__name__)
+            try:
+                create_audit_log(
+                    "convert_database",
+                    "system",
+                    None,
+                    changes={
+                        "action": "convert_database",
+                        "status": "failed",
+                        "target_host": target_host,
+                        "target_db": target_name,
+                        "error": type(e).__name__,
+                    },
+                    commit=True,
+                )
+            except Exception:
+                current_app.logger.exception("handler failed")
             flash("❌ خطأ في تحويل قاعدة البيانات.", "danger")
 
     return render_template("owner/convert_database.html")
@@ -1431,11 +1566,35 @@ def company_info():
         return redirect(url_for("owner.dashboard"))
 
     if request.method == "POST":
+        name_ar = request.form.get("name_ar", "").strip()
+        name_en = request.form.get("name_en", "").strip()
+        name = name_en or name_ar
+        slug = _valid_tenant_slug(request.form.get("slug"))
+        email = request.form.get("email", "").strip()
+
+        errors = []
+        if not name_ar and not name_en:
+            errors.append("الاسم (عربي أو إنجليزي) مطلوب.")
+        if slug is None:
+            errors.append("المعرف (slug) غير صالح: أحرف لاتينية صغيرة/أرقام/شرطات فقط (2-100).")
+        else:
+            slug_query = Tenant.query.filter_by(slug=slug)
+            if tenant.id is not None:
+                slug_query = slug_query.filter(Tenant.id != tenant.id)
+            if slug_query.first() is not None:
+                errors.append(f'المعرف "{slug}" مستخدم بالفعل.')
+        if email and ("@" not in email or "." not in email):
+            errors.append("البريد الإلكتروني غير صالح.")
+        if errors:
+            for error in errors:
+                flash(error, "danger")
+            return render_template("owner/company_info.html", tenant=tenant)
+
         try:
-            tenant.name_ar = request.form.get("name_ar", "").strip()
-            tenant.name_en = request.form.get("name_en", "").strip()
-            tenant.name = tenant.name_en or tenant.name_ar
-            tenant.slug = request.form.get("slug", "").strip()
+            tenant.name_ar = name_ar
+            tenant.name_en = name_en
+            tenant.name = name
+            tenant.slug = slug
             tenant.business_type = request.form.get("business_type", "garage")
             tenant.industry = request.form.get("industry", "automotive")
 
@@ -1446,7 +1605,7 @@ def company_info():
             tenant.phone_1 = request.form.get("phone_1", "").strip()
             tenant.phone_2 = request.form.get("phone_2", "").strip()
             tenant.mobile = request.form.get("mobile", "").strip()
-            tenant.email = request.form.get("email", "").strip()
+            tenant.email = email or None
             tenant.website = request.form.get("website", "").strip()
 
             tenant.tax_number = request.form.get("tax_number", "").strip()
@@ -1464,6 +1623,18 @@ def company_info():
 
             tenant.updated_by = current_user.id
 
+            create_audit_log(
+                "update",
+                "tenants",
+                tenant.id,
+                changes={
+                    "action": "update_platform_identity",
+                    "name": tenant.name,
+                    "slug": tenant.slug,
+                    "email": tenant.email,
+                },
+                commit=False,
+            )
             db.session.commit()
 
             flash("تم حفظ معلومات الشركة بنجاح", "success")
@@ -1685,14 +1856,26 @@ def _tenant_form_values(tenant=None):
     if request.method == "POST":
         posted = request.form.to_dict()
         base.update({k: posted[k] for k in base if k in posted})
-        base["is_trial"] = request.form.get("is_trial") == "on"
-        base["is_active"] = request.form.get("is_active") == "on"
-        base["is_suspended"] = request.form.get("is_suspended") == "on"
+        # Checkboxes that are not rendered in the form must not silently
+        # reset stored values when the form is posted.
+        for field, default in (
+            ("is_trial", False),
+            ("is_active", True),
+            ("is_suspended", False),
+        ):
+            if field in request.form:
+                base[field] = request.form.get(field) == "on"
+            elif tenant is not None:
+                base[field] = bool(getattr(tenant, field, default))
     return base, currencies
 
 
-def _validate_tenant_form(form, currencies, exclude_id=None):
-    """Server-side validation. Returns (cleaned_dict, errors_list)."""
+def _validate_tenant_form(form, currencies, exclude_id=None, existing=None):
+    """Server-side validation. Returns (cleaned_dict, errors_list).
+
+    ``existing`` is the tenant being edited (None on create). Fields with no
+    input in the form keep their stored value instead of being reset.
+    """
     codes = {code for code, _ in currencies}
     errors = []
     name_ar = (form.get("name_ar") or "").strip()
@@ -1754,7 +1937,11 @@ def _validate_tenant_form(form, currencies, exclude_id=None):
         "default_currency": currency,
         "default_language": language,
         "timezone": (form.get("timezone") or "Asia/Dubai").strip() or "Asia/Dubai",
-        "is_trial": form.get("is_trial") == "on",
+        "is_trial": (
+            form.get("is_trial") == "on"
+            if "is_trial" in form
+            else bool(getattr(existing, "is_trial", False)) if existing is not None else False
+        ),
         "tax_country": (form.get("tax_country") or "AE").strip().upper()[:2] or "AE",
         "tax_inclusive": form.get("tax_inclusive") == "on",
         "enable_tax": form.get("enable_tax") == "on",
@@ -1894,7 +2081,7 @@ def tenant_export(id):
     """Export all data for a single tenant as ZIP (CSV per table) or JSON."""
     from services.tenant_export_service import export_tenant_zip, export_tenant_json
 
-    Tenant.query.get_or_404(id)
+    tenant = Tenant.query.get_or_404(id)
     fmt = request.args.get("format", "zip").lower()
 
     if fmt == "json":
@@ -1903,6 +2090,19 @@ def tenant_export(id):
     else:
         filename, data = export_tenant_zip(id)
         mimetype = "application/zip"
+
+    create_audit_log(
+        "export",
+        "tenants",
+        tenant.id,
+        changes={
+            "action": "export_tenant",
+            "tenant": tenant.name,
+            "format": fmt,
+            "filename": filename,
+        },
+        commit=True,
+    )
 
     from flask import Response
 
@@ -1985,9 +2185,25 @@ def tenant_edit(id):
     form, currencies = _tenant_form_values(tenant)
     if request.method == "POST":
         cleaned, errors = _validate_tenant_form(
-            request.form, currencies, exclude_id=tenant.id
+            request.form, currencies, exclude_id=tenant.id, existing=tenant
         )
-        wants_active = request.form.get("is_active") == "on"
+        # Checkboxes absent from the form keep the stored value.
+        wants_active = (
+            request.form.get("is_active") == "on"
+            if "is_active" in request.form
+            else bool(tenant.is_active)
+        )
+        wants_suspended = (
+            request.form.get("is_suspended") == "on"
+            if "is_suspended" in request.form
+            else bool(tenant.is_suspended)
+        )
+        # Active and suspended are mutually exclusive; suspension wins.
+        if wants_active and wants_suspended:
+            errors.append("لا يمكن أن يكون المستأجر نشطًا ومعلقًا في نفس الوقت.")
+            wants_active = False
+        if wants_suspended:
+            wants_active = False
         if tenant.is_active and not wants_active:
             others_active = Tenant.query.filter(
                 Tenant.id != tenant.id, Tenant.is_active.is_(True)
@@ -2016,7 +2232,7 @@ def tenant_edit(id):
                 "brand_color_secondary", "#D4AF37"
             )
             tenant.is_active = wants_active
-            tenant.is_suspended = request.form.get("is_suspended") == "on"
+            tenant.is_suspended = wants_suspended
             tenant.suspension_reason = (
                 request.form.get("suspension_reason") or ""
             ).strip() or None
@@ -3124,7 +3340,9 @@ def currency_settings():
 def payment_gateways():
     from models import PaymentVault
 
-    vault = PaymentVault.query.first()
+    # PaymentVault is a single global record; pick it deterministically by
+    # primary key instead of whatever row the driver happens to return first.
+    vault = PaymentVault.query.order_by(PaymentVault.id.asc()).first()
     if not vault:
         import secrets
 
@@ -3280,28 +3498,66 @@ def database_optimize():
 def verify_backups():
     try:
         from services.backup_service import BackupService
+        from services.backup_verify import record_verification, verify_backup_file
 
         backups = BackupService.list_backups()
 
         verified = []
         for backup in backups:
-            file_path = backup.get("path") or os.path.join(
-                BackupService.BACKUP_DIR, backup.get("filename", "")
+            filename = backup.get("filename", "Unknown")
+            size = backup.get("size_mb", 0)
+            created = backup.get("datetime", backup.get("timestamp", "Unknown"))
+            try:
+                file_path = validate_backup_filename(filename, BackupService.BACKUP_DIR)
+            except ValueError:
+                verified.append(
+                    {
+                        "filename": filename,
+                        "size": size,
+                        "created": created,
+                        "valid": False,
+                    }
+                )
+                continue
+
+            # Real integrity check (gzip stream + stored checksum) first;
+            # only then inspect the SQL content (tables + data markers).
+            integrity_ok = (
+                os.path.exists(file_path)
+                and os.path.getsize(file_path) > 0
+                and BackupService.verify_backup(filename)
             )
+            if integrity_ok:
+                result = verify_backup_file(file_path)
+            else:
+                result = {
+                    "filename": filename,
+                    "size_bytes": (
+                        os.path.getsize(file_path)
+                        if os.path.exists(file_path)
+                        else 0
+                    ),
+                    "checksum": None,
+                    "status": "failed",
+                    "dialect": None,
+                    "table_count": 0,
+                    "data_markers": 0,
+                    "checks": [],
+                    "error": "Integrity check failed",
+                }
 
-            is_valid = os.path.exists(file_path) and os.path.getsize(file_path) > 1000
-
+            # Persist the machine result; caller owns the commit.
+            db.session.add(record_verification(db, result))
             verified.append(
                 {
-                    "filename": backup.get("filename", "Unknown"),
-                    "size": backup.get("size_mb", 0),
-                    "created": backup.get(
-                        "datetime", backup.get("timestamp", "Unknown")
-                    ),
-                    "valid": is_valid,
+                    "filename": filename,
+                    "size": size,
+                    "created": created,
+                    "valid": result.get("status") == "verified",
                 }
             )
 
+        db.session.commit()
         return render_template("owner/verify_backups.html", backups=verified)
 
     except Exception:
@@ -3314,26 +3570,28 @@ def verify_backups():
 @login_required
 @owner_required
 def data_cleanup():
+    def _stats():
+        """Safe defaults for both GET and validation-error renders."""
+        return {
+            "old_logs": AuditLog.query.filter(
+                AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
+            ).count(),
+            "old_archived": ArchivedRecord.query.filter(
+                ArchivedRecord.archived_at
+                < datetime.now(timezone.utc) - timedelta(days=180)
+            ).count(),
+        }
+
     if request.method == "POST":
         days = request.form.get("days", 90, type=int)
-    if days is None or not 30 <= days <= 365:
-        flash("⚠️ عدد الأيام يجب أن يكون بين 30 و365.", "danger")
-        return redirect(url_for("owner.data_cleanup"))
-        cleanup_type = (request.form.get("cleanup_type") or "").strip()
+        if days is None or not 30 <= days <= 365:
+            flash("⚠️ عدد الأيام يجب أن يكون بين 30 و365.", "danger")
+            return redirect(url_for("owner.data_cleanup"))
 
+        cleanup_type = (request.form.get("cleanup_type") or "").strip()
         if not cleanup_type:
             flash("⚠️ يرجى اختيار نوع البيانات للحذف.", "warning")
-            stats = {
-                "old_logs": AuditLog.query.filter(
-                    AuditLog.created_at
-                    < datetime.now(timezone.utc) - timedelta(days=90)
-                ).count(),
-                "old_archived": ArchivedRecord.query.filter(
-                    ArchivedRecord.archived_at
-                    < datetime.now(timezone.utc) - timedelta(days=180)
-                ).count(),
-            }
-            return render_template("owner/data_cleanup.html", stats=stats)
+            return render_template("owner/data_cleanup.html", stats=_stats())
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         deleted_count = 0
@@ -3380,17 +3638,7 @@ def data_cleanup():
         flash(f"✅ تم حذف {deleted_count} سجل قديم", "success")
         return redirect(url_for("owner.data_cleanup"))
 
-    stats = {
-        "old_logs": AuditLog.query.filter(
-            AuditLog.created_at < datetime.now(timezone.utc) - timedelta(days=90)
-        ).count(),
-        "old_archived": ArchivedRecord.query.filter(
-            ArchivedRecord.archived_at
-            < datetime.now(timezone.utc) - timedelta(days=180)
-        ).count(),
-    }
-
-    return render_template("owner/data_cleanup.html", stats=stats)
+    return render_template("owner/data_cleanup.html", stats=_stats())
 
 
 @owner_bp.route("/import-export-tools")

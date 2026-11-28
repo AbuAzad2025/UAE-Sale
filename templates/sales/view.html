@@ -328,7 +328,7 @@
         
         <div class="d-flex justify-content-between mb-2">
           <span><i class="fas fa-check-circle text-success mr-1"></i>{{ t("Confirmed Paid") }}:</span>
-          <strong class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} {{ base_currency }}</strong>
+          <strong class="text-success">{{ "{:,.2f}".format(sale.paid_amount) }} {{ sale.currency or base_currency }}</strong>
         </div>
         
         {% if sale.pending_cheques_amount > 0 %}

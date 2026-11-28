@@ -1,16 +1,33 @@
 {% extends 'base.html' %}
 {% block page_title %}{{ t('Bank Reconciliation') }} {{ rec.reconciliation_number }}{% endblock %}
 {% block content %}
+{# Totals are derived from the listed items so the printed figures always
+   reconcile with the table below. Recorded header values remain visible. #}
+{% set item_totals = namespace(deposits=0, withdrawals=0, charges=0, interest=0) %}
+{% for i in rec.items %}
+  {% if i.item_type == 'outstanding_deposit' %}{% set item_totals.deposits = item_totals.deposits + (i.amount or 0) %}
+  {% elif i.item_type == 'outstanding_withdrawal' %}{% set item_totals.withdrawals = item_totals.withdrawals + (i.amount or 0) %}
+  {% elif i.item_type == 'bank_charge' %}{% set item_totals.charges = item_totals.charges + (i.amount or 0) %}
+  {% elif i.item_type == 'bank_interest' %}{% set item_totals.interest = item_totals.interest + (i.amount or 0) %}
+  {% endif %}
+{% endfor %}
+{% set derived_books = ((rec.closing_balance_per_books|default(0)) or 0) - item_totals.charges + item_totals.interest - ((rec.errors_in_books|default(0)) or 0) %}
+{% set derived_bank = ((rec.closing_balance_per_bank|default(0)) or 0) + item_totals.deposits - item_totals.withdrawals - ((rec.errors_in_bank|default(0)) or 0) %}
+{% set derived_difference = derived_books - derived_bank %}
 <div class="row">
   <div class="col-md-6"><div class="card"><div class="card-body">
     <p><strong>{{ t('Period') }}:</strong> {{ rec.period_start }} — {{ rec.period_end }}</p>
     <p><strong>{{ t('Balance per books') }}:</strong> {{ '{:,.3f}'.format(rec.closing_balance_per_books or 0) }}</p>
     <p><strong>{{ t('Balance per bank') }}:</strong> {{ '{:,.3f}'.format(rec.closing_balance_per_bank or 0) }}</p>
-    <p><strong>{{ t('Outstanding deposits') }}:</strong> {{ '{:,.3f}'.format(rec.outstanding_deposits or 0) }}</p>
-    <p><strong>{{ t('Outstanding withdrawals') }}:</strong> {{ '{:,.3f}'.format(rec.outstanding_withdrawals or 0) }}</p>
-    <p><strong>{{ t('Difference') }}:</strong> {{ '{:,.3f}'.format(rec.difference or 0) }}
-      {% if rec.is_balanced %}<span class="badge badge-success">{{ t('Balanced') }}</span>{% else %}<span class="badge badge-warning">{{ t('Not balanced') }}</span>{% endif %}</p>
+    <p><strong>{{ t('Outstanding deposits') }}:</strong> {{ '{:,.3f}'.format(item_totals.deposits) }}
+      <small class="text-muted">{{ t('recorded') }}: {{ '{:,.3f}'.format(rec.outstanding_deposits or 0) }}</small></p>
+    <p><strong>{{ t('Outstanding withdrawals') }}:</strong> {{ '{:,.3f}'.format(item_totals.withdrawals) }}
+      <small class="text-muted">{{ t('recorded') }}: {{ '{:,.3f}'.format(rec.outstanding_withdrawals or 0) }}</small></p>
+    <p><strong>{{ t('Difference') }}:</strong> {{ '{:,.3f}'.format(derived_difference) }}
+      {% if derived_difference|abs < 0.01 %}<span class="badge badge-success">{{ t('Balanced') }}</span>{% else %}<span class="badge badge-warning">{{ t('Not balanced') }}</span>{% endif %}
+      <small class="text-muted">{{ t('recorded') }}: {{ '{:,.3f}'.format(rec.difference or 0) }}</small></p>
     <p><strong>{{ t('Status') }}:</strong> {{ rec.status }}</p>
+    {% if rec.statement_reference %}<p><strong>{{ t('Bank statement reference') }}:</strong> {{ rec.statement_reference }}</p>{% endif %}
   </div></div></div>
   <div class="col-md-6"><div class="card"><div class="card-body">
     <h5>{{ t('Adjustments') }}</h5>
@@ -31,6 +48,12 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-primary">{{ t('Complete and approve') }}</button>
     </form>
+    {% elif rec.status == 'completed' %}
+    <form method="POST" action="{{ url_for('bank_reconciliation.approve', id=rec.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-success">{{ t('Approve reconciliation') }}</button>
+    </form>
+    <small class="text-muted d-block mt-1">{{ t('The approver must be different from the creator.') }}</small>
     {% endif %}
   </div></div></div>
 </div>

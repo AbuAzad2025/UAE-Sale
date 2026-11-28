@@ -53,6 +53,9 @@ class BankReconciliation(TenantScopedMixin, db.Model):
     difference = db.Column(db.Numeric(18, 3), default=0)
 
     notes = db.Column(db.Text)
+    # Evidence that the figures came from a real bank statement, captured on
+    # the record so the approver can review it.
+    statement_reference = db.Column(db.String(120))
 
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     approved_by = db.Column(db.Integer, db.ForeignKey("users.id"))
@@ -111,9 +114,11 @@ class BankReconciliation(TenantScopedMixin, db.Model):
         }
 
     def approve(self, user_id):
-        """اعتماد المطابقة"""
+        """اعتماد المطابقة — separation of duties + balanced figures only."""
         if not self.is_balanced:
             raise ValueError("لا يمكن اعتماد مطابقة غير متوازنة")
+        if self.created_by is not None and user_id == self.created_by:
+            raise ValueError("لا يمكن لمن أنشأ المطابقة أن يعتمدها")
 
         self.status = "approved"
         self.approved_by = user_id

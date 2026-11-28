@@ -217,6 +217,20 @@ def _current_user_level():
     return _role_level(getattr(current_user, "role", None))
 
 
+def session_version_for_password_hash(password_hash):
+    """Opaque session-version token derived from a user's password hash.
+
+    ``set_password`` re-hashes with a fresh salt, so the token changes on every
+    password change. Storing it in the session lets ``before_request`` evict
+    sessions created under the previous password (all devices, not just the
+    one that performed the change) without exposing the hash itself.
+    """
+    import hashlib
+
+    raw = str(password_hash or "").encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()[:24]
+
+
 def _enforce_target_role_not_higher(target_role):
     """403 if *target_role* is more privileged than the current user.
 

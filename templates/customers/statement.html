@@ -706,7 +706,7 @@ table.statement-table thead th {
 
           <tr class="final-balance-row">
             <td colspan="5" class="text-center">
-              {{ 'Net of displayed transactions' if current_language == 'en' else 'صافي الحركات المعروضة' }}
+              {{ 'Balance incl. brought forward' if current_language == 'en' else 'الرصيد شاملاً المرحّل' }}
             </td>
             <td colspan="2" class="text-right amount-cell">
               {{ "{:,.2f}".format(final_balance|default(0)) }} {{ base_currency }}
@@ -808,7 +808,7 @@ table.statement-table thead th {
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="4">{{ t('Net of displayed transactions') if current_language == 'en' else 'صافي الحركات المعروضة' }}</td>
+        <td colspan="4">{{ 'Balance incl. brought forward' if current_language == 'en' else 'الرصيد شاملاً المرحّل' }}</td>
         <td class="num">{{ '{:,.2f}'.format(final_balance|default(0)) }} {{ base_currency }}</td>
       </tr>
     </tfoot>
@@ -818,7 +818,7 @@ table.statement-table thead th {
 <div class="print-only print-summary">
   <div>{{ t('Total Debit') if current_language == 'en' else 'إجمالي المدين' }}<strong>{{ '{:,.2f}'.format((transactions|sum(attribute='debit')) if transactions else 0) }} {{ base_currency }}</strong></div>
   <div>{{ t('Total Credit') if current_language == 'en' else 'إجمالي الدائن' }}<strong>{{ '{:,.2f}'.format((transactions|sum(attribute='credit')) if transactions else 0) }} {{ base_currency }}</strong></div>
-  <div>{{ t('Net of displayed transactions') if current_language == 'en' else 'صافي الحركات المعروضة' }}<strong>{{ '{:,.2f}'.format(final_balance|default(0)) }} {{ base_currency }}</strong></div>
+  <div>{{ 'Balance incl. brought forward' if current_language == 'en' else 'الرصيد شاملاً المرحّل' }}<strong>{{ '{:,.2f}'.format(final_balance|default(0)) }} {{ base_currency }}</strong></div>
   <div>{{ t('Current Balance') }}<strong>{{ '{:,.2f}'.format(system_balance) }} {{ base_currency }}</strong></div>
 </div>
 <div class="print-only print-signatures">

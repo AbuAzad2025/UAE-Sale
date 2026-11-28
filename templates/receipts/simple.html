@@ -58,6 +58,12 @@
       <div class="amount-words" style="margin-top:6px; font-size: 11px; color:#555; border-top:1px dashed #ccc; padding-top:8px;">
         <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
       </div>
+      {% if receipt.currency != base_currency %}
+      <div style="font-size: 11px; margin-top: 5px;">
+        ({{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }})
+        {% if receipt.exchange_rate %}<br>{{ t('Exchange Rate') }}: 1 {{ receipt.currency }} = {{ "{:,.6f}".format(receipt.exchange_rate) }} {{ base_currency }}{% endif %}
+      </div>
+      {% endif %}
       </div>
 
   {% set source_info = receipt.get_source_info() %}
@@ -66,7 +72,7 @@
     <strong style="font-size: 11px;">{{ t("Invoice Details") }}:</strong>
     <table style="margin-top: 8px; font-size: 11px;">
       <thead><tr><th>{{ t("Invoice Number") }}</th><th>{{ t("Date") }}</th><th>{{ t("Amount") }}</th></tr></thead>
-      <tbody><tr><td>{{ source_info.number }}</td><td>{{ source_info.date or '—' }}</td><td><strong>{{ "{:,.2f}".format((source_info.amount if source_info and source_info.amount is not none else receipt.amount)) }} {{ receipt.currency }}</strong></td></tr></tbody>
+      <tbody><tr><td>{{ source_info.number }}</td><td>{{ source_info.date or '—' }}</td><td><strong>{{ "{:,.2f}".format(source_info.amount if (source_info.amount is defined and source_info.amount is not none) else receipt.amount) }} {{ receipt.currency }}</strong></td></tr></tbody>
     </table>
   </div>
   {% endif %}

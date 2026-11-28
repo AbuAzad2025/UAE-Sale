@@ -13,6 +13,7 @@ from flask import (
 from flask_login import login_user, logout_user, current_user
 from extensions import db, limiter
 from models import User
+from utils.decorators import session_version_for_password_hash
 from utils.helpers import create_audit_log
 from services.nowpayments_service import NOWPaymentsService
 
@@ -84,6 +85,18 @@ def _as_utc(value):
     return value
 
 
+# One message for every failed credential attempt — whether the username
+# exists or not — so the login form cannot be used to enumerate accounts.
+_BAD_CREDENTIALS_MESSAGE = "❌ اسم المستخدم أو كلمة المرور غير صحيحة."
+
+
+def _looks_like_master_key(value):
+    """True for a daily master-key-shaped token (seed@YYYY@MM@DD)."""
+    import re
+
+    return bool(value) and bool(re.match(r"^.+@\d{4}@\d{2}@\d{2}$", str(value)))
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("20 per minute", methods=["POST"])
 
@@ -108,42 +121,40 @@ def login():
 
         user = User.query.filter(User.username == username).first()
 
-        if (
-            user
-            and user.locked_until
-            and _as_utc(user.locked_until) > datetime.now(timezone.utc)
-        ):
-            remaining = (
-                _as_utc(user.locked_until) - datetime.now(timezone.utc)
-            ).seconds // 60 + 1
-            flash(f"⚠️ حسابك مقفل مؤقتاً. حاول مرة أخرى بعد {remaining} دقيقة.", "danger")
-            return render_template("auth/login.html")
+        now_utc = datetime.now(timezone.utc)
+        is_locked = bool(
+            user and user.locked_until and _as_utc(user.locked_until) > now_utc
+        )
+        credentials_ok = bool(user and user.check_password(password))
 
-        if not user or not user.check_password(password):
-            if user:
+        if is_locked or not credentials_ok:
+            if user and user.locked_until and not is_locked:
+                # A lockout that has expired must clear the stale counter:
+                # otherwise one bad password re-locks the account instantly.
+                user.login_attempts = 0
+                user.locked_until = None
+
+            if user and not is_locked:
                 from config import Config
 
-                user.login_attempts = (user.login_attempts or 0) + 1
                 max_attempts = getattr(Config, "MAX_LOGIN_ATTEMPTS", 5)
                 block_duration = getattr(Config, "LOGIN_BLOCK_DURATION_MINUTES", 15)
-                if user.login_attempts >= max_attempts:
-                    user.locked_until = datetime.now(timezone.utc) + timedelta(
-                        minutes=block_duration
-                    )
-                    flash(
-                        f"⚠️ تم قفل حسابك لمدة {block_duration} دقيقة بسبب تكرار المحاولات الفاشلة.",
-                        "danger",
-                    )
-                else:
-                    remaining = max_attempts - user.login_attempts
-                    flash(
-                        f"❌ اسم المستخدم أو كلمة المرور غير صحيحة. متبقي {remaining} محاولات.",
-                        "danger",
-                    )
-                db.session.commit()
-            else:
-                flash("❌ اسم المستخدم أو كلمة المرور غير صحيحة.", "danger")
+                # The owner's master key rotates daily. A stale or mistyped
+                # master key is not a guessed password and must never lock the
+                # break-glass credential (which would lock out the platform).
+                master_key_failure = bool(
+                    getattr(user, "is_owner", False)
+                    and _looks_like_master_key(password)
+                )
+                if not master_key_failure:
+                    user.login_attempts = (user.login_attempts or 0) + 1
+                    if user.login_attempts >= max_attempts:
+                        user.locked_until = now_utc + timedelta(
+                            minutes=block_duration
+                        )
 
+            # Always the same text for unknown user / bad password / lockout.
+            flash(_BAD_CREDENTIALS_MESSAGE, "danger")
             create_audit_log("login_failed", "users", None, {"username": username})
 
             from models.login_history import LoginHistory
@@ -198,11 +209,17 @@ def login():
         login_user(user, remember=remember)
         if _lang:
             session["language"] = _lang
+        # Any other session carrying the previous password's version is
+        # rejected by app.py:before_request (central logout on password change).
+        session["session_version"] = session_version_for_password_hash(
+            user.password_hash
+        )
         session["last_activity"] = datetime.now().isoformat()
         session.permanent = True
 
         user.last_login = datetime.now(timezone.utc)
         user.login_attempts = 0
+        user.locked_until = None
 
         from models.login_history import LoginHistory
 

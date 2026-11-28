@@ -906,14 +906,16 @@ def manual_entry():  # noqa: C901
 
                 try:
                     debit_value = (
-                        float(str(debit).strip()) if debit and str(debit).strip() else 0
+                        Decimal(str(debit).strip())
+                        if debit and str(debit).strip()
+                        else Decimal("0")
                     )
                     credit_value = (
-                        float(str(credit).strip())
+                        Decimal(str(credit).strip())
                         if credit and str(credit).strip()
-                        else 0
+                        else Decimal("0")
                     )
-                except (ValueError, AttributeError, TypeError):
+                except Exception:
                     raise ValueError(
                         f"❌ قيمة غير صالحة في السطر {i + 1}: تحقق من المدين/الدائن."
                     )

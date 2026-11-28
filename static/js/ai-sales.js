@@ -2,7 +2,12 @@
 // Auto-pricing, stock alerts, and smart recommendations
 
 $(document).ready(function() {
-    
+
+    // AI responses are untrusted: escape every string before it enters HTML.
+    function escapeHtml(value) {
+        return $('<div>').text(value == null ? '' : String(value)).html();
+    }
+
     // توصية السعر عند اختيار منتج وعميل
     function checkPriceRecommendation(productId, customerId, lineIndex) {
         if (!productId || !customerId) return;
@@ -57,13 +62,13 @@ $(document).ready(function() {
                 if (response.type === 'error') {
                     alertContainer.html(`
                         <div class="alert alert-danger alert-sm mt-2">
-                            <i class="fas fa-exclamation-triangle"></i> ${response.message}
+                            <i class="fas fa-exclamation-triangle"></i> ${escapeHtml(response.message)}
                         </div>
                     `);
                 } else if (response.type === 'warning') {
                     alertContainer.html(`
                         <div class="alert alert-warning alert-sm mt-2">
-                            <i class="fas fa-exclamation-circle"></i> ${response.message}
+                            <i class="fas fa-exclamation-circle"></i> ${escapeHtml(response.message)}
                         </div>
                     `);
                 }
@@ -88,7 +93,7 @@ $(document).ready(function() {
                         <h5><i class="fas fa-chart-line"></i> ${t('Customer Analysis')}</h5>
                         <p><strong>${t('Current balance:')}</strong> ${analysis.current_balance.toFixed(2)} ${t('AED')}</p>
                         <p><strong>${t('Average payment delay:')}</strong> ${analysis.avg_payment_delay_days} ${t('days')}</p>
-                        <p><strong>${t('Recommendation:')}</strong> ${analysis.recommendation}</p>
+                        <p><strong>${t('Recommendation:')}</strong> ${escapeHtml(analysis.recommendation)}</p>
                     </div>
                 `;
                 
@@ -113,7 +118,7 @@ $(document).ready(function() {
                 
                 const sourceInfo = `
                     <small class="text-muted d-block mt-1">
-                        <i class="fas fa-info-circle"></i> ${suggestion.source}
+                        <i class="fas fa-info-circle"></i> ${escapeHtml(suggestion.source)}
                         ${suggestion.count > 0 ? `(${t('Based on')} ${suggestion.count} ${t('transactions')})` : ''}
                     </small>
                 `;
@@ -138,9 +143,9 @@ $(document).ready(function() {
                             <strong> ${t('Global market price:')}</strong><br>
                             <span class="badge badge-primary">${result.average_price_usd} USD</span>
                             <span class="badge badge-info">${result.suggested_price_aed.toFixed(2)} ${window.BASE_CURRENCY || 'AED'}</span><br>
-                            <small>${result.notes || ''}</small>
-                            ${result.markets ? '<br><small>' + t('Markets:') + ' ' + result.markets.join(', ') + '</small>' : ''}
-                            <button type="button" class="btn btn-xs btn-success mt-1" onclick="applyMarketPrice(${lineIndex}, ${result.suggested_price_aed})">
+                            <small>${escapeHtml(result.notes || '')}</small>
+                            ${result.markets ? '<br><small>' + escapeHtml(t('Markets:') + ' ' + result.markets.join(', ')) + '</small>' : ''}
+                            <button type="button" class="btn btn-xs btn-success mt-1" onclick="applyMarketPrice(${Number(lineIndex)}, ${Number(result.suggested_price_aed)})">
                                 ${t('Apply price')}
                             </button>
                         </div>
@@ -164,22 +169,22 @@ $(document).ready(function() {
                     let vehiclesHtml = '<div class="alert alert-info mt-2"><h6><i class="fas fa-car"></i> ' + t('Compatible with:') + '</h6><ul class="mb-0">';
                     
                     result.vehicles.slice(0, 5).forEach(v => {
-                        vehiclesHtml += `<li><strong>${v.brand}</strong>: ${v.models.join(', ')} (${v.years})`;
-                        if (v.engine) vehiclesHtml += ` - ${v.engine}`;
+                        vehiclesHtml += `<li><strong>${escapeHtml(v.brand)}</strong>: ${escapeHtml((v.models || []).join(', '))} (${escapeHtml(v.years)})`;
+                        if (v.engine) vehiclesHtml += ` - ${escapeHtml(v.engine)}`;
                         vehiclesHtml += '</li>';
                     });
                     
                     if (result.total_count > 5) {
-                        vehiclesHtml += `<li class="text-muted">...${t('and')} ${result.total_count - 5} ${t('others')}</li>`;
+                        vehiclesHtml += `<li class="text-muted">...${escapeHtml(t('and'))} ${Number(result.total_count) - 5} ${escapeHtml(t('others'))}</li>`;
                     }
                     
                     vehiclesHtml += '</ul>';
-                    if (result.notes) vehiclesHtml += `<small class="text-muted">${result.notes}</small>`;
+                    if (result.notes) vehiclesHtml += `<small class="text-muted">${escapeHtml(result.notes)}</small>`;
                     vehiclesHtml += '</div>';
                     
                     $('#compatible_vehicles').html(vehiclesHtml);
                 } else if (result.raw_response) {
-                    $('#compatible_vehicles').html(`<div class="alert alert-info mt-2">${result.raw_response}</div>`);
+                    $('#compatible_vehicles').html(`<div class="alert alert-info mt-2">${escapeHtml(result.raw_response)}</div>`);
                 }
             },
             error: function() {            }

@@ -75,7 +75,7 @@
         </tr>
       </tbody>
       <tfoot>
-        <tr><td>{{ t("Total Amount Paid") }} ({{ order.currency or 'AED' }})</td><td>{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td></tr>
+        <tr><td>{{ t("Total Amount Paid") }} ({{ (receipt.currency if receipt else None) or order.currency or 'AED' }})</td><td>{{ "{:,.3f}".format(receipt.amount or 0) if receipt else '0.000' }}</td></tr>
       </tfoot>
     </table>
 

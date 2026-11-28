@@ -3,6 +3,13 @@
 {% block title %}{{ t('Monitoring Dashboard') }} - {{ company_name }}{% endblock %}
 
 {% block content %}
+{% set db_class = 'success' if health.database.healthy else 'danger' %}
+{% set disk_pct = health.disk.percent|default(0) %}
+{% set memory_pct = health.memory.percent|default(0) %}
+{% set cpu_pct = health.cpu.percent|default(0) %}
+{% set disk_class = 'success' if health.disk.healthy and disk_pct < 80 else ('warning' if health.disk.healthy and disk_pct < 90 else 'danger') %}
+{% set memory_class = 'success' if health.memory.healthy and memory_pct < 75 else ('warning' if health.memory.healthy and memory_pct < 85 else 'danger') %}
+{% set cpu_class = 'success' if health.cpu.healthy and cpu_pct < 70 else ('warning' if health.cpu.healthy and cpu_pct < 80 else 'danger') %}
 <div class="content-header">
     <div class="container-fluid">
         <div class="row mb-2">
@@ -17,7 +24,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-lg-3 col-6">
-                <div class="small-box bg-info">
+                <div class="small-box bg-{{ db_class }}">
                     <div class="inner">
                         <h3>{{ 'OK' if health.database.healthy else 'DOWN' }}</h3>
                         <p>{{ t('Database') }}</p>
@@ -29,9 +36,9 @@
             </div>
 
             <div class="col-lg-3 col-6">
-                <div class="small-box bg-success">
+                <div class="small-box bg-{{ disk_class }}">
                     <div class="inner">
-                        <h3>{{ health.disk.percent }}%</h3>
+                        <h3>{{ disk_pct }}%</h3>
                         <p>{{ t('Disk Usage') }}</p>
                     </div>
                     <div class="icon">
@@ -41,9 +48,9 @@
             </div>
 
             <div class="col-lg-3 col-6">
-                <div class="small-box bg-warning">
+                <div class="small-box bg-{{ memory_class }}">
                     <div class="inner">
-                        <h3>{{ health.memory.percent }}%</h3>
+                        <h3>{{ memory_pct }}%</h3>
                         <p>{{ t('Memory Usage') }}</p>
                     </div>
                     <div class="icon">
@@ -53,9 +60,9 @@
             </div>
 
             <div class="col-lg-3 col-6">
-                <div class="small-box bg-danger">
+                <div class="small-box bg-{{ cpu_class }}">
                     <div class="inner">
-                        <h3>{{ health.cpu.percent }}%</h3>
+                        <h3>{{ cpu_pct }}%</h3>
                         <p>{{ t('CPU Usage') }}</p>
                     </div>
                     <div class="icon">

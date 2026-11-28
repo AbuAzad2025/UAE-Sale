@@ -356,10 +356,11 @@ class FXRevaluationService:
             rate = _dec(purchase.exchange_rate)
             if rate <= 0:
                 continue
-            # paid_amount is stored in the TRANSACTION (foreign) currency here
-            # (see Purchase model / test contract), so convert to base with the
-            # historical rate before netting against the base carrying amount.
-            paid_base = _dec(purchase.paid_amount or 0) * rate
+            # Purchase.paid_amount is already in the BASE currency (see the
+            # model's `paid_amount` property and `recalculate_payment_status`).
+            # Multiplying it by the historical rate double-converts the paid
+            # amount and inflates the open carrying balance.
+            paid_base = _dec(purchase.paid_amount or 0)
             carrying = _dec(purchase.amount_base or 0) - paid_base
             carrying = _clamp_non_negative(carrying)
             if carrying <= 0:
@@ -395,24 +396,33 @@ class FXRevaluationService:
             raise FXRateUnavailable(
                 f"No exchange rate available for {currency} to {base}"
             )
-        rate = _dec(CurrencyService.get_exchange_rate(currency, base))
+        try:
+            rate = _dec(CurrencyService.get_exchange_rate(currency, base))
+        except (ValueError, ArithmeticError) as exc:
+            # CurrencyService now refuses unknown pairs instead of silently
+            # returning 1.0 — surface that as a skippable FX-rate failure.
+            raise FXRateUnavailable(
+                f"No usable exchange rate for {currency} to {base}: {exc}"
+            )
         if rate <= 0:
             raise FXRateUnavailable(f"No usable exchange rate for {currency} to {base}")
         return rate
 
     @staticmethod
     def known_currencies(base=None):
-        """العملات التي يعرفها خدمة العملات (سعر مفقود = 1.0 = تسوية وهمية).
+        """العملات التي لديها سعر **مباشر من مزود حي** فقط.
 
-        ``CurrencyService.get_exchange_rate`` يعيد 1.0 لأي عملة غير
-        معروفة، فتسوية أرصدة بذلك السعر تُنتج فرقاً وهمياً ضخماً. لذلك
-        تُتخطّى العملة التي لا سعر لها بدل ترحيل قيد خاطئ.
+        ``CurrencyService`` يعيد الآن ``None``/استثناءً للعملة غير المعروفة،
+        لكن الجداول الاحتياطية (fallback) ما زالت تُنتج أسعاراً قديمة. تسوية
+        الأرصدة بسعر غير حي تُنتج فرقاً وهمياً، لذا تُستبعد كل العملات التي
+        لا تكون مصدَر أسعارها ``live``.
         """
+        base = base or FXRevaluationService.base_currency()
         try:
-            rates = CurrencyService.get_all_rates(
-                base or FXRevaluationService.base_currency()
-            )
+            rates = CurrencyService.get_all_rates(base=base)
         except Exception:
+            return set()
+        if CurrencyService.get_rate_provenance(base) != "live":
             return set()
         return {str(code).upper() for code in (rates or {})}
 

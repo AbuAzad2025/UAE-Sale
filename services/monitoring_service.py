@@ -87,14 +87,32 @@ class MonitoringService:
     @staticmethod
     def get_application_metrics() -> Dict:
         from models import Sale, Customer, Product
+        from models.tenant_scope import TENANT_LESS_SCOPE, get_current_tenant_id
 
         try:
+            tenant_id = get_current_tenant_id()
+
+            def _scoped(query, model):
+                """Keep the dashboard counters inside the active tenant.
+
+                A platform owner (tenant None) deliberately sees the whole
+                system; a tenant-less context only owns rows with no tenant.
+                """
+                if tenant_id is None:
+                    return query
+                if tenant_id == TENANT_LESS_SCOPE:
+                    return query.filter(model.tenant_id.is_(None))
+                return query.filter(model.tenant_id == tenant_id)
+
+            sales = _scoped(Sale.query, Sale)
+            customers = _scoped(Customer.query, Customer)
+            products = _scoped(Product.query, Product)
             return {
-                "total_sales": Sale.query.count(),
-                "total_customers": Customer.query.count(),
-                "total_products": Product.query.count(),
-                "active_customers": Customer.query.filter_by(is_active=True).count(),
-                "low_stock_products": Product.query.filter(
+                "total_sales": sales.count(),
+                "total_customers": customers.count(),
+                "total_products": products.count(),
+                "active_customers": customers.filter_by(is_active=True).count(),
+                "low_stock_products": products.filter(
                     Product.current_stock <= Product.min_stock_alert
                 ).count(),
             }

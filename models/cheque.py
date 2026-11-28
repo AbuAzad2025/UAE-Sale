@@ -738,16 +738,36 @@ class Cheque(TenantScopedMixin, db.Model):
         return query.order_by(Cheque.due_date).all()
 
     @staticmethod
+    def _in_current_tenant(query):
+        """Restrict alert queries to the active tenant context.
+
+        The global loader criteria normally do this, but alerts are also
+        called from platform-context jobs where that criteria is absent.
+        None means platform owner (cross-tenant by design); TENANT_LESS_SCOPE
+        means only rows with no tenant.
+        """
+        from models.tenant_scope import TENANT_LESS_SCOPE, get_current_tenant_id
+
+        tenant_id = get_current_tenant_id()
+        if tenant_id == TENANT_LESS_SCOPE:
+            return query.filter(Cheque.tenant_id.is_(None))
+        if tenant_id is not None:
+            return query.filter(Cheque.tenant_id == tenant_id)
+        return query
+
+    @staticmethod
     def get_due_soon_cheques():
         """الشيكات القريبة من الاستحقاق (7 أيام)"""
         Cheque.update_all_statuses()
 
         return (
-            Cheque.query.filter(
-                Cheque.is_active.is_(True),
-                Cheque.status == "pending",
-                Cheque.days_until_due <= 7,
-                Cheque.days_until_due >= 0,
+            Cheque._in_current_tenant(
+                Cheque.query.filter(
+                    Cheque.is_active.is_(True),
+                    Cheque.status == "pending",
+                    Cheque.days_until_due <= 7,
+                    Cheque.days_until_due >= 0,
+                )
             )
             .order_by(Cheque.due_date)
             .all()
@@ -759,10 +779,12 @@ class Cheque(TenantScopedMixin, db.Model):
         Cheque.update_all_statuses()
 
         return (
-            Cheque.query.filter(
-                Cheque.is_active.is_(True),
-                Cheque.status == "pending",
-                Cheque.is_overdue.is_(True),
+            Cheque._in_current_tenant(
+                Cheque.query.filter(
+                    Cheque.is_active.is_(True),
+                    Cheque.status == "pending",
+                    Cheque.is_overdue.is_(True),
+                )
             )
             .order_by(Cheque.due_date)
             .all()
@@ -770,13 +792,20 @@ class Cheque(TenantScopedMixin, db.Model):
 
     @staticmethod
     def update_all_statuses():
-        """تحديث حالة كل الشيكات"""
-        pending_cheques = Cheque.query.filter_by(status="pending", is_active=True).all()
+        """Refresh alert flags for the active tenant only.
+
+        Flush/commit only after scoping: an unscoped commit could persist
+        unrelated (other-tenant) changes staged in the same request session.
+        """
+        pending_cheques = Cheque._in_current_tenant(
+            Cheque.query.filter_by(status="pending", is_active=True)
+        ).all()
 
         for cheque in pending_cheques:
             cheque.update_status_based_on_date()
 
-        db.session.commit()
+        if pending_cheques:
+            db.session.commit()
 
     @staticmethod
     def get_statistics():

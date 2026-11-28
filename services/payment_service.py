@@ -193,6 +193,8 @@ class PaymentService:
             ]
 
         GLService.ensure_core_accounts()
+        # F9: a deterministic key keeps a rejected-then-reconfirmed receipt
+        # from posting the same FX difference twice.
         return GLService.post_entry(
             lines,
             description=f"FX difference Receipt {receipt.receipt_number}",
@@ -200,6 +202,7 @@ class PaymentService:
             reference_id=receipt.id,
             currency=CurrencyService.get_base_currency(),
             exchange_rate=1,
+            idempotency_key=f"ReceiptFX:{receipt.id}:{sale.id}",
             tenant_id=sale.tenant_id,
         )
 

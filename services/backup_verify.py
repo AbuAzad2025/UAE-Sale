@@ -140,6 +140,9 @@ def record_verification(db, result):
         error=result.get("error"),
     )
     db.session.add(row)
+    # Verification results must be durable even when the caller does not
+    # commit (e.g. a scheduler running outside a request).
+    db.session.commit()
     return row
 
 

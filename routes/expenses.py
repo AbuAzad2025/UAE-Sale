@@ -382,6 +382,8 @@ def edit(id):  # noqa: C901
     if request.method == "POST":
         try:
             old_amount = Decimal(str(expense.amount or 0))
+            old_currency = expense.currency
+            old_exchange_rate = Decimal(str(getattr(expense, "exchange_rate", 1) or 1))
             old_category_id = expense.category_id
             old_payment_method = expense.payment_method
             old_tax = Decimal(str(getattr(expense, "tax_amount", 0) or 0))
@@ -448,9 +450,18 @@ def edit(id):  # noqa: C901
             )
             expense.tax_amount = _t
 
-            exchange_rate = CurrencyService.get_exchange_rate(
-                expense.currency, _base_curr_edit
-            )
+            if (
+                expense.currency == old_currency
+                and old_exchange_rate > Decimal("0")
+            ):
+                # Same currency → the historic rate is part of the original
+                # transaction; re-fetching a live rate would silently change
+                # amount_base and desynchronise the already-posted GL entry.
+                exchange_rate = old_exchange_rate
+            else:
+                exchange_rate = CurrencyService.get_exchange_rate(
+                    expense.currency, _base_curr_edit
+                )
             expense.exchange_rate = exchange_rate
             _payment = expense_payment_amount(expense)
             expense.amount_base = (_payment * exchange_rate).quantize(
@@ -469,6 +480,8 @@ def edit(id):  # noqa: C901
                 or bool(getattr(expense, "vat_recoverable", True)) != old_recoverable
                 or bool(getattr(expense, "reverse_charge", False)) != old_rc
                 or bool(getattr(expense, "tax_inclusive", False)) != old_inclusive
+                or exchange_rate != old_exchange_rate
+                or expense.currency != old_currency
             )
 
             gl_reversed_entry_number = None

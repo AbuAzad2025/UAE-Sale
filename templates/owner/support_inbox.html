@@ -46,23 +46,33 @@
           <tr><th>#</th><th>{{ t('Company') }}</th><th>{{ t('Subject') }}</th><th>{{ t('Priority') }}</th><th>{{ t('Category') }}</th><th>{{ t('Status') }}</th><th>SLA</th><th></th></tr>
         </thead>
         <tbody>
-          {% for t in tickets %}
-          <tr class="{{ 'table-danger' if t.sla_status() == 'breached' else '' }}">
-            <td><a href="{{ url_for('support.ticket_view', id=t.id) }}">#{{ t.id }}</a></td>
-            <td><small>{{ t.tenant_id or '—' }}</small></td>
-            <td>{{ t.subject }}</td>
-            <td><span class="badge badge-{{ 'danger' if t.priority == 'urgent' else ('warning' if t.priority == 'high' else 'secondary') }}">{{ t.priority }}</span></td>
-            <td>{{ t.category }}</td>
-            <td>{{ t.status }}</td>
-            <td>{{ t.sla_status() }}</td>
+          {# NOTE: SupportTicket has no tenant relationship loaded here. The
+             route (routes/owner.py, outside this change's scope) should join
+             Tenant and pass names; until then resolve the name from the
+             template's tenant context when it matches, else show the id. #}
+          {% set company_cell_label = t('Company') %}
+          {# Do not name the loop variable `t`: it would shadow the translator. #}
+          {% for ticket in tickets %}
+          {% set ticket_tenant = none %}
+          {% if current_tenant and ticket.tenant_id and current_tenant.id == ticket.tenant_id %}{% set ticket_tenant = current_tenant %}
+          {% elif is_impersonating and impersonate_tenant and ticket.tenant_id == impersonate_tenant.id %}{% set ticket_tenant = impersonate_tenant %}
+          {% endif %}
+          <tr class="{{ 'table-danger' if ticket.sla_status() == 'breached' else '' }}">
+            <td><a href="{{ url_for('support.ticket_view', id=ticket.id) }}">#{{ ticket.id }}</a></td>
+            <td><small title="{{ company_cell_label }} #{{ ticket.tenant_id }}">{{ (ticket_tenant.name_ar or ticket_tenant.name) if ticket_tenant else ('Tenant #' ~ ticket.tenant_id if ticket.tenant_id else '—') }}</small></td>
+            <td>{{ ticket.subject }}</td>
+            <td><span class="badge badge-{{ 'danger' if ticket.priority == 'urgent' else ('warning' if ticket.priority == 'high' else 'secondary') }}">{{ ticket.priority }}</span></td>
+            <td>{{ ticket.category }}</td>
+            <td>{{ ticket.status }}</td>
+            <td>{{ ticket.sla_status() }}</td>
             <td>
-              <form method="POST" action="{{ url_for('owner.support_ticket_status', ticket_id=t.id) }}" class="form-inline">
+              <form method="POST" action="{{ url_for('owner.support_ticket_status', ticket_id=ticket.id) }}" class="form-inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <select class="form-control form-control-sm mr-1" name="status">
-                  <option value="open" {% if t.status == 'open' %}selected{% endif %}>open</option>
-                  <option value="in_progress" {% if t.status == 'in_progress' %}selected{% endif %}>in_progress</option>
-                  <option value="resolved" {% if t.status == 'resolved' %}selected{% endif %}>resolved</option>
-                  <option value="closed" {% if t.status == 'closed' %}selected{% endif %}>closed</option>
+                  <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>open</option>
+                  <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>in_progress</option>
+                  <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>resolved</option>
+                  <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>closed</option>
                 </select>
                 <input class="form-control form-control-sm mr-1" name="resolution_notes" placeholder="{{ t('Resolution note...') }}" size="22">
                 <button class="btn btn-sm btn-primary">{{ t('Save') }}</button>

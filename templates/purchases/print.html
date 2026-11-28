@@ -5,6 +5,7 @@
 {% block extra_print_css %}
 <style>
   .document { background: white; }
+  .purchase-sheet { background: white; }
   @media print { .document { box-shadow: none; border: none; } }
   .purchase-header { min-height: 70px; 
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
@@ -41,18 +42,7 @@
 {% endblock %}
 
 {% block document_content %}
-<div class="document">
-  <div class="no-print template-selector">
-    <div class="selector-wrapper">
-      <span class="template-label">{{ t('Template:') }}</span>
-      <div class="template-buttons">
-        {% for tpl_key, tpl_name in available_templates %}
-          <button type="button" class="template-btn {% if tpl_key == current_template %}active{% endif %}" data-template="{{ tpl_key }}" onclick="switchTemplate('{{ tpl_key }}')">{{ tpl_name }}</button>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-
+<div class="purchase-sheet">
   <div class="purchase">
     <div class="purchase-header">
       {% if settings and settings.show_logo and settings.logo_url %}

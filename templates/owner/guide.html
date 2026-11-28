@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ current_language }}" dir="{{ 'rtl' if is_rtl else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ t('Owner Guide') }} — {{ config.COMPANY_NAME if current_language == 'en' else config.COMPANY_NAME_AR }}</title>
+    <title>{{ 'Owner Guide' if current_language == 'en' else t('Owner Guide') }} — {{ config.COMPANY_NAME if current_language == 'en' else (config.COMPANY_NAME_AR or config.COMPANY_NAME) }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='adminlte/plugins/fontawesome-free/css/all.min.css') }}">
     <style>

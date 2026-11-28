@@ -21,10 +21,12 @@
       {% if tenant.is_active and not tenant.is_suspended %}
       <form method="POST" action="{{ url_for('owner.tenant_suspend', id=tenant.id) }}" style="display:inline;" onsubmit='return confirm({{ t('Suspend tenant {name}?', name=tenant.name_ar)|tojson }})'>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="suspension_reason" class="form-control form-control-sm d-inline-block w-auto mr-1" maxlength="255"
+               placeholder="{{ t('Suspension reason') }}" aria-label="{{ t('Suspension reason') }}">
         <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-ban mr-1"></i>{{ t('Suspend') }}</button>
       </form>
       {% else %}
-      <form method="POST" action="{{ url_for('owner.tenant_activate', id=tenant.id) }}" style="display:inline;">
+      <form method="POST" action="{{ url_for('owner.tenant_activate', id=tenant.id) }}" style="display:inline;" onsubmit='return confirm({{ t('Activate tenant {name}?', name=tenant.name_ar)|tojson }})'>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check mr-1"></i>{{ t('Activate') }}</button>
       </form>
@@ -88,7 +90,9 @@
 
 <div class="card shadow-sm mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">{{ t('Tenant Users') }} ({{ users|length }})</h5>
+    <h5 class="mb-0">{{ t('Tenant Users') }} ({{ stats.users }})
+      {% if stats.users > (users|length) %}<small class="text-muted font-weight-normal">{{ t('Showing first 50') }}</small>{% endif %}
+    </h5>
   </div>
   <div class="card-body p-0">
     <table class="table table-bordered table-striped mb-0">

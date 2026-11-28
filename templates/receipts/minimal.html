@@ -239,6 +239,12 @@
         <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
       </div>
         <div class="amount-text">{{ base_currency_name }}</div>
+        {% if receipt.currency != base_currency %}
+        <div class="amount-text" style="margin-top: 5px;">
+          ({{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }})
+          {% if receipt.exchange_rate %}<br>{{ t('Exchange Rate') }}: 1 {{ receipt.currency }} = {{ "{:,.6f}".format(receipt.exchange_rate) }} {{ base_currency }}{% endif %}
+        </div>
+        {% endif %}
       </div>
 
       <div class="payment-box">
@@ -289,7 +295,7 @@
             <span style="color: #666;">{{ source_info.date or '—' }}</span>
           </div>
           <div style="font-weight: 700; color: #28a745;">
-            {{ "{:,.2f}".format(receipt.amount) }} {{ receipt.currency }}
+            {{ "{:,.2f}".format(source_info.amount if (source_info.amount is defined and source_info.amount is not none) else receipt.amount) }} {{ receipt.currency }}
           </div>
         </div>
       </div>

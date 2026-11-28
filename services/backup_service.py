@@ -244,6 +244,25 @@ class BackupService:
             return None
 
     @classmethod
+    def _postgres_env(cls, params: Dict[str, str]) -> Dict[str, str]:
+        """Build a subprocess environment with credentials in PG* variables.
+
+        Passwords must never appear in argv (visible to other processes) or in
+        log output; libpq reads them from PGPASSWORD instead.
+        """
+        env = os.environ.copy()
+        env.update(
+            {
+                "PGPASSWORD": str(params.get("password") or ""),
+                "PGHOST": str(params["host"]),
+                "PGPORT": str(params["port"]),
+                "PGUSER": str(params["username"]),
+                "PGDATABASE": str(params["dbname"]),
+            }
+        )
+        return env
+
+    @classmethod
     def initialize(cls):
         """تهيئة مجلد النسخ الاحتياطي"""
         try:
@@ -300,11 +319,8 @@ class BackupService:
                 "--if-exists",
                 params["dbname"],
             ]
-            os.environ["PGPASSWORD"] = params["password"]
-            os.environ["PGHOST"] = params["host"]
-            os.environ["PGPORT"] = str(params["port"])
-            os.environ["PGUSER"] = params["username"]
-            os.environ["PGDATABASE"] = params["dbname"]
+            # Credentials travel in the child environment, not argv or globals.
+            env = cls._postgres_env(params)
 
             temp_dir = tempfile.gettempdir()
             temp_sql_path = os.path.join(
@@ -315,6 +331,7 @@ class BackupService:
                     cmd + ["-f", temp_sql_path],
                     capture_output=True,
                     text=True,
+                    env=env,
                 )
                 if process.returncode != 0:
                     err_text = (process.stderr or "").strip()
@@ -552,15 +569,38 @@ class BackupService:
             if not params:
                 return False
 
-            cls.create_backup(
+            if not cls.verify_backup(backup_filename):
+                logger.error(
+                    "Refusing to restore unverified backup: %s", backup_filename
+                )
+                return False
+
+            # A restore is only allowed when a fresh safety copy exists.
+            pre_restore = cls.create_backup(
                 manual=True, description=f"Pre-restore before {backup_filename}"
             )
+            if not pre_restore:
+                logger.error(
+                    "Pre-restore backup failed; aborting restore of %s",
+                    backup_filename,
+                )
+                return False
 
             psql = os.environ.get("PSQL_PATH", "psql")
             pg_restore = os.environ.get("PG_RESTORE_PATH", "pg_restore")
 
-            env = os.environ.copy()
-            dsn = f"postgresql://{params['username']}:{params['password']}@{params['host']}:{params['port']}/{params['dbname']}"
+            # Password is passed only via PGPASSWORD (never argv / logs).
+            env = cls._postgres_env(params)
+            connection_flags = [
+                "--host",
+                str(params["host"]),
+                "--port",
+                str(params["port"]),
+                "--username",
+                str(params["username"]),
+                "--dbname",
+                str(params["dbname"]),
+            ]
 
             if backup_filename.endswith(".dump"):
                 temp_dir = tempfile.gettempdir()
@@ -570,22 +610,18 @@ class BackupService:
                 shutil.copy2(backup_path, temp_path)
 
                 try:
-                    cmd = [
-                        pg_restore,
-                        "--host",
-                        params["host"],
-                        "--port",
-                        params["port"],
-                        "--username",
-                        params["username"],
-                        "--dbname",
-                        params["dbname"],
-                        "--clean",
-                        "--if-exists",
-                        "--no-owner",
-                        "--no-privileges",
-                        temp_path,
-                    ]
+                    cmd = (
+                        [pg_restore]
+                        + connection_flags
+                        + [
+                            "--clean",
+                            "--if-exists",
+                            "--no-owner",
+                            "--no-privileges",
+                            "--single-transaction",
+                            temp_path,
+                        ]
+                    )
 
                     proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
                     if proc.returncode != 0:
@@ -597,7 +633,13 @@ class BackupService:
                         os.remove(temp_path)
 
             else:
-                cmd = [psql, "--dbname", dsn, "--set", "ON_ERROR_STOP=on"]
+                # ON_ERROR_STOP + --single-transaction: a failure rolls the
+                # whole restore back instead of leaving a half-restored DB.
+                cmd = (
+                    [psql]
+                    + connection_flags
+                    + ["--set", "ON_ERROR_STOP=on", "--single-transaction"]
+                )
 
                 if backup_filename.endswith(".gz"):
                     f_in = gzip.open(backup_path, "rb")
@@ -622,6 +664,33 @@ class BackupService:
 
                 finally:
                     f_in.close()
+
+            # Verify the restored database is reachable and responsive.
+            verify_cmd = (
+                [psql]
+                + connection_flags
+                + [
+                    "--set",
+                    "ON_ERROR_STOP=on",
+                    "--tuples-only",
+                    "--no-align",
+                    "--command",
+                    "SELECT 1;",
+                ]
+            )
+            try:
+                check = subprocess.run(
+                    verify_cmd, env=env, capture_output=True, text=True
+                )
+            except Exception as exc:
+                logger.error("Post-restore verification failed to run: %s", exc)
+                return False
+            if check.returncode != 0 or (check.stdout or "").strip() != "1":
+                logger.error(
+                    "Post-restore verification failed: %s",
+                    (check.stderr or "").strip(),
+                )
+                return False
 
             logger.info(f"Database restored successfully from {backup_filename}")
             return True

@@ -3,6 +3,14 @@
 {% block page_title %}{{ t('Sales Report') }}{% endblock %}
 
 {% block content %}
+{% set print_date_from = date_from if date_from is defined else request.args.get('date_from', '') %}
+{% set print_date_to = date_to if date_to is defined else request.args.get('date_to', '') %}
+{% if print_date_from or print_date_to %}
+<div class="print-only mb-3" style="text-align:center; font-size:12pt; font-weight:700;">
+  {{ t('Period') }}: {% if print_date_from %}{{ t('From') }} {{ print_date_from }}{% endif %}{% if print_date_from and print_date_to %} — {% endif %}{% if print_date_to %}{{ t('To') }} {{ print_date_to }}{% endif %}
+</div>
+{% endif %}
+
 <div class="card">
   <div class="card-header bg-gradient-success">
     <h3 class="card-title text-white">{{ t('Sales Summary') }}</h3>

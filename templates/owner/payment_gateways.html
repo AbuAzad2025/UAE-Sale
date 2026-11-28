@@ -43,8 +43,9 @@
               <input type="password" 
                      name="stripe_secret_key" 
                      class="form-control" 
-                     value="{{ vault.stripe_secret_key or '' }}"
-                     placeholder="sk_live_...">
+                     value=""
+                     autocomplete="new-password"
+                     placeholder="{{ t('Leave blank to keep current secret') }}">
               <small class="text-muted">{{ t('Secret key (never share it)') }}</small>
             </div>
           </div>
@@ -70,8 +71,10 @@
               <input type="password" 
                      name="paypal_client_secret" 
                      class="form-control" 
-                     value="{{ vault.paypal_client_secret or '' }}"
-                     placeholder="EH...">
+                     value=""
+                     autocomplete="new-password"
+                     placeholder="{{ t('Leave blank to keep current secret') }}">
+              <small class="text-muted">{{ t('Blank = keep the stored secret') }}</small>
             </div>
           </div>
         </div>
@@ -86,8 +89,8 @@
               <input type="password" 
                      name="nowpayments_api_key" 
                      class="form-control" 
-                     value="" placeholder="•••••• Leave blank to keep current"
-                     placeholder="NP_API_...">
+                     value="" autocomplete="new-password"
+                     placeholder="{{ t('Leave blank to keep current secret') }}">
               <small class="text-muted">{{ t('API key for crypto payments') }}</small>
             </div>
           </div>

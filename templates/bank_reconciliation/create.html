@@ -14,6 +14,10 @@
   </div>
   <div class="form-group"><label>{{ t('Closing balance per bank statement') }}</label>
     <input type="number" step="0.001" name="closing_balance_per_bank" class="form-control" value="0" required></div>
+  <div class="form-group"><label>{{ t('Bank statement reference / evidence') }}</label>
+    <input type="text" name="statement_reference" class="form-control" maxlength="120"
+           placeholder="{{ t('e.g. statement no. / PDF name') }}">
+    <small class="text-muted">{{ t('Recorded on the reconciliation for approval review') }}</small></div>
   <button type="submit" class="btn btn-primary">{{ t('Create') }}</button>
 </form>
 </div></div>

@@ -35,12 +35,18 @@ def create():
             start = date.fromisoformat(request.form["period_start"])
             end = date.fromisoformat(request.form["period_end"])
             closing = Decimal(str(request.form.get("closing_balance_per_bank", "0") or "0"))
+            statement_reference = (
+                request.form.get("statement_reference") or ""
+            ).strip()
             with db.session.begin_nested():
                 rec = BankReconciliationService.create_reconciliation(
                     bank_account_id=int(request.form["bank_account_id"]),
                     period_start=start, period_end=end,
                     closing_balance_per_bank=closing,
                 )
+                # Statement evidence is optional but recorded on the
+                # reconciliation itself rather than hidden in free-text notes.
+                rec.statement_reference = statement_reference or None
             db.session.commit()
             create_audit_log("create", "bank_reconciliations", rec.id)
             flash("تم إنشاء التسوية البنكية بنجاح.", "success")
@@ -67,6 +73,13 @@ def view(id):
 def approve(id):
     rec = get_owned_or_404(BankReconciliation, id)
     try:
+        # Lock the row so a concurrent approval cannot slip past the
+        # creator/approver separation check.
+        db.session.refresh(rec, with_for_update=True)
+        if rec.created_by is not None and rec.created_by == current_user.id:
+            raise ValueError("لا يمكن لمن أنشأ المطابقة أن يعتمدها")
+        if not rec.is_balanced:
+            rec.calculate_reconciliation()
         rec.approve(current_user.id)
         db.session.commit()
         create_audit_log("approve", "bank_reconciliations", rec.id)

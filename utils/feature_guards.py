@@ -57,7 +57,11 @@ def install_feature_gate(blueprint, feature_name):
             from models import Tenant
 
             tenant = db.session.get(Tenant, tenant_id)
-            if tenant is None or not tenant.is_active:
+            if (
+                tenant is None
+                or not tenant.is_active
+                or getattr(tenant, "is_suspended", False)
+            ):
                 abort(403, description="Tenant not found")
             enabled = getattr(tenant, f"enable_{feature}", False)
             if not enabled:
@@ -89,7 +93,11 @@ def is_feature_enabled(feature_name):
         from models import Tenant
 
         tenant = db.session.get(Tenant, tenant_id)
-        if tenant is None or not tenant.is_active:
+        if (
+            tenant is None
+            or not tenant.is_active
+            or getattr(tenant, "is_suspended", False)
+        ):
             return False
         return bool(getattr(tenant, f"enable_{feature_name}", False))
     except Exception:

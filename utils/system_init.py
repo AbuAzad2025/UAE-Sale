@@ -49,9 +49,7 @@ def ensure_system_integrity(app):
     - we are inside a ``flask db ...`` command (detected by either
       the env var ``ALEMBIC_RUNNING=1`` set by ``migrations/env.py``,
       OR by walking the call stack looking for the alembic runtime)
-    
-    _ensure_platform_identity()
-"""
+    """
     import os as _os
 
     if (
@@ -81,6 +79,10 @@ def ensure_system_integrity(app):
             db.metadata.reflect(bind=db.engine)
         except Exception:
             pass
+
+        # The platform identity must exist before the owner can edit the
+        # company-info page (Tenant.get_current() is read-only by design).
+        _ensure_platform_identity()
 
         _ensure_permissions()
 

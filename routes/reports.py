@@ -1927,6 +1927,12 @@ def _vat_report_data(date_from=None, date_to=None):
             exempt_sales.append(row)
             total_exempt_sales += net_base
 
+    # Initialised BEFORE the maintenance credit notes are appended — the old
+    # code reset these below and silently erased every maintenance CN row.
+    credit_notes = []
+    total_credit_notes_net = Decimal("0")
+    total_credit_notes_vat = Decimal("0")
+
     for cn in MaintenanceCreditNote.query.filter_by(posted=True).all():
         d = _maint_date(cn)
         if date_from and d and d < date_from:
@@ -1972,9 +1978,6 @@ def _vat_report_data(date_from=None, date_to=None):
             func.date(ProductReturn.return_date) <= date_to
         )
 
-    credit_notes = []
-    total_credit_notes_net = Decimal("0")
-    total_credit_notes_vat = Decimal("0")
     credit_net_by_treatment = {
         "standard": Decimal("0"),
         "zero": Decimal("0"),

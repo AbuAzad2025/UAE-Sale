@@ -114,6 +114,13 @@ class Config:
     HOST = os.environ.get("HOST", "0.0.0.0")  # nosec B104
     PORT = _int("PORT", 5000)
 
+    # Reverse-proxy trust. Production terminates TLS at nginx, which sets the
+    # X-Forwarded-* headers used for correct redirect schemes / client IPs, so
+    # this stays enabled by default to match that deployment. When the app is
+    # reachable directly (no trusted proxy in front of it), set TRUST_PROXY=0:
+    # otherwise a client can spoof those headers and influence the app.
+    TRUST_PROXY = _bool(os.environ.get("TRUST_PROXY"), True)
+
     WTF_CSRF_EXEMPT_LIST = [
         "/sales/api/calculate-totals",
         "/purchases/api/calculate-totals",
@@ -195,7 +202,10 @@ class Config:
     LOGIN_BLOCK_DURATION = _int("LOGIN_BLOCK_DURATION_MINUTES", 15) * 60
 
     WTF_CSRF_ENABLED = _bool(os.environ.get("WTF_CSRF_ENABLED"), True)
-    WTF_CSRF_TIME_LIMIT = None
+    # Finite CSRF lifetime: an unbounded token can be replayed forever.
+    # One hour matches the operator session lifetime closely enough without
+    # breaking long admin forms.
+    WTF_CSRF_TIME_LIMIT = _int("WTF_CSRF_TIME_LIMIT", 3600)
 
     INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 

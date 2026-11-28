@@ -2,6 +2,12 @@
   "use strict";
   if (!$) return;
 
+  // Untrusted text (server payloads, user input) must be escaped before it
+  // is interpolated into an HTML string.
+  function escapeHtml(value) {
+    return $('<div>').text(value == null ? '' : String(value)).html();
+  }
+
   $(function () {
     const observer = new MutationObserver(() => {
       if (window._mutationPending) return;
@@ -239,29 +245,7 @@
   function saveFormData($form) {
     const formData = $form.serialize();
     localStorage.setItem(`form_${$form.attr('id')}`, formData);
-    showNotification(t('Data saved automatically'), 'success');
-  }
-
-  function initNotifications() {
-    if (!$('#notification-container').length) {
-      $('body').append('<div id="notification-container" class="position-fixed" style="top: 20px; right: 20px; z-index: 9999;"></div>');
-    }
-  }
-
-  function showNotification(message, type = 'info') {
-    const $container = $('#notification-container');
-    const $notification = $(`
-      <div class="alert alert-${type} alert-dismissible fade show" style="min-width: 300px;">
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    `);
-    
-    $container.append($notification);
-    
-    setTimeout(() => {
-      $notification.alert('close');
-    }, 10000);
+    showNotification('', t('Data saved automatically'), 'success');
   }
 
   function debounce(func, wait) {
@@ -276,12 +260,17 @@
     };
   }
 
-  // نظام الإشعارات الفورية
+  // نظام الإشعارات الفورية — one definition, one signature.
+  let notificationsBound = false;
   function initNotifications() {
-    if (typeof io === 'undefined') {
+    if (!$('#notification-container').length) {
+      $('body').append('<div id="notification-container" class="position-fixed" style="top: 20px; right: 20px; z-index: 9999; max-width: 350px;"></div>');
+    }
+    if (notificationsBound || typeof io === 'undefined') {
       // Socket.IO غير مطلوب للنظام الأساسي
       return;
     }
+    notificationsBound = true;
 
     const socket = io();
     
@@ -322,8 +311,8 @@
     const $notification = $(`
       <div class="alert ${alertClass} alert-dismissible fade show notification-toast" role="alert">
         <i class="${icon} me-2"></i>
-        <strong>${title}</strong><br>
-        ${message}
+        ${title ? `<strong>${escapeHtml(title)}</strong><br>` : ''}
+        ${escapeHtml(message)}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     `);
@@ -359,7 +348,7 @@
     const $alert = $(`
       <div class="alert ${alertClass} alert-dismissible fade show system-alert" role="alert">
         <i class="${icon} me-2"></i>
-        <strong>${t('System alert:')}</strong> ${message}
+        <strong>${escapeHtml(t('System alert:'))}</strong> ${escapeHtml(message)}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     `);

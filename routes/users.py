@@ -7,8 +7,9 @@ from flask import (
     request,
     abort,
     current_app,
+    session,
 )
-from flask_login import login_required, current_user
+from flask_login import login_required, logout_user, current_user
 from sqlalchemy import func
 from extensions import db
 from models import User, Role, Tenant
@@ -40,6 +41,13 @@ def _role_obj_for(slug):
 
 def _is_platform_owner():
     return bool(getattr(current_user, "is_owner", False))
+
+
+def _effective_user_level(user, role=None):
+    """Rank of *user*, optionally using a role they are about to receive."""
+    if getattr(user, "is_owner", False):
+        return 100
+    return _role_level(role if role is not None else getattr(user, "role", None))
 
 
 _PLATFORM_ROLE_SLUGS = {"owner", "super_admin", "developer"}
@@ -279,6 +287,26 @@ def edit(id):
                 owner_arg = request.form.get("is_owner") == "on"
             else:
                 owner_arg = _UNCHANGED
+
+            new_password = request.form.get("new_password") or None
+            if new_password:
+                # Resetting someone's password is a privilege-bearing write:
+                # never let a lower-level admin take over a higher-level user.
+                _target_role = user.role
+                if new_role_id and new_role_id != user.role_id:
+                    _target_role = db.session.get(Role, new_role_id) or user.role
+                _target_level = (
+                    100
+                    if owner_arg is True
+                    else _effective_user_level(user, _target_role)
+                )
+                if _current_user_level() < _target_level:
+                    flash(
+                        "⛔ لا يمكنك إعادة تعيين كلمة مرور مستخدم أعلى من مستوى صلاحيتك.",
+                        "danger",
+                    )
+                    abort(403)
+
             with atomic_transaction():
                 UserService.update_user(
                     user,
@@ -288,9 +316,11 @@ def edit(id):
                     phone=request.form.get("phone"),
                     role_id=role_arg,
                     is_owner=owner_arg,
-                    new_password=request.form.get("new_password") or None,
+                    new_password=new_password,
                     actor=current_user,
                 )
+                if new_password:
+                    create_audit_log("reset_password", "users", user.id)
                 create_audit_log("update", "users", user.id)
             flash("✅ تم تحديث بيانات المستخدم بنجاح!", "success")
             return redirect(url_for("users.view", id=user.id))
@@ -397,8 +427,17 @@ def change_password():
         _next = request.args.get("next", "")
         if not (_next.startswith("/") and not _next.startswith("//") and "\\" not in _next):
             _next = ""
-        from flask import session as _session
-        _session.clear()  # evict every session created with the old password
+        # Log the user out here and evict the current session; every *other*
+        # device is invalidated centrally by the session_version check in
+        # app.py:before_request (the hash changed, so the old token no longer
+        # matches). Preserve the UI language across the logout.
+        _lang = session.get("language")
+        session.clear()
+        # logout_user() after the clear also drops the "remember me" cookie
+        # (its flag lives in the session, so clearing first preserves it).
+        logout_user()
+        if _lang:
+            session["language"] = _lang
         flash("✅ تم تغيير كلمة المرور بنجاح! يرجى تسجيل الدخول مرة أخرى.", "success")
         return redirect(url_for("auth.login", next=_next))
 

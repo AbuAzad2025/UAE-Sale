@@ -61,8 +61,15 @@ class TaxRuleset(db.Model):
     )
 
     __table_args__ = (
+        # A country/tenant can keep several dated versions of the same
+        # ruleset; the effective date is part of the identity. See migration
+        # c16_tax_ruleset_versioning (which also relaxes the b18 partial
+        # index for platform defaults).
         db.UniqueConstraint(
-            "country_code", "tenant_id", name="uq_tax_ruleset_country_tenant"
+            "country_code",
+            "tenant_id",
+            "effective_from",
+            name="uq_tax_ruleset_country_tenant",
         ),
     )
 

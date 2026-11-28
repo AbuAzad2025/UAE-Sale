@@ -369,6 +369,8 @@ class Receipt(TenantScopedMixin, db.Model):
                     "currency": alloc.get("currency"),
                     "exchange_rate": str(alloc.get("exchange_rate", "1")),
                     "fx_amount": str(alloc.get("fx_amount", "0")),
+                    # idempotency marker for deferred (cheque) allocations
+                    "applied_base": str(alloc.get("applied_base", "0")),
                 }
             )
         self.allocations_json = json.dumps(payload, ensure_ascii=False)
@@ -431,7 +433,13 @@ class Receipt(TenantScopedMixin, db.Model):
             recompute_customer_balance(self.customer_id)
 
     def apply_pending_allocations(self):
-        """تطبيق التخصيصات المحفوظة للسند على الفواتير (عند التأكيد)."""
+        """تطبيق التخصيصات المحفوظة للسند على الفواتير (عند التأكيد).
+
+        F9: دالة idempotent — التخصيص الذي طُبِّق مرة يُوسَم بـ ``applied_base``
+        داخل ``allocations_json`` ولا يُطبَّق مرتين. هذا يمنع تسوية الفاتورة
+        مرتين (وقيد فرق العملة مرتين) عند تأكيد سند معلَّق أكثر من مرة، أو
+        رفضه ثم إعادة تأكيده.
+        """
         allocations = self.get_allocations()
         if not allocations:
             return []
@@ -440,9 +448,17 @@ class Receipt(TenantScopedMixin, db.Model):
         from models.sale import Sale
 
         applied = []
+        dirty = False
         for alloc in allocations:
             sale_id = alloc.get("sale_id")
             if not sale_id:
+                continue
+            already = Decimal(str(alloc.get("applied_base") or 0))
+            if already > 0:
+                # Already settled in an earlier confirmation — skip entirely.
+                applied.append(
+                    {"sale_id": int(sale_id), "amount_base": already, "duplicate": True}
+                )
                 continue
             sale = db.session.get(Sale, int(sale_id))
             if sale is None:
@@ -460,7 +476,12 @@ class Receipt(TenantScopedMixin, db.Model):
             fx_amount = Decimal(str(alloc.get("fx_amount") or 0))
             if fx_amount != 0 and applied_base > 0:
                 PaymentService.post_fx_difference(sale, fx_amount, self)
+            if applied_base > 0:
+                alloc["applied_base"] = str(applied_base)
+                dirty = True
             applied.append({"sale_id": int(sale_id), "amount_base": applied_base})
+        if dirty:
+            self.set_allocations(allocations)
         return applied
 
     @property
@@ -490,22 +511,57 @@ class Receipt(TenantScopedMixin, db.Model):
             self.rejection_reason = reason
             db.session.flush()
 
+            allocations = self.get_allocations()
             from models.sale import recompute_sale_settlement
-            for alloc in self.get_allocations():
+
+            # An FX difference posted at confirmation must not survive a
+            # rejection — reverse it once (the idempotency key below keeps the
+            # original entry from being posted again on re-confirmation).
+            from models.gl import GLJournalEntry
+
+            for alloc in allocations:
                 try:
                     _sid = int(alloc.get("sale_id"))
                 except (TypeError, ValueError):
                     continue
                 if _sid > 0:
-                    recompute_sale_settlement(_sid)
-            from models.sale import recompute_sale_settlement
-            for alloc in self.get_allocations():
-                try:
-                    _sid = int(alloc.get("sale_id"))
-                except (TypeError, ValueError):
-                    continue
+                    fx_key = f"ReceiptFX:{self.id}:{_sid}"
+                    fx_entry = GLJournalEntry.query.filter_by(
+                        idempotency_key=fx_key, tenant_id=self.tenant_id
+                    ).first()
+                    if fx_entry is not None and not getattr(
+                        fx_entry, "is_reversed", False
+                    ):
+                        try:
+                            from services.gl_service import GLService
+
+                            GLService.reverse_entry(
+                                fx_entry.id,
+                                description=(
+                                    f"Reverse FX on rejected receipt "
+                                    f"{self.receipt_number}"
+                                ),
+                            )
+                        except Exception:
+                            import logging
+
+                            logging.getLogger(__name__).warning(
+                                "Could not reverse FX entry %s for receipt %s",
+                                fx_entry.id,
+                                self.receipt_number,
+                                exc_info=True,
+                            )
+
+                # The settlement is re-derived from confirmed receipts, so the
+                # deferred allocation is no longer "applied". Reset the marker
+                # only after reversing its FX effect so a later confirmation
+                # can re-apply the allocation exactly once.
+                alloc["applied_base"] = "0"
                 if _sid > 0:
                     recompute_sale_settlement(_sid)
+            if allocations:
+                self.set_allocations(allocations)
+
             sale = self.primary_sale
             if sale is not None:
                 sale.recalculate_payment_status()

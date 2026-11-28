@@ -6,6 +6,7 @@ from decimal import Decimal
 from werkzeug.utils import secure_filename
 from flask import current_app, request
 from extensions import db
+from utils.errors import ValidationError
 
 
 def _parse_sequence(raw):
@@ -21,8 +22,9 @@ def generate_number(
     """Generate a unique sequential number with distributed locking.
 
     Uses Redis-based distributed lock to prevent duplicate numbers
-    in multi-worker deployments. Falls back to retry+UUID if Redis
-    is unavailable.
+    in multi-worker deployments. Falls back to bounded retries when
+    Redis is unavailable; exhaustion is a hard error (a UUID would
+    break the sequential numbering contract) — callers must surface it.
 
     Tenant scope is suspended for the duration of the sequence lookup:
     business numbers (sale_number, payment_number, cheque_number, ...) carry
@@ -123,7 +125,14 @@ def generate_number(
 
         time.sleep(0.01 * (attempt + 1))
 
-    return _ret(f"{prefix}-{year}-{uuid.uuid4().hex[:8].upper()}")
+    # Restore the caller's tenant scope before failing — the sequence lookup
+    # deliberately suspended it.
+    if _saved_tenant is not None:
+        set_current_tenant_id(_saved_tenant)
+    raise ValidationError(
+        f"Could not allocate a unique {prefix} number after {max_retries} "
+        f"attempts (prefix={prefix}, year={year})"
+    )
 
 
 def get_next_number(prefix, model_class, number_field="number"):

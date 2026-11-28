@@ -13,7 +13,7 @@ services:
     region: frankfurt
     buildCommand: "pip install -r requirements.txt"
     startCommand: "PORT=8001 APP_ENV=production python app.py"
-    healthCheckPath: /api/health
+    healthCheckPath: /api/healthz
     envVars:
       - key: DATABASE_URL
         fromDatabase:

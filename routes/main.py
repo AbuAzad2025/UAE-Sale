@@ -327,11 +327,18 @@ def dashboard():  # noqa: C901
         if show_receivables_card:
 
             def _receivables():
-                return db.session.query(
-                    func.sum(Sale.amount_base - Sale.paid_amount_base)
-                ).filter(
-                    Sale.status == "confirmed", Sale.balance_due > 0
-                ).scalar() or Decimal("0")
+                # Use the single authoritative balance derivation so the card
+                # matches the customers/ledger screens: it nets approved
+                # returns, confirmed receipts and posted write-offs, instead
+                # of the third "amount_base - paid_amount_base" formula.
+                from models.customer import derive_customer_balance
+
+                total = Decimal("0")
+                for customer in Customer.query.filter_by(is_active=True).all():
+                    balance = derive_customer_balance(customer.id)
+                    if balance > Decimal("0"):
+                        total += balance
+                return total
 
             stats["total_receivables"] = float(_cached("receivables", _receivables))
 

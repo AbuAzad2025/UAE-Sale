@@ -348,10 +348,6 @@
 
     const title = opts.title || config.title || document.title;
     const dir = document.documentElement.getAttribute('dir') || 'ltr';
-    const dir = document.documentElement.getAttribute('dir') || 'ltr';
-    const dir = document.documentElement.getAttribute('dir') || 'ltr';
-    const dir = document.documentElement.getAttribute('dir') || 'ltr';
-    const dir = document.documentElement.getAttribute('dir') || 'ltr';
     
     win.document.write('<!DOCTYPE html><html dir="' + dir + '"><head><title>' + title + '</title>');
     win.document.write('<style>');

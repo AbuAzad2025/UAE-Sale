@@ -160,6 +160,11 @@ def _reverse_receipt_allocations(receipt):
     """
     from models import Sale
 
+    # A pending (unconfirmed) receipt never applied its allocations, so there
+    # is nothing to subtract — doing so would create a negative settlement.
+    if not getattr(receipt, "payment_confirmed", False):
+        return []
+
     touched = []
     for alloc in receipt.get_allocations() or []:
         sale_id = alloc.get("sale_id")
@@ -194,7 +199,8 @@ def _reverse_payment_allocation(payment):
     """
     from models import Sale
 
-    if not payment.sale_id:
+    # A pending outgoing payment was never applied to the invoice.
+    if not getattr(payment, "payment_confirmed", False) or not payment.sale_id:
         return None
 
     sale = Sale.query.filter_by(id=payment.sale_id).first()
@@ -772,7 +778,13 @@ def create_voucher_submit():  # noqa: C901
         direction = request.form.get("direction")  # incoming, outgoing
         party_type = request.form.get("party_type")  # customer, supplier
         party_id = request.form.get("party_id", type=int)
-        amount = request.form.get("amount", type=float)
+        amount_raw = request.form.get("amount")
+        amount = None
+        if amount_raw and str(amount_raw).strip():
+            try:
+                amount = Decimal(str(amount_raw).strip())
+            except Exception:
+                amount = None
         payment_method = request.form.get("payment_method")
         date_str = request.form.get("date")
         notes = request.form.get("notes")

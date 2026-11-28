@@ -30,7 +30,7 @@ class AdvancedJournalEntryManager:
             (Decimal(str(line.get("credit", 0) or 0)) for line in lines), Decimal("0")
         )
 
-        if abs(total_debit - total_credit) > Decimal("0.01"):
+        if total_debit != total_credit:
             raise ValueError(
                 f"القيد غير متوازن: المدين {total_debit} ≠ الدائن {total_credit}"
             )
@@ -103,10 +103,17 @@ class AdvancedJournalEntryManager:
                 Decimal("0"),
             )
 
-            if abs(total_debit - total_credit) > Decimal("0.01"):
+            if total_debit != total_credit:
                 raise ValueError(
                     f"القيد غير متوازن بعد التحديث: المدين {total_debit} ≠ الدائن {total_credit}"
                 )
+
+            # Capture the old party links before the bulk delete so a rebuild
+            # does not silently detach customers/partners from the entry.
+            old_lines = {
+                line.id: line
+                for line in GLJournalLine.query.filter_by(entry_id=entry_id).all()
+            }
 
             resolved_lines = []
             seen_accounts = {}
@@ -134,6 +141,11 @@ class AdvancedJournalEntryManager:
                 if debit > 0 and credit > 0:
                     raise ValueError("السطر لا يحمل مديناً ودائناً في آن واحد")
                 account.check_posting_direction(debit, credit)
+                party_id = line_data.get("party_id")
+                if party_id is None:
+                    old_line = old_lines.get(line_data.get("id"))
+                    if old_line is not None:
+                        party_id = old_line.party_id
                 resolved_lines.append(
                     {
                         "account": account,
@@ -141,6 +153,7 @@ class AdvancedJournalEntryManager:
                         "debit": debit,
                         "credit": credit,
                         "amount_base": _quantize_3((debit - credit) * rate),
+                        "party_id": party_id,
                     }
                 )
 
@@ -154,6 +167,7 @@ class AdvancedJournalEntryManager:
                         debit=resolved["debit"],
                         credit=resolved["credit"],
                         amount_base=resolved["amount_base"],
+                        party_id=resolved["party_id"],
                     )
                 )
             entry.total_debit = sum((r["debit"] for r in resolved_lines), Decimal("0"))

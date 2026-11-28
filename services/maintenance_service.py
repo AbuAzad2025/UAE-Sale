@@ -1021,6 +1021,11 @@ def create_maintenance_return(
                 raise ValidationError("كمية المرتجع تتجاوز الكمية المصروفة")
             item.returned_quantity = already + quantity
             cost_total += D(str(item.cost_price or 0)) * quantity
+        elif service is not None:
+            already = D(str(service.returned_quantity or 0))
+            if already + quantity > D(str(service.quantity or 1)):
+                raise ValidationError("كمية المرتجع تتجاوز الكمية المفوترة للخدمة")
+            service.returned_quantity = already + quantity
 
         rline = MaintenanceReturnLine(
             return_id=ret.id,

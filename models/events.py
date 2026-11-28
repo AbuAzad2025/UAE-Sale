@@ -550,22 +550,47 @@ def register_product_return_listeners():
     """تسجيل مستمعات إرجاعات المنتجات"""
     from models import ProductReturn
 
+    def _apply_approved_return_state(target, connection):
+        """Recompute the derived state affected by an approved return."""
+        logger.info(
+            f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement"
+        )
+        if target.customer_id:
+            from models.customer import recompute_customer_balance
+
+            recompute_customer_balance(target.customer_id, connection=connection)
+        if target.sale_id:
+            from models.sale import recompute_sale_settlement
+
+            recompute_sale_settlement(target.sale_id, connection=connection)
+
     @event.listens_for(ProductReturn, "after_insert")
     def auto_update_stock_on_return(mapper, connection, target):
         """تحديث المخزون تلقائياً عند الإرجاع"""
         try:
             if target.status == "approved":
-                logger.info(
-                    f"📦 Product return {target.return_number} approved - stock will be updated via StockMovement"
-                )
-
-            if target.status == "approved" and target.customer_id:
-                from models.customer import recompute_customer_balance
-
-                recompute_customer_balance(target.customer_id, connection=connection)
-
+                _apply_approved_return_state(target, connection)
         except Exception as e:
             logger.error(f"❌ Failed to process product return: {e}")
+
+    @event.listens_for(ProductReturn, "after_update")
+    def auto_update_on_return_approval(mapper, connection, target):
+        """Approving (or un-approving) a pending return must refresh balances.
+
+        The old code only had an ``after_insert`` listener, so a return that
+        was created ``pending`` and later approved never recomputed the
+        customer balance or the invoice settlement.
+        """
+        try:
+            from sqlalchemy import inspect
+
+            history = inspect(target).attrs.status.history
+            entered = "approved" in history.added
+            left = "approved" in history.deleted
+            if entered or left:
+                _apply_approved_return_state(target, connection)
+        except Exception as e:
+            logger.error(f"❌ Failed to process product return approval: {e}")
 
 
 def register_expense_listeners():

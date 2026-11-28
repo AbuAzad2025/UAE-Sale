@@ -92,25 +92,34 @@
   <div class="totals">
     <div class="total-line">
       <span>{{ t("Total") }}:</span>
-      <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency }}</strong>
+      <strong>{{ "{:,.2f}".format(sale.subtotal) }} {{ sale.currency or base_currency }}</strong>
       </div>
     {% if sale.discount_amount > 0 %}
-    <div class="total-row"><span>{{ t("Discount") }}:</span><strong style="color:#dc3545;">- {{ "{:,.2f}".format(sale.discount_amount) }} {{ sale.currency }}</strong></div>
+    <div class="total-row"><span>{{ t("Discount") }}:</span><strong style="color:#dc3545;">- {{ "{:,.2f}".format(sale.discount_amount) }} {{ sale.currency or base_currency }}</strong></div>
     {% endif %}
     {% if sale.shipping_cost > 0 %}
-    <div class="total-row"><span>{{ t("Shipping") }}:</span><strong>{{ "{:,.2f}".format(sale.shipping_cost) }} {{ sale.currency }}</strong></div>
+    <div class="total-row"><span>{{ t("Shipping") }}:</span><strong>{{ "{:,.2f}".format(sale.shipping_cost) }} {{ sale.currency or base_currency }}</strong></div>
     {% endif %}
     </div>
     {% if sale.tax_amount > 0 or sale.tax_treatment in ('zero', 'exempt') %}
     <div class="total-line">
       <span>{% include 'invoices/_tax_label.html' %}:</span>
-      <strong>{{ "{:,.2f}".format(sale.tax_amount) }} {{ sale.currency }}</strong>
+      <strong>{{ "{:,.2f}".format(sale.tax_amount) }} {{ sale.currency or base_currency }}</strong>
     </div>
     {% endif %}
     <div class="total-line total-final">
       <span>{{ t("Total Amount") }}:</span>
-      <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency }}</strong>
+      <strong>{{ "{:,.2f}".format(sale.total_amount) }} {{ sale.currency or base_currency }}</strong>
     </div>
+    {% if sale.paid_amount_base is defined and sale.paid_amount_base is not none %}
+    <div class="total-line"><span>{{ t('Paid') }}:</span><strong>{{ "{:,.2f}".format(sale.paid_amount_base) }} {{ base_currency }}</strong></div>
+    {% endif %}
+    {% if sale.balance_due is defined and sale.balance_due is not none %}
+    <div class="total-line"><span>{{ t('Balance') }}:</span><strong>{{ "{:,.2f}".format(sale.balance_due) }} {{ base_currency }}</strong></div>
+    {% endif %}
+    {% if sale.amount_base is defined and sale.amount_base is not none %}
+    <div class="total-line"><span>{{ t('Base Equivalent') }} ({{ base_currency }}):</span><strong>{{ "{:,.2f}".format(sale.amount_base) }} {{ base_currency }}</strong></div>
+    {% endif %}
     <div class="amount-words" style="margin-top:6px; font-size:12px; color:#555; border-top:1px dashed #ccc; padding-top:6px;">
       <div>{{ amount_words_ar if current_language == 'ar' else amount_words_en }}</div>
     </div>

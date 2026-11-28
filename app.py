@@ -448,7 +448,17 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
         except Exception as e:
             app.logger.error(f"[ERROR] System integrity check failed: {e}")
 
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    # Only trust X-Forwarded-* when a reverse proxy is actually in front of us.
+    # The production deployment runs behind nginx, so TRUST_PROXY defaults to
+    # on there; set TRUST_PROXY=0 for a directly exposed app to stop clients
+    # from spoofing forwarded headers.
+    if app.config.get("TRUST_PROXY", True):
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+        )
+        app.logger.info("[OK] ProxyFix enabled (trusted reverse proxy)")
+    else:
+        app.logger.info("[OK] ProxyFix disabled (no trusted reverse proxy)")
 
     from routes.auth import auth_bp
     from routes.main import main_bp
@@ -736,7 +746,37 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
         # at login is insufficient: a user provisioned with a known default
         # password could otherwise navigate directly to any endpoint.
         from flask import request as _req, redirect as _redir, url_for as _url_for
-        from flask_login import current_user as _cu
+        from flask import session as _session
+        from flask_login import current_user as _cu, logout_user as _logout_user
+        from utils.decorators import (
+            session_version_for_password_hash as _password_session_version,
+        )
+
+        # Central session invalidation. The session records an opaque token
+        # derived from the password hash at login. A password change produces
+        # a new salt/hash, so sessions from every other device that still hold
+        # the old token are logged out here — not just the current session.
+        if _cu.is_authenticated:
+            _expected_version = _password_session_version(
+                getattr(_cu, "password_hash", "")
+            )
+            if "session_version" not in _session:
+                # Sessions issued before this check existed: adopt the current
+                # version, and they will be invalidated by the next change.
+                _session["session_version"] = _expected_version
+            elif _session["session_version"] != _expected_version:
+                _lang = _session.get("language")
+                _session.clear()
+                _logout_user()  # also clears the remember-me cookie
+                if _lang:
+                    _session["language"] = _lang
+                from flask import flash as _flash
+
+                _flash(
+                    "⏰ انتهت صلاحية الجلسة بسبب تغيير كلمة المرور. يرجى تسجيل الدخول مرة أخرى.",
+                    "warning",
+                )
+                return _redir(_url_for("auth.login"))
 
         _pwd_exempt = {
             "users.change_password", "auth.logout", "static",
@@ -842,7 +882,9 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
         )
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.jsdelivr.net",
+            # 'unsafe-inline' is still required by the existing inline
+            # templates/chart bootstrap code; 'unsafe-eval' is not.
+            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com",
             "font-src 'self' fonts.gstatic.com cdn.jsdelivr.net",
             "img-src 'self' data: blob:",

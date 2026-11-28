@@ -272,7 +272,8 @@
     }
     notificationsBound = true;
 
-    const socket = io();
+    // Gunicorn sync workers cannot upgrade WebSockets; use Socket.IO long-polling.
+    const socket = io({ transports: ['polling'] });
     
     // إشعارات المستخدم
     socket.on('notification', function(data) {

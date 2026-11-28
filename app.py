@@ -779,13 +779,36 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
             session["last_activity"] = _dt.now().isoformat()
             session.permanent = True
 
+            # Revalidate account/tenant state on every request: disabling a
+            # user or suspending a tenant must invalidate live sessions.
+            if not getattr(current_user, "is_active", True):
+                from flask_login import logout_user
+                logout_user(); session.clear()
+                return _redir(_url_for("auth.login"))
+            _own_tid = getattr(current_user, "tenant_id", None)
+            if _own_tid and not getattr(current_user, "is_owner", False):
+                try:
+                    from models import Tenant as _Tenant
+                    _t = db.session.get(_Tenant, int(_own_tid))
+                    if _t is not None and (not _t.is_active or getattr(_t, "is_suspended", False)):
+                        from flask_login import logout_user
+                        logout_user(); session.clear()
+                        return _redir(_url_for("auth.login"))
+                except Exception:
+                    pass
+
             _role_slug = getattr(getattr(current_user, "role", None), "slug", None)
             if getattr(current_user, "is_owner", False) or _role_slug == "super_admin":
                 _imp_tid = None
                 try:
                     _imp_val = session.get("impersonate_tenant_id")
-                    if _imp_val is not None:
-                        _imp_tid = int(_imp_val)
+                    if _imp_val is not None and session.get("impersonate_owner_id") in (None, current_user.id):
+                        from models import Tenant as _Tenant
+                        _t = db.session.get(_Tenant, int(_imp_val))
+                        if _t and _t.is_active and not getattr(_t, "is_suspended", False):
+                            _imp_tid = int(_imp_val)
+                        else:
+                            session.pop("impersonate_tenant_id", None)
                 except Exception:
                     _imp_tid = None
                 set_current_tenant_id(_imp_tid)  # None = platform view

@@ -203,7 +203,7 @@ function updatePartyList() {
     if (type === 'customer' && item.type !== 'regular') {
       typeLabel = ' (' + (item.type === 'merchant' ? {{ t('Merchant')|tojson }} : {{ t('Partner')|tojson }}) + ')';
     }
-    select.append('<option value="' + item.id + '">' + item.name + typeLabel + '</option>');
+    select.append($('<option>', {value: item.id, text: item.name + typeLabel}));
   });
   
   if ($.fn.select2) {

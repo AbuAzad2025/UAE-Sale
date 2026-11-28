@@ -96,7 +96,7 @@ def login():
             )
             return render_template("auth/login.html")
 
-        user = User.query.filter(User.username.ilike(username)).first()
+        user = User.query.filter(User.username == username).first()
 
         if (
             user
@@ -214,12 +214,21 @@ def login():
 
         create_audit_log("login", "users", user.id)
 
+        next_page = request.args.get("next")
         if getattr(user, "must_change_password", False):
             return redirect(url_for("users.change_password", next=next_page or ""))
-
         next_page = request.args.get("next")
-        if next_page and next_page.startswith("/") and not next_page.startswith("//"):
-            return redirect(next_page)
+        if next_page:
+            from urllib.parse import urlsplit as _urlsplit
+            _parts = _urlsplit(next_page)
+            if (
+                next_page.startswith("/")
+                and not next_page.startswith("//")
+                and not _parts.scheme
+                and not _parts.netloc
+                and "\\" not in next_page
+            ):
+                return redirect(next_page)
 
         if getattr(user, "is_owner", False) or user.is_super_admin():
             return redirect(url_for("owner.dashboard"))
@@ -239,7 +248,7 @@ def logout():
             session["language"] = _lang
         flash("✅ تم تسجيل الخروج بنجاح. نراك قريباً!", "success")
 
-        return redirect(url_for("auth.login"))
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/payment/create", methods=["POST"])

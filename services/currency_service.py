@@ -213,7 +213,21 @@ class CurrencyService:
             rate = Decimal(str(user_rate))
             if rate <= Decimal("0"):
                 raise ValueError("Invalid user supplied exchange rate")
-            return rate.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+            trusted = False
+            try:
+                from flask import has_request_context
+                if has_request_context():
+                    from flask_login import current_user
+                    trusted = bool(getattr(current_user, "is_authenticated", False)) and (
+                        bool(getattr(current_user, "is_owner", False))
+                        or getattr(getattr(current_user, "role", None), "slug", None)
+                        == "super_admin"
+                    )
+            except Exception:
+                trusted = False
+            if trusted and rate <= Decimal("1000"):
+                return rate.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+            # Untrusted client rates are ignored; fall through to the server rate.
 
         if from_currency == to_currency:
             return Decimal("1")

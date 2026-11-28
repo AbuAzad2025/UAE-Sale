@@ -168,6 +168,14 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = not DEBUG
     REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = not DEBUG
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_SECURE = not DEBUG
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_SECURE = not DEBUG
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_SECURE = not DEBUG
+    REMEMBER_COOKIE_SAMESITE = "Lax"
     REMEMBER_COOKIE_DURATION = timedelta(days=_int("REMEMBER_DAYS", 14))
     PERMANENT_SESSION_LIFETIME = timedelta(hours=_int("SESSION_HOURS", 12))
 
@@ -371,6 +379,9 @@ def assert_production_sanity(cfg=None) -> None:
     """Check production configuration"""
     if cfg is None:
         cfg = Config
+
+    if cfg.APP_ENV.lower() == "production" and cfg.DEBUG:
+        raise RuntimeError("DEBUG must be false in production!")
 
     is_prod = not cfg.DEBUG and cfg.APP_ENV.lower() == "production"
 

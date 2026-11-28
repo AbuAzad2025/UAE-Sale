@@ -70,7 +70,7 @@ def compute_sale_paid_base(sale_id, connection=None):
         ).where(Payment.__table__.c.sale_id == sale_id)
     ).fetchall()
     for row in payment_rows:
-        if row.payment_confirmed is False:
+        if row.payment_confirmed is not True:
             continue
         amount = Decimal(str(row.amount_base or 0))
         if (row.payment_type or "") == "refund":
@@ -86,7 +86,7 @@ def compute_sale_paid_base(sale_id, connection=None):
         ).where(Receipt.__table__.c.sale_id == sale_id)
     ).fetchall()
     for row in receipt_rows:
-        if row.payment_confirmed is False:
+        if row.payment_confirmed is not True:
             continue
         allocations = _parse_allocations(row.allocations_json)
         if allocations:

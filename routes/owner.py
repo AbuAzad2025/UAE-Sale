@@ -2362,28 +2362,39 @@ def invoice_settings():
                     from werkzeug.utils import secure_filename
 
                     filename = secure_filename(watermark_file.filename)
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"watermark_{timestamp}_{filename}"
+                    allowed_ext = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext not in allowed_ext:
+                        flash("⚠️ نوع الملف غير مدعوم للعلامة المائية. المسموح: PNG, JPG, JPEG, GIF, WEBP.", "danger")
+                    else:
+                        watermark_file.seek(0, os.SEEK_END)
+                        file_size = watermark_file.tell()
+                        watermark_file.seek(0)
+                        if file_size > 5 * 1024 * 1024:
+                            flash("⚠️ حجم العلامة المائية كبير جداً. الحد الأقصى: 5 ميجابايت.", "danger")
+                        else:
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            filename = f"watermark_{timestamp}_{filename}"
 
-                    upload_root = (
-                        current_app.config.get("UPLOAD_ROOT")
-                        or current_app.static_folder
-                    )
-                    tenant_id = getattr(current_user, "tenant_id", None)
-                    if tenant_id is None:
-                        abort(403)
-                    tenant_prefix = f"tenant_{tenant_id}"
-                    upload_folder = os.path.join(
-                        upload_root, tenant_prefix, "uploads", "watermarks"
-                    )
-                    os.makedirs(upload_folder, exist_ok=True)
+                            upload_root = (
+                                current_app.config.get("UPLOAD_ROOT")
+                                or current_app.static_folder
+                            )
+                            tenant_id = getattr(current_user, "tenant_id", None)
+                            if tenant_id is None:
+                                abort(403)
+                            tenant_prefix = f"tenant_{tenant_id}"
+                            upload_folder = os.path.join(
+                                upload_root, tenant_prefix, "uploads", "watermarks"
+                            )
+                            os.makedirs(upload_folder, exist_ok=True)
 
-                    filepath = os.path.join(upload_folder, filename)
-                    watermark_file.save(filepath)
+                            filepath = os.path.join(upload_folder, filename)
+                            watermark_file.save(filepath)
 
-                    settings.watermark_image_path = (
-                        f"{tenant_prefix}/uploads/watermarks/{filename}"
-                    )
+                            settings.watermark_image_path = (
+                                f"{tenant_prefix}/uploads/watermarks/{filename}"
+                            )
 
             settings.updated_by = current_user.id
 

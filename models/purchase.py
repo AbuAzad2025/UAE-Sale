@@ -166,7 +166,7 @@ class Purchase(TenantScopedMixin, db.Model):
 
         total = Decimal("0")
         for row in rows:
-            if row.payment_confirmed is False:
+            if row.payment_confirmed is not True:
                 continue
             total += Decimal(str(row.amount_base or 0))
 

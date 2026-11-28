@@ -294,7 +294,6 @@ def _rate_limit_key():
 limiter = Limiter(
     key_func=_rate_limit_key,
     default_limits=[],
-    storage_uri="memory://",
 )
 
 babel = Babel()

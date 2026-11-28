@@ -159,13 +159,7 @@ def owner_required(f):
         if not current_user.is_authenticated:
             abort(404)
 
-        if not (
-            current_user.is_owner
-            or (
-                getattr(current_user, "role", None)
-                and getattr(current_user.role, "slug", None) == "developer"
-            )
-        ):
+        if not current_user.is_owner:
             flash(
                 "الصفحة مخصصة لمالكي المنصة فقط. ستتم إعادة التوجيه إلى لوحة التحكم.",
                 "warning",

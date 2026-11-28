@@ -394,11 +394,12 @@ def change_password():
             return render_template("users/change_password.html")
 
         create_audit_log("change_password", "users", current_user.id)
-        flash("✅ تم تغيير كلمة المرور بنجاح!", "success")
-        # After a successful change, leave the form: send the user to their
-        # dashboard. Staying on this page looks like the change failed.
-        if getattr(current_user, "is_owner", False) or current_user.is_super_admin():
-            return redirect(url_for("owner.dashboard"))
-        return redirect(url_for("main.dashboard"))
+        _next = request.args.get("next", "")
+        if not (_next.startswith("/") and not _next.startswith("//") and "\\" not in _next):
+            _next = ""
+        from flask import session as _session
+        _session.clear()  # evict every session created with the old password
+        flash("✅ تم تغيير كلمة المرور بنجاح! يرجى تسجيل الدخول مرة أخرى.", "success")
+        return redirect(url_for("auth.login", next=_next))
 
     return render_template("users/change_password.html")

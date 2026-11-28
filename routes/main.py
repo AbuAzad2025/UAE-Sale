@@ -419,6 +419,7 @@ def dashboard():  # noqa: C901
 
 @main_bp.route("/export-data", methods=["GET"])
 @login_required
+@permission_required("manage_settings")
 def tenant_data_export():
     """Export current tenant's data as ZIP (CSV per table) or JSON."""
     from services.tenant_export_service import (

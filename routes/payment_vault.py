@@ -735,18 +735,39 @@ def decrypt_card(card_id):
 def process_payment():
     """معالجة الدفع (كريبتو أو بطاقة) - عام، لا يحتاج تسجيل دخول"""
     try:
+        from utils.origin_check import origin_allowed
+        _origin = request.headers.get("Origin", "")
+        if _origin and not origin_allowed(
+            _origin, current_app.config.get("CORS_ORIGINS", [])
+        ):
+            return jsonify({"success": False, "error": "Invalid origin"}), 403
+
         data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": "بيانات غير صحيحة"}), 400
+
+        # Bound every client-controlled field before it reaches the gateway
+        # or the database.
+        for _k in ("customer_name", "customer_email", "customer_phone", "donor_name",
+                   "donor_email", "donor_message", "description", "package", "type"):
+            _v = data.get(_k, "")
+            if isinstance(_v, str) and len(_v) > 200:
+                return jsonify({"success": False, "error": "Field too long"}), 400
+        try:
+            _amount = float(data.get("amount", 0) or 0)
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "error": "Invalid amount"}), 400
+        if _amount < 1 or _amount > 1000000:
+            return jsonify({"success": False, "error": "Amount out of range"}), 400
 
         payment_method = data.get("payment_method", "crypto")  # crypto or card
 
         if payment_method == "crypto":
             nowpayments = NOWPaymentsService()
             result = nowpayments.create_payment(
-                amount=float(data.get("amount", 0)),
-                crypto_currency=data.get("crypto_currency", "btc"),
+                amount=_amount,
+                crypto_currency=str(data.get("crypto_currency", "btc"))[:12].lower(),
                 customer_email=data.get("customer_email")
                 or data.get("donor_email", ""),
                 description=data.get("description", ""),
@@ -761,7 +782,7 @@ def process_payment():
             return jsonify(result)
 
         elif payment_method == "card":
-            amount = float(data.get("amount", 0))
+            amount = _amount
             card_number = data.get("card_number", "").replace(" ", "")
             expiry = data.get("expiry", "")
 

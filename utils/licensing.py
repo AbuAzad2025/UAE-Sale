@@ -95,10 +95,9 @@ def get_master_seed() -> str:
         import logging
 
         logging.getLogger(__name__).warning(
-            "MASTER_KEY_SEED not set; auto-generated seed persisted to "
-            "%s. Save this seed to log in as Owner: %s",
+            "MASTER_KEY_SEED not set; an auto-generated seed was persisted to %s. "
+            "Retrieve it from the secret store / operator console.",
             seed_file,
-            seed,
         )
     except Exception:
         pass

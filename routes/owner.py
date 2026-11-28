@@ -922,6 +922,11 @@ def custom_restore_backup(filename):
         return redirect(url_for("owner.list_backups"))
 
     selected_tables = request.form.getlist("tables[]")
+    from utils.db_safety import is_protected_table
+    selected_tables = [
+        t for t in selected_tables
+        if t and not is_protected_table(t) and t != "invoice_settings"
+    ]
 
     if not selected_tables:
         flash("❌ يرجى اختيار جدول واحد على الأقل!", "warning")
@@ -1421,6 +1426,9 @@ def scheduled_backups():
 def company_info():
     """معلومات الشركة/الكراج"""
     tenant = Tenant.get_current()
+    if tenant is None:
+        flash("لم يتم تهيئة هوية المنصة بعد. شغّل تهيئة النظام أولاً.", "danger")
+        return redirect(url_for("owner.dashboard"))
 
     if request.method == "POST":
         try:

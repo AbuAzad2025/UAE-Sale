@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ t('Bank Reconciliation') }} {{ rec.reconciliation_number }}{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-md-6"><div class="card"><div class="card-body">
+    <p><strong>{{ t('Period') }}:</strong> {{ rec.period_start }} — {{ rec.period_end }}</p>
+    <p><strong>{{ t('Balance per books') }}:</strong> {{ '{:,.3f}'.format(rec.closing_balance_per_books or 0) }}</p>
+    <p><strong>{{ t('Balance per bank') }}:</strong> {{ '{:,.3f}'.format(rec.closing_balance_per_bank or 0) }}</p>
+    <p><strong>{{ t('Outstanding deposits') }}:</strong> {{ '{:,.3f}'.format(rec.outstanding_deposits or 0) }}</p>
+    <p><strong>{{ t('Outstanding withdrawals') }}:</strong> {{ '{:,.3f}'.format(rec.outstanding_withdrawals or 0) }}</p>
+    <p><strong>{{ t('Difference') }}:</strong> {{ '{:,.3f}'.format(rec.difference or 0) }}
+      {% if rec.is_balanced %}<span class="badge badge-success">{{ t('Balanced') }}</span>{% else %}<span class="badge badge-warning">{{ t('Not balanced') }}</span>{% endif %}</p>
+    <p><strong>{{ t('Status') }}:</strong> {{ rec.status }}</p>
+  </div></div></div>
+  <div class="col-md-6"><div class="card"><div class="card-body">
+    <h5>{{ t('Adjustments') }}</h5>
+    <form method="POST" action="{{ url_for('bank_reconciliation.add_charge', id=rec.id) }}" class="form-inline mb-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="number" step="0.001" name="amount" class="form-control mr-1" placeholder="{{ t('Bank charges') }}" required>
+      <input type="text" name="description" class="form-control mr-1" placeholder="{{ t('Description') }}">
+      <button class="btn btn-warning btn-sm">{{ t('Add charge') }}</button>
+    </form>
+    <form method="POST" action="{{ url_for('bank_reconciliation.add_interest', id=rec.id) }}" class="form-inline mb-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="number" step="0.001" name="amount" class="form-control mr-1" placeholder="{{ t('Bank interest') }}" required>
+      <input type="text" name="description" class="form-control mr-1" placeholder="{{ t('Description') }}">
+      <button class="btn btn-success btn-sm">{{ t('Add interest') }}</button>
+    </form>
+    {% if rec.status == 'draft' %}
+    <form method="POST" action="{{ url_for('bank_reconciliation.complete', id=rec.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary">{{ t('Complete and approve') }}</button>
+    </form>
+    {% endif %}
+  </div></div></div>
+</div>
+<div class="card mt-3"><div class="card-body">
+  <h5>{{ t('Outstanding items') }}</h5>
+  <table class="table table-sm"><thead><tr><th>{{ t('Date') }}</th><th>{{ t('Description') }}</th><th>{{ t('Type') }}</th><th>{{ t('Amount') }}</th></tr></thead><tbody>
+  {% for i in rec.items %}<tr><td>{{ i.transaction_date }}</td><td>{{ i.description }}</td><td>{{ i.item_type }}</td><td>{{ '{:,.3f}'.format(i.amount or 0) }}</td></tr>
+  {% else %}<tr><td colspan="4" class="text-center text-muted">{{ t('No items') }}</td></tr>{% endfor %}
+  </tbody></table>
+</div></div>
+{% endblock %}

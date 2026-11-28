@@ -1130,7 +1130,7 @@ class TestMasterKeyScoping:
         assert resp.status_code in (403, 404, 302)
 
     def test_developer_can_access_owner_panel(self, client, db, all_permissions):
-        """Developer role should have owner-level access."""
+        """Developer must not inherit owner-panel access (privilege boundary)."""
         role = Role(
             name="Developer",
             name_ar="مطور",
@@ -1152,7 +1152,7 @@ class TestMasterKeyScoping:
         db.session.commit()
         _login(client, dev)
         resp = client.get("/owner/dashboard")
-        assert resp.status_code == 200
+        assert resp.status_code in (302, 403)
 
 
 # ── Phase 6: Decorator Correctness ──────────────────────────────────────────

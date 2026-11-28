@@ -92,42 +92,49 @@ class BankReconciliationService:
 
     @staticmethod
     def _outstanding(bank_account_id, period_end, tenant_id):
-        """Only book-posted movements can adjust the external bank balance."""
+        """Outstanding cheques from the register plus their posted control lines.
+
+        Cheques may post to the bank account directly (legacy) or to the
+        Under Collection / Deferred Cheques control accounts (production).
+        Register-only cheques with no posted line are not bank items.
+        """
+        from datetime import date as _date
         from sqlalchemy import func
 
+        control_codes = {"1150", "2120"}
         rows = (
-            db.session.query(
-                Cheque,
-                GLJournalEntry.entry_date,
-                func.sum(GLJournalLine.amount_base),
-            )
+            db.session.query(Cheque, GLJournalLine.account_id, GLAccount.code,
+                             func.sum(GLJournalLine.amount_base))
             .join(GLJournalEntry, GLJournalEntry.id == Cheque.gl_journal_entry_id)
             .join(GLJournalLine, GLJournalLine.entry_id == GLJournalEntry.id)
+            .join(GLAccount, GLAccount.id == GLJournalLine.account_id)
             .filter(
                 Cheque.tenant_id == tenant_id,
-                GLJournalEntry.tenant_id == tenant_id,
-                GLJournalLine.tenant_id == tenant_id,
                 Cheque.is_active.is_(True),
-                Cheque.status.in_(
-                    ("pending", "deposited", "under_collection", "overdue")
-                ),
-                Cheque.issue_date <= period_end,
+                Cheque.status.in_(("pending", "deposited", "under_collection", "overdue")),
                 Cheque.gl_clearing_entry_id.is_(None),
+                Cheque.issue_date <= period_end,
                 GLJournalEntry.is_posted.is_(True),
                 GLJournalEntry.is_reversed.is_(False),
                 func.date(GLJournalEntry.entry_date) <= period_end,
-                GLJournalLine.account_id == bank_account_id,
             )
-            .group_by(Cheque.id, GLJournalEntry.entry_date)
-            .order_by(Cheque.id)
+            .group_by(Cheque.id, GLJournalLine.account_id, GLAccount.code)
             .all()
         )
-        return [
-            (cheque, posting_date.date(), abs(signed_amount))
-            for cheque, posting_date, signed_amount in rows
-            if signed_amount
-            and (signed_amount > 0) == (cheque.cheque_type == "incoming")
-        ]
+        out, seen = [], set()
+        for cheque, account_id, code, signed_amount in rows:
+            if account_id != bank_account_id and (code or "") not in control_codes:
+                continue
+            if cheque.id in seen or not signed_amount:
+                continue
+            if (signed_amount > 0) != (cheque.cheque_type == "incoming"):
+                continue
+            seen.add(cheque.id)
+            d = cheque.issue_date
+            if not isinstance(d, _date) and hasattr(d, "date"):
+                d = d.date()
+            out.append((cheque, d, abs(signed_amount)))
+        return out
 
     @staticmethod
     def _auto_populate_items(reconciliation):

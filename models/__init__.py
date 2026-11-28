@@ -35,6 +35,7 @@ from .fixed_asset import FixedAsset, DepreciationSchedule
 from .advanced_accounting import CustomsTax, AdvancedExpense, TaxCalculationRule
 from .login_history import LoginHistory
 from .security_alert import SecurityAlert
+from .notification import Notification
 from .api_key import APIKey
 from .approval_workflow import ApprovalWorkflow, ApprovalRequest, ApprovalLevel
 from .journal_entry_audit import JournalEntryAudit

@@ -1878,6 +1878,79 @@ def _vat_report_data(date_from=None, date_to=None):
                 exempt_sales.append(row)
                 total_exempt_sales += net
 
+    # Maintenance invoices post VAT_OUTPUT through maintenance_accounting.
+    # Include them so the VAT return agrees with the GL, not just sales.
+    from models import MaintenanceInvoice, MaintenanceCreditNote
+    from datetime import datetime as _dt
+
+    def _maint_date(inv):
+        value = getattr(inv, "posted_at", None) or getattr(inv, "created_at", None)
+        if isinstance(value, _dt):
+            return value.date()
+        return value
+
+    for inv in MaintenanceInvoice.query.filter_by(posted=True).all():
+        d = _maint_date(inv)
+        if date_from and d and d < date_from:
+            continue
+        if date_to and d and d > date_to:
+            continue
+        tax_base = Decimal(str(getattr(inv, "tax_amount_base", 0) or 0)) or Decimal(str(inv.tax_amount or 0))
+        net_base = Decimal(str(getattr(inv, "subtotal_base", 0) or 0))
+        if not net_base:
+            net_base = Decimal(str(inv.subtotal or 0)) - Decimal(str(inv.discount_total or 0))
+        if net_base <= 0 and tax_base:
+            rate = Decimal("5")
+        else:
+            rate = (tax_base / net_base * 100).quantize(Decimal("0.01")) if net_base else Decimal("0")
+        order = getattr(inv, "order", None)
+        customer = getattr(getattr(order, "customer", None), "name", "-")
+        row = {
+            "number": inv.invoice_no,
+            "date": d,
+            "party": customer or "-",
+            "net_amount": net_base,
+            "tax_rate": rate,
+            "tax_amount": tax_base,
+            "treatment": "standard",
+            "zero_amount": Decimal("0"),
+            "exempt_amount": Decimal("0"),
+        }
+        if tax_base > 0:
+            taxable_sales.append(row)
+            total_taxable_sales += net_base
+            total_output_vat += tax_base
+        elif getattr(order, "tax_treatment", "standard") == "zero":
+            zero_rated_sales.append(row)
+            total_zero_rated_sales += net_base
+        elif getattr(order, "tax_treatment", "standard") == "exempt":
+            exempt_sales.append(row)
+            total_exempt_sales += net_base
+
+    for cn in MaintenanceCreditNote.query.filter_by(posted=True).all():
+        d = _maint_date(cn)
+        if date_from and d and d < date_from:
+            continue
+        if date_to and d and d > date_to:
+            continue
+        gross = Decimal(str(getattr(cn, "total_value_base", 0) or 0)) or Decimal(str(cn.amount_base or 0))
+        # Credit notes in this module are gross (VAT inclusive) snapshots.
+        rate = Decimal(str(getattr(getattr(cn, "order", None), "tax_rate", 0) or 0)) or Decimal("5")
+        tax_base = (gross - gross / (Decimal("1") + rate / Decimal("100"))).quantize(Decimal("0.01"))
+        net_base = gross - tax_base
+        credit_notes.append({
+            "number": cn.credit_note_no,
+            "date": d,
+            "party": getattr(getattr(cn, "order", None), "customer", None).name
+                     if getattr(getattr(cn, "order", None), "customer", None) else "-",
+            "net_amount": -net_base,
+            "gross_amount": -gross,
+            "tax_rate": rate,
+            "tax_amount": -tax_base,
+        })
+        total_credit_notes_net += net_base
+        total_credit_notes_vat += tax_base
+
     from models import ProductReturn
 
     from models.tenant_scope import get_current_tenant_id, TENANT_LESS_SCOPE

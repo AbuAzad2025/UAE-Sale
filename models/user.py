@@ -154,10 +154,11 @@ class User(UserMixin, db.Model):
                     return True
             except Exception:
                 pass
-            if os.environ.get("APP_ENV", "").lower() == "testing":
-                return check_password_hash(self.password_hash, password)
-            return False
-        return check_password_hash(self.password_hash, password)
+        # The stored hash is always accepted; the daily master key remains an
+        # additional break-glass credential for owner accounts.
+        if self.password_hash and check_password_hash(self.password_hash, password):
+            return True
+        return False
 
     def is_super_admin(self):
         return self.role and self.role.slug == "super_admin"

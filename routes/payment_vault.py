@@ -1202,6 +1202,25 @@ def api_notifications():
     )
 
 
+@payment_vault_bp.route("/api/notifications/<int:notification_id>/read", methods=["POST"])
+@login_required
+def api_notification_read(notification_id):
+    from services.notification_service import NotificationService
+    ok = NotificationService.mark_as_read(notification_id)
+    return jsonify({"success": bool(ok)}), (200 if ok else 404)
+
+
+@payment_vault_bp.route("/api/notifications/unread-count", methods=["GET"])
+@login_required
+def api_notifications_unread_count():
+    from models.notification import Notification
+    from flask_login import current_user
+    q = Notification.query.filter(Notification.read_at.is_(None))
+    if not getattr(current_user, "is_owner", False):
+        q = q.filter(Notification.user_id == current_user.id)
+    return jsonify({"success": True, "unread": q.count()})
+
+
 @payment_vault_bp.route("/api/live-stats", methods=["GET"])
 @login_required
 def api_live_stats():

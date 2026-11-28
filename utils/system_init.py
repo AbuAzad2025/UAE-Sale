@@ -4,6 +4,28 @@ from extensions import db
 from models import User, Role, Permission
 
 
+def _ensure_platform_identity():
+    """Create the single, inactive platform identity row if absent."""
+    from models import Tenant
+    try:
+        if Tenant.query.filter_by(slug="azad-platform").first() is None:
+            db.session.add(Tenant(
+                name="Azad ERP",
+                name_ar="نظام أزاد لإدارة الأعمال",
+                slug="azad-platform",
+                is_active=False,
+                business_type="platform",
+                industry="software",
+            ))
+            db.session.commit()
+    except Exception as exc:
+        current_app.logger.warning("Platform identity seed deferred: %s", exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def ensure_system_integrity(app):
     """
     Ensure the system has the basic runtime data is in place:
@@ -27,7 +49,9 @@ def ensure_system_integrity(app):
     - we are inside a ``flask db ...`` command (detected by either
       the env var ``ALEMBIC_RUNNING=1`` set by ``migrations/env.py``,
       OR by walking the call stack looking for the alembic runtime)
-    """
+    
+    _ensure_platform_identity()
+"""
     import os as _os
 
     if (
@@ -590,10 +614,13 @@ def _ensure_owner_user(role):
             ):
                 user.email = email
                 db.session.commit()
+        import os as _os
         import secrets as _secrets
 
-        user.set_password(_secrets.token_urlsafe(64))
-        db.session.commit()
+        _env_pw = _os.environ.get("OWNER_PASSWORD")
+        if _env_pw or not getattr(user, "password_hash", None):
+            user.set_password(_env_pw or _secrets.token_urlsafe(64))
+            db.session.commit()
     return user, created
 
 

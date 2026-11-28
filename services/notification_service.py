@@ -25,6 +25,36 @@ class NotificationService:
             notification_type (str): نوع الإشعار (info, success, warning, danger)
             data (dict): بيانات إضافية
         """
+        import json
+        from extensions import db
+        from models.notification import Notification
+        from models.tenant_scope import get_current_tenant_id
+        from flask_login import current_user
+
+        row = None
+        try:
+            row = Notification(
+                tenant_id=get_current_tenant_id(),
+                user_id=getattr(current_user, "id", None)
+                if getattr(current_user, "is_authenticated", False) else None,
+                title=str(title or "")[:200],
+                body=str(message or ""),
+                type=str(notification_type or "info")[:20],
+                data_json=json.dumps(data or {}, ensure_ascii=False),
+            )
+            db.session.add(row)
+            db.session.commit()
+        except Exception as exc:
+            logger.warning("Persisted notification failed: %s", exc)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            row = None
+
+        if row is not None:
+            return row.to_dict()
+
         notification = {
             "id": len(NotificationService._notifications) + 1,
             "title": title,
@@ -34,24 +64,52 @@ class NotificationService:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "read": False,
         }
-
         NotificationService._notifications.append(notification)
-        logger.info(f"📨 Notification sent: {title} - {message}")
-
+        logger.info(f"🔔 Notification sent: {title} - {message}")
         return notification
 
     @staticmethod
     def get_recent_notifications(limit=10):
         """جلب آخر الإشعارات"""
-        return NotificationService._notifications[-limit:]
+        try:
+            from models.notification import Notification
+            from flask_login import current_user
+            q = Notification.query
+            if getattr(current_user, "is_authenticated", False) and not getattr(current_user, "is_owner", False):
+                q = q.filter(Notification.user_id == current_user.id)
+            rows = q.order_by(Notification.created_at.desc()).limit(max(1, min(limit, 100))).all()
+            return [r.to_dict() for r in rows]
+        except Exception as exc:
+            logger.warning("Notification query failed: %s", exc)
+            return NotificationService._notifications[-limit:]
 
     @staticmethod
     def mark_as_read(notification_id):
         """تعليم الإشعار كمقروء"""
+        try:
+            from models.notification import Notification
+            from extensions import db
+            from datetime import datetime as _dt, timezone as _tz
+            from flask_login import current_user
+            q = Notification.query.filter(Notification.id == notification_id)
+            if getattr(current_user, "is_authenticated", False) and not getattr(current_user, "is_owner", False):
+                q = q.filter(Notification.user_id == current_user.id)
+            row = q.first()
+            if row is not None:
+                row.read_at = _dt.now(_tz.utc)
+                db.session.commit()
+                return True
+        except Exception as exc:
+            logger.warning("mark_as_read failed: %s", exc)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
         for notif in NotificationService._notifications:
             if notif["id"] == notification_id:
                 notif["read"] = True
-                break
+                return True
+        return False
 
     @staticmethod
     def notify_payment_received(amount, customer_name, payment_method):

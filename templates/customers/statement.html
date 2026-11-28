@@ -790,6 +790,20 @@ table.statement-table thead th {
         <td class="num">{{ '{:,.2f}'.format(trans.credit) }}</td>
         <td class="num">{{ '{:,.2f}'.format(trans.balance) }}</td>
       </tr>
+      {% if trans.lines %}
+      <tr class="item-lines" style="background:#fafafa;">
+        <td colspan="5" style="padding:4px 8px 6px 18px;font-size:7pt;color:#444;">
+          {% for ln in trans.lines %}
+          <div style="line-height:1.5;">
+            {{ loop.index }}. {{ ln.product_name }}{% if ln.product_sku %} ({{ ln.product_sku }}){% endif %}
+            — {{ '{:,.3f}'.format(ln.quantity) }} × {{ '{:,.2f}'.format(ln.unit_price) }}
+            {% if ln.discount_percent %} − {{ '{:,.1f}'.format(ln.discount_percent) }}%{% endif %}
+            = {{ '{:,.2f}'.format(ln.line_total) }}
+          </div>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endif %}
       {% endfor %}
     </tbody>
     <tfoot>

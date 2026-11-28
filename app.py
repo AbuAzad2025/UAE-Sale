@@ -354,7 +354,7 @@ def _get_current_tenant():
     try:
         from models import Tenant
 
-        return Tenant.query.filter_by(is_active=True).first()
+        return Tenant.get_current() or Tenant.query.filter_by(is_active=True).first()
     except Exception:
         return None
 
@@ -601,6 +601,8 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
     app.register_blueprint(inbound_bp)
     app.register_blueprint(writeoffs_bp)
     app.register_blueprint(maintenance_bp)
+    from routes.bank_reconciliation import bank_reconciliation_bp
+    app.register_blueprint(bank_reconciliation_bp)
 
     from utils.error_handlers import register_error_handlers
 

@@ -121,21 +121,9 @@ class Tenant(db.Model):
         A dedicated inactive platform row (slug ``azad-platform``) holds that
         identity so it never appears as a customer in tenant-facing pages.
         """
-        tenant = Tenant.query.filter_by(slug="azad-platform").first()
-        if tenant is not None:
-            return tenant
-        tenant = Tenant.query.filter_by(is_active=True).first()
-        if not tenant:
-            tenant = Tenant(
-                name="Default Garage",
-                name_ar="كراج افتراضي",
-                slug="default",
-                business_type="garage",
-            )
-            db.session.add(tenant)
-            db.session.commit()
-        return tenant
-
+        # Read-only: a missing platform row must never make the owner edit a
+        # random customer tenant or create a new one as a side effect of GET.
+        return Tenant.query.filter_by(slug="azad-platform").first()
     @staticmethod
     def _as_naive(value):
         """Normalize a possibly tz-aware datetime to naive UTC for comparison.

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ t('Bank Reconciliation') }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <h5>{{ t('Bank Reconciliations') }}</h5>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('bank_reconciliation.create') }}">{{ t('New Reconciliation') }}</a>
+  </div>
+  <div class="card-body">
+    <table class="table table-sm table-striped">
+      <thead><tr><th>#</th><th>{{ t('Bank Account') }}</th><th>{{ t('Period') }}</th><th>{{ t('Difference') }}</th><th>{{ t('Status') }}</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr><td><a href="{{ url_for('bank_reconciliation.view', id=r.id) }}">{{ r.reconciliation_number }}</a></td>
+          <td>{{ r.bank_account.code if r.bank_account else '-' }}</td>
+          <td>{{ r.period_start }} — {{ r.period_end }}</td>
+          <td>{{ '{:,.3f}'.format(r.difference or 0) }}</td>
+          <td>{{ r.status }}</td></tr>
+      {% else %}<tr><td colspan="5" class="text-center text-muted">{{ t('No reconciliations') }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

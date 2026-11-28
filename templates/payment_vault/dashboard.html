@@ -402,18 +402,23 @@
         } catch (error) {        }
     }, 30000); // كل 30 ثانية
     
+    const seenNotifications = new Set();
     async function fetchNotifications() {
         try {
             const response = await fetch('{{ url_for("payment_vault.api_notifications") }}?limit=5');
             const data = await response.json();
-            
-            if (data.success && data.notifications.length > 0) {
-                const latest = data.notifications[data.notifications.length - 1];
-                if (!latest.read) {
-                    showNotification(latest.title, latest.message, latest.type);
-                }
+            if (!data.success || !data.notifications.length) return;
+            // Show each notification once, newest first, and persist the read state.
+            for (const item of data.notifications.slice().sort((a, b) => (b.id || 0) - (a.id || 0))) {
+                if (item.read || seenNotifications.has(item.id)) continue;
+                seenNotifications.add(item.id);
+                showNotification(item.title, item.message, item.type);
+                fetch('{{ url_for("payment_vault.api_notification_read", notification_id=0) }}'.replace('/0/', '/' + item.id + '/'), {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                }).catch(function() {});
             }
-        } catch (error) {        }
+        } catch (error) { /* polling is best-effort */ }
     }
     
     function showNotification(title, message, type = 'info') {
@@ -431,6 +436,7 @@
         });
     }
     
+    fetchNotifications();
     setInterval(fetchNotifications, 60000);
     
     document.addEventListener('DOMContentLoaded', function() {

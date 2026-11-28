@@ -600,6 +600,7 @@ def _customer_statement(id, *, export=False):
                 "balance_due": float(sale.balance_due or 0),
                 "status": sale.payment_status,
                 "sale": sale_data,
+                "lines": sale_data["lines"],
             }
         )
 

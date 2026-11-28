@@ -568,10 +568,11 @@ class TestOwnerRequired:
             with pytest.raises(NotFound):
                 self._view()()
 
-    def test_developer_role_passes(self, app, monkeypatch):
+    def test_developer_role_is_denied(self, app, monkeypatch):
+        # Developer must not inherit owner-panel access.
         monkeypatch.setattr(decorators, "current_user", FakeUser(slug="developer"))
         with app.test_request_context("/"):
-            assert self._view()() == "OWNER-OK"
+            assert self._view()() != "OWNER-OK"
 
     def test_non_privileged_user_redirected_to_dashboard(self, app, monkeypatch):
         # owner_required redirects authenticated non-owners to the main

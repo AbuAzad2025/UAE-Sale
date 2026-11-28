@@ -631,6 +631,116 @@ class BackupService:
             return False
 
     @classmethod
+    def restore_custom_tables(cls, backup_filename: str, tables) -> bool:
+        """Restore only allow-listed tables from a plain-SQL (optionally .gz) backup.
+
+        Auth/identity/audit/journal tables are refused server-side so a crafted
+        form cannot overwrite owners, permissions or evidence.  The filtered
+        SQL is executed in a single transaction.
+        """
+        import gzip
+        import re as _re
+        from utils.db_safety import is_protected_table
+
+        try:
+            cls.initialize()
+            backup_path = _validated_backup_path(cls.BACKUP_DIR, backup_filename)
+            if not backup_path or not os.path.exists(backup_path):
+                logger.error(f"Rejected unsafe backup filename: {backup_filename!r}")
+                return False
+            selected = {str(t).strip() for t in (tables or []) if str(t).strip()}
+            if not selected:
+                return False
+            for name in selected:
+                if not _re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                    logger.error(f"Rejected table name: {name!r}")
+                    return False
+                if is_protected_table(name) or name in {
+                    "invoice_settings", "system_settings", "integration_settings",
+                    "card_vaults", "card_payments", "error_logs", "audit_logs",
+                }:
+                    logger.error(f"Refused to restore protected table: {name}")
+                    return False
+
+            params = cls._parse_postgres_params()
+            if not params:
+                return False
+
+            opener = gzip.open if backup_filename.endswith(".gz") else open
+            with opener(backup_path, "rt", encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+
+            # Split pg_dump plain SQL into logical blocks (COPY payloads included).
+            blocks, cur, in_copy = [], [], False
+            for line in lines:
+                cur.append(line)
+                if in_copy:
+                    if line.strip() == r"\.":
+                        in_copy = False
+                        blocks.append("".join(cur)); cur = []
+                    continue
+                stripped = line.strip()
+                if stripped.upper().startswith("COPY ") and "FROM STDIN" in stripped.upper():
+                    in_copy = True
+                    continue
+                if stripped.endswith(";"):
+                    blocks.append("".join(cur)); cur = []
+            if cur:
+                blocks.append("".join(cur))
+
+            kept = []
+            for block in blocks:
+                names = set(_re.findall(
+                    r"(?:public\.)?\"?([A-Za-z_][A-Za-z0-9_]*)\"?", block
+                ))
+                # Header / SET / transaction statements have no table target.
+                if not any(n in names for n in selected) and not _re.search(
+                    r"^\s*(--|SET |SELECT pg_catalog|BEGIN|COMMIT|\\connect)", block
+                ):
+                    continue
+                kept.append(block)
+            if not kept:
+                logger.error("No SQL blocks matched the selected tables")
+                return False
+
+            temp_dir = tempfile.gettempdir()
+            temp_sql = os.path.join(
+                temp_dir, f"custom_restore_{datetime.now().strftime('%f')}.sql"
+            )
+            with open(temp_sql, "w", encoding="utf-8") as out:
+                out.write("BEGIN;\nSET session_replication_role = replica;\n")
+                out.writelines(kept)
+                out.write("\nCOMMIT;\n")
+
+            env = os.environ.copy()
+            env.update({
+                "PGPASSWORD": str(params["password"]),
+                "PGHOST": str(params["host"]),
+                "PGPORT": str(params["port"]),
+                "PGUSER": str(params["username"]),
+                "PGDATABASE": str(params["dbname"]),
+            })
+            psql = os.environ.get("PSQL_PATH", "psql")
+            cmd = [
+                psql, "--host", str(params["host"]), "--port", str(params["port"]),
+                "--username", str(params["username"]), "--dbname", str(params["dbname"]),
+                "--set", "ON_ERROR_STOP=on", "--single-transaction", "-f", temp_sql,
+            ]
+            try:
+                proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+                if proc.returncode != 0:
+                    logger.error(f"custom restore failed: {proc.stderr}")
+                    return False
+            finally:
+                if os.path.exists(temp_sql):
+                    os.remove(temp_sql)
+            logger.info(f"Custom restore completed: {sorted(selected)}")
+            return True
+        except Exception as e:
+            logger.error(f"Custom restore failed: {e}")
+            return False
+
+    @classmethod
     def delete_backup(cls, backup_filename: str) -> bool:
         try:
             backup_path = _validated_backup_path(cls.BACKUP_DIR, backup_filename)

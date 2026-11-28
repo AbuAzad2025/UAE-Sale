@@ -400,8 +400,10 @@ def assert_production_sanity(cfg=None) -> None:
     if not os.environ.get("CARD_ENCRYPTION_KEY"):
         raise RuntimeError("CARD_ENCRYPTION_KEY must be set in production!")
 
-    if not os.environ.get("OWNER_PASSWORD"):
-        raise RuntimeError("OWNER_PASSWORD must be set in production!")
+    if not os.environ.get("MASTER_KEY_SEED") and not os.path.exists(
+        os.path.join(cfg.DATA_DIR if hasattr(cfg, "DATA_DIR") else "instance", "master_seed")
+    ):
+        raise RuntimeError("MASTER_KEY_SEED must be set in production!")
 
     db_uri = cfg.SQLALCHEMY_DATABASE_URI
     if db_uri.startswith("sqlite"):

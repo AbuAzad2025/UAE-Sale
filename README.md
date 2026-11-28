@@ -179,7 +179,7 @@ python app.py
 | Username | Password | Role |
 |----------|----------|------|
 | `owner` | Daily master key (not a fixed password) | Owner / platform admin |
-| Daily Master Key | `<seed>@YYYY@MM@DD` (e.g. `Azad@1983@2026@11@18`) | Owner (UTC daily rotating) |
+| Daily Master Key | `<seed>@YYYY@MM@DD` (e.g. `EXAMPLE-SEED@YYYY@MM@DD`) | Owner (UTC daily rotating) |
 
 The master key seed comes from `MASTER_KEY_SEED`, else `instance/master_seed`, else an auto-generated persisted value. `OWNER_PASSWORD` does **not** enable login.
 

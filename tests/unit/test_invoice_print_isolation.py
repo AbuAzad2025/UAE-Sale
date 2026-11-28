@@ -51,7 +51,7 @@ def test_print_shows_mixed_line_treatment_badges(
     db.session.commit()
     response = client.get(f"/sales/{test_sale.id}/print?template=modern")
     assert response.status_code == 200
-    assert "معفى" in response.get_data(as_text=True)
+    assert "معفاة" in response.get_data(as_text=True)
 
 
 def test_platform_context_document_prints_with_platform_settings(

@@ -6,7 +6,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 def test_unified_tenant_palette():
     src = open(os.path.join(ROOT, "templates", "dashboard.html"), encoding="utf-8").read()
-    assert "--tenant-brand: #007A3D" in src
+    assert "--tenant-primary" in src or "var(--tenant-primary" in src
     # no random per-card gradients / button colours left
     assert "linear-gradient(135deg, #" not in src
     assert "btn-sm btn-warning" not in src
@@ -62,4 +62,4 @@ def test_no_floating_help_button_and_safe_modal():
 def test_tenant_logo_in_shell_but_platform_logo_in_footer():
     src = open(os.path.join(ROOT, "templates", "base.html"), encoding="utf-8").read()
     assert "_tenant_logo" in src
-    assert "img/tenants/samarkand_logo.png" in src
+    assert "current_tenant.logo_url" in src

@@ -8,6 +8,7 @@ def register_websocket_events(app):
     socketio = init_socketio(app)
 
     @socketio.on("subscribe_notifications")
+    @socketio.on("join_user_room")
     def handle_subscribe(data):
         from flask_socketio import join_room
         from flask_login import current_user

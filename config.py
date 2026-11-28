@@ -111,6 +111,12 @@ class Config:
             "[Dev] SECRET_KEY loaded/generated for development (set SECRET_KEY env in production)"
         )
 
+    SOCKETIO_ENABLED = _bool(os.environ.get("SOCKETIO_ENABLED"), True)
+    SOCKETIO_MESSAGE_QUEUE = os.environ.get("SOCKETIO_MESSAGE_QUEUE") or (
+        os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        if APP_ENV.lower() == "production" and not DEBUG else None
+    )
+
     HOST = os.environ.get("HOST", "0.0.0.0")  # nosec B104
     PORT = _int("PORT", 5000)
 

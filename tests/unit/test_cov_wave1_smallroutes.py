@@ -215,7 +215,7 @@ class TestReturnsRoutes:
         assert body["return_number"].startswith("R")
         assert body["return_id"] > 0
 
-    def test_view_return_missing_template_500(self, client, db, test_sale, login_owner):
+    def test_view_return_renders(self, client, db, test_sale, login_owner):
         # REAL BUG (reported, not fixed): routes/returns.py::view renders
         # 'returns/view.html' but templates/returns/ does not exist, so every
         # GET /returns/view/<id> raises jinja2.TemplateNotFound -> HTTP 500.

@@ -900,7 +900,7 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
             "default-src 'self'",
             # 'unsafe-inline' is still required by the existing inline
             # templates/chart bootstrap code; 'unsafe-eval' is not.
-            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
+            "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdn.socket.io",
             "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com",
             "font-src 'self' fonts.gstatic.com cdn.jsdelivr.net",
             "img-src 'self' data: blob:",
@@ -982,6 +982,12 @@ def create_app(config_class=Config, *, run_startup_tasks=True):  # noqa: C901
     install_builtin_tenant_scoping()
     install_tenant_filter_events()
     install_tenant_loader_criteria()
+    if app.config.get("SOCKETIO_ENABLED", False):
+        try:
+            from routes.websocket import register_websocket_events
+            register_websocket_events(app)
+        except Exception as _ws_exc:
+            app.logger.warning("WebSocket disabled: %s", _ws_exc)
     app.logger.info("[OK] Tenant filter events installed")
 
     try:

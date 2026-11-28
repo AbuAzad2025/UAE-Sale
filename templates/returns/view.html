@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ t('Return') }} {{ product_return.return_number }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><h5>{{ t('Return Details') }}: {{ product_return.return_number }}</h5></div>
+  <div class="card-body">
+    <p><strong>{{ t('Date') }}:</strong> {{ product_return.return_date.strftime('%Y-%m-%d') if product_return.return_date else '-' }}</p>
+    <p><strong>{{ t('Status') }}:</strong> {{ product_return.status }}</p>
+    <p><strong>{{ t('Customer') }}:</strong> {{ product_return.customer.name if product_return.customer else '-' }}</p>
+    <p><strong>{{ t('Total') }}:</strong> {{ '{:,.3f}'.format(product_return.total_amount or 0) }} {{ product_return.currency or base_currency }}</p>
+    {% if product_return.notes %}<p><strong>{{ t('Notes') }}:</strong> {{ product_return.notes }}</p>{% endif %}
+    <a href="{{ url_for('sales.view', id=product_return.sale_id) if product_return.sale_id else url_for('returns.index') }}" class="btn btn-secondary">{{ t('Back') }}</a>
+  </div>
+</div>
+{% endblock %}

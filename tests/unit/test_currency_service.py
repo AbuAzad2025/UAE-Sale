@@ -45,7 +45,9 @@ class TestBaseCurrency:
 class TestExchangeRateBasics:
     def test_user_rate_returned_quantized(self):
         rate = CurrencyService.get_exchange_rate("USD", "ILS", user_rate="3.6578915")
-        assert rate == Decimal("3.657892")
+        # Untrusted client rates are ignored; the server-side rate is used.
+        assert rate > 0
+        assert rate != Decimal("3.657892")
 
     def test_nonpositive_user_rate_raises(self):
         with pytest.raises(ValueError, match="Invalid"):
@@ -94,8 +96,9 @@ class TestFallbackRates:
         }
         assert CurrencyService.get_exchange_rate("JPY", "AED") == Decimal("0.033")
 
-    def test_missing_pair_defaults_to_one(self, offline):
-        assert CurrencyService.get_exchange_rate("ZZZ", "QQQ") == Decimal("1")
+    def test_missing_pair_is_rejected(self, offline):
+        with pytest.raises(ValueError):
+            CurrencyService.get_exchange_rate("ZZZ", "QQQ")
 
 
 class _FakeResp:

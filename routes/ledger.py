@@ -1051,6 +1051,7 @@ def approve_entry(id):
         AdvancedJournalEntryManager.approve_entry(
             entry_id=id, approved_by=current_user.id, approval_notes=approval_notes
         )
+        db.session.commit()
 
         flash("✅ تم الموافقة على القيد وترحيله بنجاح", "success")
 
@@ -1074,6 +1075,7 @@ def delete_entry(id):
         AdvancedJournalEntryManager.delete_entry(
             entry_id=id, deleted_by=current_user.id, reason=reason
         )
+        db.session.commit()
 
         flash("✅ تم حذف القيد بنجاح", "success")
         return redirect(url_for("ledger.journal_entries"))

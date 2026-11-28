@@ -167,9 +167,11 @@ def return_tax_parts(
     if invoice_treatment in ZERO_TREATMENTS or rate <= 0 or std_base <= 0:
         return Decimal("0"), std_base, zero_base, exempt_base
     if inclusive:
+        # Mirror the charge path exactly: quantize tax at TAX_Q first, then
+        # derive net, so a full return reverses the original VAT precisely.
         divisor = Decimal("1") + rate / Decimal("100")
-        net_std = (std_base / divisor).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
-        tax = (std_base - net_std).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
+        tax = (std_base - std_base / divisor).quantize(TAX_Q, rounding=ROUND_HALF_UP)
+        net_std = (std_base - tax).quantize(MONEY_Q, rounding=ROUND_HALF_UP)
         return tax, net_std, zero_base, exempt_base
     tax = (std_base * rate / Decimal("100")).quantize(TAX_Q, rounding=ROUND_HALF_UP)
     return tax, std_base, zero_base, exempt_base

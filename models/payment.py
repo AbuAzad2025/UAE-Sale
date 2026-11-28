@@ -427,6 +427,9 @@ class Receipt(TenantScopedMixin, db.Model):
 
             self.apply_pending_allocations()
 
+            from models.customer import recompute_customer_balance
+            recompute_customer_balance(self.customer_id)
+
     def apply_pending_allocations(self):
         """تطبيق التخصيصات المحفوظة للسند على الفواتير (عند التأكيد)."""
         allocations = self.get_allocations()
@@ -487,6 +490,22 @@ class Receipt(TenantScopedMixin, db.Model):
             self.rejection_reason = reason
             db.session.flush()
 
+            from models.sale import recompute_sale_settlement
+            for alloc in self.get_allocations():
+                try:
+                    _sid = int(alloc.get("sale_id"))
+                except (TypeError, ValueError):
+                    continue
+                if _sid > 0:
+                    recompute_sale_settlement(_sid)
+            from models.sale import recompute_sale_settlement
+            for alloc in self.get_allocations():
+                try:
+                    _sid = int(alloc.get("sale_id"))
+                except (TypeError, ValueError):
+                    continue
+                if _sid > 0:
+                    recompute_sale_settlement(_sid)
             sale = self.primary_sale
             if sale is not None:
                 sale.recalculate_payment_status()

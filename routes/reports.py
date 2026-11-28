@@ -753,10 +753,8 @@ def purchases():  # noqa: C901
     for p in purchases_list:
         amount = p.amount_base or Decimal("0")
         total_amount += amount
-        if not hasattr(p, "paid_amount"):
-            p.paid_amount = Decimal("0")
-        if not hasattr(p, "balance_due"):
-            p.balance_due = amount
+        p.paid_amount = p.get_paid_amount()
+        p.balance_due = (p.amount_base or Decimal("0")) - p.paid_amount
 
     from models import Payment
 
@@ -1568,18 +1566,21 @@ def ap_aging():
             )
 
         supplier_aging = []
+        from models.supplier import derive_supplier_totals
+        supplier_totals = {}
+        for _sd in report.get("suppliers", []):
+            _sup = _sd.get("supplier")
+            if _sup is not None:
+                supplier_totals[_sup.id] = derive_supplier_totals(_sup.id)
         for supplier_data in report.get("suppliers", []):
             sup = supplier_data["supplier"]
             overdue = supplier_data.get("overdue_total", 0)
             supplier_aging.append(
                 {
                     "supplier": sup,
-                    "total_purchases": supplier_data.get("total", 0)
-                    + supplier_data.get("overdue_total", 0),
-                    "total_paid": supplier_data.get("total", 0)
-                    + supplier_data.get("overdue_total", 0)
-                    - supplier_data.get("total", 0),
-                    "balance": supplier_data.get("total", 0),
+                    "total_purchases": float(supplier_totals.get(sup.id, (0, 0))[0]),
+                    "total_paid": float(supplier_totals.get(sup.id, (0, 0))[1]),
+                    "balance": float(supplier_data.get("total", 0)),
                     "days_old": 0,  # غير مستخدم للعرض الجديد
                     "bucket": "current"
                     if supplier_data.get("overdue_total", 0) == 0

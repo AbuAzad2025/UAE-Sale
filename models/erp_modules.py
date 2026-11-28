@@ -153,21 +153,17 @@ class Quotation(TenantScopedMixin, db.Model):
             line_specs, disc, ship, rate, inclusive, invoice_treatment=invoice_treatment
         )
         ex = Decimal(str(self.exchange_rate)) if self.exchange_rate else Decimal("1")
-        if (self.currency or "ILS") == "ILS":
+        try:
+            from services.currency_service import CurrencyService
+            _base = CurrencyService.get_base_currency()
+        except Exception:
+            _base = "AED"
+        if (self.currency or _base) == _base:
             self.amount_base = self.total_amount
         else:
-            try:
-                from services.currency_service import CurrencyService
-
-                _base = CurrencyService.get_base_currency()
-            except Exception:
-                _base = "ILS"
-            if (self.currency or _base) == _base:
-                self.amount_base = self.total_amount
-            else:
-                self.amount_base = (self.total_amount * ex).quantize(
-                    Decimal("0.001"), rounding=ROUND_HALF_UP
-                )
+            self.amount_base = (self.total_amount * ex).quantize(
+                Decimal("0.001"), rounding=ROUND_HALF_UP
+            )
 
     @property
     def is_expired(self):

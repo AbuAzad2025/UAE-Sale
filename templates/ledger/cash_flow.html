@@ -79,7 +79,7 @@
       <table class="table table-bordered">
         <tbody>
           {% for item in report.investing_activities.items %}
-          {% if item.amount > 0 %}
+          {% if true %}
           <tr>
             <td width="70%">{{ item.description }}</td>
             <td width="30%" class="text-center {{ 'text-success' if item.type == 'inflow' else 'text-danger' }}">
@@ -108,7 +108,7 @@
       <table class="table table-bordered">
         <tbody>
           {% for item in report.financing_activities.items %}
-          {% if item.amount > 0 %}
+          {% if true %}
           <tr>
             <td width="70%">{{ item.description }}</td>
             <td width="30%" class="text-center {{ 'text-success' if item.type == 'inflow' else 'text-danger' }}">
@@ -222,7 +222,7 @@ new Chart(ctx, {
                 beginAtZero: true,
                 ticks: {
                     callback: function(value) {
-                        return value.toLocaleString('ar-AE') + ' ' + base_currency;
+                        return value.toLocaleString('ar-AE') + ' ' + BASE_CURRENCY;
                     }
                 }
             }

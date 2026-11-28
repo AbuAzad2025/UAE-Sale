@@ -78,16 +78,26 @@ def compute_sale_paid_base(sale_id, connection=None):
         else:
             total += amount
 
-    receipt_rows = connection.execute(
-        select(
-            Receipt.__table__.c.amount_base,
-            Receipt.__table__.c.payment_confirmed,
-            Receipt.__table__.c.allocations_json,
-        ).where(Receipt.__table__.c.sale_id == sale_id)
-    ).fetchall()
-    for row in receipt_rows:
-        if row.payment_confirmed is not True:
-            continue
+    # A receipt spanning several invoices stores only the first invoice in
+    # `sale_id`; the other allocations live in allocations_json.  Scan every
+    # confirmed receipt of this customer so a settlement recompute never
+    # erases those secondary allocations.
+    customer_id = connection.execute(
+        select(Sale.__table__.c.customer_id).where(Sale.__table__.c.id == sale_id)
+    ).scalar()
+    receipt_query = select(
+        Receipt.__table__.c.amount_base,
+        Receipt.__table__.c.payment_confirmed,
+        Receipt.__table__.c.allocations_json,
+        Receipt.__table__.c.sale_id,
+    ).where(Receipt.__table__.c.payment_confirmed.is_(True))
+    if customer_id is not None and hasattr(Receipt.__table__.c, "customer_id"):
+        receipt_query = receipt_query.where(
+            Receipt.__table__.c.customer_id == customer_id
+        )
+    else:
+        receipt_query = receipt_query.where(Receipt.__table__.c.sale_id == sale_id)
+    for row in connection.execute(receipt_query).fetchall():
         allocations = _parse_allocations(row.allocations_json)
         if allocations:
             for alloc in allocations:
@@ -97,7 +107,10 @@ def compute_sale_paid_base(sale_id, connection=None):
                 except (TypeError, ValueError):
                     continue
                 total += Decimal(str(alloc.get("amount_base") or 0))
-        else:
+        elif row.allocations_json not in (None, ""):
+            # Explicit empty list means "nothing allocated", not "full amount".
+            continue
+        elif row.sale_id == sale_id:
             total += Decimal(str(row.amount_base or 0))
 
     return total

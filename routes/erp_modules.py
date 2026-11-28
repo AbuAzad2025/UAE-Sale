@@ -164,7 +164,7 @@ def create_quotation():
                 currency=request.form.get("currency", "AED"),
                 discount_amount=request.form.get("discount_amount", 0, type=float),
                 shipping_cost=request.form.get("shipping_cost", 0, type=float),
-                tax_rate=request.form.get("tax_rate", 0, type=float),
+                tax_rate=request.form.get("tax_rate", type=float),
                 tax_inclusive=tax_inclusive,
                 tax_treatment=request.form.get("tax_treatment", "standard", type=str),
                 valid_days=request.form.get("valid_days", 30, type=int),

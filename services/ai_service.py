@@ -784,11 +784,17 @@ class AIService:
                 "count": len(recent_sales),
             }
 
-        default_rates = {"USD": 3.70, "EUR": 4.05, "ILS": 1.0}
+        try:
+            from services.currency_service import CurrencyService
+            _suggested = CurrencyService.get_exchange_rate(
+                currency, CurrencyService.get_base_currency()
+            )
+        except Exception:
+            _suggested = None
 
         return {
             "currency": currency,
-            "suggested_rate": default_rates.get(currency, 1.0),
+            "suggested_rate": float(_suggested) if _suggested is not None else 1.0,
             "latest_rate": None,
             "source": "سعر افتراضي",
             "count": 0,

@@ -127,7 +127,7 @@ def _convert_customer_to_type(customer):
         phone=customer.phone,
         email=customer.email,
         address=customer.address,
-        balance=float(customer.balance) if customer.balance else 0,
+        balance=float(customer.get_balance()) if customer.balance else 0,
     )
 
 

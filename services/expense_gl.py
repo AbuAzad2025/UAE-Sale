@@ -33,9 +33,9 @@ def compute_expense_tax(amount, tax_rate, tax_inclusive, tax_treatment):
         if rate <= 0:
             return amount, Decimal("0"), amount
         divisor = Decimal("1") + rate / Decimal("100")
-        net = (amount / divisor).quantize(_Q, rounding=ROUND_HALF_UP)
-        tax = (amount - net).quantize(_Q, rounding=ROUND_HALF_UP)
-        return net, tax, amount
+        tax = (amount - amount / divisor).quantize(_Q, rounding=ROUND_HALF_UP)
+        net = (amount - tax).quantize(_Q, rounding=ROUND_HALF_UP)
+        return net, tax, net + tax
     tax = (amount * rate / Decimal("100")).quantize(_Q, rounding=ROUND_HALF_UP)
     return amount, tax, amount + tax
 

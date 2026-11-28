@@ -197,10 +197,10 @@ class Cheque(TenantScopedMixin, db.Model):
             if rate <= 0:
                 raise ValueError("Invalid exchange rate: must be positive")
             self.amount_base = (amount * rate).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
+                Decimal("0.001"), rounding=ROUND_HALF_UP
             )
         else:
-            self.amount_base = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            self.amount_base = amount.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
     def receive_cheque(self, *, actor_id=None):
         """تسجيل استلام الشيك الوارد"""
@@ -333,7 +333,7 @@ class Cheque(TenantScopedMixin, db.Model):
         bank_charges = Decimal(str(bank_charges))
         if not bank_charges.is_finite() or bank_charges < 0:
             raise ValueError("Bank charges must be a nonnegative amount.")
-        bank_charges = bank_charges.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        bank_charges = bank_charges.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
         effective_date = clearance_date or datetime.now().date()
         if effective_date < (self.deposit_date or self.issue_date):
@@ -370,12 +370,12 @@ class Cheque(TenantScopedMixin, db.Model):
         amount = Decimal(str(self.amount))
         rate = Decimal(str(self.clearance_exchange_rate))
         self.actual_amount_base = (amount * rate).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
+            Decimal("0.001"), rounding=ROUND_HALF_UP
         )
 
         self.currency_gain_loss = (
             self.actual_amount_base - Decimal(str(self.amount_base))
-        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        ).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
         if self.actual_amount_base <= 0 or (
             self.cheque_type == "incoming" and bank_charges > self.actual_amount_base
